@@ -11,6 +11,7 @@ using LDrawParser
 using HierarchicalGeometry
 # using CRCBS
 # using TaskGraphs
+using Logging
 
 ################################################################################
 ############################ Constructing Model Tree ###########################
@@ -74,7 +75,7 @@ Currently used both as an assembly tree and a "model schedule".
 In the model schedule, the final model is the root of the graph, and its
 ancestors are the operations building up thereto.
 """
-@with_kw struct MPDModelGraph{N,ID} <: AbstractCustomNDiGraph{CustomNode{N,ID},ID}
+@with_kw_noshow struct MPDModelGraph{N,ID} <: AbstractCustomNDiGraph{CustomNode{N,ID},ID}
     graph       ::DiGraph                   = DiGraph()
     nodes       ::Vector{CustomNode{N,ID}}  = Vector{CustomNode{N,ID}}()
     vtx_map     ::Dict{ID,Int}              = Dict{ID,Int}()
@@ -88,6 +89,9 @@ function GraphUtils.add_node!(g::MPDModelGraph{N,ID},val::N) where {N,ID}
     id = create_node_id(g,val)
     add_node!(g,val,id)
 end
+
+# function add_subfile_reference!(model_graph,ref::SubFileRef)
+# end
 
 """
     add_build_step!(model_graph,build_step,parent=-1)
@@ -159,11 +163,11 @@ function copy_submodel_trees!(sched,model)
 end
 
 """
-    construct_model_schedule(model)
+    construct_model_spec(model)
 
 Edges go forward in time.
 """
-function construct_model_schedule(model)
+function construct_model_spec(model)
     NODE_VAL_TYPE=Union{SubModelPlan,BuildingStep,SubFileRef}
     sched = MPDModelGraph{NODE_VAL_TYPE,String}()
     for (k,m) in model.models
@@ -198,6 +202,17 @@ function extract_single_model(sched::S,model_key) where {S<:MPDModelGraph}
     new_sched
 end
 
+# function add_root_subfile_refs!(model,sched::S) where {S<:MPDModelGraph}
+#     for v in get_all_root_nodes(sched)
+#         node = get_node(sched,v)
+#         val = node_val(node)
+#         if isa(val,SubModelPlan)
+#             ref = SubFileRef()
+#         end
+#     end
+# end
+
+# Edges for Project Spec. TODO dispatch on graph type
 GraphUtils.validate_edge(::SubModelPlan,::SubFileRef) = true
 GraphUtils.validate_edge(::BuildingStep,::SubModelPlan) = true
 GraphUtils.validate_edge(::BuildingStep,::BuildingStep) = true
@@ -219,7 +234,8 @@ GraphUtils.eligible_predecessors(n::BuildingStep) = Dict(SubFileRef=>LDrawParser
 GraphUtils.required_successors(::BuildingStep) = Dict(Union{SubModelPlan,BuildingStep}=>1)
 GraphUtils.required_predecessors(n::BuildingStep) = Dict(SubFileRef=>LDrawParser.n_lines(n))
 
-# Write your package code here.
+
+
 """
     construct_assembly_graph(model)
 
@@ -239,6 +255,110 @@ function construct_assembly_graph(model)
         end
     end
     return model_graph
+end
+
+geom_node(m::DATModel) = GeomNode(LDrawParser.extract_geometry(m))
+geom_node(m::SubModelPlan) = GeomNode(nothing)
+function geom_node(model::MPDModel,ref::SubFileRef)
+    if has_model(model,ref.file)
+        return geom_node(get_model(model,ref.file))
+    elseif has_part(model,ref.file)
+        return geom_node(get_part(model,ref.file))
+    end
+    throw(ErrorException("Referenced file $(ref.file) is not in model"))
+    # @warn "Referenced file $(ref.file) is not in model"
+    GeomNode(nothing)
+end
+
+"""
+    build_id_map(model::MPDModel,spec::MPDModelGraph)
+
+Constructs a `Dict` mapping from `AbstractID <=> String` to keep track of the
+correspondence between ids in different graphs.
+"""
+function build_id_map(model::MPDModel,spec::MPDModelGraph)
+    id_map = Dict{Union{String,AbstractID},Union{String,AbstractID}}()
+    for (v,node) in enumerate(get_nodes(spec))
+        val = node_val(node)
+        new_id = nothing
+        if isa(val,SubFileRef)
+            if LDrawParser.has_model(model,val.file)
+                new_id = get_unique_id(AssemblyID)
+            elseif LDrawParser.has_part(model,val.file)
+                new_id = get_unique_id(ObjectID)
+            else
+                continue
+            end
+        elseif is_terminal_node(spec,v) && isa(val,SubModelPlan)
+            # NOTE kind of a hacky way to deal with the root node...
+            @info "ADDING ROOT NODE"
+            new_id = get_unique_id(AssemblyID)
+        end
+        if !(new_id === nothing)
+            id_map[new_id] = GraphUtils.node_id(node)
+            id_map[GraphUtils.node_id(node)] = new_id
+        end
+    end
+    id_map
+end
+
+function populate_assembly_subtree!(assembly_tree,spec,id::AssemblyID,id_map)
+    node = get_node(assembly_tree,id)
+    assembly = node_val(node)
+    @assert isa(assembly, AssemblyNode)
+    # add edges from Assembly Node to all children
+    for e in edges(bfs_tree(spec,id_map[id];dir=:in))
+        child_id = get(id_map,get_vtx_id(spec,e.dst),nothing)
+        if child_id === nothing
+            continue
+        end
+        child_ref = node_val(get_node(spec,e.dst))
+        @assert has_vertex(assembly_tree,child_id)
+        if indegree(assembly_tree,child_id) == 0
+            t = LDrawParser.build_transform(child_ref)
+            add_component!(assembly,child_id=>t)
+            set_child!(assembly_tree,id,child_id)
+            @info "$(id_map[id]) → $(get_vtx_id(spec,e.dst)) is $(has_edge(assembly_tree,id,child_id))"
+        end
+    end
+    assembly_tree
+end
+
+function construct_assembly_tree(model::MPDModel,spec::MPDModelGraph)
+    assembly_tree = NTree{SceneNode,AbstractID}()
+    id_map = build_id_map(model,spec)
+    for v in topological_sort_by_dfs(spec)
+        node = get_node(spec,v)
+        if !haskey(id_map,GraphUtils.node_id(node))
+            continue
+        end
+        val = node_val(node)
+        new_id = id_map[GraphUtils.node_id(node)]
+        if isa(val,SubModelPlan) # root node
+            @info "ROOT: $(GraphUtils.node_id(node))"
+            g = geom_node(val)
+            add_node!(assembly_tree,AssemblyNode(new_id,g),new_id)
+            populate_assembly_subtree!(assembly_tree,spec,new_id,id_map)
+        elseif isa(val,SubFileRef)
+            if has_model(model,val.file)
+                @info "SUB FILE ASSEMBLY: $(GraphUtils.node_id(node))"
+                m = get_model(model,val.file)
+                g = geom_node(m)
+                add_node!(assembly_tree,AssemblyNode(new_id,g),new_id)
+                populate_assembly_subtree!(assembly_tree,spec,new_id,id_map)
+            elseif has_part(model,val.file)
+                @info "SUB FILE PART: $(GraphUtils.node_id(node))"
+                p = get_part(model,val.file)
+                g = geom_node(p)
+                add_node!(assembly_tree,ObjectNode(new_id,g),new_id)
+            else
+                @warn "SubFileRef points to nonexistent entity $(val.file)"
+            end
+        elseif isa(val,BuildingStep)
+            # do nothing
+        end
+    end
+    assembly_tree
 end
 
 end
