@@ -412,4 +412,18 @@ function construct_assembly_tree(model::MPDModel,spec::MPDModelGraph,
     assembly_tree
 end
 
+function convert_to_scene_tree(assembly_tree)
+    scene_tree = SceneTree()
+    for n in get_nodes(assembly_tree)
+        add_node!(scene_tree,node_val(n))
+    end
+    for e in edges(assembly_tree)
+        src_id = get_vtx_id(assembly_tree,edge_source(e))
+        dst_id = get_vtx_id(assembly_tree,edge_target(e))
+        # set_child! will ensure that the full tree is correctly set up.
+        set_child!(scene_tree,src_id,dst_id)
+    end
+    return scene_tree
+end
+
 end

@@ -26,7 +26,7 @@ GraphUtils.validate_graph(model_spec)
 
 id_map = ConstructionBots.build_id_map(model,model_spec)
 assembly_tree = ConstructionBots.construct_assembly_tree(model,model_spec,id_map)
-# new_spec = MPDModelGraph{Union{SubModelPlan,BuildingStep,SubFileRef},AbstractID}()
+# print(assembly_tree,v->"$(summary(node_id(v))) : $(id_map[node_id(v)])","\t")
 # convert to SceneTree
 scene_tree = SceneTree()
 for n in get_nodes(assembly_tree)
@@ -38,9 +38,9 @@ for e in edges(assembly_tree)
     set_child!(scene_tree,src_id,dst_id)
     # add_edge!(scene_tree,src_id,dst_id)
 end
-# print(assembly_tree,v->summary(node_val(v)),"\t")
-# print(assembly_tree,v->id_map[node_id(v)],"\t")
-print(scene_tree,v->id_map[node_id(v)],"\t")
+print(scene_tree,v->"$(summary(node_id(v))) : $(id_map[node_id(v)])","\t")
+
+capture_child!(scene_tree,AssemblyID(7),AssemblyID(12))
 
 # ConstructionBots.update_build_step_parents!(model_spec)
 
@@ -55,14 +55,37 @@ model_tree = convert(GraphUtils.CustomNTree{GraphUtils._node_type(model_graph),S
 # @assert maximum(map(v->indegree(model_tree,v),vertices(model_tree))) == 1
 print(model_tree,v->summary(v.val),"\t")
 
+function populate_visualizer!(scene_tree,vis)
+    vis_root = vis["root"]
+    vis_nodes = Dict{AbstractID,Any}()
+    for v in topological_sort_by_dfs(scene_tree)
+        node = get_node(scene_tree,v)
+        if is_root_node(scene_tree,v)
+            vis_nodes[node_id(node)] = vis_root[string(node_id(node))]
+        else
+            p = get_vtx_id(scene_tree,get_parent(scene_tree,v))
+            vis_nodes[node_id(node)] = vis_nodes[p][string(node_id(node))]
+        end
+        vis_node = vis_nodes[node_id(node)]
+        # geometry
+        geom = get_base_geom(node)
+        if !(geom === nothing)
+            filtered_geom = filter(m->!isa(m,GeometryBasics.Line),geom)
+            M = GeometryBasics.Mesh(
+                coordinates(filtered_geom),
+                faces(filtered_geom)
+                )
+            setobject!(vis_node,M)
+        end
+        settransform!(vis_node,local_transform(node))
+    end
+    vis_nodes
+end
 
 vis = Visualizer()
 render(vis)
-vis_root = vis["root"]
+populate_visualizer!(scene_tree,vis)
 
-for v in topological_sort_by_dfs(model_tree)
-
-end
 
 # T_base = CoordinateTransformations.Translation(0.0,0.0,0.0) ∘ CoordinateTransformations.LinearMap(LDrawParser.LDRAW_BASE_FRAME)
 # SCALE = 0.01
