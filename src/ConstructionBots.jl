@@ -1,5 +1,5 @@
 module ConstructionBots
-
+#=  =#
 using Parameters
 using StaticArrays
 using CoordinateTransformations
@@ -27,6 +27,25 @@ export
     construct_assembly_graph
 
 """
+    BuildStepID <: AbstractID
+"""
+@with_kw struct BuildStepID <: AbstractID
+    id::Int
+end
+"""
+    SubModelPlanID <: AbstractID
+"""
+@with_kw struct SubModelPlanID <: AbstractID
+    id::Int
+end
+"""
+    SubFileRedID <: AbstractID
+"""
+@with_kw struct SubFileRefID <: AbstractID
+    id::Int
+end
+
+"""
     DuplicateIDGenerator{K}
 
 Generates duplicate IDs.
@@ -39,7 +58,7 @@ struct DuplicateIDGenerator{K}
         Dict{K,K}(),
     )
 end
-_id_type(::DuplicateIDGenerator{K}) where {K} = K
+GraphUtils._id_type(::DuplicateIDGenerator{K}) where {K} = K
 function (g::DuplicateIDGenerator)(id)
     k = get!(g.id_map,id,id)
     g.id_counts[k] = get(g.id_counts,k,0) + 1
@@ -163,19 +182,49 @@ function copy_submodel_trees!(sched,model)
 end
 
 """
+    update_build_step_parents!(model_spec)
+
+Ensure that all `BuildingStep` nodes have the correct parent (submodel) name.
+"""
+function update_build_step_parents!(model_spec)
+    descendant_map = backup_descendants(model_spec,
+        n->matches_template(SubModelPlan,n))
+    for v in vertices(model_spec)
+        node = get_node(model_spec,v)
+        if matches_template(BuildingStep,node)
+            node = replace_node!(model_spec,
+                BuildingStep(node_val(node),descendant_map[node_id(node)]),
+                node_id(node)
+                )
+            @assert node_val(node).parent == descendant_map[node_id(node)]
+        end
+    end
+    model_spec
+end
+
+"""
     construct_model_spec(model)
 
 Edges go forward in time.
 """
 function construct_model_spec(model)
     NODE_VAL_TYPE=Union{SubModelPlan,BuildingStep,SubFileRef}
-    sched = MPDModelGraph{NODE_VAL_TYPE,String}()
+    spec = MPDModelGraph{NODE_VAL_TYPE,String}()
     for (k,m) in model.models
-        populate_model_subgraph!(sched,m)
+        populate_model_subgraph!(spec,m)
     end
-    copy_submodel_trees!(sched,model)
-    return sched
+    copy_submodel_trees!(spec,model)
+    update_build_step_parents!(spec)
+    return spec 
 end
+
+"""
+    convert_model_spec_to_abstract_ids(spec,id_map)
+
+Converts model spec to use AbstractIDs for the node ids (rather than strings)
+"""
+
+# struct BuildStep
 
 """
     extract_single_model(sched::S,model_key) where {S<:MPDModelGraph}
@@ -254,6 +303,7 @@ function construct_assembly_graph(model)
             end
         end
     end
+    # copy_submodel_trees!(model_graph,model)
     return model_graph
 end
 
@@ -324,9 +374,10 @@ function populate_assembly_subtree!(assembly_tree,spec,id::AssemblyID,id_map)
     assembly_tree
 end
 
-function construct_assembly_tree(model::MPDModel,spec::MPDModelGraph)
+function construct_assembly_tree(model::MPDModel,spec::MPDModelGraph,
+        id_map = build_id_map(model,spec),
+    )
     assembly_tree = NTree{SceneNode,AbstractID}()
-    id_map = build_id_map(model,spec)
     for v in topological_sort_by_dfs(spec)
         node = get_node(spec,v)
         if !haskey(id_map,GraphUtils.node_id(node))
