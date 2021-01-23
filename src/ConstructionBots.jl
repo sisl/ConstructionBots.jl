@@ -374,6 +374,12 @@ function populate_assembly_subtree!(assembly_tree,spec,id::AssemblyID,id_map)
     assembly_tree
 end
 
+"""
+    construct_assembly_tree(model::MPDModel,spec::MPDModelGraph,
+
+Construct an assembly_tree::NTree{SceneNode,AbstractID}, a precursor to 
+SceneTree.
+"""
 function construct_assembly_tree(model::MPDModel,spec::MPDModelGraph,
         id_map = build_id_map(model,spec),
     )
@@ -412,16 +418,18 @@ function construct_assembly_tree(model::MPDModel,spec::MPDModelGraph,
     assembly_tree
 end
 
-function convert_to_scene_tree(assembly_tree)
+function convert_to_scene_tree(assembly_tree,set_children=true)
     scene_tree = SceneTree()
     for n in get_nodes(assembly_tree)
         add_node!(scene_tree,node_val(n))
     end
-    for e in edges(assembly_tree)
-        src_id = get_vtx_id(assembly_tree,edge_source(e))
-        dst_id = get_vtx_id(assembly_tree,edge_target(e))
-        # set_child! will ensure that the full tree is correctly set up.
-        set_child!(scene_tree,src_id,dst_id)
+    if set_children
+        for e in edges(assembly_tree)
+            src_id = get_vtx_id(assembly_tree,edge_source(e))
+            dst_id = get_vtx_id(assembly_tree,edge_target(e))
+            # set_child! will ensure that the full tree is correctly set up.
+            set_child!(scene_tree,src_id,dst_id)
+        end
     end
     return scene_tree
 end

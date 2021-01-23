@@ -8,109 +8,74 @@ using GeometryBasics, CoordinateTransformations, Rotations
 using MeshCat
 using Plots
 
+Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
+
 # using Logging
 # global_logger(SimpleLogger(stderr, Logging.Debug))
+reset_all_id_counters!()
+LDrawParser.load_color_dict!()
 
+## LOAD LDRAW FILE
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
 filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","ATTEWalker.mpd")
 model = parse_ldraw_file(filename)
 populate_part_geometry!(model)
-
 SCALE = 0.01
 LDrawParser.change_coordinate_system!(model,ldraw_base_transform(),SCALE)
-model
 
+## CONSTRUCT MODEL SPEC
 spec = ConstructionBots.construct_model_spec(model)
 model_spec = ConstructionBots.extract_single_model(spec,"20009 - AT-TE Walker.mpd")
-GraphUtils.validate_graph(model_spec)
+@assert GraphUtils.validate_graph(model_spec)
 
+## CONSTRUCT SceneTree
 id_map = ConstructionBots.build_id_map(model,model_spec)
 assembly_tree = ConstructionBots.construct_assembly_tree(model,model_spec,id_map)
-# print(assembly_tree,v->"$(summary(node_id(v))) : $(id_map[node_id(v)])","\t")
-# convert to SceneTree
-scene_tree = SceneTree()
-for n in get_nodes(assembly_tree)
-    add_node!(scene_tree,node_val(n))
-end
-for e in edges(assembly_tree)
-    src_id = get_vtx_id(assembly_tree,edge_source(e))
-    dst_id = get_vtx_id(assembly_tree,edge_target(e))
-    set_child!(scene_tree,src_id,dst_id)
-    # add_edge!(scene_tree,src_id,dst_id)
-end
+scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree,set_children=true)
+# capture_child!(scene_tree,AssemblyID(7),AssemblyID(12))
 print(scene_tree,v->"$(summary(node_id(v))) : $(id_map[node_id(v)])","\t")
 
-capture_child!(scene_tree,AssemblyID(7),AssemblyID(12))
-
-# ConstructionBots.update_build_step_parents!(model_spec)
-
-get_vtx_id(model_spec,1)
-for v in reverse(topological_sort_by_dfs(model_spec))
-    @show get_vtx_id(model_spec,v)
-end
-
-model_graph = construct_assembly_graph(model)
-
-model_tree = convert(GraphUtils.CustomNTree{GraphUtils._node_type(model_graph),String},model_graph)
-# @assert maximum(map(v->indegree(model_tree,v),vertices(model_tree))) == 1
-print(model_tree,v->summary(v.val),"\t")
-
-function populate_visualizer!(scene_tree,vis)
-    vis_root = vis["root"]
-    vis_nodes = Dict{AbstractID,Any}()
-    for v in topological_sort_by_dfs(scene_tree)
-        node = get_node(scene_tree,v)
-        if is_root_node(scene_tree,v)
-            vis_nodes[node_id(node)] = vis_root[string(node_id(node))]
-        else
-            p = get_vtx_id(scene_tree,get_parent(scene_tree,v))
-            vis_nodes[node_id(node)] = vis_nodes[p][string(node_id(node))]
-        end
-        vis_node = vis_nodes[node_id(node)]
-        # geometry
-        geom = get_base_geom(node)
-        if !(geom === nothing)
-            filtered_geom = filter(m->!isa(m,GeometryBasics.Line),geom)
-            M = GeometryBasics.Mesh(
-                coordinates(filtered_geom),
-                faces(filtered_geom)
-                )
-            setobject!(vis_node,M)
-        end
-        settransform!(vis_node,local_transform(node))
-    end
-    vis_nodes
-end
+color_map = construct_color_map(model_spec,id_map)
 
 vis = Visualizer()
 render(vis)
-populate_visualizer!(scene_tree,vis)
+delete!(vis)
+vis_nodes = populate_visualizer!(scene_tree,vis;
+    color_map=color_map,
+    material_type=MeshPhongMaterial)
+
+
+# ConstructionBots.update_build_step_parents!(model_spec)
+# model_graph = construct_assembly_graph(model)
+# model_tree = convert(GraphUtils.CustomNTree{GraphUtils._node_type(model_graph),String},model_graph)
+# # @assert maximum(map(v->indegree(model_tree,v),vertices(model_tree))) == 1
+# print(model_tree,v->summary(v.val),"\t")
 
 
 # T_base = CoordinateTransformations.Translation(0.0,0.0,0.0) ∘ CoordinateTransformations.LinearMap(LDrawParser.LDRAW_BASE_FRAME)
 # SCALE = 0.01
 # LDrawParser.change_coordinate_system!(model,T_base,SCALE)
 
-m = model.models["20009 - AT-TE Walker.mpd"]
-id_generator = DuplicateIDGenerator{String}()
-for step in m.steps
-    for ref in step.lines
-        global vis_root
-        @show ref
-        if !LDrawParser.has_part(model,ref.file)
-            @warn "$ref not found in part"
-            continue
-        end
-        p = model.parts[ref.file]
-        name = id_generator(p.name)
-        vec = LDrawParser.extract_surface_geometry(p)
-        M = GeometryBasics.Mesh(coordinates(vec),faces(vec))
-        setobject!(vis_root[name], M)
-        tr = LDrawParser.build_transform(ref)
-        settransform!(vis_root[name], tr)
-    end
-end
-delete!(vis)
+# m = model.models["20009 - AT-TE Walker.mpd"]
+# id_generator = DuplicateIDGenerator{String}()
+# for step in m.steps
+#     for ref in step.lines
+#         global vis_root
+#         @show ref
+#         if !LDrawParser.has_part(model,ref.file)
+#             @warn "$ref not found in part"
+#             continue
+#         end
+#         p = model.parts[ref.file]
+#         name = id_generator(p.name)
+#         vec = LDrawParser.extract_surface_geometry(p)
+#         M = GeometryBasics.Mesh(coordinates(vec),faces(vec))
+#         setobject!(vis_root[name], M)
+#         tr = LDrawParser.build_transform(ref)
+#         settransform!(vis_root[name], tr)
+#     end
+# end
+# delete!(vis)
 
 
 # # VISUALIZE ROBOT PLACEMENT AROUND PARTS
