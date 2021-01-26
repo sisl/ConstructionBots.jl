@@ -9,11 +9,11 @@ using GeometryBasics, CoordinateTransformations, Rotations
 using MeshCat
 using Plots
 
+using Logging
+global_logger(SimpleLogger(stderr, Logging.Debug))
 
 Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
 
-# using Logging
-# global_logger(SimpleLogger(stderr, Logging.Debug))
 reset_all_id_counters!()
 
 ## LOAD LDRAW FILE
@@ -33,11 +33,16 @@ model_spec = ConstructionBots.extract_single_model(spec,"20009 - AT-TE Walker.mp
 id_map = ConstructionBots.build_id_map(model,model_spec)
 assembly_tree = ConstructionBots.construct_assembly_tree(model,model_spec,id_map)
 scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
-root = collect(get_all_root_nodes(scene_tree))[1]
+# root = collect(get_all_root_nodes(scene_tree))[1]
 # raise assembly so that it is above the x-y plane
 # set_local_transform!(scene_tree,root,identity_linear_map() ∘ CoordinateTransformations.Translation(0.0,0.0,0.5))
 # capture_child!(scene_tree,AssemblyID(7),AssemblyID(12))
 print(scene_tree,v->"$(summary(node_id(v))) : $(id_map[node_id(v)])","\t")
+
+root = get_node(scene_tree,collect(get_all_root_nodes(scene_tree))[1])
+validate_tree(HierarchicalGeometry.get_transform_node(root))
+validate_embedded_tree(scene_tree,v->HierarchicalGeometry.get_transform_node(get_node(scene_tree,v)))
+
 
 color_map = construct_color_map(model_spec,id_map)
 
@@ -53,6 +58,9 @@ geom = get_base_geom(n)
 hmodel = equatorial_overapprox_model()
 hpoly = LazySets.overapproximate(geom,hmodel)
 vpoly = convert(VPolytope,hpoly)
+
+g = GeometryHierarchy()
+construct_geometry_tree!(g,geom)
 
 # ConstructionBots.update_build_step_parents!(model_spec)
 # model_graph = construct_assembly_graph(model)

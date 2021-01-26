@@ -368,8 +368,14 @@ function populate_assembly_subtree!(assembly_tree,spec,id::AssemblyID,id_map)
             t = LDrawParser.build_transform(child_ref)
             add_component!(assembly,child_id=>t)
             set_child!(assembly_tree,id,child_id)
-            @info "$(id_map[id]) → $(get_vtx_id(spec,e.dst)) is $(has_edge(assembly_tree,id,child_id))"
+            @info "$(id_map[id]) => $(get_vtx_id(spec,e.dst)) is $(has_edge(assembly_tree,id,child_id))"
         end
+        # if !GraphUtils.validate_embedded_tree(assembly_tree,
+        #     v->HierarchicalGeometry.get_transform_node(get_node(assembly_tree,v)),
+        #     true # early stop
+        #     )
+        #     throw(ErrorException("Problem caused when adding $child_id to $assembly"))
+        # end
     end
     assembly_tree
 end
@@ -404,7 +410,7 @@ function construct_assembly_tree(model::MPDModel,spec::MPDModelGraph,
                 add_node!(assembly_tree,AssemblyNode(new_id,g),new_id)
                 populate_assembly_subtree!(assembly_tree,spec,new_id,id_map)
             elseif has_part(model,val.file)
-                @info "SUB FILE PART: $(GraphUtils.node_id(node))"
+                # @info "SUB FILE PART: $(GraphUtils.node_id(node))"
                 p = get_part(model,val.file)
                 g = geom_node(p)
                 add_node!(assembly_tree,ObjectNode(new_id,g),new_id)
@@ -418,7 +424,12 @@ function construct_assembly_tree(model::MPDModel,spec::MPDModelGraph,
     assembly_tree
 end
 
-function convert_to_scene_tree(assembly_tree,set_children=true)
+"""
+    convert_to_scene_tree(assembly_tree,set_children=true)
+
+Convert an assembly tree to a `SceneTree`.
+"""
+function convert_to_scene_tree(assembly_tree;set_children::Bool=true)
     scene_tree = SceneTree()
     for n in get_nodes(assembly_tree)
         add_node!(scene_tree,node_val(n))
@@ -432,6 +443,18 @@ function convert_to_scene_tree(assembly_tree,set_children=true)
         end
     end
     return scene_tree
+end
+
+"""
+    generate_staging_plan(scene_tree,params)
+
+Given a `SceneTree` representing the final configuration of an assembly, 
+construct a plan for the start config, staging config, and final config of
+each subassembly and individual object. The idea is to ensure that no node of 
+the "plan" graph overlaps with any other. Requires circular bounding geometry
+for each component of the assembly. 
+"""
+function generate_staging_plan(scene_tree,params)
 end
 
 end
