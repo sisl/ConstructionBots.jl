@@ -454,7 +454,35 @@ each subassembly and individual object. The idea is to ensure that no node of
 the "plan" graph overlaps with any other. Requires circular bounding geometry
 for each component of the assembly. 
 """
-function generate_staging_plan(scene_tree,params)
+function generate_staging_plan(scene_tree,ϵ=0.0,key=HypersphereKey())
+    # walk up the tree, computing bounding spheres (cylinders) if necessary
+    # SPHERE_TYPE = LazySets.Ball2{Float64,SVector{2,Float64}}
+    # spheres = Dict{SceneNodeID,SPHERE_TYPE}()
+    for v in reverse(topological_sort_by_dfs(scene_tree))
+        node = get_node(scene_tree,v)
+        if !has_vertex(node.geom_hierarchy,key)
+            if isa(node,ObjectNode)
+                add_child_approximation!(node.geom_hierarchy,key,BaseGeomKey())
+                # sphere = overapproximate(get_base_geom(node),SPHERE_TYPE,ϵ)
+                # spheres[node_id(node)] = sphere
+            elseif isa(node,AssemblyNode)
+                add_child_approximation!(
+                    node.geom_hierarchy,
+                    HypersphereKey(),
+                    BaseGeomKey(),
+                    [t(get_base_geom(get_node(scene_tree,id),key)) for (id,t) in components(node)]
+                    )
+                # sphere = overapproximation(
+                #     [t(spheres[id]) for id in components(node)],
+                #     SPHERE_TYPE
+                #     )
+                # spheres[node_id(node)] = sphere
+            end
+        end
+    end
+    # spheres
 end
+
+
 
 end

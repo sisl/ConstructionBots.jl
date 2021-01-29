@@ -10,7 +10,7 @@ using MeshCat
 using Plots
 
 using Logging
-global_logger(SimpleLogger(stderr, Logging.Debug))
+global_logger(ConsoleLogger(stderr, Logging.Warn))
 
 Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
 
@@ -39,10 +39,11 @@ scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
 # capture_child!(scene_tree,AssemblyID(7),AssemblyID(12))
 print(scene_tree,v->"$(summary(node_id(v))) : $(id_map[node_id(v)])","\t")
 
+ConstructionBots.generate_staging_plan(scene_tree)
+
 root = get_node(scene_tree,collect(get_all_root_nodes(scene_tree))[1])
 validate_tree(HierarchicalGeometry.get_transform_node(root))
 validate_embedded_tree(scene_tree,v->HierarchicalGeometry.get_transform_node(get_node(scene_tree,v)))
-
 
 color_map = construct_color_map(model_spec,id_map)
 
@@ -53,14 +54,31 @@ vis_nodes = populate_visualizer!(scene_tree,vis;
     color_map=color_map,
     material_type=MeshPhongMaterial)
 
-n = get_node(scene_tree,1)
-geom = get_base_geom(n)
-hmodel = equatorial_overapprox_model()
-hpoly = LazySets.overapproximate(geom,hmodel)
-vpoly = convert(VPolytope,hpoly)
+spheres = vis[:spheres]
+for node in get_nodes(scene_tree)
+    if isa(node,Union{ObjectNode,AssemblyNode})
+        c = get_cached_geom(node,HypersphereKey())
+        setobject!(spheres[string(node_id(node))],
+            GeometryBasics.HyperSphere(Point3(c.center...),c.radius),
+            MeshPhongMaterial(color=RGBA{Float32}(1, 0, 0, 0.5)))
+    end
+end
 
-g = GeometryHierarchy()
-construct_geometry_tree!(g,geom)
+setobject!(vis[:bound],GeometryBasics.HyperSphere(Point3(c.center...),c.radius),
+    MeshPhongMaterial(color=RGBA{Float32}(1, 0, 0, 0.5)))
+
+n = get_node(scene_tree,1)
+add_child_approximation!(n,HierarchicalGeometry.PolyhedronKey());
+add_child_approximation!(n,HierarchicalGeometry.HypersphereKey(),HierarchicalGeometry.PolyhedronKey())
+add_child_approximation!(n,HierarchicalGeometry.HyperrectangleKey(),HierarchicalGeometry.PolyhedronKey())
+
+for v in LightGraphs.vertices(n.geom_hierarchy)
+    get_cached_geom(n,get_vtx_id(n.geom_hierarchy,v))
+end
+
+# # TODO Populate geometry hierarchies
+# g = GeometryHierarchy()
+# construct_geometry_tree!(g,geom)
 
 # ConstructionBots.update_build_step_parents!(model_spec)
 # model_graph = construct_assembly_graph(model)
