@@ -16,6 +16,9 @@ end
 const RobotStart{T}         = EntityStart{RobotNode,T}
 const ObjectStart{T}        = EntityStart{ObjectNode,T}
 const AssemblyComplete{T}   = EntityStart{AssemblyNode,T}
+for N in (:ObjectStart,:RobotStart,:AssemblyComplete)
+    @eval $N(n,t::T) where {T} = $N{T}(n,t)
+end
 
 struct EntityGo{T,S}
     entity::T
@@ -98,12 +101,15 @@ GraphUtils.required_successors(     ::AssemblyComplete) = Dict(Union{FormTranspo
 """
     construct_partial_construction_schedule(sched,args...)
 
+Constructs a schedule that does not yet reflect the "staging plan".
 """
 function construct_partial_construction_schedule(
-    mpd_model,
-    model_spec,
-    staging_plan
-)
+        mpd_model,
+        model_spec,
+        id_map=build_id_map(mpd_model,model_spec)
+    )
+    sched = CustomNDiGraph{CustomNode{ConstructionPredicate,AbstractID},AbstractID}()
+
 end
 
 """

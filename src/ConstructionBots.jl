@@ -130,7 +130,9 @@ function add_build_step!(model_graph,build_step::BuildingStep,preceding_step=-1)
         add_edge!(model_graph,input,node)
         add_edge!(model_graph,preceding_step,input)
     end
-    add_edge!(model_graph,preceding_step,node) # Do I want this or not?
+    if is_root_node(model_graph,node) 
+        add_edge!(model_graph,preceding_step,node) # Do I want this or not?
+    end
     node
 end
 function populate_model_subgraph!(model_graph,model::SubModelPlan)
@@ -246,6 +248,10 @@ function extract_single_model(sched::S,model_key) where {S<:MPDModelGraph}
         if !has_vertex(new_sched,dst_id)
             transplant!(new_sched,sched,dst_id)
         end
+    end
+    for edge in edges(sched)
+        src_id = get_vtx_id(sched,edge.src)
+        dst_id = get_vtx_id(sched,edge.dst)
         add_edge!(new_sched,src_id,dst_id)
     end
     new_sched
@@ -410,7 +416,7 @@ function construct_assembly_tree(model::MPDModel,spec::MPDModelGraph,
                 add_node!(assembly_tree,AssemblyNode(new_id,g),new_id)
                 populate_assembly_subtree!(assembly_tree,spec,new_id,id_map)
             elseif has_part(model,val.file)
-                # @info "SUB FILE PART: $(GraphUtils.node_id(node))"
+                @info "SUB FILE PART: $(GraphUtils.node_id(node))"
                 p = get_part(model,val.file)
                 g = geom_node(p)
                 add_node!(assembly_tree,ObjectNode(new_id,g),new_id)
@@ -444,6 +450,9 @@ function convert_to_scene_tree(assembly_tree;set_children::Bool=true)
     end
     return scene_tree
 end
+
+
+include("construction_schedule.jl")
 
 """
     generate_staging_plan(scene_tree,params)

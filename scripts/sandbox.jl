@@ -10,7 +10,7 @@ using MeshCat
 using Plots
 
 using Logging
-global_logger(ConsoleLogger(stderr, Logging.Warn))
+global_logger(ConsoleLogger(stderr, Logging.Info))
 
 Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
 
@@ -28,6 +28,7 @@ LDrawParser.change_coordinate_system!(model,ldraw_base_transform(),SCALE)
 spec = ConstructionBots.construct_model_spec(model)
 model_spec = ConstructionBots.extract_single_model(spec,"20009 - AT-TE Walker.mpd")
 @assert GraphUtils.validate_graph(model_spec)
+display_graph(model_spec)
 
 ## CONSTRUCT SceneTree
 id_map = ConstructionBots.build_id_map(model,model_spec)
@@ -38,6 +39,7 @@ scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
 # set_local_transform!(scene_tree,root,identity_linear_map() ∘ CoordinateTransformations.Translation(0.0,0.0,0.5))
 # capture_child!(scene_tree,AssemblyID(7),AssemblyID(12))
 print(scene_tree,v->"$(summary(node_id(v))) : $(id_map[node_id(v)])","\t")
+display_graph(scene_tree)
 
 ConstructionBots.generate_staging_plan(scene_tree)
 
@@ -63,9 +65,6 @@ for node in get_nodes(scene_tree)
             MeshPhongMaterial(color=RGBA{Float32}(1, 0, 0, 0.5)))
     end
 end
-
-setobject!(vis[:bound],GeometryBasics.HyperSphere(Point3(c.center...),c.radius),
-    MeshPhongMaterial(color=RGBA{Float32}(1, 0, 0, 0.5)))
 
 n = get_node(scene_tree,1)
 add_child_approximation!(n,HierarchicalGeometry.PolyhedronKey());

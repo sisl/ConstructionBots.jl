@@ -4,6 +4,11 @@ using LightGraphs, GraphUtils
 using GeometryBasics
 using LDrawParser
 using HierarchicalGeometry
+using Colors
+
+import Cairo #, Fontconfig
+using GraphPlottingBFS
+using Compose
 
 """
     construct_color_map(model_spec,id_map)
@@ -82,4 +87,68 @@ function update_visualizer!(scene_tree,vis_nodes,nodes=get_nodes(scene_tree))
         settransform!(vis_nodes[node_id(n)],local_transform(n))
     end
     return vis_nodes
+end
+
+GraphUtils.get_id(s::String) = s
+# Rendering schedule nodes
+GraphPlottingBFS._title_string(n::RobotNode)                         = "R"
+GraphPlottingBFS._title_string(n::ObjectNode)                        = "O"
+GraphPlottingBFS._title_string(n::AssemblyNode)                      = "A"
+GraphPlottingBFS._title_string(n::TransportUnitNode)                 = "T"
+
+GraphPlottingBFS._title_string(::BuildingStep)                  = "B"
+GraphPlottingBFS._title_string(::SubFileRef)                    = "S"
+GraphPlottingBFS._title_string(::SubModelPlan)                  = "M"
+
+GraphPlottingBFS._title_string(n::ConstructionBots.EntityStart)      = _title_string(n.entity)
+GraphPlottingBFS._title_string(::ConstructionBots.RobotStart)        = "R"
+GraphPlottingBFS._title_string(n::ConstructionBots.ObjectStart)      = "O"
+GraphPlottingBFS._title_string(::ConstructionBots.AssemblyBegin)     = "M"
+GraphPlottingBFS._title_string(::ConstructionBots.AssemblyComplete)  = "M"
+GraphPlottingBFS._title_string(::ConstructionBots.OpenBuildStep)     = "B"
+GraphPlottingBFS._title_string(::ConstructionBots.CloseBuildStep)    = "B"
+GraphPlottingBFS._title_string(::ConstructionBots.RobotGo)           = "G"
+GraphPlottingBFS._title_string(::ConstructionBots.FormTransportUnit) = "C"
+GraphPlottingBFS._title_string(::ConstructionBots.DepositAssembly)   = "D"
+GraphPlottingBFS._title_string(::ConstructionBots.TransportGo)       = "T"
+GraphPlottingBFS._title_string(::ConstructionBots.LiftIntoPlace)     = "L"
+GraphPlottingBFS._title_string(::ConstructionBots.ProjectComplete)   = "P"
+
+GraphPlottingBFS._node_shape(n::CustomNode,args...) = GraphPlottingBFS._node_shape(node_val(n),args...)
+GraphPlottingBFS._node_color(n::CustomNode,args...) = GraphPlottingBFS._node_color(node_val(n),args...)
+GraphPlottingBFS._title_string(n::CustomNode,args...) = GraphPlottingBFS._title_string(node_val(n),args...)
+
+GraphPlottingBFS._subtitle_string(n::Union{CustomNode,SceneNode}) = "$(get_id(node_id(n)))"
+
+SPACE_GRAY = RGB(0.2,0.2,0.2)
+BRIGHT_RED = RGB(0.6,0.0,0.2)
+LIGHT_BROWN = RGB(0.6,0.3,0.2)
+LIME_GREEN = RGB(0.2,0.6,0.2)
+BRIGHT_BLUE = RGB(0.0,0.4,1.0)
+
+GraphPlottingBFS._node_color(::RobotNode)                           = SPACE_GRAY
+GraphPlottingBFS._node_color(::ObjectNode)                          = SPACE_GRAY
+GraphPlottingBFS._node_color(::AssemblyNode)                        = BRIGHT_BLUE
+GraphPlottingBFS._node_color(::TransportUnitID)                     = LIME_GREEN
+
+GraphPlottingBFS._node_color(::BuildingStep)                        = LIGHT_BROWN
+GraphPlottingBFS._node_color(::SubFileRef)                          = BRIGHT_RED
+GraphPlottingBFS._node_color(::SubModelPlan)                        = BRIGHT_RED
+
+GraphPlottingBFS._node_color(::ConstructionBots.EntityStart)        = _node_color(n.entity)
+GraphPlottingBFS._node_color(::ConstructionBots.RobotStart)         = SPACE_GRAY
+GraphPlottingBFS._node_color(::ConstructionBots.ObjectStart)        = SPACE_GRAY
+GraphPlottingBFS._node_color(::ConstructionBots.AssemblyBegin)      = BRIGHT_RED
+GraphPlottingBFS._node_color(::ConstructionBots.AssemblyComplete)   = BRIGHT_RED
+GraphPlottingBFS._node_color(::ConstructionBots.OpenBuildStep)      = LIGHT_BROWN
+GraphPlottingBFS._node_color(::ConstructionBots.CloseBuildStep)     = LIGHT_BROWN
+GraphPlottingBFS._node_color(::ConstructionBots.ProjectComplete)    = SPACE_GRAY
+GraphPlottingBFS._node_color(::ConstructionBots.RobotGo)            = LIME_GREEN
+GraphPlottingBFS._node_color(::ConstructionBots.FormTransportUnit)  = LIME_GREEN
+GraphPlottingBFS._node_color(::ConstructionBots.TransportGo)        = LIME_GREEN
+GraphPlottingBFS._node_color(::ConstructionBots.DepositAssembly)    = LIME_GREEN
+GraphPlottingBFS._node_color(::ConstructionBots.LiftIntoPlace)      = BRIGHT_BLUE
+
+function GraphPlottingBFS.draw_node(g::AbstractCustomNGraph,v,args...;kwargs...) 
+    GraphPlottingBFS.draw_node(get_node(g,v),args...;kwargs...)
 end
