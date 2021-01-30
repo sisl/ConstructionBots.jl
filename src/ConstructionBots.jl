@@ -350,7 +350,10 @@ end
     build_id_map(model::MPDModel,spec::MPDModelGraph)
 
 Constructs a `Dict` mapping from `AbstractID <=> String` to keep track of the
-correspondence between ids in different graphs.
+correspondence between ids in different graphs. Only the following id types are
+mapped:
+- ObjectID <=> SubFileRef (if the ref points to a model, not a part)
+- AssemblyID <=> SubModelPlan
 """
 function build_id_map(model::MPDModel,spec::MPDModelGraph)
     id_map = Dict{Union{String,AbstractID},Union{String,AbstractID}}()
