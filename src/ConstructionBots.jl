@@ -130,9 +130,10 @@ function add_build_step!(model_graph,build_step::BuildingStep,preceding_step=-1)
         add_edge!(model_graph,input,node)
         add_edge!(model_graph,preceding_step,input)
     end
-    if is_root_node(model_graph,node) 
+    # if is_root_node(model_graph,node) 
+    # if has_vertex(model_graph,preceding_step) && is_terminal_node(model_graph,preceding_step) 
         add_edge!(model_graph,preceding_step,node) # Do I want this or not?
-    end
+    # end
     node
 end
 function populate_model_subgraph!(model_graph,model::SubModelPlan)
@@ -235,8 +236,8 @@ From a model schedule with (potentially) multiple distinct models, extract just
 the model graph with root id `model_key`.
 """
 function extract_single_model(sched::S,model_key) where {S<:MPDModelGraph}
-    new_sched = S(id_generator=sched.id_generator)
     @assert has_vertex(sched,model_key)
+    new_sched = S(id_generator=sched.id_generator)
     root = get_vtx(sched,model_key)
     add_node!(new_sched,get_node(sched,root),get_vtx_id(sched,root))
     for edge in edges(reverse(bfs_tree(sched,root;dir=:in)))
@@ -248,12 +249,13 @@ function extract_single_model(sched::S,model_key) where {S<:MPDModelGraph}
         if !has_vertex(new_sched,dst_id)
             transplant!(new_sched,sched,dst_id)
         end
-    end
-    for edge in edges(sched)
-        src_id = get_vtx_id(sched,edge.src)
-        dst_id = get_vtx_id(sched,edge.dst)
         add_edge!(new_sched,src_id,dst_id)
     end
+    # for edge in edges(sched)
+    #     src_id = get_vtx_id(sched,edge.src)
+    #     dst_id = get_vtx_id(sched,edge.dst)
+    #     add_edge!(new_sched,src_id,dst_id)
+    # end
     new_sched
 end
 
@@ -366,6 +368,7 @@ function populate_assembly_subtree!(assembly_tree,spec,id::AssemblyID,id_map)
     for e in edges(bfs_tree(spec,id_map[id];dir=:in))
         child_id = get(id_map,get_vtx_id(spec,e.dst),nothing)
         if child_id === nothing
+            # @warn "id $(get_vtx_id(spec,e.dst)) missing from id_map"
             continue
         end
         child_ref = node_val(get_node(spec,e.dst))
@@ -398,25 +401,25 @@ function construct_assembly_tree(model::MPDModel,spec::MPDModelGraph,
     assembly_tree = NTree{SceneNode,AbstractID}()
     for v in topological_sort_by_dfs(spec)
         node = get_node(spec,v)
-        if !haskey(id_map,GraphUtils.node_id(node))
+        if !haskey(id_map,node_id(node))
             continue
         end
         val = node_val(node)
-        new_id = id_map[GraphUtils.node_id(node)]
+        new_id = id_map[node_id(node)]
         if isa(val,SubModelPlan) # root node
-            @info "ROOT: $(GraphUtils.node_id(node))"
+            @info "ROOT: $(node_id(node))"
             g = geom_node(val)
             add_node!(assembly_tree,AssemblyNode(new_id,g),new_id)
             populate_assembly_subtree!(assembly_tree,spec,new_id,id_map)
         elseif isa(val,SubFileRef)
             if has_model(model,val.file)
-                @info "SUB FILE ASSEMBLY: $(GraphUtils.node_id(node))"
+                @info "SUB FILE ASSEMBLY: $(node_id(node))"
                 m = get_model(model,val.file)
                 g = geom_node(m)
                 add_node!(assembly_tree,AssemblyNode(new_id,g),new_id)
                 populate_assembly_subtree!(assembly_tree,spec,new_id,id_map)
             elseif has_part(model,val.file)
-                @info "SUB FILE PART: $(GraphUtils.node_id(node))"
+                @info "SUB FILE PART: $(node_id(node))"
                 p = get_part(model,val.file)
                 g = geom_node(p)
                 add_node!(assembly_tree,ObjectNode(new_id,g),new_id)

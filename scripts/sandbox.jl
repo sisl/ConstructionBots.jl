@@ -28,7 +28,7 @@ LDrawParser.change_coordinate_system!(model,ldraw_base_transform(),SCALE)
 spec = ConstructionBots.construct_model_spec(model)
 model_spec = ConstructionBots.extract_single_model(spec,"20009 - AT-TE Walker.mpd")
 @assert GraphUtils.validate_graph(model_spec)
-display_graph(model_spec)
+display_graph(model_spec,scale=1.5,enforce_visited=true)
 
 ## CONSTRUCT SceneTree
 id_map = ConstructionBots.build_id_map(model,model_spec)
