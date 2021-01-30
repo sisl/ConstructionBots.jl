@@ -235,28 +235,28 @@ Converts model spec to use AbstractIDs for the node ids (rather than strings)
 From a model schedule with (potentially) multiple distinct models, extract just
 the model graph with root id `model_key`.
 """
-function extract_single_model(sched::S,model_key) where {S<:MPDModelGraph}
-    @assert has_vertex(sched,model_key)
-    new_sched = S(id_generator=sched.id_generator)
-    root = get_vtx(sched,model_key)
-    add_node!(new_sched,get_node(sched,root),get_vtx_id(sched,root))
-    for edge in edges(reverse(bfs_tree(sched,root;dir=:in)))
-        src_id = get_vtx_id(sched,edge.src)
-        dst_id = get_vtx_id(sched,edge.dst)
-        if !has_vertex(new_sched,src_id)
-            transplant!(new_sched,sched,src_id)
+function extract_single_model(spec::S,model_key) where {S<:MPDModelGraph}
+    @assert has_vertex(spec,model_key)
+    new_spec = S(id_generator=spec.id_generator)
+    root = get_vtx(spec,model_key)
+    add_node!(new_spec,get_node(spec,root),get_vtx_id(spec,root))
+    for edge in edges(reverse(bfs_tree(spec,root;dir=:in)))
+        src_id = get_vtx_id(spec,edge.src)
+        dst_id = get_vtx_id(spec,edge.dst)
+        if !has_vertex(new_spec,src_id)
+            transplant!(new_spec,spec,src_id)
         end
-        if !has_vertex(new_sched,dst_id)
-            transplant!(new_sched,sched,dst_id)
+        if !has_vertex(new_spec,dst_id)
+            transplant!(new_spec,spec,dst_id)
         end
-        add_edge!(new_sched,src_id,dst_id)
+        add_edge!(new_spec,src_id,dst_id)
     end
-    # for edge in edges(sched)
-    #     src_id = get_vtx_id(sched,edge.src)
-    #     dst_id = get_vtx_id(sched,edge.dst)
-    #     add_edge!(new_sched,src_id,dst_id)
+    # for edge in edges(spec)
+    #     src_id = get_vtx_id(spec,edge.src)
+    #     dst_id = get_vtx_id(spec,edge.dst)
+    #     add_edge!(new_spec,src_id,dst_id)
     # end
-    new_sched
+    new_spec
 end
 
 # function add_root_subfile_refs!(model,sched::S) where {S<:MPDModelGraph}
