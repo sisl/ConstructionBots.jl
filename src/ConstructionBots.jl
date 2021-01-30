@@ -379,72 +379,6 @@ function build_id_map(model::MPDModel,spec::MPDModelGraph)
     id_map
 end
 
-# """
-#     get_child_sub_model_plan(spec,id)
-
-# A hack to find avoid searching the wrong children when constructing the assembly 
-# tree.
-# """
-# function get_child_sub_model_plan(spec,id)
-#     node = get_node(spec,id)
-#     if matches_template(node_val(node),SubModelPlan)
-#         return id
-#     end
-#     if matches_template(node_val(node),SubFileRef)
-#         for v in inneighbors(spec,id)
-#             if matches_template(node_val(get_node(spec,v)),SubModelPlan)
-#                 return get_vtx_id(spec,v)
-#             end
-#         end
-#     end
-#     return id
-# end
-
-# function populate_assembly_subtree!(assembly_tree,spec,id::AssemblyID,id_map)
-#     node = get_node(assembly_tree,id)
-#     assembly = node_val(node)
-#     @assert isa(assembly, AssemblyNode)
-#     # Need to start from SubModelPlan--not SubFileRef
-#     # start_id = id_map[id]
-#     # if matches_template(node_val(get_node(spec,start_id)),SubFileRef)
-#     #     for v in inneighbors(spec,start_id)
-#     #         @warn "trying $(get_vtx_id(spec,v))"
-#     #         if matches_template(node_val(get_node(spec,v)),SubModelPlan)
-#     #             start_id = get_vtx_id(spec,v)
-#     #             break
-#     #         end
-#     #     end
-#     # end
-
-#     start_id = get_child_sub_model_plan(spec,id_map[id])
-#     @warn "start_id $(start_id), typeof(n) = $(typeof(node_val(get_node(spec,start_id))))"
-    
-#     # add edges from Assembly Node to all children
-#     # for e in edges(bfs_tree(spec,id_map[id];dir=:in))
-#     for e in edges(bfs_tree(spec,start_id;dir=:in))
-#         child_id = get(id_map,get_vtx_id(spec,e.dst),nothing)
-#         if child_id === nothing
-#             # @warn "id $(get_vtx_id(spec,e.dst)) missing from id_map"
-#             continue
-#         end
-#         child_ref = node_val(get_node(spec,e.dst))
-#         @assert has_vertex(assembly_tree,child_id)
-#         if indegree(assembly_tree,child_id) == 0
-#             t = LDrawParser.build_transform(child_ref)
-#             add_component!(assembly,child_id=>t)
-#             set_child!(assembly_tree,id,child_id)
-#             @info "$(id_map[id]) => $(get_vtx_id(spec,e.dst)) is $(has_edge(assembly_tree,id,child_id))"
-#         end
-#         # if !GraphUtils.validate_embedded_tree(assembly_tree,
-#         #     v->HierarchicalGeometry.get_transform_node(get_node(assembly_tree,v)),
-#         #     true # early stop
-#         #     )
-#         #     throw(ErrorException("Problem caused when adding $child_id to $assembly"))
-#         # end
-#     end
-#     assembly_tree
-# end
-
 
 """
     construct_assembly_tree(model::MPDModel,spec::MPDModelGraph,
@@ -475,10 +409,10 @@ function construct_assembly_tree(model::MPDModel,spec::MPDModelGraph,
             @assert isa(ref,SubFileRef) "ref is $(ref)"
             parent_id = id_map[parent_map[node_id(ref_node)]]
         elseif isa(val,SubFileRef)
-            # Adding an object only
             if has_model(model,val.file)
-                continue
+                continue # Don't add assembly here
             else has_part(model,val.file) 
+                # Adding an object only
                 @info "SUB FILE PART: $(node_id(node))"
                 p = get_part(model,val.file)
                 g = geom_node(p)
@@ -531,34 +465,13 @@ each subassembly and individual object. The idea is to ensure that no node of
 the "plan" graph overlaps with any other. Requires circular bounding geometry
 for each component of the assembly. 
 """
-function generate_staging_plan(scene_tree,ϵ=0.0,key=HypersphereKey())
-    # walk up the tree, computing bounding spheres (cylinders) if necessary
-    # SPHERE_TYPE = LazySets.Ball2{Float64,SVector{2,Float64}}
-    # spheres = Dict{SceneNodeID,SPHERE_TYPE}()
-    for v in reverse(topological_sort_by_dfs(scene_tree))
-        node = get_node(scene_tree,v)
-        if !has_vertex(node.geom_hierarchy,key)
-            if isa(node,ObjectNode)
-                add_child_approximation!(node.geom_hierarchy,key,BaseGeomKey())
-                # sphere = overapproximate(get_base_geom(node),SPHERE_TYPE,ϵ)
-                # spheres[node_id(node)] = sphere
-            elseif isa(node,AssemblyNode)
-                add_child_approximation!(
-                    node.geom_hierarchy,
-                    HypersphereKey(),
-                    BaseGeomKey(),
-                    [t(get_base_geom(get_node(scene_tree,id),key)) for (id,t) in components(node)]
-                    )
-                # sphere = overapproximation(
-                #     [t(spheres[id]) for id in components(node)],
-                #     SPHERE_TYPE
-                #     )
-                # spheres[node_id(node)] = sphere
-            end
-        end
-    end
-    # spheres
+function generate_staging_plan(scene_tree;
+        ϵ=0.0
+    )
+    HG.compute_approximate_geometries!(scene_tree,HypersphereKey();ϵ=ϵ)
 end
+
+
 
 
 

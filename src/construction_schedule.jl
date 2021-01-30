@@ -108,8 +108,11 @@ function construct_partial_construction_schedule(
         model_spec,
         id_map=build_id_map(mpd_model,model_spec)
     )
-    sched = CustomNDiGraph{CustomNode{ConstructionPredicate,AbstractID},AbstractID}()
-
+    sched = NGraph{DiGraph,ConstructionPredicate,AbstractID}()
+    for v in reverse(topological_sort_by_dfs(model_spec))
+        node = get_node(model_spec,v)
+        
+    end
 end
 
 """
