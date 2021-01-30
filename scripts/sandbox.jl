@@ -28,7 +28,8 @@ LDrawParser.change_coordinate_system!(model,ldraw_base_transform(),SCALE)
 spec = ConstructionBots.construct_model_spec(model)
 model_spec = ConstructionBots.extract_single_model(spec,"20009 - AT-TE Walker.mpd")
 @assert GraphUtils.validate_graph(model_spec)
-display_graph(model_spec,scale=1.5,enforce_visited=true)
+display_graph(spec,scale=1,enforce_visited=true)
+display_graph(model_spec,scale=1,enforce_visited=true)
 
 ## CONSTRUCT SceneTree
 id_map = ConstructionBots.build_id_map(model,model_spec)
@@ -39,7 +40,7 @@ scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
 # set_local_transform!(scene_tree,root,identity_linear_map() ∘ CoordinateTransformations.Translation(0.0,0.0,0.5))
 # capture_child!(scene_tree,AssemblyID(7),AssemblyID(12))
 print(scene_tree,v->"$(summary(node_id(v))) : $(id_map[node_id(v)])","\t")
-display_graph(scene_tree)
+display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned)
 
 ConstructionBots.generate_staging_plan(scene_tree)
 

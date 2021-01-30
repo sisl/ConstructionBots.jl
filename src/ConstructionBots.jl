@@ -240,16 +240,34 @@ function extract_single_model(spec::S,model_key) where {S<:MPDModelGraph}
     new_spec = S(id_generator=spec.id_generator)
     root = get_vtx(spec,model_key)
     add_node!(new_spec,get_node(spec,root),get_vtx_id(spec,root))
-    for edge in edges(reverse(bfs_tree(spec,root;dir=:in)))
-        src_id = get_vtx_id(spec,edge.src)
-        dst_id = get_vtx_id(spec,edge.dst)
-        if !has_vertex(new_spec,src_id)
-            transplant!(new_spec,spec,src_id)
+    for v in reverse(topological_sort_by_dfs(spec))
+        dst_id = get_vtx_id(spec,v)
+        if !has_vertex(new_spec,dst_id)
+            continue
         end
+        # for v2 in inneighbors(spec,id)
+            
+        #     if !has_vertex(new_spec,)
+        # end
+    # for edge in edges(reverse(bfs_tree(spec,root;dir=:in)))
+        # TODO bfs_tree is the problem here
+        # src_id = get_vtx_id(spec,edge.src)
         if !has_vertex(new_spec,dst_id)
             transplant!(new_spec,spec,dst_id)
         end
-        add_edge!(new_spec,src_id,dst_id)
+        for v2 in inneighbors(spec,dst_id)
+            src_id = get_vtx_id(spec,v2)
+            if !has_vertex(new_spec,src_id)
+                transplant!(new_spec,spec,src_id)
+            end
+            add_edge!(new_spec,src_id,dst_id)
+        end
+
+        # dst_id = get_vtx_id(spec,edge.dst)
+        # if !has_vertex(new_spec,dst_id)
+        #     transplant!(new_spec,spec,dst_id)
+        # end
+        # add_edge!(new_spec,src_id,dst_id)
     end
     # for edge in edges(spec)
     #     src_id = get_vtx_id(spec,edge.src)
@@ -360,12 +378,49 @@ function build_id_map(model::MPDModel,spec::MPDModelGraph)
     id_map
 end
 
+"""
+    get_child_sub_model_plan(spec,id)
+
+A hack to find avoid searching the wrong children when constructing the assembly 
+tree.
+"""
+function get_child_sub_model_plan(spec,id)
+    node = get_node(spec,id)
+    if matches_template(node_val(node),SubModelPlan)
+        return id
+    end
+    if matches_template(node_val(node),SubFileRef)
+        for v in inneighbors(spec,id)
+            if matches_template(node_val(get_node(spec,v)),SubModelPlan)
+                return get_vtx_id(spec,v)
+            end
+        end
+    end
+    return id
+end
+
 function populate_assembly_subtree!(assembly_tree,spec,id::AssemblyID,id_map)
     node = get_node(assembly_tree,id)
     assembly = node_val(node)
     @assert isa(assembly, AssemblyNode)
+    # Need to start from SubModelPlan--not SubFileRef
+    # start_id = id_map[id]
+    # if matches_template(node_val(get_node(spec,start_id)),SubFileRef)
+    #     for v in inneighbors(spec,start_id)
+    #         @warn "trying $(get_vtx_id(spec,v))"
+    #         if matches_template(node_val(get_node(spec,v)),SubModelPlan)
+    #             start_id = get_vtx_id(spec,v)
+    #             break
+    #         end
+    #     end
+    # end
+
+    start_id = get_child_sub_model_plan(spec,id_map[id])
+    @warn "start_id $(start_id), typeof(n) = $(typeof(node_val(get_node(spec,start_id))))"
+    
     # add edges from Assembly Node to all children
-    for e in edges(bfs_tree(spec,id_map[id];dir=:in))
+    # for e in edges(bfs_tree(spec,id_map[id];dir=:in))
+    for e in edges(bfs_tree(spec,start_id;dir=:in))
         child_id = get(id_map,get_vtx_id(spec,e.dst),nothing)
         if child_id === nothing
             # @warn "id $(get_vtx_id(spec,e.dst)) missing from id_map"
@@ -388,6 +443,7 @@ function populate_assembly_subtree!(assembly_tree,spec,id::AssemblyID,id_map)
     end
     assembly_tree
 end
+
 
 """
     construct_assembly_tree(model::MPDModel,spec::MPDModelGraph,
