@@ -67,24 +67,26 @@ function (g::DuplicateIDGenerator)(id)
     new_id
 end
 function duplicate_subtree!(g,old_root,d=:out)
-    old_node = get_node(g,old_root)
-    new_root = add_node!(g,old_node.val)
-    if d == :out
-        for v in outneighbors(g,old_root)
-            new_v = duplicate_subtree!(g,v,d)
-            add_edge!(g,new_root,new_v)
-        end
-    elseif d == :in
-        for v in inneighbors(g,old_root)
-            new_v = duplicate_subtree!(g,v,d)
-            add_edge!(g,new_v,new_root)
-        end
-    else
-        throw(ErrorException("direction must be :in or :out, can't be $d"))
+    vtxs = [get_vtx(g,old_root)]
+    append!(vtxs, collect(map(e->e.dst,edges(bfs_tree(g,old_root;dir=d)))))
+    new_ids = Dict{Int,GraphUtils._id_type(g)}()
+    for v in vtxs
+        old_node = get_node(g,v)
+        new_node = add_node!(g,node_val(old_node))
+        new_ids[v] = node_id(new_node)
     end
-    return new_root
+    f = d == :out ? outneighbors : inneighbors
+    for v in vtxs
+        for vp in f(g,v)
+            if d == :out
+                add_edge!(g, new_ids[v], new_ids[vp])
+            else
+                add_edge!(g, new_ids[vp], new_ids[v])
+            end
+        end
+    end
+    return get_node(g,new_ids[get_vtx(g,old_root)])
 end
-# duplicate_subtree!(g::MPDModelGraph,v) = duplicate_subtree!(g,v,g.id_generator)
 
 """
     MPDModelGraph{N,ID} <: AbstractCustomNDiGraph{CustomNode{N,ID},ID}

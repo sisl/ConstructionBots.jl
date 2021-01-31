@@ -100,7 +100,7 @@ GraphPlottingBFS._title_string(::BuildingStep)                  = "B"
 GraphPlottingBFS._title_string(::SubFileRef)                    = "S"
 GraphPlottingBFS._title_string(::SubModelPlan)                  = "M"
 
-GraphPlottingBFS._title_string(n::ConstructionBots.EntityStart)      = _title_string(n.entity)
+GraphPlottingBFS._title_string(n::ConstructionBots.EntityConfigPredicate)      = _title_string(n.entity)
 GraphPlottingBFS._title_string(::ConstructionBots.RobotStart)        = "R"
 GraphPlottingBFS._title_string(n::ConstructionBots.ObjectStart)      = "O"
 GraphPlottingBFS._title_string(::ConstructionBots.AssemblyStart)     = "M"
@@ -135,7 +135,7 @@ GraphPlottingBFS._node_color(::BuildingStep)                        = LIGHT_BROW
 GraphPlottingBFS._node_color(::SubFileRef)                          = BRIGHT_RED
 GraphPlottingBFS._node_color(::SubModelPlan)                        = BRIGHT_RED
 
-GraphPlottingBFS._node_color(::ConstructionBots.EntityStart)        = _node_color(n.entity)
+GraphPlottingBFS._node_color(::ConstructionBots.EntityConfigPredicate) = _node_color(n.entity)
 GraphPlottingBFS._node_color(::ConstructionBots.RobotStart)         = SPACE_GRAY
 GraphPlottingBFS._node_color(::ConstructionBots.ObjectStart)        = SPACE_GRAY
 GraphPlottingBFS._node_color(::ConstructionBots.AssemblyStart)      = BRIGHT_RED
