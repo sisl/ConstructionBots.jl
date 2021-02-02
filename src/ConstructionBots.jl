@@ -539,6 +539,10 @@ function generate_staging_plan(scene_tree,sched;
             )
         elseif matches_template(LiftIntoPlace,node)
             # Add staging config as starting config for LiftIntoPlace
+            lift_into_place = node_val(node)
+            new_node = LiftIntoPlace(
+                entity(lift_into_place),
+            )
         end
     end
     staging_configs

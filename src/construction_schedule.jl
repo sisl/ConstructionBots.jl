@@ -1,4 +1,7 @@
 export  
+    start_config,
+    goal_config,
+    entity,
     ConstructionPredicate,
     EntityConfigPredicate,
     RobotStart,
@@ -27,6 +30,12 @@ start_config(n)     = n.start_config
 goal_config(n)      = n.goal_config
 entity(n)           = n.entity
 
+for op in (:start_config,:goal_config,:entity)
+    @eval begin
+        $op(n::CustomNode) = $op(node_val(n))
+    end
+end
+
 abstract type EntityConfigPredicate{E,T} <: ConstructionPredicate end
 start_config(n::EntityConfigPredicate)   = n.config
 goal_config(n::EntityConfigPredicate)    = n.config
@@ -48,11 +57,6 @@ struct AssemblyStart{T} <: EntityConfigPredicate{AssemblyNode,T}
     config::T
 end
 
-for T in (:RobotStart,:ObjectStart,:AssemblyComplete,:AssemblyStart)
-    @eval $T(n::SceneNode) = $T(n,global_transform(n))
-    @eval set_start_config(n::$T,c) = $T(entity(n),c)
-    @eval set_goal_config(n::$T,c) = $T(entity(n),c)
-end
 
 """
     abstract type EntityGo{E,S,G}
@@ -79,10 +83,7 @@ struct LiftIntoPlace{C,S,G} <: EntityGo{C,S,G}
     goal_config::G
 end
 # GraphUtils.node_id(n::LiftIntoPlace{C,S,G}) where {C,S,G} = TemplatedID{Tuple{LiftIntoPlace,C}}(get_id(node_id(entity(n))))
-for T in (:RobotGo,:TransportUnitGo,:LiftIntoPlace)
-    @eval set_start_config(n::$T,c) = $T(entity(n),c,goal_config(n))
-    @eval set_goal_config(n::$T,c) = $T(entity(n),start_config(n),goal_config(n))
-end
+
 
 """
     abstract type BuildPhasePredicate <: ConstructionPredicate
@@ -159,18 +160,39 @@ struct FormTransportUnit{S,G} <: ConstructionPredicate
     start_config::S
     goal_config::G
 end
-# for T in (
-#     :TransportUnitGo,
-#     :FormTransportUnit,
-#     :DepositCargo
-# )
-#     @eval begin
-#         function GraphUtils.node_id(n::$T)
-#             TemplatedID{Tuple{$T,cargo_type(entity(n))}}(get_id(node_id(entity(n))))
-#         end
-#     end
-# end
 
+for T in (:RobotStart,:ObjectStart,:AssemblyComplete,:AssemblyStart)
+    @eval begin
+        $T(n::SceneNode) = $T(n,global_transform(n))
+        $T(n::ConstructionPredicate) = $T(entity(n),goal_config(n))
+        function $T(n::EntityConfigPredicate{A,C}) where {A,C<:TransformNode}
+            node = $T(entity(n),start_config(n))
+            # node = $T(entity(n),TransformNode())
+            # set_parent!(goal_config(node),start_config(n))
+            # node
+        end
+        set_start_config(n::$T,c) = $T(entity(n),c)
+        set_goal_config(n::$T,c) = $T(entity(n),c)
+    end
+end
+for T in (:RobotGo,:TransportUnitGo,:LiftIntoPlace)
+    @eval begin
+        function $T(n::EntityConfigPredicate{A,C},obj) where {A,C<:TransformNode}
+            node = $T(obj,TransformNode(),TransformNode())
+            set_parent!(goal_config(node),start_config(n))
+            set_parent!(start_config(node),goal_config(node))
+            node
+        end
+        function $T(n::EntityGo{E,S,G},obj) where {E,S<:TransformNode,G}
+            node = $T(obj,TransformNode(),TransformNode())
+            set_parent!(goal_config(node),start_config(n))
+            set_parent!(start_config(node),goal_config(node))
+            node
+        end
+        set_start_config(n::$T,c) = $T(entity(n),c,goal_config(n))
+        set_goal_config(n::$T,c) = $T(entity(n),start_config(n),goal_config(n))
+    end
+end
 for T in (:RobotGo,:TransportUnitGo,:LiftIntoPlace,:DepositCargo,:FormTransportUnit)
     @eval $T(n::SceneNode) = $T(n,global_transform(n),global_transform(n))
 end
@@ -298,7 +320,7 @@ Args:
 - scene_tree
 - id_map
 """
-function populate_schedule_build_step!(sched,cb,step_node,model_spec,scene_tree,id_map;
+function populate_schedule_build_step!(sched,parent::AssemblyComplete,cb,step_node,model_spec,scene_tree,id_map;
         connect_to_sub_assemblies=true,
     )
     # OpenBuildStep
@@ -307,20 +329,33 @@ function populate_schedule_build_step!(sched,cb,step_node,model_spec,scene_tree,
         cargo = get_node(scene_tree,child_id)
         @assert isa(cargo,Union{AssemblyNode,ObjectNode})
         # LiftIntoPlace
-        l = add_node!(sched,    LiftIntoPlace(cargo)) 
+        # l = add_node!(sched,    LiftIntoPlace(cargo)) 
+        l = add_node!(sched,    LiftIntoPlace(cargo,TransformNode(),TransformNode())) #######
+        set_parent!(goal_config(l),start_config(parent))
+        set_parent!(start_config(l),goal_config(l))
         add_edge!(sched,l,cb) # LiftIntoPlace => CloseBuildStep
         # DepositCargo
-        d = add_node!(sched,    DepositCargo(TransportUnitNode(cargo)))
+        # d = add_node!(sched,    DepositCargo(TransportUnitNode(cargo)))
+        d = add_node!(sched,    DepositCargo(TransportUnitNode(cargo),TransformNode(),TransformNode()))
+        set_parent!(goal_config(d),start_config(l))
+        set_parent!(start_config(d),goal_config(d))
         add_edge!(sched,d,l) # DepositCargo => LiftIntoPlace
         add_edge!(sched,ob,d) # OpenBuildStep => DepositCargo
         # TransportUnitGo
-        tgo = add_node!(sched,  TransportUnitGo(entity(node_val(d))))
+        # tgo = add_node!(sched,  TransportUnitGo(entity(node_val(d))))
+        tgo = add_node!(sched,  TransportUnitGo(entity(node_val(d)),TransformNode(),TransformNode()))
+        set_parent!(goal_config(tgo),start_config(d))
         add_edge!(sched,tgo,d) # TransportUnitGo => DepositCargo
         # FormTransportUnit
-        f = add_node!(sched,    FormTransportUnit(entity(node_val(d))))
+        # f = add_node!(sched,    FormTransportUnit(entity(node_val(d))))
+        f = add_node!(sched,    FormTransportUnit(entity(node_val(d)),TransformNode(),TransformNode()))
+        set_parent!(start_config(tgo),goal_config(f))
         add_edge!(sched,f,tgo) # FormTransportUnit => TransportUnitGo
-        if isa(cargo,AssemblyNode) connect_to_sub_assemblies
-            add_edge!(sched,AssemblyComplete(cargo),f) # AssemblyComplete => FormTransportUnit 
+        if isa(cargo,AssemblyNode) && connect_to_sub_assemblies
+            # add_edge!(sched,AssemblyComplete(cargo),f) # AssemblyComplete => FormTransportUnit 
+            cargo_node = get_node(sched,AssemblyComplete(cargo))
+            add_edge!(sched,cargo_node,f) # AssemblyComplete => FormTransportUnit 
+            set_parent!(goal_config(f),start_config(cargo_node))
         end
     end
     return ob
@@ -338,18 +373,20 @@ Add all building steps to parent, working backward from parents
 """
 function populate_schedule_sub_graph!(sched,parent::AssemblyComplete,model_spec,scene_tree,id_map)
     parent_assembly = entity(parent)
-    sa = add_node!(sched,AssemblyStart(parent_assembly))
+    # sa = add_node!(sched,AssemblyStart(parent_assembly))
+    sa = add_node!(sched,AssemblyStart(parent)) ################
     spec_node = get_node(model_spec, id_map[node_id(parent_assembly)])
     step_node = get_previous_build_step(model_spec,spec_node;skip_first=true)
+    immediate_parent = parent
     while !(step_node === nothing)
         # CloseBuildStep
         cb = add_node!(sched,CloseBuildStep(step_node,scene_tree,model_spec,id_map))
-        add_edge!(sched,cb,parent) # CloseBuildStep => AssemblyComplete / OpenBuildStep
-        ob = populate_schedule_build_step!(sched,cb,step_node,model_spec,scene_tree,id_map)
-        parent = ob
+        add_edge!(sched,cb,immediate_parent) # CloseBuildStep => AssemblyComplete / OpenBuildStep
+        ob = populate_schedule_build_step!(sched,parent,cb,step_node,model_spec,scene_tree,id_map)
+        immediate_parent = ob
         step_node = get_previous_build_step(model_spec,step_node;skip_first=true)
     end
-    add_edge!(sched,sa,parent) # AssemblyStart => OpenBuildStep
+    add_edge!(sched,sa,immediate_parent) # AssemblyStart => OpenBuildStep
     sched
 end
 
@@ -365,6 +402,8 @@ function construct_partial_construction_schedule(
         scene_tree,
         id_map=build_id_map(mpd_model,model_spec)
     )
+    # copy the scene tree to initialize the "start" scene tree
+    # base_scene_tree = deepcopy(scene_tree)
     sched = NGraph{DiGraph,ConstructionPredicate,AbstractID}()
     parent_map = backup_descendants(model_spec,n->matches_template(SubModelPlan,n))
     # Add assemblies first
@@ -373,7 +412,7 @@ function construct_partial_construction_schedule(
         if matches_template(SubModelPlan,node)
             assembly = get_node(scene_tree,id_map[node_id(node)])
             # AssemblyComplete
-            a = add_node!(sched,AssemblyComplete(assembly))
+            a = add_node!(sched,AssemblyComplete(assembly,TransformNode())) ###############
             if is_terminal_node(scene_tree,assembly)
                 # ProjectComplete
                 p = add_node!(sched,ProjectComplete())
