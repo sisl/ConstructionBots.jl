@@ -344,7 +344,7 @@ Add all building steps to parent, working backward from parents
 """
 function populate_schedule_sub_graph!(sched,parent::AssemblyComplete,model_spec,scene_tree,id_map)
     parent_assembly = entity(parent)
-    sa = AssemblyStart(parent_assembly)
+    sa = add_node!(sched,AssemblyStart(parent_assembly))
     spec_node = get_node(model_spec, id_map[node_id(parent_assembly)])
     step_node = get_previous_build_step(model_spec,spec_node;skip_first=true)
     while !(step_node === nothing)
