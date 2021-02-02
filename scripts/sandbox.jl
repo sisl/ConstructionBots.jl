@@ -62,9 +62,12 @@ for node in get_nodes(scene_tree)
         c = get_cached_geom(node,HypersphereKey())
         setobject!(spheres[string(node_id(node))],
             GeometryBasics.HyperSphere(Point3(c.center...),c.radius),
-            MeshPhongMaterial(color=RGBA{Float32}(1, 0, 0, 0.5)))
+            # MeshPhongMaterial(color=RGBA{Float32}(1, 0, 0, 0.5)))
+            MeshPhongMaterial(color=RGBA{Float32}(0, 1, 0, 0.3),wireframe=true))
     end
 end
+
+construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
 
 n = get_node(scene_tree,1)
 add_child_approximation!(n,HierarchicalGeometry.PolyhedronKey());

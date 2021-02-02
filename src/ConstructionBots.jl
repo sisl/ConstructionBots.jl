@@ -142,7 +142,9 @@ function populate_model_subgraph!(model_graph,model::SubModelPlan)
     n = add_node!(model_graph,model)
     preceding_step = -1
     for build_step in model.steps
-        preceding_step = add_build_step!(model_graph,build_step,preceding_step)
+        if !isempty(build_step.lines)
+            preceding_step = add_build_step!(model_graph,build_step,preceding_step)
+        end
     end
     add_edge!(model_graph,preceding_step,n)
 end
@@ -223,13 +225,6 @@ function construct_model_spec(model)
     return spec 
 end
 
-"""
-    convert_model_spec_to_abstract_ids(spec,id_map)
-
-Converts model spec to use AbstractIDs for the node ids (rather than strings)
-"""
-
-# struct BuildStep
 
 """
     extract_single_model(sched::S,model_key) where {S<:MPDModelGraph}
@@ -278,16 +273,6 @@ function extract_single_model(spec::S,model_key) where {S<:MPDModelGraph}
     # end
     new_spec
 end
-
-# function add_root_subfile_refs!(model,sched::S) where {S<:MPDModelGraph}
-#     for v in get_all_root_nodes(sched)
-#         node = get_node(sched,v)
-#         val = node_val(node)
-#         if isa(val,SubModelPlan)
-#             ref = SubFileRef()
-#         end
-#     end
-# end
 
 # Edges for Project Spec. TODO dispatch on graph type
 GraphUtils.validate_edge(::SubModelPlan,::SubFileRef) = true
@@ -364,16 +349,13 @@ function build_id_map(model::MPDModel,spec::MPDModelGraph)
         new_id = nothing
         if isa(val,SubFileRef)
             if LDrawParser.has_model(model,val.file)
-                new_id = get_unique_id(AssemblyID)
+                # new_id = get_unique_id(AssemblyID)
             elseif LDrawParser.has_part(model,val.file)
                 new_id = get_unique_id(ObjectID)
             else
                 continue
             end
-        # elseif is_terminal_node(spec,v) && isa(val,SubModelPlan)
         elseif isa(val,SubModelPlan)
-            # NOTE kind of a hacky way to deal with the root node...
-            @info "ADDING ROOT NODE"
             new_id = get_unique_id(AssemblyID)
         end
         if !(new_id === nothing)
@@ -384,6 +366,45 @@ function build_id_map(model::MPDModel,spec::MPDModelGraph)
     id_map
 end
 
+"""
+    get_referenced_component(model_spec,scene_tree,id_map,node)
+
+A hacky utility for retrieving the component added to an assembly by 
+node::CustomNode{SubFileRef,...}. Currently necessary because some 
+SubFileRef nodes reference an object (id_map[object_id] <=> id_map[ref_id]), 
+whereas other SubFileRef nodes reference the assembly encoded by their direct parent.
+"""
+function get_referenced_component(model_spec,id_map,node)
+    @assert matches_template(SubFileRef,node)
+    # node = get_node(model_spec,id)
+    for v in inneighbors(model_spec,node)
+        input = get_node(model_spec,v)
+        if matches_template(SubModelPlan,input)
+            return id_map[get_vtx_id(model_spec,v)]
+        end
+    end
+    return get(id_map,node_id(node),nothing)
+end
+
+"""
+    get_build_step_components(model_spec,id_map,step)
+
+Given step::CustomNode{BuildingStep,...}, return the set of AbstractIDs pointing
+to all of the components to be added to the parent assembly at that building 
+step.
+"""
+function get_build_step_components(model_spec,id_map,step)
+    @assert matches_template(BuildingStep,step)
+    part_ids = Set{Union{AssemblyID,ObjectID}}()
+    for v in inneighbors(model_spec,step)
+        child = get_node(model_spec,v)
+        if matches_template(SubFileRef,child)
+            push!(part_ids,
+                get_referenced_component(model_spec,id_map,child))
+        end
+    end
+    return part_ids
+end
 
 """
     construct_assembly_tree(model::MPDModel,spec::MPDModelGraph,
