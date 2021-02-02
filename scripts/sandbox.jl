@@ -71,7 +71,7 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 display_graph(sched,scale=1,enforce_visited=true)
 
 sched2 = typeof(sched)()
-LIM = 250
+LIM = 300
 frontier = collect(get_all_terminal_nodes(sched))
 explored = Set{Int}()
 while length(explored) < LIM && !isempty(frontier)
