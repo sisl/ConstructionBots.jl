@@ -226,6 +226,18 @@ git-tree-sha1 = "b7715ae18be02110a8cf9cc8ed2ccdb1e3e3aba2"
 uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 version = "0.26.1"
 
+[[ECOS]]
+deps = ["BinaryProvider", "ECOS_jll", "Libdl", "LinearAlgebra", "MathOptInterface", "MathProgBase", "SparseArrays"]
+git-tree-sha1 = "60790319686e51e4ba5a0094a5da9173fb0d6733"
+uuid = "e2685f51-7e38-5353-a97d-a921fd2c8199"
+version = "0.12.2"
+
+[[ECOS_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "c11ea452ae3fb7e69dadb6a3be6ec8d9403997fe"
+uuid = "c2c64177-6a8e-5dca-99a7-64895ad7445f"
+version = "2.0.5+1"
+
 [[EarCut_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "92d8f9f208637e8d2d28c664051a00569c01493d"
@@ -355,7 +367,7 @@ uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 version = "0.8.19"
 
 [[HierarchicalGeometry]]
-deps = ["CoordinateTransformations", "GeometryBasics", "GraphUtils", "LazySets", "LightGraphs", "LinearAlgebra", "Logging", "Meshing", "Parameters", "Polyhedra", "Rotations", "StaticArrays"]
+deps = ["CoordinateTransformations", "ECOS", "GeometryBasics", "GraphUtils", "JuMP", "LazySets", "LightGraphs", "LinearAlgebra", "Logging", "MathOptInterface", "Meshing", "Parameters", "Polyhedra", "Rotations", "StaticArrays"]
 path = "/home/kylebrown/.julia/dev/HierarchicalGeometry"
 uuid = "a17d2d74-4023-4ab1-aa92-b9763940ddd7"
 version = "0.1.0"
@@ -468,13 +480,13 @@ uuid = "7d188eb4-7ad8-530c-ae41-71a32a6d4692"
 version = "0.3.3"
 
 [[JuMP]]
-deps = ["Calculus", "DataStructures", "ForwardDiff", "JSON", "LinearAlgebra", "MathOptInterface", "MutableArithmetics", "NaNMath", "Random", "SparseArrays", "Statistics"]
-git-tree-sha1 = "57c17a221a55f81890aabf00f478886859e25eaf"
+deps = ["Calculus", "DataStructures", "ForwardDiff", "JSON", "LinearAlgebra", "MathOptInterface", "MutableArithmetics", "NaNMath", "Random", "SparseArrays", "SpecialFunctions", "Statistics"]
+git-tree-sha1 = "e952f49e2242fa21edcf27bbd6c67041685bee5d"
 uuid = "4076af6c-e467-56ae-b986-b466b2749572"
-version = "0.21.5"
+version = "0.21.6"
 
 [[LDrawParser]]
-deps = ["CoordinateTransformations", "GeometryBasics", "GraphUtils", "LightGraphs", "Logging", "Parameters", "Rotations", "StaticArrays"]
+deps = ["Colors", "CoordinateTransformations", "GeometryBasics", "GraphUtils", "LightGraphs", "Logging", "Parameters", "Rotations", "StaticArrays"]
 path = "/home/kylebrown/.julia/dev/LDrawParser"
 uuid = "c9062c12-fdd7-47de-ae43-3b8a76d3a662"
 version = "0.1.0"

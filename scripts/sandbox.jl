@@ -41,14 +41,39 @@ scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
 print(scene_tree,v->"$(summary(node_id(v))) : $(id_map[node_id(v)])","\t")
 display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned)
 
-ConstructionBots.generate_staging_plan(scene_tree)
-
 root = get_node(scene_tree,collect(get_all_root_nodes(scene_tree))[1])
 validate_tree(HierarchicalGeometry.get_transform_node(root))
 validate_embedded_tree(scene_tree,v->HierarchicalGeometry.get_transform_node(get_node(scene_tree,v)))
+@assert(length(get_all_root_nodes(scene_tree)) == 1) 
 
+## Construct Partial Schedule
+sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
+GraphUtils.validate_graph(sched)
+display_graph(sched,scale=1,enforce_visited=true)
+# sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,100)
+# display_graph(sched2,scale=1,enforce_visited=true)
+
+## Compute overapproximated geometry
+HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
+
+## Generate staging plan
+staging_plan = ConstructionBots.generate_staging_plan(scene_tree,sched)
+# set staging plan and visualize
+for (id, tform) in staging_plan
+    node = get_node(scene_tree,id)
+    set_local_transform!(node,tform)
+end
+# restore correct configuration
+for node in get_nodes(scene_tree)
+    if matches_template(AssemblyNode,node)
+        for (id,tform) in assembly_components(node)
+            set_local_transform!(get_node(scene_tree,id),tform)
+        end 
+    end
+end
+
+## Visualize assembly
 color_map = construct_color_map(model_spec,id_map)
-
 vis = Visualizer()
 render(vis)
 delete!(vis)
@@ -56,6 +81,7 @@ vis_nodes = populate_visualizer!(scene_tree,vis;
     color_map=color_map,
     material_type=MeshPhongMaterial)
 
+# Visualize bounding spheres
 spheres = vis[:spheres]
 for node in get_nodes(scene_tree)
     if isa(node,Union{ObjectNode,AssemblyNode})
@@ -67,31 +93,25 @@ for node in get_nodes(scene_tree)
     end
 end
 
-sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
-display_graph(sched,scale=1,enforce_visited=true)
-
-sched2 = typeof(sched)()
-LIM = 400
-frontier = collect(get_all_terminal_nodes(sched))
-explored = Set{Int}()
-while length(explored) < LIM && !isempty(frontier)
-    v = popfirst!(frontier)
-    if !has_vertex(sched2,get_vtx_id(sched,v))
-        add_node!(sched2,get_node(sched,v),get_vtx_id(sched,v))
-        push!(explored,v)
-        for vp in inneighbors(sched,v)
-            if !(vp in explored)
-                push!(frontier,vp)
-            end
+# set staging plan and visualize
+for (id, tform) in staging_plan
+    node = get_node(scene_tree,id)
+    set_local_transform!(node,tform)
+end
+# Visualize construction
+for v in topological_sort_by_dfs(sched)
+    node = get_node(sched,v)
+    if matches_template(OpenBuildStep,node)
+        open_build_step = node_val(node)
+        for (part_id,tform) in assembly_components(open_build_step)
+            set_local_transform!(scene_tree,part_id,tform)
+            settransform!(vis_nodes[part_id],global_transform(scene_tree,part_id))
+            render(vis)
+            sleep(1.0)
         end
     end
 end
-for n in get_nodes(sched2)
-    for v in outneighbors(sched,node_id(n))
-        add_edge!(sched2,n,get_vtx_id(sched,v))
-    end
-end
-display_graph(sched2,scale=1,enforce_visited=true)
+
 
 
 n = get_node(scene_tree,1)

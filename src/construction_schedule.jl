@@ -218,24 +218,12 @@ GraphUtils.required_successors(     ::ObjectStart)      = Dict(FormTransportUnit
 GraphUtils.required_predecessors(  n::AssemblyComplete) = Dict(Union{ObjectStart,CloseBuildStep}=>num_components(n))
 GraphUtils.required_successors(     ::AssemblyComplete) = Dict(Union{FormTransportUnit,ProjectComplete}=>1)
 
+GraphUtils.required_predecessors(   ::AssemblyStart)    = Dict()
+GraphUtils.required_successors(     ::AssemblyStart)    = Dict(OpenBuildStep=>1)
+
 GraphUtils.required_predecessors(   ::ProjectComplete)  = Dict(AssemblyComplete=>1)
 GraphUtils.required_successors(     ::ProjectComplete)  = Dict()
 
-function GraphUtils.validate_edge(a::ConstructionPredicate,b::ConstructionPredicate)
-    valid = false
-    for (key,val) in required_successors(a)
-        if matches_template(key,b)
-            valid = true
-        end
-    end
-    for (key,val) in required_predecessors(b)
-        if matches_template(key,a) && val >= 1
-            valid = valid && true
-            return valid
-        end
-    end
-    return false
-end
 
 for T in (
     :ObjectStart,
