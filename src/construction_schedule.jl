@@ -310,27 +310,20 @@ function populate_schedule_build_step!(sched,cb,step_node,model_spec,scene_tree,
     # OpenBuildStep
     ob = add_node!(sched,OpenBuildStep(node_val(cb)))
     for child_id in get_build_step_components(model_spec,id_map,step_node)
-        # spec_node = get_node(model_spec,child_id)
-    # for vp in inneighbors(model_spec,step_node)
-        # spec_node = get_node(model_spec,vp)
-        # if !matches_template(SubFileRef,spec_node)
-        #     continue
-        # end
-        # cargo = get_node(scene_tree,id_map[node_id(spec_node)])
         cargo = get_node(scene_tree,child_id)
         @assert isa(cargo,Union{AssemblyNode,ObjectNode})
         # LiftIntoPlace
-        l = add_node!(sched,LiftIntoPlace(cargo)) 
+        l = add_node!(sched,    LiftIntoPlace(cargo)) 
         add_edge!(sched,l,cb) # LiftIntoPlace => CloseBuildStep
         # DepositCargo
-        d = add_node!(sched,DepositCargo(TransportUnitNode(cargo)))
+        d = add_node!(sched,    DepositCargo(TransportUnitNode(cargo)))
         add_edge!(sched,d,l) # DepositCargo => LiftIntoPlace
         add_edge!(sched,ob,d) # OpenBuildStep => DepositCargo
         # TransportUnitGo
-        tgo = add_node!(sched,TransportUnitGo(entity(node_val(d))))
+        tgo = add_node!(sched,  TransportUnitGo(entity(node_val(d))))
         add_edge!(sched,tgo,d) # TransportUnitGo => DepositCargo
         # FormTransportUnit
-        f = add_node!(sched,FormTransportUnit(entity(node_val(d))))
+        f = add_node!(sched,    FormTransportUnit(entity(node_val(d))))
         add_edge!(sched,f,tgo) # FormTransportUnit => TransportUnitGo
         if isa(cargo,AssemblyNode) connect_to_sub_assemblies
             add_edge!(sched,AssemblyComplete(cargo),f) # AssemblyComplete => FormTransportUnit 
@@ -351,19 +344,18 @@ Add all building steps to parent, working backward from parents
 """
 function populate_schedule_sub_graph!(sched,parent::AssemblyComplete,model_spec,scene_tree,id_map)
     parent_assembly = entity(parent)
+    sa = AssemblyStart(parent_assembly)
     spec_node = get_node(model_spec, id_map[node_id(parent_assembly)])
-    @show node_id(spec_node), get_vtx(model_spec,spec_node)
     step_node = get_previous_build_step(model_spec,spec_node;skip_first=true)
-    @info step_node
     while !(step_node === nothing)
         # CloseBuildStep
-        #TODO ADD ID
         cb = add_node!(sched,CloseBuildStep(step_node,scene_tree,model_spec,id_map))
         add_edge!(sched,cb,parent) # CloseBuildStep => AssemblyComplete / OpenBuildStep
         ob = populate_schedule_build_step!(sched,cb,step_node,model_spec,scene_tree,id_map)
         parent = ob
         step_node = get_previous_build_step(model_spec,step_node;skip_first=true)
     end
+    add_edge!(sched,sa,parent) # AssemblyStart => OpenBuildStep
     sched
 end
 
