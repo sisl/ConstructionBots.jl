@@ -529,45 +529,72 @@ function generate_staging_plan(scene_tree,sched;
             bounding_radii[node_id(entity(node_val(node)))] = 0.0
         elseif matches_template(OpenBuildStep,node)
             # work updward through build steps
-            open_build_step = node_val(node)
-            assembly = open_build_step.assembly
-            # radius of assembly at current stage
-            assembly_radius = bounding_radii[node_id(assembly)]
-            # optimize staging locations
-            θ_des = Vector{Float64}()
-            radii = Vector{Float64}()
-            for (part_id,tform) in assembly_components(open_build_step)
-                part = get_node(scene_tree,part_id)
-                d = HG.project_to_2d(tform.translation)
-                push!(θ_des, atan(d[2],d[1]))
-                r = get_base_geom(part,HypersphereKey()).radius
-                push!(radii, r)
-                # update bounding radius for next stage
-                bounding_radii[node_id(assembly)] = max(
-                    assembly_radius, norm(d) + r)
-            end
-            # optimize placement and increase assembly_radius if necessary
-            θ_star, assembly_radius = solve_staging_placement_ring_problem(
-                θ_des,
-                radii,
-                assembly_radius,
-                robot_radius,
-                )
-            # Compute staging config transforms (relative to parent assembly)
-            for (i,(θ,r,(part_id,_))) in enumerate(
-                    zip(θ_star,radii,assembly_components(open_build_step))
-                    )
-                R = assembly_radius + r
-                t = CoordinateTransformations.Translation(
-                    R*cos(θ),
-                    R*sin(θ),
-                    0.0)
-                tform = t ∘ identity_linear_map() # AffineMap transform
-                staging_configs[part_id] = tform # store local transform
-            end
+            process_schedule_build_step!(
+                node,
+                sched,
+                scene_tree,
+                staging_configs,
+                bounding_radii;
+                robot_radius=robot_radius,
+            )
+        elseif matches_template(LiftIntoPlace,node)
+            # Add staging config as starting config for LiftIntoPlace
         end
     end
     staging_configs
+end
+
+"""
+    process_schedule_build_step!(sched,staging_configs,node,bounding_radii;
+
+Select the staging configuration for all subcomponents to be added to `assembly`
+during `build_step`, where `build_step::OpenBuildStep = node_val(node)`, and 
+`assembly = build_step.assembly.`
+Also updates `bounding_radii[node_id(assembly)]` to reflect the increasing size 
+of assembly as more parts are added to it.
+Updates:
+- `staging_configs`
+- `bounding_radii`
+"""
+function process_schedule_build_step!(node,sched,scene_tree,staging_configs,bounding_radii;
+        robot_radius=0.0,
+    )
+    open_build_step = node_val(node)
+    assembly = open_build_step.assembly
+    # radius of assembly at current stage
+    assembly_radius = bounding_radii[node_id(assembly)]
+    # optimize staging locations
+    θ_des = Vector{Float64}()
+    radii = Vector{Float64}()
+    for (part_id,tform) in assembly_components(open_build_step)
+        part = get_node(scene_tree,part_id)
+        d = HG.project_to_2d(tform.translation)
+        push!(θ_des, atan(d[2],d[1]))
+        r = get_base_geom(part,HypersphereKey()).radius
+        push!(radii, r)
+        # update bounding radius for next stage
+        bounding_radii[node_id(assembly)] = max(
+            assembly_radius, norm(d) + r)
+    end
+    # optimize placement and increase assembly_radius if necessary
+    θ_star, assembly_radius = solve_staging_placement_ring_problem(
+        θ_des,
+        radii,
+        assembly_radius,
+        robot_radius,
+        )
+    # Compute staging config transforms (relative to parent assembly)
+    for (i,(θ,r,(part_id,_))) in enumerate(
+            zip(θ_star,radii,assembly_components(open_build_step))
+            )
+        R = assembly_radius + r
+        t = CoordinateTransformations.Translation(
+            R*cos(θ),
+            R*sin(θ),
+            0.0)
+        tform = t ∘ identity_linear_map() # AffineMap transform
+        staging_configs[part_id] = tform # store local transform
+    end
 end
 
 """

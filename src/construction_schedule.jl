@@ -33,7 +33,7 @@ goal_config(n::EntityConfigPredicate)    = n.config
 
 struct RobotStart{T} <: EntityConfigPredicate{RobotNode,T}
     entity::RobotNode
-    config::T
+    config::T # local or global transform? Leaning toward global
 end
 struct ObjectStart{T} <: EntityConfigPredicate{ObjectNode,T}
     entity::ObjectNode
@@ -50,6 +50,8 @@ end
 
 for T in (:RobotStart,:ObjectStart,:AssemblyComplete,:AssemblyStart)
     @eval $T(n::SceneNode) = $T(n,global_transform(n))
+    @eval set_start_config(n::$T,c) = $T(entity(n),c)
+    @eval set_goal_config(n::$T,c) = $T(entity(n),c)
 end
 
 """
@@ -77,6 +79,10 @@ struct LiftIntoPlace{C,S,G} <: EntityGo{C,S,G}
     goal_config::G
 end
 # GraphUtils.node_id(n::LiftIntoPlace{C,S,G}) where {C,S,G} = TemplatedID{Tuple{LiftIntoPlace,C}}(get_id(node_id(entity(n))))
+for T in (:RobotGo,:TransportUnitGo,:LiftIntoPlace)
+    @eval set_start_config(n::$T,c) = $T(entity(n),c,goal_config(n))
+    @eval set_goal_config(n::$T,c) = $T(entity(n),start_config(n),goal_config(n))
+end
 
 """
     abstract type BuildPhasePredicate <: ConstructionPredicate

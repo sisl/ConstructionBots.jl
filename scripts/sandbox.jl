@@ -98,6 +98,8 @@ for (id, tform) in staging_plan
     node = get_node(scene_tree,id)
     set_local_transform!(node,tform)
 end
+update_visualizer!(scene_tree,vis_nodes)
+render(vis)
 # Visualize construction
 for v in topological_sort_by_dfs(sched)
     node = get_node(sched,v)
