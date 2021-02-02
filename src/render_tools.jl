@@ -107,8 +107,8 @@ GraphPlottingBFS._title_string(::ConstructionBots.RobotStart)        = "R"
 GraphPlottingBFS._title_string(n::ConstructionBots.ObjectStart)      = "O"
 GraphPlottingBFS._title_string(::ConstructionBots.AssemblyStart)     = "M"
 GraphPlottingBFS._title_string(::ConstructionBots.AssemblyComplete)  = "M"
-GraphPlottingBFS._title_string(::ConstructionBots.OpenBuildStep)     = "B"
-GraphPlottingBFS._title_string(::ConstructionBots.CloseBuildStep)    = "B"
+GraphPlottingBFS._title_string(::ConstructionBots.OpenBuildStep)     = "oB"
+GraphPlottingBFS._title_string(::ConstructionBots.CloseBuildStep)    = "cB"
 GraphPlottingBFS._title_string(::ConstructionBots.RobotGo)           = "G"
 GraphPlottingBFS._title_string(::ConstructionBots.FormTransportUnit) = "C"
 GraphPlottingBFS._title_string(::ConstructionBots.DepositCargo)      = "D"
@@ -116,9 +116,16 @@ GraphPlottingBFS._title_string(::ConstructionBots.TransportUnitGo)   = "T"
 GraphPlottingBFS._title_string(::ConstructionBots.LiftIntoPlace)     = "L"
 GraphPlottingBFS._title_string(::ConstructionBots.ProjectComplete)   = "P"
 
-GraphPlottingBFS._node_shape(n::CustomNode,args...) = GraphPlottingBFS._node_shape(node_val(n),args...)
-GraphPlottingBFS._node_color(n::CustomNode,args...) = GraphPlottingBFS._node_color(node_val(n),args...)
-GraphPlottingBFS._title_string(n::CustomNode,args...) = GraphPlottingBFS._title_string(node_val(n),args...)
+for op in (
+    :(GraphPlottingBFS._node_shape),
+    :(GraphPlottingBFS._node_color),
+    :(GraphPlottingBFS._title_string)
+    )
+    @eval $op(n::CustomNode,args...) = $op(node_val(n),args...)
+end
+# GraphPlottingBFS._node_shape(n::CustomNode,args...) = GraphPlottingBFS._node_shape(node_val(n),args...)
+# GraphPlottingBFS._node_color(n::CustomNode,args...) = GraphPlottingBFS._node_color(node_val(n),args...)
+# GraphPlottingBFS._title_string(n::CustomNode,args...) = GraphPlottingBFS._title_string(node_val(n),args...)
 
 GraphPlottingBFS._subtitle_string(n::Union{CustomNode,SceneNode}) = "$(get_id(node_id(n)))"
 

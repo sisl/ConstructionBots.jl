@@ -70,6 +70,30 @@ end
 sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
 display_graph(sched,scale=1,enforce_visited=true)
 
+sched2 = typeof(sched)()
+LIM = 100
+frontier = collect(get_all_terminal_nodes(sched))
+explored = Set{Int}()
+while length(explored) < LIM && !isempty(frontier)
+    v = popfirst!(frontier)
+    if !has_vertex(sched2,get_vtx_id(sched,v))
+        add_node!(sched2,get_node(sched,v),get_vtx_id(sched,v))
+        push!(explored,v)
+        for vp in inneighbors(sched,v)
+            if !(vp in explored)
+                push!(frontier,vp)
+            end
+        end
+    end
+end
+for n in get_nodes(sched2)
+    for v in outneighbors(sched,node_id(n))
+        add_edge!(sched2,n,get_vtx_id(sched,v))
+    end
+end
+display_graph(sched2,scale=1,align_mode=:root_aligned)
+
+
 n = get_node(scene_tree,1)
 add_child_approximation!(n,HierarchicalGeometry.PolyhedronKey());
 add_child_approximation!(n,HierarchicalGeometry.HypersphereKey(),HierarchicalGeometry.PolyhedronKey())
