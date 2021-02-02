@@ -67,7 +67,8 @@ for node in get_nodes(scene_tree)
     end
 end
 
-construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
+sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
+display_graph(sched,scale=1,enforce_visited=true)
 
 n = get_node(scene_tree,1)
 add_child_approximation!(n,HierarchicalGeometry.PolyhedronKey());

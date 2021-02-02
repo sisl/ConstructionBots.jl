@@ -72,11 +72,11 @@ struct TransportUnitGo{S,G} <: EntityGo{TransportUnitNode,S,G}
 end
 
 struct LiftIntoPlace{C,S,G} <: EntityGo{C,S,G}
-    entity::C
+    entity::C # AssemblyNode or ObjectNode
     start_config::S
     goal_config::G
 end
-
+# GraphUtils.node_id(n::LiftIntoPlace{C,S,G}) where {C,S,G} = TemplatedID{Tuple{LiftIntoPlace,C}}(get_id(node_id(entity(n))))
 
 """
     abstract type BuildPhasePredicate <: ConstructionPredicate
@@ -91,6 +91,7 @@ abstract type BuildPhasePredicate <: ConstructionPredicate end
 
 get_assembly(n::BuildPhasePredicate) = n.assembly
 HierarchicalGeometry.assembly_components(n::BuildPhasePredicate) = n.components
+HierarchicalGeometry.assembly_components(n::ConstructionPredicate) = assembly_components(entity(n))
 
 """
     extract_building_phase(n::BuildingStep,tree::SceneTree,model_spec,id_map)
@@ -152,13 +153,24 @@ struct FormTransportUnit{S,G} <: ConstructionPredicate
     start_config::S
     goal_config::G
 end
+# for T in (
+#     :TransportUnitGo,
+#     :FormTransportUnit,
+#     :DepositCargo
+# )
+#     @eval begin
+#         function GraphUtils.node_id(n::$T)
+#             TemplatedID{Tuple{$T,cargo_type(entity(n))}}(get_id(node_id(entity(n))))
+#         end
+#     end
+# end
 
 for T in (:RobotGo,:TransportUnitGo,:LiftIntoPlace,:DepositCargo,:FormTransportUnit)
     @eval $T(n::SceneNode) = $T(n,global_transform(n),global_transform(n))
 end
 
 HierarchicalGeometry.robot_team(n::ConstructionPredicate) = robot_team(entity(n))
-cargo_node_type(n::TransportUnitNode) = cargo_type(n) == AsemblyNode ? AssemblyComplete : ObjectStart
+cargo_node_type(n::TransportUnitNode) = cargo_type(n) == AssemblyNode ? AssemblyComplete : ObjectStart
 cargo_node_type(n::ConstructionPredicate) = cargo_node_type(entity(n))
 
 struct ProjectComplete <: ConstructionPredicate 
@@ -185,8 +197,8 @@ GraphUtils.eligible_successors(     ::RobotGo)          = Dict(Union{RobotGo,For
 GraphUtils.required_predecessors(  n::FormTransportUnit) = Dict(RobotGo=>length(robot_team(n)),cargo_node_type(n)=>1,Union{ObjectStart,AssemblyComplete}=>1)
 GraphUtils.required_successors(     ::FormTransportUnit) = Dict(TransportUnitGo=>1)
 
-GraphUtils.required_predecessors(   ::TransportUnitGo)      = Dict(FormTransportUnit=>1)
-GraphUtils.required_successors(     ::TransportUnitGo)      = Dict(DepositCargo=>1)
+GraphUtils.required_predecessors(   ::TransportUnitGo)  = Dict(FormTransportUnit=>1)
+GraphUtils.required_successors(     ::TransportUnitGo)  = Dict(DepositCargo=>1)
 
 GraphUtils.required_predecessors(   ::DepositCargo)     = Dict(TransportUnitGo=>1,OpenBuildStep=>1)
 GraphUtils.required_successors(    n::DepositCargo)     = Dict(LiftIntoPlace=>1,RobotGo=>length(robot_team(n)))
@@ -194,21 +206,36 @@ GraphUtils.required_successors(    n::DepositCargo)     = Dict(LiftIntoPlace=>1,
 GraphUtils.required_predecessors(   ::LiftIntoPlace)    = Dict(DepositCargo=>1)
 GraphUtils.required_successors(     ::LiftIntoPlace)    = Dict(CloseBuildStep=>1)
 
-GraphUtils.required_predecessors(  n::CloseBuildStep)   = Dict(LiftIntoPlace=>num_assembly_components(n))
+GraphUtils.required_predecessors(  n::CloseBuildStep)   = Dict(LiftIntoPlace=>num_components(n))
 GraphUtils.required_successors(     ::CloseBuildStep)   = Dict(Union{OpenBuildStep,AssemblyComplete}=>1)
 
 GraphUtils.required_predecessors(   ::OpenBuildStep)    = Dict(Union{AssemblyStart,CloseBuildStep}=>1)
-GraphUtils.required_successors(     ::OpenBuildStep)    = Dict(DepositCargo=>num_assembly_components(n))
+GraphUtils.required_successors(    n::OpenBuildStep)    = Dict(DepositCargo=>num_components(n))
 
 GraphUtils.required_predecessors(   ::ObjectStart)      = Dict()
 GraphUtils.required_successors(     ::ObjectStart)      = Dict(FormTransportUnit=>1)
 
-GraphUtils.required_predecessors(  n::AssemblyComplete) = Dict(Union{ObjectStart,LiftIntoPlace}=>num_assembly_components(n))
+GraphUtils.required_predecessors(  n::AssemblyComplete) = Dict(Union{ObjectStart,CloseBuildStep}=>num_components(n))
 GraphUtils.required_successors(     ::AssemblyComplete) = Dict(Union{FormTransportUnit,ProjectComplete}=>1)
 
 GraphUtils.required_predecessors(   ::ProjectComplete)  = Dict(AssemblyComplete=>1)
 GraphUtils.required_successors(     ::ProjectComplete)  = Dict()
 
+function GraphUtils.validate_edge(a::ConstructionPredicate,b::ConstructionPredicate)
+    valid = false
+    for (key,val) in required_successors(a)
+        if matches_template(key,b)
+            valid = true
+        end
+    end
+    for (key,val) in required_predecessors(b)
+        if matches_template(key,a) && val >= 1
+            valid = valid && true
+            return valid
+        end
+    end
+    return false
+end
 
 for T in (
     :ObjectStart,
@@ -219,15 +246,26 @@ for T in (
     :FormTransportUnit,
     :TransportUnitGo,
     :DepositCargo,
-    # :OpenBuildStep,
-    # :CloseBuildStep,
     :LiftIntoPlace,
 )
     @eval begin
-        GraphUtils.node_id(n::$T) = TemplatedID{$T}(get_id(node_id(entity(n))))
-        # GraphUtils.add_node!(g::AbstractCustomNGraph, n::$T) = add_node!(g,n,node_id(n))
+        function GraphUtils.node_id(n::$T) 
+            TemplatedID{Tuple{$T,typeof(node_id(entity(n)))}}(get_id(node_id(entity(n))))
+        end
     end
 end
+
+# for T in (
+#     :ObjectStart,
+#     :RobotStart,
+#     :RobotGo,
+#     :AssemblyStart,
+#     :AssemblyComplete,
+# )
+#     @eval begin
+#         GraphUtils.node_id(n::$T) = TemplatedID{$T}(get_id(node_id(entity(n))))
+#     end
+# end
 GraphUtils.add_node!(g::AbstractCustomNGraph, n::ConstructionPredicate) = add_node!(g,n,node_id(n))
 GraphUtils.add_node!(g::AbstractCustomNGraph, n::P) where {P<:BuildPhasePredicate} = add_node!(g,n,get_unique_id(TemplatedID{P}))
 GraphUtils.get_vtx(g::AbstractCustomNGraph,n::ConstructionPredicate) = get_vtx(g,node_id(n))
