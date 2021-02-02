@@ -104,14 +104,14 @@ for v in topological_sort_by_dfs(sched)
     if matches_template(OpenBuildStep,node)
         open_build_step = node_val(node)
         for (part_id,tform) in assembly_components(open_build_step)
-            set_local_transform!(scene_tree,part_id,tform)
-            settransform!(vis_nodes[part_id],global_transform(scene_tree,part_id))
+            part_node = get_node(scene_tree,part_id)
+            set_local_transform!(part_node,tform)
+            update_visualizer!(scene_tree,vis_nodes,[part_node])
             render(vis)
-            sleep(1.0)
+            sleep(0.2)
         end
     end
 end
-
 
 
 n = get_node(scene_tree,1)
