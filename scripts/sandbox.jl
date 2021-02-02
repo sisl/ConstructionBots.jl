@@ -71,7 +71,7 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 display_graph(sched,scale=1,enforce_visited=true)
 
 sched2 = typeof(sched)()
-LIM = 100
+LIM = 300
 frontier = collect(get_all_terminal_nodes(sched))
 explored = Set{Int}()
 while length(explored) < LIM && !isempty(frontier)
@@ -91,7 +91,7 @@ for n in get_nodes(sched2)
         add_edge!(sched2,n,get_vtx_id(sched,v))
     end
 end
-display_graph(sched2,scale=1,align_mode=:root_aligned)
+display_graph(sched2,scale=1,align_mode=:leaf_aligned,enforce_visited=true)
 
 
 n = get_node(scene_tree,1)
