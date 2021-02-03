@@ -509,7 +509,7 @@ for each component of the assembly.
     It may be necessary to not completely isolate build steps (i.e., two 
     consecutive build steps may overlap in the arrival times of subcomponents).
 """
-function generate_staging_plan(scene_tree,sched;
+function generate_staging_plan!(scene_tree,sched;
         robot_radius=0.0,
     )
     if !all(map(n->has_vertex(n.geom_hierarchy, HypersphereKey()), get_nodes(scene_tree)))
@@ -539,10 +539,8 @@ function generate_staging_plan(scene_tree,sched;
             )
         elseif matches_template(LiftIntoPlace,node)
             # Add staging config as starting config for LiftIntoPlace
-            lift_into_place = node_val(node)
-            new_node = LiftIntoPlace(
-                entity(lift_into_place),
-            )
+            set_local_transform!(start_config(node),
+                staging_configs[node_id(entity(node))])
         end
     end
     staging_configs

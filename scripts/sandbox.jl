@@ -59,7 +59,8 @@ display_graph(sched,scale=1,enforce_visited=true)
 HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
 
 ## Generate staging plan
-staging_plan = ConstructionBots.generate_staging_plan(scene_tree,sched)
+staging_plan = ConstructionBots.generate_staging_plan!(scene_tree,sched)
+
 # set staging plan and visualize
 for (id, tform) in staging_plan
     node = get_node(scene_tree,id)
