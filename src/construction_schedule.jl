@@ -430,6 +430,12 @@ function assert_transform_tree_ancestor(a,b)
     @assert GraphUtils.has_ancestor(a,b) "a should have ancestor b, for a = $(a), b = $(b)"
 end
 
+function transformations_approx_equiv(t1,t2)
+    a = all(isapprox.(t1.translation,t2.translation))
+    b = all(isapprox.(t1.linear,t2.linear))
+    a && b
+end
+
 """
     validate_schedule_transform_tree(sched)
 
@@ -439,9 +445,7 @@ Checks if sched and its embedded transform tree are valid.
     connected in the embedded transform tree
 
 """
-function validate_schedule_transform_tree(sched;
-    post_staging=false
-    )
+function validate_schedule_transform_tree(sched;post_staging=false)
     try
         @assert GraphUtils.validate_graph(sched)
         for n in get_nodes(sched)
@@ -466,11 +470,18 @@ function validate_schedule_transform_tree(sched;
                         @assert GraphUtils.has_child(
                             goal_config(assembly_complete),goal_config(lift_node))
                         if post_staging
-                            # Show that local transforms are not far off
-                            @assert all(isapprox.(
-                                local_transform(goal_config(lift_node)).translation,
-                                child_transform(assembly,node_id(entity(lift_node))).translation
-                                ))
+                            # Show that goal_config(LiftIntoPlace) matches the 
+                            # goal config of cargo relative to assembly
+                            @assert transformations_approx_equiv(
+                                local_transform(goal_config(lift_node)),
+                                child_transform(assembly,node_id(entity(lift_node)))
+                            )
+                            # Show that start_config(LiftIntoPlace) matches 
+                            # goal_config(DepositCargo)
+                            @assert transformations_approx_equiv(
+                                global_transform(start_config(lift_node)),
+                                global_transform(goal_config(child)),
+                            )
                         end
                     end
                 end
@@ -489,6 +500,233 @@ function validate_schedule_transform_tree(sched;
     end
     return true
 end
+
+
+"""
+    generate_staging_plan(scene_tree,params)
+
+Given a `SceneTree` representing the final configuration of an assembly, 
+construct a plan for the start config, staging config, and final config of
+each subassembly and individual object. The idea is to ensure that no node of 
+the "plan" graph overlaps with any other. Requires circular bounding geometry
+for each component of the assembly. 
+    Start at terminal assembly
+    work downward through building steps
+    For each building step, arrange the incoming parts to balance these 
+    objectives: 
+    - minimize "LiftIntoPlace" distance
+    - maximize distance between components to be placed. 
+    It may be necessary to not completely isolate build steps (i.e., two 
+    consecutive build steps may overlap in the arrival times of subcomponents).
+"""
+function generate_staging_plan!(scene_tree,sched;
+        robot_radius=0.0,
+    )
+    if !all(map(n->has_vertex(n.geom_hierarchy, HypersphereKey()), get_nodes(scene_tree)))
+        HierarchicalGeometry.compute_approximate_geometries!(scene_tree,
+            HypersphereKey();ϵ=0.0)
+    end
+    # To store the transform tree of start, staging, and final configs 
+    start_configs   = TransformDict{AbstractID}()
+
+    # store growing bounding circle of each assembly
+    bounding_radii = Dict{AssemblyID,Float64}() 
+    staging_radii = Dict{AssemblyID,Float64}() # store radius of staging area for each assembly
+    for v in topological_sort_by_dfs(sched)
+        node = get_node(sched,v)
+        if matches_template(AssemblyStart,node)
+            bounding_radii[node_id(entity(node_val(node)))] = 0.0
+            staging_radii[node_id(entity(node_val(node)))] = 0.0
+        elseif matches_template(OpenBuildStep,node)
+            # work updward through build steps
+            # Set staging config of each part as the start_config of its
+            # LiftIntoPlace node.
+            process_schedule_build_step!(
+                node,
+                sched,
+                scene_tree,
+                bounding_radii,
+                staging_radii,
+                ;
+                robot_radius=robot_radius,
+            )
+        end
+    end
+    # Update assembly start points so that none of the staging regions overlap
+    for v in reverse(topological_sort_by_dfs(scene_tree))
+        node = get_node(scene_tree,v)
+        if matches_template(AssemblyNode,node)
+            # Apply ring solver with child assemblies (not objects), using
+            assembly = node 
+            part_ids = sort(filter(k->isa(k,AssemblyID),
+                collect(keys(assembly_components(node)))))
+            if isempty(part_ids) 
+                continue
+            end
+            # staging_radii
+            parts = map(part_id->get_node(scene_tree,part_id), part_ids)
+            staging_radius = staging_radii[node_id(node)]
+            θ_des = Vector{Float64}()
+            radii = Vector{Float64}()
+            for (part_id,part) in zip(part_ids,parts)
+                # retrieve staging config from LiftIntoPlace node
+                lift_node = get_node(sched,LiftIntoPlace(part))
+                tform = local_transform(start_config(lift_node))
+                d = HG.project_to_2d(tform.translation)
+                push!(θ_des, atan(d[2],d[1]))
+                r = staging_radii[part_id]
+                push!(radii, r)
+            end
+            # optimize placement and increase staging_radius if necessary
+            θ_star, staging_radius = solve_ring_placement_problem(
+                θ_des,
+                radii,
+                staging_radius,
+                robot_radius,
+                )
+            # Compute staging config transforms (relative to parent assembly)
+            for (i,(θ,r,part_id,part)) in enumerate(zip(θ_star,radii,part_ids,parts))
+                R = staging_radius + r
+                t = CoordinateTransformations.Translation(
+                    R*cos(θ),
+                    R*sin(θ),
+                    0.0)
+                tform = t ∘ identity_linear_map() # AffineMap transform
+                # set transform of start node
+                start_node = get_node(sched,AssemblyComplete(part))
+                @info "Starting config: setting START config of $(node_id(start_node)) to $(tform)"
+                set_local_transform!(start_config(start_node),tform)
+                staging_radii[node_id(assembly)] = max(
+                    staging_radii[node_id(assembly)], R+r)
+            end
+        end
+    end
+    # TODO store a TransformNode in ProjectComplete() (or in the schedule itself,
+    # once there is a dedicated ConstructionSchedule type) so that an entire 
+    # schedule can be moved anywhere. All would-be root TransormNodes will have
+    # this root node as their parent, regardless of the edge structure of the 
+    # schedule graph
+    return sched
+end
+
+"""
+    process_schedule_build_step!(sched,staging_configs,node,bounding_radii;
+
+Select the staging configuration for all subcomponents to be added to `assembly`
+during `build_step`, where `build_step::OpenBuildStep = node_val(node)`, and 
+`assembly = build_step.assembly.`
+Also updates `bounding_radii[node_id(assembly)]` to reflect the increasing size 
+of assembly as more parts are added to it.
+Updates:
+- `staging_configs`
+- `bounding_radii`
+- the relevant `LiftIntoPlace` nodes (start_config and goal_config transforms)
+"""
+function process_schedule_build_step!(node,sched,scene_tree,
+        bounding_radii,
+        staging_radii,
+        ;
+        robot_radius=0.0,
+    )
+    open_build_step = node_val(node)
+    assembly = open_build_step.assembly
+    # radius of assembly at current stage
+    assembly_radius = bounding_radii[node_id(assembly)]
+    # optimize staging locations
+    θ_des = Vector{Float64}()
+    radii = Vector{Float64}()
+    part_ids = sort(collect(keys(assembly_components(open_build_step))))
+    tforms = map(id->assembly_components(open_build_step)[id],part_ids)
+    for (part_id,tform) in zip(part_ids,tforms)
+        part = get_node(scene_tree,part_id)
+        d = HG.project_to_2d(tform.translation)
+        push!(θ_des, atan(d[2],d[1]))
+        r = get_base_geom(part,HypersphereKey()).radius
+        push!(radii, r)
+        # update bounding radius for next stage
+        bounding_radii[node_id(assembly)] = max(
+            bounding_radii[node_id(assembly)],
+            norm(d) + r)
+        # Set goal config of LiftIntoPlace node
+        lift_node = get_node(sched,LiftIntoPlace(get_node(scene_tree,part_id)))
+        @info "Staging config: setting GOAL config of $(node_id(lift_node)) to $(tform)"
+        set_local_transform!(goal_config(lift_node),tform)
+    end
+    # optimize placement and increase assembly_radius if necessary
+    θ_star, assembly_radius = solve_ring_placement_problem(
+        θ_des,
+        radii,
+        assembly_radius,
+        robot_radius,
+        )
+    # Compute staging config transforms (relative to parent assembly)
+    for (i,(θ,r,part_id)) in enumerate(zip(θ_star,radii,part_ids))
+        R = assembly_radius + r
+        t = CoordinateTransformations.Translation(
+            R*cos(θ),
+            R*sin(θ),
+            0.0)
+        tform = t ∘ identity_linear_map() # AffineMap transform
+        # set transform of lift node
+        lift_node = get_node(sched,LiftIntoPlace(get_node(scene_tree,part_id)))
+        @info "Staging config: setting START config of $(node_id(lift_node)) to $(tform)"
+        set_local_transform!(start_config(lift_node),tform)
+        staging_radii[node_id(assembly)] = max(
+            staging_radii[node_id(assembly)], R+r)
+    end
+end
+
+"""
+    solve_ring_placement_problem(θ_des,R,r,rmin)
+
+Formulate and solve a JuMP Model that encodes a ring optimization problem:
+    Min_θ sum((θ .- θ_des).^2)
+    s.t.  no overlapping of circles placed along ring
+If there are too many circles, the problem will be infeasible. Either allow R 
+to increase as a variable, or use a search to optimize R while repeating the 
+optimization.
+return θ_star
+"""
+function solve_ring_placement_problem(θ_des,r,R,rmin=0.0;
+        ϵ = 1e-1, # buffer for increasing R when necessary
+        weights = ones(length(θ_des)),
+    )
+    model = Model(HG.default_optimizer())
+    set_optimizer_attributes(model,HG.default_optimizer_attributes()...)
+
+    n = length(θ_des)
+    @assert length(r) == n
+    # sort θ (the unsorted vector will be returned at the end)
+    idxs = sortperm(θ_des)
+    reverse_idxs = collect(1:n)[idxs]
+    θ_des = θ_des[idxs]
+    r = r[idxs]
+    # compute half widths in radians (required radial spacing between parts)
+    half_widths = asin.(r ./ (r .+ R))
+    # increase R and recompute half widths if ring is too small
+    while sum(half_widths)*2 >= 2π
+        @info "R = $R is too small----sum(half_widths)*2 = $(sum(half_widths)*2)"
+        R = R*sum(half_widths)/(π) + ϵ
+        half_widths = asin.(r ./ (r .+ R))
+        @info "Increased R to $R. sum(half_widths)*2 = $(sum(half_widths)*2)"
+    end
+    @variable(model, θ[1:n])
+    # Constrain order and spacing of elements of θ
+    for i in 1:n-1
+        @constraint(model, θ[i] + half_widths[i] <= θ[i+1] - half_widths[i+1])
+    end
+    # wrap-around constraint
+    @constraint(model, θ[n] + half_widths[n] <= θ[1] - half_widths[1] + 2π)
+    @objective(model, Min, sum(weights .* (θ .- θ_des).^2))
+
+    optimize!(model)
+    if !(primal_status(model) == MOI.FEASIBLE_POINT)
+        @warn "Ring optimization failed!"
+    end
+
+    return value.(θ)[reverse_idxs], R
+end
+
 
 """
     add_construction_delivery_task!(sched,args...)

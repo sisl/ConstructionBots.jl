@@ -84,24 +84,33 @@ for node in get_nodes(scene_tree)
 end
 
 # set staging plan and visualize
-# for (id, tform) in staging_plan
-#     node = get_node(scene_tree,id)
-#     set_local_transform!(node,tform)
-# end
 for n in get_nodes(sched)
     if matches_template(LiftIntoPlace,n)
+        scene_node = get_node(scene_tree,node_id(entity(n)))
+        if matches_template(ObjectNode,scene_node)
+            set_local_transform!(scene_node,local_transform(start_config(n)))
+        end
+    elseif matches_template(AssemblyStart,n)
         scene_node = get_node(scene_tree,node_id(entity(n)))
         set_local_transform!(scene_node,local_transform(start_config(n)))
     end
 end
 # restore correct configuration
-HG.jump_to_final_configuration!(scene_tree)
+# HG.jump_to_final_configuration!(scene_tree)
 # update visualizer
 update_visualizer!(scene_tree,vis_nodes)
 # Visualize construction
 for v in topological_sort_by_dfs(sched)
     node = get_node(sched,v)
-    if matches_template(OpenBuildStep,node)
+    if matches_template(LiftIntoPlace,node)
+        part_node = get_node(scene_tree,node_id(entity(node)))
+        if matches_template(AssemblyNode,part_node)
+            set_local_transform!(part_node,local_transform(start_config(node)))
+            update_visualizer!(scene_tree,vis_nodes,[part_node])
+            render(vis)
+            sleep(0.2)
+        end
+    elseif matches_template(CloseBuildStep,node)
         open_build_step = node_val(node)
         for (part_id,tform) in assembly_components(open_build_step)
             part_node = get_node(scene_tree,part_id)
