@@ -51,7 +51,7 @@ display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned)
 sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
 # Check if schedule graph and embedded transform tree are valid
 @assert validate_schedule_transform_tree(sched)
-# sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,100)
+# sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,400)
 # display_graph(sched2,scale=1,enforce_visited=true)
 display_graph(sched,scale=1,enforce_visited=true)
 
@@ -60,20 +60,7 @@ HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
 
 ## Generate staging plan
 staging_plan = ConstructionBots.generate_staging_plan!(scene_tree,sched)
-
-# set staging plan and visualize
-for (id, tform) in staging_plan
-    node = get_node(scene_tree,id)
-    set_local_transform!(node,tform)
-end
-# restore correct configuration
-for node in get_nodes(scene_tree)
-    if matches_template(AssemblyNode,node)
-        for (id,tform) in assembly_components(node)
-            set_local_transform!(get_node(scene_tree,id),tform)
-        end 
-    end
-end
+@assert validate_schedule_transform_tree(sched;post_staging=true)
 
 ## Visualize assembly
 color_map = construct_color_map(model_spec,id_map)
@@ -97,12 +84,20 @@ for node in get_nodes(scene_tree)
 end
 
 # set staging plan and visualize
-for (id, tform) in staging_plan
-    node = get_node(scene_tree,id)
-    set_local_transform!(node,tform)
+# for (id, tform) in staging_plan
+#     node = get_node(scene_tree,id)
+#     set_local_transform!(node,tform)
+# end
+for n in get_nodes(sched)
+    if matches_template(LiftIntoPlace,n)
+        scene_node = get_node(scene_tree,node_id(entity(n)))
+        set_local_transform!(scene_node,local_transform(start_config(n)))
+    end
 end
+# restore correct configuration
+HG.jump_to_final_configuration!(scene_tree)
+# update visualizer
 update_visualizer!(scene_tree,vis_nodes)
-render(vis)
 # Visualize construction
 for v in topological_sort_by_dfs(sched)
     node = get_node(sched,v)

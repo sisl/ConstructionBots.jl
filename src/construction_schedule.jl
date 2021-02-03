@@ -332,7 +332,8 @@ function populate_schedule_build_step!(sched,parent::AssemblyComplete,cb,step_no
         # l = add_node!(sched,    LiftIntoPlace(cargo)) 
         l = add_node!(sched,    LiftIntoPlace(cargo,TransformNode(),TransformNode())) #######
         set_parent!(goal_config(l),start_config(parent))
-        set_parent!(start_config(l),goal_config(l))
+        # set_parent!(start_config(l),goal_config(l))
+        set_parent!(start_config(l),start_config(parent)) # point to parent
         add_edge!(sched,l,cb) # LiftIntoPlace => CloseBuildStep
         # DepositCargo
         # d = add_node!(sched,    DepositCargo(TransportUnitNode(cargo)))
@@ -438,7 +439,9 @@ Checks if sched and its embedded transform tree are valid.
     connected in the embedded transform tree
 
 """
-function validate_schedule_transform_tree(sched)
+function validate_schedule_transform_tree(sched;
+    post_staging=false
+    )
     try
         @assert GraphUtils.validate_graph(sched)
         for n in get_nodes(sched)
@@ -455,9 +458,24 @@ function validate_schedule_transform_tree(sched)
                     child = get_node(sched,v)
                     @assert matches_template(DepositCargo,child)
                     assert_transform_tree_ancestor(goal_config(child),start_config(assembly_complete))
+                    for vp in outneighbors(sched,v)
+                        lift_node = get_node(sched,vp)
+                        @assert matches_template(LiftIntoPlace,lift_node)
+                        @assert GraphUtils.has_child(
+                            goal_config(assembly_complete),start_config(lift_node))
+                        @assert GraphUtils.has_child(
+                            goal_config(assembly_complete),goal_config(lift_node))
+                        if post_staging
+                            # Show that local transforms are not far off
+                            @assert all(isapprox.(
+                                local_transform(goal_config(lift_node)).translation,
+                                child_transform(assembly,node_id(entity(lift_node))).translation
+                                ))
+                        end
+                    end
                 end
             elseif matches_template(LiftIntoPlace,n)
-                @assert GraphUtils.has_child(goal_config(n),start_config(n))
+                # @assert GraphUtils.has_child(goal_config(n),start_config(n))
             end
         end
     catch e

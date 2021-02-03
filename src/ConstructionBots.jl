@@ -488,10 +488,6 @@ end
 include("construction_schedule.jl")
 include("utils.jl")
 
-struct StagingConfig{ID} end
-struct StartConfig{ID} end
-struct FinalConfig{ID} end
-
 """
     generate_staging_plan(scene_tree,params)
 
@@ -529,6 +525,8 @@ function generate_staging_plan!(scene_tree,sched;
             bounding_radii[node_id(entity(node_val(node)))] = 0.0
         elseif matches_template(OpenBuildStep,node)
             # work updward through build steps
+            # Set the staging config of each part as the start_config of its
+            # LiftIntoPlace node.
             process_schedule_build_step!(
                 node,
                 sched,
@@ -537,10 +535,11 @@ function generate_staging_plan!(scene_tree,sched;
                 bounding_radii;
                 robot_radius=robot_radius,
             )
-        elseif matches_template(LiftIntoPlace,node)
+        # elseif matches_template(LiftIntoPlace,node)
             # Add staging config as starting config for LiftIntoPlace
-            set_local_transform!(start_config(node),
-                staging_configs[node_id(entity(node))])
+            # tform = staging_configs[node_id(entity(node))]
+            # @info "Setting transform of $(node_id(node)) to $(tform)"
+            # set_local_transform!(start_config(node),tform)
         end
     end
     staging_configs
@@ -557,6 +556,7 @@ of assembly as more parts are added to it.
 Updates:
 - `staging_configs`
 - `bounding_radii`
+- the relevant `LiftIntoPlace` nodes (start_config and goal_config transforms)
 """
 function process_schedule_build_step!(node,sched,scene_tree,staging_configs,bounding_radii;
         robot_radius=0.0,
@@ -586,7 +586,7 @@ function process_schedule_build_step!(node,sched,scene_tree,staging_configs,boun
         robot_radius,
         )
     # Compute staging config transforms (relative to parent assembly)
-    for (i,(θ,r,(part_id,_))) in enumerate(
+    for (i,(θ,r,(part_id, goal_tform))) in enumerate(
             zip(θ_star,radii,assembly_components(open_build_step))
             )
         R = assembly_radius + r
@@ -595,7 +595,13 @@ function process_schedule_build_step!(node,sched,scene_tree,staging_configs,boun
             R*sin(θ),
             0.0)
         tform = t ∘ identity_linear_map() # AffineMap transform
-        staging_configs[part_id] = tform # store local transform
+        staging_configs[part_id] = tform # store local transform from assembly origin
+        # set transform of lift node
+        lift_node = get_node(sched,LiftIntoPlace(get_node(scene_tree,part_id)))
+        @info "Staging config: setting START config of $(node_id(lift_node)) to $(tform)"
+        set_local_transform!(start_config(lift_node),tform)
+        @info "Staging config: setting GOAL config of $(node_id(lift_node)) to $(goal_tform)"
+        set_local_transform!(goal_config(lift_node),goal_tform)
     end
 end
 
