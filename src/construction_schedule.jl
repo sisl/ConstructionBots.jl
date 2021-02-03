@@ -530,11 +530,13 @@ function generate_staging_plan!(scene_tree,sched;
     start_configs   = TransformDict{AbstractID}()
 
     # store growing bounding circle of each assembly
+    bounding_circles = Dict{AssemblyID,Ball2}() 
     bounding_radii = Dict{AssemblyID,Float64}() 
     staging_radii = Dict{AssemblyID,Float64}() # store radius of staging area for each assembly
     for v in topological_sort_by_dfs(sched)
         node = get_node(sched,v)
         if matches_template(AssemblyStart,node)
+            # bounding_circles[node_id(entity(node_val(node)))] = nothing
             bounding_radii[node_id(entity(node_val(node)))] = 0.0
             staging_radii[node_id(entity(node_val(node)))] = 0.0
         elseif matches_template(OpenBuildStep,node)
@@ -546,6 +548,7 @@ function generate_staging_plan!(scene_tree,sched;
                 sched,
                 scene_tree,
                 bounding_radii,
+                bounding_circles,
                 staging_radii,
                 ;
                 robot_radius=robot_radius,
@@ -644,6 +647,7 @@ Updates:
 """
 function process_schedule_build_step!(node,sched,scene_tree,
         bounding_radii,
+        bounding_circles,
         staging_radii,
         ;
         robot_radius=0.0,
@@ -651,27 +655,38 @@ function process_schedule_build_step!(node,sched,scene_tree,
     open_build_step = node_val(node)
     assembly = open_build_step.assembly
     # radius of assembly at current stage
-    assembly_radius = bounding_radii[node_id(assembly)]
+    bounding_circle = get!(bounding_circles, node_id(assembly),
+        Ball2(zeros(SVector{2,Float64}),0.0)
+        )
+    assembly_radius = bounding_circle.radius
+    # assembly_radius = bounding_radii[node_id(assembly)]
     # ctr = SVector{3,Float64}(0.0,0.0,0.0)
     # optimize staging locations
     θ_des = Vector{Float64}()
     radii = Vector{Float64}()
     part_ids = sort(collect(keys(assembly_components(open_build_step))))
     tforms = map(id->assembly_components(open_build_step)[id],part_ids)
+    geoms = Vector{Ball2}([bounding_circle])
     for (part_id,tform) in zip(part_ids,tforms)
         part = get_node(scene_tree,part_id)
-        d = HG.project_to_2d(tform.translation)
+        geom = HG.project_to_2d(tform(get_base_geom(part,HypersphereKey())))
+        push!(geoms,geom)
+        d = geom.center - bounding_circle.center
+        r = geom.radius
         push!(θ_des, atan(d[2],d[1]))
-        r = get_base_geom(part,HypersphereKey()).radius
         push!(radii, r)
         # update bounding radius for next stage
-        bounding_radii[node_id(assembly)] = max(
-            bounding_radii[node_id(assembly)],
-            norm(d) + r)
+        # bounding_radii[node_id(assembly)] = max(
+        #     bounding_radii[node_id(assembly)],
+        #     norm(d) + r)
         # Set goal config of LiftIntoPlace node
         lift_node = get_node(sched,LiftIntoPlace(get_node(scene_tree,part_id)))
         @info "Staging config: setting GOAL config of $(node_id(lift_node)) to $(tform)"
         set_local_transform!(goal_config(lift_node),tform)
+    end
+    if !isempty(geoms)
+        new_bounding_circle = overapproximate(geoms,Ball2{Float64,SVector{2,Float64}})
+        bounding_circles[node_id(assembly)] = new_bounding_circle
     end
     # optimize placement and increase assembly_radius if necessary
     θ_star, assembly_radius = solve_ring_placement_problem(
@@ -684,8 +699,8 @@ function process_schedule_build_step!(node,sched,scene_tree,
     for (i,(θ,r,part_id)) in enumerate(zip(θ_star,radii,part_ids))
         R = assembly_radius + r
         t = CoordinateTransformations.Translation(
-            R*cos(θ),
-            R*sin(θ),
+            R*cos(θ) + bounding_circle.center[1],
+            R*sin(θ) + bounding_circle.center[2],
             0.0)
         tform = t ∘ identity_linear_map() # AffineMap transform
         # set transform of lift node
