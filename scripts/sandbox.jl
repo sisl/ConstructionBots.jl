@@ -38,20 +38,22 @@ scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
 # raise assembly so that it is above the x-y plane
 # set_local_transform!(scene_tree,root,identity_linear_map() ∘ CoordinateTransformations.Translation(0.0,0.0,0.5))
 # capture_child!(scene_tree,AssemblyID(7),AssemblyID(12))
-print(scene_tree,v->"$(summary(node_id(v))) : $(id_map[node_id(v)])","\t")
-display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned)
-
 root = get_node(scene_tree,collect(get_all_root_nodes(scene_tree))[1])
 validate_tree(HierarchicalGeometry.get_transform_node(root))
 validate_embedded_tree(scene_tree,v->HierarchicalGeometry.get_transform_node(get_node(scene_tree,v)))
 @assert(length(get_all_root_nodes(scene_tree)) == 1) 
+# visualize
+print(scene_tree,v->"$(summary(node_id(v))) : $(id_map[node_id(v)])","\t")
+display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned)
+
 
 ## Construct Partial Schedule
 sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
-GraphUtils.validate_graph(sched)
-display_graph(sched,scale=1,enforce_visited=true)
+# Check if schedule graph and embedded transform tree are valid
+@assert validate_schedule_transform_tree(sched)
 # sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,100)
 # display_graph(sched2,scale=1,enforce_visited=true)
+display_graph(sched,scale=1,enforce_visited=true)
 
 ## Compute overapproximated geometry
 HG.compute_approximate_geometries!(scene_tree,HypersphereKey())

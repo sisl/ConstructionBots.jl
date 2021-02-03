@@ -402,8 +402,6 @@ function construct_partial_construction_schedule(
         scene_tree,
         id_map=build_id_map(mpd_model,model_spec)
     )
-    # copy the scene tree to initialize the "start" scene tree
-    # base_scene_tree = deepcopy(scene_tree)
     sched = NGraph{DiGraph,ConstructionPredicate,AbstractID}()
     parent_map = backup_descendants(model_spec,n->matches_template(SubModelPlan,n))
     # Add assemblies first
@@ -413,7 +411,7 @@ function construct_partial_construction_schedule(
             assembly = get_node(scene_tree,id_map[node_id(node)])
             # AssemblyComplete
             a = add_node!(sched,AssemblyComplete(assembly,TransformNode())) ###############
-            if is_terminal_node(scene_tree,assembly)
+            if is_root_node(scene_tree,assembly)
                 # ProjectComplete
                 p = add_node!(sched,ProjectComplete())
                 add_edge!(sched,a,p)
@@ -423,6 +421,55 @@ function construct_partial_construction_schedule(
         end
     end
     sched
+end
+
+export validate_schedule_transform_tree
+
+function assert_transform_tree_ancestor(a,b)
+    @assert GraphUtils.has_ancestor(a,b) "a should have ancestor b, for a = $(a), b = $(b)"
+end
+
+"""
+    validate_schedule_transform_tree(sched)
+
+Checks if sched and its embedded transform tree are valid.
+- The graph itself should be valid
+- All chains AssemblyComplete ... LiftIntoPlace -> DepositCargo should be 
+    connected in the embedded transform tree
+
+"""
+function validate_schedule_transform_tree(sched)
+    try
+        @assert GraphUtils.validate_graph(sched)
+        for n in get_nodes(sched)
+            if matches_template(AssemblyComplete,n)
+                @assert validate_tree(goal_config(n)) "Subtree invalid for $(n)"
+            end
+        end
+        for n in get_nodes(sched)
+            if matches_template(OpenBuildStep,n)
+                open_build_step = node_val(n)
+                assembly = open_build_step.assembly
+                assembly_complete = get_node(sched,AssemblyComplete(assembly))
+                for v in outneighbors(sched,n)
+                    child = get_node(sched,v)
+                    @assert matches_template(DepositCargo,child)
+                    assert_transform_tree_ancestor(goal_config(child),start_config(assembly_complete))
+                end
+            elseif matches_template(LiftIntoPlace,n)
+                @assert GraphUtils.has_child(goal_config(n),start_config(n))
+            end
+        end
+    catch e
+        if isa(e,AssertionError)
+            bt = catch_backtrace()
+            showerror(stderr,e,bt)
+            return false
+        else
+            rethrow(e)
+        end
+    end
+    return true
 end
 
 """
