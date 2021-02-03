@@ -57,6 +57,7 @@ display_graph(sched,scale=1,enforce_visited=true)
 
 ## Compute overapproximated geometry
 HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
+HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
 
 ## Generate staging plan
 staging_plan = ConstructionBots.generate_staging_plan!(scene_tree,sched)
@@ -73,6 +74,7 @@ vis_nodes = populate_visualizer!(scene_tree,vis;
 
 # Visualize bounding spheres
 spheres = vis[:spheres]
+rects   = vis[:rects]
 for node in get_nodes(scene_tree)
     if isa(node,Union{ObjectNode,AssemblyNode})
         c = get_cached_geom(node,HypersphereKey())
@@ -80,8 +82,16 @@ for node in get_nodes(scene_tree)
             GeometryBasics.HyperSphere(Point3(c.center...),c.radius),
             # MeshPhongMaterial(color=RGBA{Float32}(1, 0, 0, 0.5)))
             MeshPhongMaterial(color=RGBA{Float32}(0, 1, 0, 0.3),wireframe=true))
+        # r = get_base_geom(node,HyperrectangleKey())
+        r = get_cached_geom(node,HyperrectangleKey())
+        setobject!(rects[string(node_id(node))],
+            GeometryBasics.HyperRectangle(Vec((r.center-r.radius)...),2*Vec(r.radius...)),
+            # MeshPhongMaterial(color=RGBA{Float32}(1, 0, 0, 0.5)))
+            MeshPhongMaterial(color=RGBA{Float32}(1, 0, 0, 0.3),wireframe=true))
+        # settransform!(rects[string(node_id(node))],global_transform(node))
     end
 end
+
 
 # set staging plan and visualize
 for n in get_nodes(sched)

@@ -553,6 +553,31 @@ function generate_staging_plan!(scene_tree,sched;
         end
     end
     # Update assembly start points so that none of the staging regions overlap
+    select_assembly_start_configs!(sched,scene_tree,staging_radii;
+        robot_radius=robot_radius,
+    )
+    # TODO store a TransformNode in ProjectComplete() (or in the schedule itself,
+    # once there is a dedicated ConstructionSchedule type) so that an entire 
+    # schedule can be moved anywhere. All would-be root TransormNodes will have
+    # this root node as their parent, regardless of the edge structure of the 
+    # schedule graph
+    return sched
+end
+
+"""
+    select_assembly_start_configs!(sched,scene_tree,staging_radii;
+        robot_radius=0.0)
+
+Select the start configs (i.e., the build location) for each assembly. The 
+location is selected by minimizing distance to the assembly's staging location 
+while ensuring that no child's staging area overlaps with its parent's staging 
+area. Uses the same ring optimization approach as for selectig staging 
+locations.
+"""
+function select_assembly_start_configs!(sched,scene_tree,staging_radii;
+        robot_radius=0.0,
+    )
+    # Update assembly start points so that none of the staging regions overlap
     for v in reverse(topological_sort_by_dfs(scene_tree))
         node = get_node(scene_tree,v)
         if matches_template(AssemblyNode,node)
@@ -601,12 +626,7 @@ function generate_staging_plan!(scene_tree,sched;
             end
         end
     end
-    # TODO store a TransformNode in ProjectComplete() (or in the schedule itself,
-    # once there is a dedicated ConstructionSchedule type) so that an entire 
-    # schedule can be moved anywhere. All would-be root TransormNodes will have
-    # this root node as their parent, regardless of the edge structure of the 
-    # schedule graph
-    return sched
+    sched
 end
 
 """
