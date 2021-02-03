@@ -60,7 +60,7 @@ HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
 HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
 
 ## Generate staging plan
-staging_plan = ConstructionBots.generate_staging_plan!(scene_tree,sched)
+staging_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched)
 @assert validate_schedule_transform_tree(sched;post_staging=true)
 
 ## Visualize assembly
@@ -75,6 +75,16 @@ sphere_nodes = show_geometry_layer!(scene_tree,vis_nodes,HypersphereKey())
 rect_nodes = show_geometry_layer!(scene_tree,vis_nodes,HyperrectangleKey();
     color=RGBA{Float32}(1, 0, 0, 0.3),
 )
+staging_nodes = Dict{AbstractID,Any}()
+for (id,geom) in staging_circles
+    node = get_node(scene_tree,id)
+    sphere = Ball2([geom.center..., 0.0],geom.radius)
+    setobject!(vis_nodes[id]["staging_circle"],
+        convert_to_renderable(sphere),
+        MeshPhongMaterial(wireframe=true),
+        )
+    staging_nodes[id] = vis_nodes[id]["staging_circle"]
+end
 setvisible!(sphere_nodes,true)
 setvisible!(rect_nodes,false)
 
