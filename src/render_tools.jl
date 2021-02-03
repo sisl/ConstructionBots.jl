@@ -79,6 +79,31 @@ function populate_visualizer!(scene_tree,vis;
     vis_nodes
 end
 
+convert_to_renderable(geom::Ball2) = GeometryBasics.Sphere(geom)
+convert_to_renderable(geom::Hyperrectangle) = GeometryBasics.HyperRectangle(geom)
+
+function show_geometry_layer!(scene_tree,vis_nodes,key=HypersphereKey();
+        color=RGBA{Float32}(0, 1, 0, 0.3),
+        wireframe=true,
+        material=MeshPhongMaterial(color=color,wireframe=wireframe),
+    )
+    geom_nodes = Dict{AbstractID,Any}()
+    for (id,vis_node) in vis_nodes
+        node = get_node(scene_tree,id)
+        geom = get_base_geom(node,key)
+        node_name = string(key)
+        setobject!(vis_node[node_name],convert_to_renderable(geom),material)
+        geom_nodes[id] = vis_node[node_name]
+    end
+    geom_nodes
+end
+
+function MeshCat.setvisible!(vis_nodes::Dict{AbstractID,Any},val)
+    for (k,v) in vis_nodes
+        setvisible!(v,val)
+    end
+end
+
 """
     update_visualizer!(scene_tree,vis_nodes)
 

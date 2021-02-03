@@ -53,7 +53,7 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 @assert validate_schedule_transform_tree(sched)
 # sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,400)
 # display_graph(sched2,scale=1,enforce_visited=true)
-display_graph(sched,scale=1,enforce_visited=true)
+# display_graph(sched,scale=1,enforce_visited=true)
 
 ## Compute overapproximated geometry
 HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
@@ -71,27 +71,14 @@ delete!(vis)
 vis_nodes = populate_visualizer!(scene_tree,vis;
     color_map=color_map,
     material_type=MeshPhongMaterial)
+sphere_nodes = show_geometry_layer!(scene_tree,vis_nodes,HypersphereKey())
+rect_nodes = show_geometry_layer!(scene_tree,vis_nodes,HyperrectangleKey();
+    color=RGBA{Float32}(1, 0, 0, 0.3),
+)
+setvisible!(sphere_nodes,true)
+setvisible!(rect_nodes,false)
 
 # Visualize bounding spheres
-spheres = vis[:spheres]
-rects   = vis[:rects]
-for node in get_nodes(scene_tree)
-    if isa(node,Union{ObjectNode,AssemblyNode})
-        c = get_cached_geom(node,HypersphereKey())
-        setobject!(spheres[string(node_id(node))],
-            GeometryBasics.HyperSphere(Point3(c.center...),c.radius),
-            # MeshPhongMaterial(color=RGBA{Float32}(1, 0, 0, 0.5)))
-            MeshPhongMaterial(color=RGBA{Float32}(0, 1, 0, 0.3),wireframe=true))
-        # r = get_base_geom(node,HyperrectangleKey())
-        r = get_cached_geom(node,HyperrectangleKey())
-        setobject!(rects[string(node_id(node))],
-            GeometryBasics.HyperRectangle(Vec((r.center-r.radius)...),2*Vec(r.radius...)),
-            # MeshPhongMaterial(color=RGBA{Float32}(1, 0, 0, 0.5)))
-            MeshPhongMaterial(color=RGBA{Float32}(1, 0, 0, 0.3),wireframe=true))
-        # settransform!(rects[string(node_id(node))],global_transform(node))
-    end
-end
-
 
 # set staging plan and visualize
 for n in get_nodes(sched)
@@ -131,53 +118,6 @@ for v in topological_sort_by_dfs(sched)
         end
     end
 end
-
-
-n = get_node(scene_tree,1)
-add_child_approximation!(n,HierarchicalGeometry.PolyhedronKey());
-add_child_approximation!(n,HierarchicalGeometry.HypersphereKey(),HierarchicalGeometry.PolyhedronKey())
-add_child_approximation!(n,HierarchicalGeometry.HyperrectangleKey(),HierarchicalGeometry.PolyhedronKey())
-
-for v in LightGraphs.vertices(n.geom_hierarchy)
-    get_cached_geom(n,get_vtx_id(n.geom_hierarchy,v))
-end
-
-# # TODO Populate geometry hierarchies
-# g = GeometryHierarchy()
-# construct_geometry_tree!(g,geom)
-
-# ConstructionBots.update_build_step_parents!(model_spec)
-# model_graph = construct_assembly_graph(model)
-# model_tree = convert(GraphUtils.CustomNTree{GraphUtils._node_type(model_graph),String},model_graph)
-# # @assert maximum(map(v->indegree(model_tree,v),vertices(model_tree))) == 1
-# print(model_tree,v->summary(v.val),"\t")
-
-
-# T_base = CoordinateTransformations.Translation(0.0,0.0,0.0) ∘ CoordinateTransformations.LinearMap(LDrawParser.LDRAW_BASE_FRAME)
-# SCALE = 0.01
-# LDrawParser.change_coordinate_system!(model,T_base,SCALE)
-
-# m = model.models["20009 - AT-TE Walker.mpd"]
-# id_generator = DuplicateIDGenerator{String}()
-# for step in m.steps
-#     for ref in step.lines
-#         global vis_root
-#         @show ref
-#         if !LDrawParser.has_part(model,ref.file)
-#             @warn "$ref not found in part"
-#             continue
-#         end
-#         p = model.parts[ref.file]
-#         name = id_generator(p.name)
-#         vec = LDrawParser.extract_surface_geometry(p)
-#         M = GeometryBasics.Mesh(coordinates(vec),faces(vec))
-#         setobject!(vis_root[name], M)
-#         tr = LDrawParser.build_transform(ref)
-#         settransform!(vis_root[name], tr)
-#     end
-# end
-# delete!(vis)
-
 
 # # VISUALIZE ROBOT PLACEMENT AROUND PARTS
 #

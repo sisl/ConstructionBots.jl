@@ -652,6 +652,7 @@ function process_schedule_build_step!(node,sched,scene_tree,
     assembly = open_build_step.assembly
     # radius of assembly at current stage
     assembly_radius = bounding_radii[node_id(assembly)]
+    # ctr = SVector{3,Float64}(0.0,0.0,0.0)
     # optimize staging locations
     θ_des = Vector{Float64}()
     radii = Vector{Float64}()
