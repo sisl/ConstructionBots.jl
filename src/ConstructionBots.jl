@@ -484,23 +484,7 @@ function convert_to_scene_tree(assembly_tree;set_children::Bool=true)
     return scene_tree
 end
 
-"""
-    populate_assembly_base_geometry!(assembly,scene_tree)
-
-Load all base geometry from `AssemblyNode`'s children into the `BaseGeomKey()` 
-node of `AssemblyNode`'s geometry hierarchy.
-"""
-function populate_assembly_base_geometry!(assembly,scene_tree)
-end
-
-
 include("construction_schedule.jl")
 include("utils.jl")
-
-get_default_robot_shape(height,radius,scale=1.0) = GeometryBasics.Cylinder(
-    Point{3,Float64}(0.0,0.0,0.0),
-    Point{3,Float64}(0.0,0.0,height*scale),
-    radius*scale
-)
 
 end

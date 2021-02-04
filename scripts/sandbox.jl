@@ -18,6 +18,7 @@ global_logger(ConsoleLogger(stderr, Logging.Info))
 Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
 
 reset_all_id_counters!()
+reset_all_invalid_id_counters!()
 
 # BASE_ROBOT_HEIGHT   = 0.25
 # BASE_ROBOT_RADIUS   = 0.5
@@ -55,11 +56,13 @@ validate_embedded_tree(scene_tree,v->HierarchicalGeometry.get_transform_node(get
 # visualize
 display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned)
 
-# Add robots
-robot_geom = GeometryBasics.Cylinder(Point(0.0,0.0,0.0),Point(0.0,0.0,0.25),0.5)
-add_node!(scene_tree, RobotNode(RobotID(1),GeomNode(c)))
+# Add temporary robots
+ConstructionBots.add_temporary_invalid_robots!(scene_tree;with_edges=true)
+# ConstructionBots.remove_temporary_invalid_robots!(scene_tree)
+display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned)
 
 ## Compute overapproximated geometry
+# remove_geometry!(scene_tree,HypersphereKey())
 HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
 @assert all(map(node->has_vertex(node.geom_hierarchy,HypersphereKey()), get_nodes(scene_tree)))
 HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
@@ -80,6 +83,8 @@ staging_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched)
 # Select initial Object locations
 vtxs = ConstructionBots.construct_vtx_array(;obstacles=collect(values(staging_circles)))
 ConstructionBots.select_initial_object_grid_locations!(sched,vtxs)
+
+# Make Assignments
 
 ## Visualize assembly
 color_map = construct_color_map(model_spec,id_map)

@@ -942,6 +942,67 @@ function configure_transport_unit(cargo,pts;
 end
 
 """
+    add_temporary_invalid_robots!(scene_tree,transport_unit;
+        geom=default_robot_geom(), with_edges=false)
+
+Add invalid robots corresponding to the robots that would be part of 
+`transport_unit`.
+"""
+function add_temporary_invalid_robots!(scene_tree,transport_unit;
+    geom=HG.default_robot_geom(),
+    with_edges=false,
+    )
+    for (id,tform) in robot_team(transport_unit)
+        if !has_vertex(scene_tree,id)
+            robot_node = add_node!(scene_tree,RobotNode(id,GeomNode(geom)))
+        else
+            robot_node = get_node(scene_tree,id)
+        end
+        if with_edges
+            set_child!(scene_tree,transport_unit,robot_node)
+        end
+    end
+    return scene_tree
+end
+
+"""
+    add_temporary_invalid_robots!(scene_tree;kwargs...)
+
+Call `add_temporary_invalid_robots!(scene_tree, n;kwargs...)` for all 
+`n::TransportUnitNode`.
+"""
+function add_temporary_invalid_robots!(scene_tree;kwargs...)
+    for n in get_nodes(scene_tree)
+        if matches_template(TransportUnitNode,n)
+            add_temporary_invalid_robots!(scene_tree,n;kwargs...)
+        end
+    end
+end
+
+"""
+    remove_temporary_invalid_robots!(scene_tree)
+    remove_temporary_invalid_robots!(scene_tree,transport_unit)
+
+Remove all invalid robots (limited optionally to those associated with 
+`transport_unit::TransportUnitNode`) from scene_tree.
+"""
+function remove_temporary_invalid_robots!(scene_tree,transport_unit)
+    for (id,_) in robot_team(transport_unit)
+        if !GraphUtils.valid_id(id)
+            rem_node!(scene_tree,id)
+        end
+    end
+    return scene_tree
+end
+function remove_temporary_invalid_robots!(scene_tree)
+    ids = filter(id->isa(id,BotID) && !GraphUtils.valid_id(id),get_vtx_ids(scene_tree))
+    for id in ids
+        rem_node!(scene_tree,id)
+    end
+    scene_tree
+end
+
+"""
     select_optimal_carrying_configuration(pts::AbstractVector)
 
 Return an AffineMap representing a rotation that minimizes the z-dimension of
