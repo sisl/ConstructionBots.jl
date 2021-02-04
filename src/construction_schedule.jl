@@ -203,11 +203,10 @@ cargo_node_type(n::ConstructionPredicate) = cargo_node_type(entity(n))
 
 struct ProjectComplete <: ConstructionPredicate 
     project_id::Int
+    config::TransformNode
 end
-function ProjectComplete()
-    id = get_id(get_unique_id(TemplatedID{ProjectComplete}))
-    ProjectComplete(id)
-end
+ProjectComplete(id) = ProjectComplete(id,TransformNode())
+ProjectComplete() = ProjectComplete(get_id(get_unique_id(TemplatedID{ProjectComplete})))
 GraphUtils.node_id(n::ProjectComplete) = TemplatedID{ProjectComplete}(n.project_id)
 
 GraphUtils.required_predecessors(::ConstructionPredicate)   = Dict()
@@ -327,6 +326,7 @@ function populate_schedule_build_step!(sched,parent::AssemblyComplete,cb,step_no
     ob = add_node!(sched,OpenBuildStep(node_val(cb)))
     for child_id in get_build_step_components(model_spec,id_map,step_node)
         cargo = get_node(scene_tree,child_id)
+        transport_unit = get_node(scene_tree,node_id(TransportUnitNode(cargo)))
         @assert isa(cargo,Union{AssemblyNode,ObjectNode})
         # LiftIntoPlace
         l = add_node!(sched,    LiftIntoPlace(cargo,TransformNode(),TransformNode())) #######
@@ -402,8 +402,7 @@ function construct_partial_construction_schedule(
     sched = NGraph{DiGraph,ConstructionPredicate,AbstractID}()
     parent_map = backup_descendants(model_spec,n->matches_template(SubModelPlan,n))
     # Add assemblies first
-    for v in topological_sort_by_dfs(model_spec)
-        node = get_node(model_spec,v)
+    for node in node_iterator(model_spec,topological_sort_by_dfs(model_spec))
         if matches_template(SubModelPlan,node)
             assembly = get_node(scene_tree,id_map[node_id(node)])
             # AssemblyComplete
@@ -529,8 +528,9 @@ function generate_staging_plan!(scene_tree,sched;
     bounding_circles = Dict{AbstractID,Ball2}() 
     staging_circles = Dict{AbstractID,Ball2}() 
     # staging_radii = Dict{AssemblyID,Float64}() # store radius of staging area for each assembly
-    for v in topological_sort_by_dfs(sched)
-        node = get_node(sched,v)
+    # for v in topological_sort_by_dfs(sched)
+    #     node = get_node(sched,v)
+    for node in node_iterator(sched,topological_sort_by_dfs(sched))
         if matches_template(AssemblyStart,node)
             # bounding_circles[node_id(entity(node_val(node)))] = 
             # staging_radii[node_id(entity(node_val(node)))] = 0.0
@@ -576,8 +576,9 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
         robot_radius=0.0,
     )
     # Update assembly start points so that none of the staging regions overlap
-    for v in reverse(topological_sort_by_dfs(scene_tree))
-        node = get_node(scene_tree,v)
+    # for v in reverse(topological_sort_by_dfs(scene_tree))
+    #     node = get_node(scene_tree,v)
+    for node in node_iterator(scene_tree, reverse(topological_sort_by_dfs(scene_tree)))
         if matches_template(AssemblyNode,node)
             # Apply ring solver with child assemblies (not objects), using
             assembly = node 
@@ -824,8 +825,7 @@ function select_initial_object_grid_locations!(sched,vtxs)
     nodes = Vector{ObjectNode}()
     # collect nodes by walking through the schedule, so that the objects will be
     # sorted by precedence
-    for v in filtered_topological_sort(sched,LiftIntoPlace)
-        node = get_node(sched,v)
+    for node in filtered_topological_sort(sched,LiftIntoPlace)
         cargo = entity(node)
         if matches_template(ObjectNode,cargo)
             push!(nodes,cargo)

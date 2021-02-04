@@ -47,7 +47,6 @@ function populate_visualizer!(scene_tree,vis;
     )
     vis_root = vis["root"]
     vis_nodes = Dict{AbstractID,Any}()
-    # color_dict = LDrawParser.get_color_dict()
     for v in topological_sort_by_dfs(scene_tree)
         node = get_node(scene_tree,v)
         id = node_id(node)

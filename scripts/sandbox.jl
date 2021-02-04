@@ -61,7 +61,9 @@ add_node!(scene_tree, RobotNode(RobotID(1),GeomNode(c)))
 
 ## Compute overapproximated geometry
 HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
+@assert all(map(node->has_vertex(node.geom_hierarchy,HypersphereKey()), get_nodes(scene_tree)))
 HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
+@assert all(map(node->has_vertex(node.geom_hierarchy,HyperrectangleKey()), get_nodes(scene_tree)))
 
 ## Construct Partial Schedule
 sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
