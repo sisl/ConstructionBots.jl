@@ -61,11 +61,15 @@ function populate_visualizer!(scene_tree,vis;
         # geometry
         geom = get_base_geom(node)
         if !(geom === nothing)
-            filtered_geom = filter(m->!isa(m,GeometryBasics.Line),geom)
-            M = GeometryBasics.Mesh(
-                coordinates(filtered_geom),
-                faces(filtered_geom)
+            if isa(geom,GeometryPrimitive)
+                M = geom
+            else
+                filtered_geom = filter(m->!isa(m,GeometryBasics.Line),geom)
+                M = GeometryBasics.Mesh(
+                    coordinates(filtered_geom),
+                    faces(filtered_geom)
                 )
+            end
             if !(material_type === nothing)
                 mat = material_type(wireframe=wireframe,kwargs...)
                 mat.color = get(color_map,id,mat.color)

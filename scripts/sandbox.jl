@@ -41,6 +41,7 @@ display_graph(model_spec,scale=1,enforce_visited=true)
 id_map = ConstructionBots.build_id_map(model,model_spec)
 assembly_tree = ConstructionBots.construct_assembly_tree(model,model_spec,id_map)
 scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
+print(scene_tree,v->"$(summary(node_id(v))) : $(id_map[node_id(v)])","\t")
 # Define TransportUnit configurations
 ConstructionBots.init_transport_units!(scene_tree;robot_radius = 0.5)
 # root = collect(get_all_root_nodes(scene_tree))[1]
@@ -50,10 +51,17 @@ ConstructionBots.init_transport_units!(scene_tree;robot_radius = 0.5)
 root = get_node(scene_tree,collect(get_all_root_nodes(scene_tree))[1])
 validate_tree(HierarchicalGeometry.get_transform_node(root))
 validate_embedded_tree(scene_tree,v->HierarchicalGeometry.get_transform_node(get_node(scene_tree,v)))
-@assert(length(get_all_root_nodes(scene_tree)) == 1) 
+# @assert(length(get_all_root_nodes(scene_tree)) == 1) 
 # visualize
-print(scene_tree,v->"$(summary(node_id(v))) : $(id_map[node_id(v)])","\t")
 display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned)
+
+# Add robots
+robot_geom = GeometryBasics.Cylinder(Point(0.0,0.0,0.0),Point(0.0,0.0,0.25),0.5)
+add_node!(scene_tree, RobotNode(RobotID(1),GeomNode(c)))
+
+## Compute overapproximated geometry
+HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
+HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
 
 ## Construct Partial Schedule
 sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
@@ -62,10 +70,6 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,100)
 display_graph(sched2,scale=1,enforce_visited=true)
 # display_graph(sched,scale=1,enforce_visited=true)
-
-## Compute overapproximated geometry
-HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
-HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
 
 ## Generate staging plan
 staging_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched)
