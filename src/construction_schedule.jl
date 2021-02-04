@@ -329,35 +329,31 @@ function populate_schedule_build_step!(sched,parent::AssemblyComplete,cb,step_no
         cargo = get_node(scene_tree,child_id)
         @assert isa(cargo,Union{AssemblyNode,ObjectNode})
         # LiftIntoPlace
-        # l = add_node!(sched,    LiftIntoPlace(cargo)) 
         l = add_node!(sched,    LiftIntoPlace(cargo,TransformNode(),TransformNode())) #######
         set_parent!(goal_config(l),start_config(parent))
-        # set_parent!(start_config(l),goal_config(l))
         set_parent!(start_config(l),start_config(parent)) # point to parent
         add_edge!(sched,l,cb) # LiftIntoPlace => CloseBuildStep
         # DepositCargo
-        # d = add_node!(sched,    DepositCargo(TransportUnitNode(cargo)))
         d = add_node!(sched,    DepositCargo(TransportUnitNode(cargo),TransformNode(),TransformNode()))
         set_parent!(goal_config(d),start_config(l))
         set_parent!(start_config(d),goal_config(d))
         add_edge!(sched,d,l) # DepositCargo => LiftIntoPlace
         add_edge!(sched,ob,d) # OpenBuildStep => DepositCargo
         # TransportUnitGo
-        # tgo = add_node!(sched,  TransportUnitGo(entity(node_val(d))))
         tgo = add_node!(sched,  TransportUnitGo(entity(node_val(d)),TransformNode(),TransformNode()))
         set_parent!(goal_config(tgo),start_config(d))
         add_edge!(sched,tgo,d) # TransportUnitGo => DepositCargo
         # FormTransportUnit
-        # f = add_node!(sched,    FormTransportUnit(entity(node_val(d))))
         f = add_node!(sched,    FormTransportUnit(entity(node_val(d)),TransformNode(),TransformNode()))
         set_parent!(start_config(tgo),goal_config(f))
         add_edge!(sched,f,tgo) # FormTransportUnit => TransportUnitGo
         if isa(cargo,AssemblyNode) && connect_to_sub_assemblies
-            # add_edge!(sched,AssemblyComplete(cargo),f) # AssemblyComplete => FormTransportUnit 
             cargo_node = get_node(sched,AssemblyComplete(cargo))
-            add_edge!(sched,cargo_node,f) # AssemblyComplete => FormTransportUnit 
-            set_parent!(goal_config(f),start_config(cargo_node))
+        else
+            cargo_node = add_node!(sched,ObjectStart(cargo,TransformNode()))
         end
+        add_edge!(sched,cargo_node,f) # ObjectStart/AssemblyComplete => FormTransportUnit 
+        set_parent!(goal_config(f),start_config(cargo_node))
     end
     return ob
 end
@@ -789,4 +785,178 @@ Args:
 
 """
 function add_construction_delivery_task!(sched,)
+end
+
+
+export set_scene_tree_to_initial_condition!
+
+"""
+    set_scene_tree_to_initial_condition!(scene_tree,sched)
+
+Once the staging plan has been computed, this function moves all entities to 
+their starting locations.
+"""
+function set_scene_tree_to_initial_condition!(scene_tree,sched)
+    for n in get_nodes(sched)
+        if matches_template(LiftIntoPlace,n)
+            scene_node = get_node(scene_tree,node_id(entity(n)))
+            # if matches_template(ObjectNode,scene_node)
+            #     set_local_transform!(scene_node,local_transform(start_config(n)))
+            # end
+        elseif matches_template(AssemblyStart,n)
+            scene_node = get_node(scene_tree,node_id(entity(n)))
+            set_local_transform!(scene_node,local_transform(start_config(n)))
+        elseif matches_template(ObjectStart,n)
+            scene_node = get_node(scene_tree,node_id(entity(n)))
+            set_local_transform!(scene_node,local_transform(start_config(n)))
+        end
+    end
+    scene_tree
+end
+
+"""
+    select_initial_object_grid_locations!(sched,scene_tree,vtxs)
+
+Cycle through `vtxs`, placing an object at each vertex until all objects have 
+been placed.
+"""
+function select_initial_object_grid_locations!(sched,vtxs)
+    nodes = Vector{ObjectNode}()
+    # collect nodes by walking through the schedule, so that the objects will be
+    # sorted by precedence
+    for v in filtered_topological_sort(sched,LiftIntoPlace)
+        node = get_node(sched,v)
+        cargo = entity(node)
+        if matches_template(ObjectNode,cargo)
+            push!(nodes,cargo)
+        end
+    end
+    # nodes = sort(filter(node->matches_template(ObjectNode,node),
+    #    get_nodes(scene_tree)))
+    tforms = map(
+        v->CoordinateTransformations.Translation(v[1],v[2],0.0) ∘ identity_linear_map(),
+        vtxs
+        )
+    for (node,tform) in zip(nodes,Base.Iterators.cycle(tforms))
+        start_node = get_node(sched,ObjectStart(node))
+        set_local_transform!(start_config(start_node),tform)
+    end
+    sched
+end
+
+"""
+    construct_vtx_array(;
+        origin=SVector(0.0,0.0),
+        spacing=(1.0,1.0),
+        ranges=(-10:10,-10:10),
+        obstacles=nothing,
+        bounds=nothing,
+        )
+
+Construct a regular array of vertices over `ranges`, beginning at `origin` and 
+spaced by `spacing`, removing all vertices that fall within `obstacles` or 
+outside of `bounds`.
+"""
+function construct_vtx_array(;
+    origin=SVector(0.0,0.0),
+    spacing=(1.0,1.0),
+    ranges=(-10:10,-10:10),
+    obstacles=nothing,
+    bounds=nothing
+    )
+    pts = Vector{SVector{2,Float64}}()
+    for i in ranges[1]
+        for j in ranges[2]
+            pt = origin + SVector(spacing[1]*i, spacing[2]*j)
+            legal = true
+            if !(bounds === nothing)
+                for ob in bounds
+                    if !(pt in ob)
+                        legal = false
+                        break
+                    end
+                end
+            end
+            if !(obstacles === nothing)
+                for ob in obstacles
+                    if pt in ob
+                        legal = false
+                        break
+                    end
+                end
+            end
+            if legal
+                push!(pts,pt)
+            end
+        end
+    end
+    return pts
+end
+
+
+"""
+    init_transport_units(sched,robot_shape)
+"""
+function init_transport_units!(scene_tree;
+        kwargs...
+    )
+    cvx_hulls = HG.compute_hierarchical_2d_convex_hulls(scene_tree)
+    for (id,pts) in cvx_hulls
+        isempty(pts) ? continue : nothing
+        cargo = get_node(scene_tree,id)
+        transport_unit = configure_transport_unit(cargo,pts;kwargs...)
+        if has_vertex(scene_tree,node_id(transport_unit))
+            @warn "scene tree already has node $(node_id(transport_unit))"
+        else
+            add_node!(scene_tree,transport_unit)
+        end
+    end
+    scene_tree
+end
+
+"""
+    configure_transport_unit(cargo,pts;
+
+Define the transport unit for cargo. `pts` are the eligible support points
+"""
+function configure_transport_unit(cargo,pts;
+        robot_radius = 0.5,
+        robot_height = 0.25,
+        optimize_carry_config = false,
+    )
+    # initialize transport node with cargo id
+    cargo_tform = CT.Translation(0.0, 0.0, robot_height) ∘ identity_linear_map()
+    transport_unit = TransportUnitNode(node_id(cargo) => cargo_tform)
+    # project back to 3D and convert to SVector
+    # geom = map(SVector,map(HG.project_to_3d,pts))
+    # node = get_node(scene_tree,id)
+    # rect = get_base_geom(node,HyperrectangleKey())
+    # height = rect.radius[3]
+    # push!(geom, SVector(geom[1][1],geom[1][2],height))
+    support_pts = HG.select_support_locations(VPolygon(pts),robot_radius)
+    for pt in support_pts
+        tform = CT.Translation(pt[1],pt[2],0.0,) ∘ identity_linear_map()
+        add_robot!(transport_unit,tform)
+    end
+    transport_unit
+end
+
+"""
+    select_optimal_carrying_configuration(pts::AbstractVector)
+
+Return an AffineMap representing a rotation that minimizes the z-dimension of
+the transformed points.
+"""
+function select_optimal_carrying_configuration(pts::AbstractVector)
+    mat = hcat(convert.(Vector,pts)...)
+    U, = svd(mat)
+    if !isapprox(det(U), 1.0)
+        @warn "det(U) = $(det(U)). Flipping last column"
+        U = diagm([1.0,1.0,-1.0]) * U
+        @assert isapprox(det(U),1.0)
+    end
+    return CoordinateTransformations.LinearMap(U) ∘ identity_linear_map()
+end
+function select_optimal_carrying_configuration(n::ObjectNode)
+    select_optimal_carrying_configuration(coordinates(get_base_geom(n)))
 end

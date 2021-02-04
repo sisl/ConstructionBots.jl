@@ -116,6 +116,44 @@ function update_visualizer!(scene_tree,vis_nodes,nodes=get_nodes(scene_tree))
     return vis_nodes
 end
 
+function visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;
+    dt=0.2,
+    )
+    for v in topological_sort_by_dfs(sched)
+        update = false 
+        node = get_node(sched,v)
+        if matches_template(RobotStart,node)
+        elseif matches_template(ObjectStart,node)
+            part_node = get_node(scene_tree,node_id(entity(node)))
+            set_local_transform!(part_node,local_transform(goal_config(node)))
+            update = true
+        elseif matches_template(RobotGo,node)
+        elseif matches_template(FormTransportUnit,node)
+        elseif matches_template(TransportUnitGo,node)
+        elseif matches_template(DepositCargo,node)
+            transport_unit = entity(node)
+            part_node = get_node(scene_tree,cargo_id(transport_unit))
+            set_local_transform!(part_node,local_transform(goal_config(node)))
+            update = true
+        elseif matches_template(LiftIntoPlace,node)
+            part_node = get_node(scene_tree,node_id(entity(node)))
+            set_local_transform!(part_node,local_transform(goal_config(node)))
+            update = true
+        # elseif matches_template(CloseBuildStep,node)
+        #     open_build_step = node_val(node)
+        #     for (part_id,tform) in assembly_components(open_build_step)
+        #         part_node = get_node(scene_tree,part_id)
+        #         set_local_transform!(part_node,tform)
+        #     end
+        end
+        if update
+            update_visualizer!(scene_tree,vis_nodes,[part_node])
+            render(vis)
+            sleep(dt)
+        end
+    end
+end
+
 GraphUtils.get_id(s::String) = s
 # Rendering schedule nodes
 GraphPlottingBFS._title_string(n::RobotNode)            = "R"
