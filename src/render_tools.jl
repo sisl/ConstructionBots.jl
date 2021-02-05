@@ -119,29 +119,54 @@ function update_visualizer!(scene_tree,vis_nodes,nodes=get_nodes(scene_tree))
     return vis_nodes
 end
 
+function call_update!(scene_tree,vis_nodes,nodes,dt)
+    update_visualizer!(scene_tree,vis_nodes,nodes)
+    render(vis)
+    sleep(dt)
+end
+
 function visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;
     dt=0.2,
     )
     for v in topological_sort_by_dfs(sched)
-        update = false 
+        update = true
         node = get_node(sched,v)
-        if matches_template(RobotStart,node)
-        elseif matches_template(ObjectStart,node)
-            part_node = get_node(scene_tree,node_id(entity(node)))
-            set_local_transform!(part_node,local_transform(goal_config(node)))
-            update = true
+        update_nodes = []
+        if matches_template(ProjectComplete,node)
+        # elseif matches_template(RobotStart,node)
+        # elseif matches_template(ObjectStart,node)
+        #     part_node = get_node(scene_tree,node_id(entity(node)))
+        #     set_local_transform!(part_node,local_transform(goal_config(node)))
         elseif matches_template(RobotGo,node)
+            robot_node = entity(node)
+            @assert has_parent(robot_node,robot_node)
+            set_local_transform!(robot_node,global_transform(goal_config(node)))
+            push!(update_nodes,robot_node)
         elseif matches_template(FormTransportUnit,node)
+            transport_unit = entity(node)
+            part_node = get_node(scene_tree,cargo_id(transport_unit))
+            @assert has_parent(part_node,part_node)
+            set_local_transform!(transport_unit,global_transform(goal_config(node)))
+            set_child!(scene_tree,transport_unit,part_node)
+            @assert has_parent(part_node,transport_unit)
+            # set_local_transform!(part_node,global_transform(cargo_start_config()))
+            # call_update!(scene_tree,vis_nodes,[part_node],dt)
+            append!(update_nodes,[transport_unit,part_node])
         elseif matches_template(TransportUnitGo,node)
+            transport_unit = entity(node)
+            set_local_transform!(transport_unit,global_transform(goal_config(node)))
+            append!(update_nodes,[transport_unit])
         elseif matches_template(DepositCargo,node)
             transport_unit = entity(node)
             part_node = get_node(scene_tree,cargo_id(transport_unit))
+            disband!(scene_tree,transport_unit)
+            @assert has_parent(part_node,part_node)
             set_local_transform!(part_node,local_transform(goal_config(node)))
-            update = true
+            append!(update_nodes,[transport_unit,part_node])
         elseif matches_template(LiftIntoPlace,node)
             part_node = get_node(scene_tree,node_id(entity(node)))
             set_local_transform!(part_node,local_transform(goal_config(node)))
-            update = true
+            append!(update_nodes,[part_node])
         # elseif matches_template(CloseBuildStep,node)
         #     open_build_step = node_val(node)
         #     for (part_id,tform) in assembly_components(open_build_step)
@@ -149,10 +174,11 @@ function visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;
         #         set_local_transform!(part_node,tform)
         #     end
         end
-        if update
-            update_visualizer!(scene_tree,vis_nodes,[part_node])
-            render(vis)
-            sleep(dt)
+        if !isempty(update_nodes)
+            call_update!(scene_tree,vis_nodes,update_nodes,dt)
+            # update_visualizer!(scene_tree,vis_nodes,[part_node])
+            # render(vis)
+            # sleep(dt)
         end
     end
 end

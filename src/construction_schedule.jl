@@ -1,6 +1,10 @@
 export  
     start_config,
     goal_config,
+    cargo_start_config,
+    cargo_goal_config,
+    cargo_deployed_config,
+    cargo_loaded_config,
     entity,
     ConstructionPredicate,
     EntityConfigPredicate,
@@ -30,60 +34,59 @@ start_config(n)     = n.start_config
 goal_config(n)      = n.goal_config
 entity(n)           = n.entity
 
-for op in (:start_config,:goal_config,:entity)
+for op in (:start_config,:goal_config,:entity,
+    :cargo_start_config,:cargo_goal_config,
+    :cargo_deployed_config,:cargo_loaded_config)
     @eval begin
         $op(n::CustomNode) = $op(node_val(n))
     end
 end
 
-abstract type EntityConfigPredicate{E,T} <: ConstructionPredicate end
+abstract type EntityConfigPredicate{E} <: ConstructionPredicate end
 start_config(n::EntityConfigPredicate)   = n.config
 goal_config(n::EntityConfigPredicate)    = n.config
 
-struct RobotStart{T} <: EntityConfigPredicate{RobotNode,T}
+struct RobotStart <: EntityConfigPredicate{RobotNode}
     entity::RobotNode
-    config::T # local or global transform? Leaning toward global
+    config::TransformNode 
 end
-struct ObjectStart{T} <: EntityConfigPredicate{ObjectNode,T}
+struct ObjectStart <: EntityConfigPredicate{ObjectNode}
     entity::ObjectNode
-    config::T
+    config::TransformNode
 end
-struct AssemblyComplete{T} <: EntityConfigPredicate{AssemblyNode,T}
+struct AssemblyComplete <: EntityConfigPredicate{AssemblyNode}
     entity::AssemblyNode
-    config::T
+    config::TransformNode
 end
-struct AssemblyStart{T} <: EntityConfigPredicate{AssemblyNode,T}
+struct AssemblyStart <: EntityConfigPredicate{AssemblyNode}
     entity::AssemblyNode
-    config::T
+    config::TransformNode
 end
-
 
 """
-    abstract type EntityGo{E,S,G}
+    abstract type EntityGo{E}
 
 Encodes going from state start_config(n) to state goal_config(n).
 """
-abstract type EntityGo{E,S,G} <: ConstructionPredicate end
+abstract type EntityGo{E} <: ConstructionPredicate end
 
-struct RobotGo{S,G} <: EntityGo{RobotNode,S,G}
-    entity::RobotNode
-    start_config::S
-    goal_config::G
+struct RobotGo{R} <: EntityGo{RobotNode}
+    entity::R
+    start_config::TransformNode
+    goal_config::TransformNode
 end
 
-struct TransportUnitGo{S,G} <: EntityGo{TransportUnitNode,S,G}
+struct TransportUnitGo <: EntityGo{TransportUnitNode}
     entity::TransportUnitNode
-    start_config::S
-    goal_config::G
+    start_config::TransformNode
+    goal_config::TransformNode
 end
 
-struct LiftIntoPlace{C,S,G} <: EntityGo{C,S,G}
+struct LiftIntoPlace{C} <: EntityGo{C}
     entity::C # AssemblyNode or ObjectNode
-    start_config::S
-    goal_config::G
+    start_config::TransformNode
+    goal_config::TransformNode
 end
-# GraphUtils.node_id(n::LiftIntoPlace{C,S,G}) where {C,S,G} = TemplatedID{Tuple{LiftIntoPlace,C}}(get_id(node_id(entity(n))))
-
 
 """
     abstract type BuildPhasePredicate <: ConstructionPredicate
@@ -150,52 +153,103 @@ for T in (:OpenBuildStep,:CloseBuildStep)
     end
 end
 
-struct DepositCargo{S,G} <: ConstructionPredicate
+"""
+    FormTransportUnit <: ConstructionPredicate
+
+TransportUnit must remain motionless as the cargo moves from its start 
+configuration to its `FormTransportUnit.cargo_goal_config` configuration.
+"""
+struct FormTransportUnit <: ConstructionPredicate
     entity::TransportUnitNode
-    start_config::S # of assembly or transport unit?
-    goal_config::G
+    config::TransformNode
+    # start_config::TransformNode 
+    # goal_config::TransformNode
+    cargo_start_config::TransformNode 
+    cargo_goal_config::TransformNode # offset from config by child_transform(entity,cargo_id(entity))
 end
-struct FormTransportUnit{S,G} <: ConstructionPredicate
+
+"""
+    DepositCargo <: ConstructionPredicate
+
+TransportUnit must remain motionless as the cargo moves from its transport 
+configuration to its `LiftIntoPlace.start_config` configuration.
+"""
+struct DepositCargo <: ConstructionPredicate
     entity::TransportUnitNode
-    start_config::S
-    goal_config::G
+    config::TransformNode
+    # start_config::TransformNode 
+    # goal_config::TransformNode
+    cargo_start_config::TransformNode # offset from config by child_transform(entity,cargo_id(entity))
+    cargo_goal_config::TransformNode 
 end
+start_config(n::Union{DepositCargo,FormTransportUnit})          = n.config
+goal_config(n::Union{DepositCargo,FormTransportUnit})           = n.config
+cargo_start_config(n::Union{DepositCargo,FormTransportUnit})    = n.cargo_start_config
+cargo_goal_config(n::Union{DepositCargo,FormTransportUnit})     = n.cargo_goal_config
+cargo_loaded_config(n::DepositCargo)                            = cargo_start_config(n)
+cargo_loaded_config(n::FormTransportUnit)                       = cargo_goal_config(n)
+cargo_deployed_config(n::DepositCargo)                          = cargo_goal_config(n)
+cargo_deployed_config(n::FormTransportUnit)                     = cargo_start_config(n)
+
+for T in (:DepositCargo,:FormTransportUnit)
+    @eval begin
+        function $T(n::TransportUnitNode)
+            t = $T(n,TransformNode(),TransformNode(),TransformNode())
+            # cargo_goal -> cargo_start -> entity_config
+            set_parent!(cargo_loaded_config(t),cargo_deployed_config(t))
+            set_parent!(start_config(t),cargo_loaded_config(t))
+            # set child transform cargo_start -> entity_config
+            set_local_transform!(start_config(t),inv(child_transform(n,cargo_id(n))))
+            return t
+        end
+    end
+end
+# function DepositCargo(n::TransportUnitNode)
+#     t = DepositCargo(n,TransformNode(),TransformNode(),TransformNode())
+#     # cargo_goal -> cargo_start -> entity_config
+#     set_parent!(cargo_start_config(t),cargo_goal_config(t))
+#     set_parent!(start_config(t),cargo_start_config(t))
+#     # set child transform cargo_start -> entity_config
+#     set_local_transform!(start_config(t),inv(child_transform(n,cargo_id(n))))
+#     return t
+# end
+# function FormTransportUnit(n::TransportUnitNode)
+#     t = FormTransportUnit(n,TransformNode(),TransformNode(),TransformNode())
+#     # cargo_start -> cargo_goal -> entity_config
+#     set_parent!(cargo_goal_config(t),cargo_start_config(t))
+#     set_parent!(start_config(t),cargo_goal_config(t))
+#     # set transform of entity_config relative to parent (cargo_goal)
+#     set_local_transform!(start_config(t),inv(child_transform(n,cargo_id(n))))
+#     return t
+# end
 
 for T in (:RobotStart,:ObjectStart,:AssemblyComplete,:AssemblyStart)
     @eval begin
         $T(n::SceneNode) = $T(n,TransformNode())
         $T(n::ConstructionPredicate) = $T(entity(n),goal_config(n))
-        function $T(n::EntityConfigPredicate{A,C}) where {A,C<:TransformNode}
-            node = $T(entity(n),start_config(n))
-            # node = $T(entity(n),TransformNode())
-            # set_parent!(goal_config(node),start_config(n))
-            # node
-        end
+        # function $T(n::EntityConfigPredicate{A,C}) where {A,C<:TransformNode}
+        #     node = $T(entity(n),start_config(n))
+        #     # node = $T(entity(n),TransformNode())
+        #     # set_parent!(goal_config(node),start_config(n))
+        #     # node
+        # end
         set_start_config(n::$T,c) = $T(entity(n),c)
         set_goal_config(n::$T,c) = $T(entity(n),c)
     end
 end
-for T in (:RobotGo,:TransportUnitGo,:LiftIntoPlace)
+for T in (:RobotGo,:TransportUnitGo) #,:LiftIntoPlace)
     @eval begin
-        $T(n::SceneNode) = $T(n,TransformNode(),TransformNode())
-        function $T(n::EntityConfigPredicate{A,C},obj) where {A,C<:TransformNode}
-            node = $T(obj,TransformNode(),TransformNode())
-            set_parent!(goal_config(node),start_config(n))
-            set_parent!(start_config(node),goal_config(node))
-            node
+        function $T(n::SceneNode)
+            t = $T(n,TransformNode(),TransformNode())
+            set_parent!(goal_config(t),start_config(t))
+            return t
         end
-        function $T(n::EntityGo{E,S,G},obj) where {E,S<:TransformNode,G}
-            node = $T(obj,TransformNode(),TransformNode())
-            set_parent!(goal_config(node),start_config(n))
-            set_parent!(start_config(node),goal_config(node))
-            node
-        end
-        set_start_config(n::$T,c) = $T(entity(n),c,goal_config(n))
-        set_goal_config(n::$T,c) = $T(entity(n),start_config(n),goal_config(n))
     end
 end
-for T in (:DepositCargo,:FormTransportUnit)
-    @eval $T(n::SceneNode) = $T(n,TransformNode(),TransformNode())
+function LiftIntoPlace(n::Union{ObjectNode,AssemblyNode})
+    l = LiftIntoPlace(n,TransformNode(),TransformNode())
+    set_parent!(start_config(l),goal_config(l)) # point to parent
+    return l
 end
 
 HierarchicalGeometry.robot_team(n::ConstructionPredicate) = robot_team(entity(n))
@@ -332,12 +386,11 @@ function populate_schedule_build_step!(sched,parent::AssemblyComplete,cb,step_no
         # LiftIntoPlace
         l = add_node!(sched,    LiftIntoPlace(cargo))
         set_parent!(goal_config(l),start_config(parent))
-        set_parent!(start_config(l),goal_config(l)) # point to parent
+        # set_parent!(start_config(l),goal_config(l)) # point to parent
         add_edge!(sched,l,cb) # LiftIntoPlace => CloseBuildStep
         # DepositCargo
         d = add_node!(sched,    DepositCargo(transport_unit))
-        set_parent!(goal_config(d),start_config(l))
-        set_parent!(start_config(d),goal_config(d))
+        set_parent!(cargo_deployed_config(d),start_config(l))
         add_edge!(sched,d,l) # DepositCargo => LiftIntoPlace
         add_edge!(sched,ob,d) # OpenBuildStep => DepositCargo
         # TransportUnitGo
@@ -347,15 +400,17 @@ function populate_schedule_build_step!(sched,parent::AssemblyComplete,cb,step_no
         # FormTransportUnit
         f = add_node!(sched,    FormTransportUnit(transport_unit))
         set_parent!(start_config(tgo),goal_config(f))
-        set_parent!(start_config(f),goal_config(f))
+        # set_parent!(start_config(f),goal_config(f))
         add_edge!(sched,f,tgo) # FormTransportUnit => TransportUnitGo
-        if isa(cargo,AssemblyNode) && connect_to_sub_assemblies
+        # ObjectStart/AssemblyComplete
+        if isa(cargo,AssemblyNode) # && connect_to_sub_assemblies
             cargo_node = get_node(sched,AssemblyComplete(cargo))
         else
             cargo_node = add_node!(sched,ObjectStart(cargo,TransformNode()))
         end
         add_edge!(sched,cargo_node,f) # ObjectStart/AssemblyComplete => FormTransportUnit 
-        set_parent!(goal_config(f),start_config(cargo_node))
+        set_parent!(cargo_deployed_config(f),start_config(cargo_node))
+        # set_parent!(goal_config(f),start_config(cargo_node))
     end
     return ob
 end
@@ -458,16 +513,14 @@ function validate_schedule_transform_tree(sched;post_staging=false)
                 assembly = open_build_step.assembly
                 assembly_complete = get_node(sched,AssemblyComplete(assembly))
                 for v in outneighbors(sched,n)
-                    child = get_node(sched,v)
-                    @assert matches_template(DepositCargo,child)
-                    assert_transform_tree_ancestor(goal_config(child),start_config(assembly_complete))
+                    deposit_node = get_node(sched,v)
+                    @assert matches_template(DepositCargo,deposit_node)
+                    assert_transform_tree_ancestor(goal_config(deposit_node),start_config(assembly_complete))
                     for vp in outneighbors(sched,v)
                         lift_node = get_node(sched,vp)
                         @assert matches_template(LiftIntoPlace,lift_node)
                         @assert GraphUtils.has_child(
                             goal_config(assembly_complete),goal_config(lift_node))
-                        @assert GraphUtils.has_child(
-                            goal_config(lift_node),start_config(lift_node))
                         if post_staging
                             # Show that goal_config(LiftIntoPlace) matches the 
                             # goal config of cargo relative to assembly
@@ -476,16 +529,54 @@ function validate_schedule_transform_tree(sched;post_staging=false)
                                 child_transform(assembly,node_id(entity(lift_node)))
                             )
                             # Show that start_config(LiftIntoPlace) matches 
-                            # goal_config(DepositCargo)
+                            # cargo_deployed_config(DepositCargo)
                             @assert transformations_approx_equiv(
                                 global_transform(start_config(lift_node)),
-                                global_transform(goal_config(child)),
+                                global_transform(cargo_deployed_config(deposit_node)),
                             )
                         end
                     end
                 end
+            elseif matches_template(Union{DepositCargo,FormTransportUnit},n)
+                transport_unit = entity(n)
+                @assert has_child(cargo_loaded_config(n),start_config(n))
+                @assert transformations_approx_equiv(
+                    local_transform(start_config(n)),
+                    inv(child_transform(transport_unit,cargo_id(transport_unit)))
+                )
+                if post_staging
+                    @assert isapprox(global_transform(goal_config(n)).translation[3],0.0;rtol=1e-6,atol=1e-6) "$n, $(global_transform(goal_config(n)).translation)"
+                end
+            elseif matches_template(ObjectStart,n)
             elseif matches_template(LiftIntoPlace,n)
-                # @assert GraphUtils.has_child(goal_config(n),start_config(n))
+                @assert GraphUtils.has_child(goal_config(n),start_config(n))
+                if post_staging
+                    l = n
+                    cargo = entity(n)
+                    f = get_node(sched,FormTransportUnit(TransportUnitNode(cargo)))
+                    tu = entity(f)
+                    o = cargo
+                    d = get_node(sched,DepositCargo(tu))
+                    l = get_node(sched,LiftIntoPlace(o))
+                    @assert isapprox(global_transform(start_config(f)).translation[3], 0.0;rtol=1e-6,atol=1e-6)
+                    @assert isapprox(global_transform(start_config(d)).translation[3], 0.0;rtol=1e-6,atol=1e-6)
+                    transformations_approx_equiv(
+                        global_transform(start_config(n)),
+                        global_transform(cargo_deployed_config(f))
+                        )
+                    transformations_approx_equiv(
+                        global_transform(cargo_loaded_config(f)),
+                        global_transform(goal_config(f)) ∘ child_transform(tu,node_id(o))
+                        )
+                    transformations_approx_equiv(
+                        global_transform(cargo_loaded_config(d)),
+                        global_transform(goal_config(d)) ∘ child_transform(tu,node_id(o))
+                        )
+                    transformations_approx_equiv(
+                        global_transform(cargo_deployed_config(d)),
+                        global_transform(start_config(l))
+                    )
+                end
             end
         end
     catch e
@@ -618,17 +709,21 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
             # Compute staging config transforms (relative to parent assembly)
             tformed_geoms = Vector{Ball2}()
             for (i,(θ,r,part_id,part)) in enumerate(zip(θ_star,radii,part_ids,parts))
+                start_node = get_node(sched,AssemblyComplete(part))
                 geom = staging_circles[part_id]
                 R = staging_radius + r
                 t = CoordinateTransformations.Translation(
                     R*cos(θ) + (staging_circle.center[1] + geom.center[1]),
                     R*sin(θ) + (staging_circle.center[2] + geom.center[2]),
                     0.0)
+                # Get global orientation parent frame ʷRₚ
+                # rot_mat = CT.LinearMap(global_transform(get_parent(start_config(start_node))).linear)
                 tform = t ∘ identity_linear_map() # AffineMap transform
+                # tform = inv(rot_mat) ∘ t 
                 # set transform of start node
-                start_node = get_node(sched,AssemblyComplete(part))
                 @info "Starting config: setting START config of $(node_id(start_node)) to $(tform)"
-                set_local_transform!(start_config(start_node),tform)
+                # set_local_transform!(start_config(start_node),tform)
+                HG.set_local_transform_in_global_frame!(start_config(start_node),tform)
                 tform2D = CoordinateTransformations.Translation(t.translation[1:2]...)
                 push!(tformed_geoms,tform2D(geom)) 
                 # staging_radii[node_id(assembly)] = max(
@@ -652,8 +747,7 @@ during `build_step`, where `build_step::OpenBuildStep = node_val(node)`, and
 Also updates `bounding_radii[node_id(assembly)]` to reflect the increasing size 
 of assembly as more parts are added to it.
 Updates:
-- `staging_configs`
-- `bounding_radii`
+- `staging_circles`
 - the relevant `LiftIntoPlace` nodes (start_config and goal_config transforms)
 """
 function process_schedule_build_step!(node,sched,scene_tree,
@@ -705,20 +799,24 @@ function process_schedule_build_step!(node,sched,scene_tree,
     # Compute staging config transforms (relative to parent assembly)
     tformed_geoms = Vector{Ball2}()
     for (i,(θ,r,part_id,part)) in enumerate(zip(θ_star,radii,part_ids,parts))
+        lift_node = get_node(sched,LiftIntoPlace(get_node(scene_tree,part_id)))
+        # extract rot_mat to convert to local frame
+        # rot_mat = CT.LinearMap(global_transform(get_parent(start_config(lift_node))).linear)
         R = assembly_radius + r
         t = CoordinateTransformations.Translation(
             R*cos(θ) + bounding_circle.center[1],
             R*sin(θ) + bounding_circle.center[2],
             0.0)
-        tform = t ∘ identity_linear_map() # AffineMap transform
+        tform = t # AffineMap transform
+        # tform = inv(rot_mat) ∘ t 
         geom = HG.project_to_2d(tform(get_base_geom(part,HypersphereKey())))
         push!(tformed_geoms,geom)
         # set transform of lift node
-        lift_node = get_node(sched,LiftIntoPlace(get_node(scene_tree,part_id)))
-        @info "Staging config: setting START config of $(node_id(lift_node)) to $(tform)"
-        set_local_transform!(start_config(lift_node),tform)
-        # staging_radii[node_id(assembly)] = max(
-        #     staging_radii[node_id(assembly)], R+r)
+        # Here is the issue. Setting a local transform that should be "de-rotated" first
+        # tform is expressed in the global frame--needs to be converted to parent frame
+        # set_local_transform!(start_config(lift_node),tform)
+        HG.set_local_transform_in_global_frame!(start_config(lift_node),tform)
+        @info "Staging config: setting START config of $(node_id(lift_node)) to $(goal_config(lift_node))"
     end
     staging_circles[node_id(assembly)] = overapproximate(
         vcat(tformed_geoms,bounding_circles[node_id(assembly)]),
@@ -778,18 +876,38 @@ function solve_ring_placement_problem(θ_des,r,R,rmin=0.0;
     return value.(θ)[reverse_idxs], R
 end
 
-
 """
-    add_construction_delivery_task!(sched,args...)
+    process_construction_delivery_task!(sched,)
     
-Args:
-- assembly
-- goal_config
-- start_config
-- assigned transport unit
-
+Set the appropriate transforms for all transport tasks such that
+- FormTransportUnit moves the object from its initial condition to its 
+    transport-unit-relative transform: `start_config(n::FormTransportUnit)` will
+    be directly below the object's start config.
+- DepositTransportUnit
 """
-function add_construction_delivery_task!(sched,)
+function process_construction_delivery_tasks!(sched)
+end
+
+align_construction_predicates!(sched,a::CustomNode,b::CustomNode) = align_construction_predicates!(sched,node_val(a),node_val(b))
+
+function align_construction_predicates!(sched,start::Union{ObjectStart,AssemblyComplete,LiftIntoPlace},t::Union{DepositCargo,FormTransportUnit})
+    transport_unit = entity(t)
+    cargo = entity(start)
+    @assert node_id(cargo) == cargo_id(transport_unit)
+    @assert has_parent(cargo_deployed_config(t),start_config(start))
+    @assert has_parent(cargo_loaded_config(t),cargo_deployed_config(t))
+
+    # Park Transport Unit so that cargo can drop straight down
+    tform = child_transform(transport_unit,node_id(cargo))
+    # inv_tform = inv(tform)
+    delta_z = tform.translation[3] - global_transform(cargo_deployed_config(t)).translation[3]
+    # delta_2d = HG.project_to_2d(inv_tform.translation)
+
+    # TODO would be nice to have constrained transforms (e.g., fix to X-Y plane)
+    set_local_transform!( 
+        cargo_loaded_config(t),
+        CT.Translation(0.0, 0.0, delta_z) ∘ identity_linear_map()
+    ) # relative to cargo_deployed_config(t)
 end
 
 
@@ -801,7 +919,14 @@ export set_scene_tree_to_initial_condition!
 Once the staging plan has been computed, this function moves all entities to 
 their starting locations.
 """
-function set_scene_tree_to_initial_condition!(scene_tree,sched)
+function set_scene_tree_to_initial_condition!(scene_tree,sched;
+        remove_all_edges=false,
+    )
+    if remove_all_edges
+        for e in collect(edges(scene_tree))
+            HG.force_remove_edge!(scene_tree,edge_source(e),edge_target(e))
+        end
+    end
     for n in get_nodes(sched)
         if matches_template(LiftIntoPlace,n)
             scene_node = get_node(scene_tree,node_id(entity(n)))
@@ -810,10 +935,10 @@ function set_scene_tree_to_initial_condition!(scene_tree,sched)
             # end
         elseif matches_template(AssemblyStart,n)
             scene_node = get_node(scene_tree,node_id(entity(n)))
-            set_local_transform!(scene_node,local_transform(start_config(n)))
+            set_local_transform!(scene_node,global_transform(start_config(n)))
         elseif matches_template(ObjectStart,n)
             scene_node = get_node(scene_tree,node_id(entity(n)))
-            set_local_transform!(scene_node,local_transform(start_config(n)))
+            set_local_transform!(scene_node,global_transform(start_config(n)))
         end
     end
     scene_tree
@@ -875,7 +1000,7 @@ function set_robot_start_configs!(sched,scene_tree)
             else
                 start_node = get_node(sched,RobotStart(node))
             end
-            set_local_transform!(start_config(start_node),local_transform(node))
+            set_local_transform!(start_config(start_node),global_transform(node))
             if !has_vertex(sched,RobotGo(node))
                 go_node = add_node!(sched,RobotGo(node))
             else

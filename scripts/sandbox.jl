@@ -59,7 +59,7 @@ display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_str
 
 ## Add some robots to scene tree
 NUM_ROBOTS = 20
-vtxs = ConstructionBots.construct_vtx_array(;spacing=(1.0,1.0), ranges=(-10:10,-10:10))
+vtxs = ConstructionBots.construct_vtx_array(;spacing=(1.0,1.0,0.0), ranges=(-10:10,-10:10,0:0))
 robot_vtxs = draw_random_uniform(vtxs,NUM_ROBOTS)
 ConstructionBots.add_robots_to_scene!(scene_tree,robot_vtxs,[default_robot_geom()])
 display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
@@ -78,6 +78,7 @@ ConstructionBots.remove_temporary_invalid_robots!(scene_tree)
 display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
 
 ## Construct Partial Schedule
+HG.jump_to_final_configuration!(scene_tree;set_edges=true)
 sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
 # Check if schedule graph and embedded transform tree are valid
 @assert validate_schedule_transform_tree(sched)
@@ -87,7 +88,6 @@ display_graph(sched2,scale=1,enforce_visited=true)
 
 ## Generate staging plan
 staging_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched)
-@assert validate_schedule_transform_tree(sched;post_staging=true)
 
 # Move objects away from the staging plan
 vtxs = ConstructionBots.construct_vtx_array(;
@@ -96,14 +96,54 @@ vtxs = ConstructionBots.construct_vtx_array(;
 ConstructionBots.select_initial_object_grid_locations!(sched,vtxs)
 
 # Move assemblies up so they float above the robots
+FLOAT_HEIGHT = 10*ROBOT_HEIGHT
 for node in get_nodes(scene_tree)
     if matches_template(AssemblyNode,node) && is_root_node(scene_tree,node)
         start_node = get_node(sched,AssemblyComplete(node))
-        set_local_transform!(start_config(start_node),
-            CT.Translation(0.0,0.0,10*ROBOT_HEIGHT) ∘ local_transform(start_config(start_node))
-            )
+        tform = CT.Translation(0.0,0.0,FLOAT_HEIGHT)
+        set_local_transform!(node,tform)
+        set_local_transform!(start_config(start_node),tform)
     end
 end
+
+# Make sure all transforms line up
+for node in get_nodes(sched)
+    if matches_template(Union{AssemblyComplete,ObjectStart},node)
+        # start = node_val(node)
+        cargo = entity(node)
+        if has_vertex(scene_tree,TransportUnitNode(cargo))
+            tu = get_node(scene_tree,TransportUnitNode(cargo))
+            if has_vertex(sched,FormTransportUnit(tu))
+                f = get_node(sched,FormTransportUnit(tu))
+                d = get_node(sched,DepositCargo(tu))
+                l = get_node(sched,LiftIntoPlace(cargo))
+                ConstructionBots.align_construction_predicates!(sched,node,f)
+                ConstructionBots.align_construction_predicates!(sched,l,d)
+            end
+        end
+    end
+end
+@assert validate_schedule_transform_tree(sched;post_staging=true)
+
+# check
+o = get_node(scene_tree,ObjectID(84))
+tu = get_node(scene_tree,TransportUnitNode(o))
+f = get_node(sched,FormTransportUnit(tu))
+d = get_node(sched,DepositCargo(tu))
+tg = get_node(sched,TransportUnitGo(tu))
+l = get_node(sched,LiftIntoPlace(o))
+start = get_node(sched,ObjectStart(o))
+@show global_transform(start_config(start))
+@show global_transform(cargo_deployed_config(f))
+@show global_transform(cargo_loaded_config(f))
+@show global_transform(start_config(f))
+@show global_transform(start_config(tg))
+@show global_transform(goal_config(tg))
+@show global_transform(start_config(d))
+@show global_transform(cargo_loaded_config(d))
+@show global_transform(cargo_deployed_config(d))
+@show global_transform(start_config(l))
+@show global_transform(goal_config(l))
 
 # Make Assignments!
 
@@ -133,57 +173,42 @@ setvisible!(sphere_nodes,false)
 setvisible!(rect_nodes,false)
 setvisible!(staging_nodes,false)
 
-# Visualize bounding spheres
-
 # set staging plan and visualize
-set_scene_tree_to_initial_condition!(scene_tree,sched)
+set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
+update_visualizer!(scene_tree,vis_nodes)
 # restore correct configuration
-HG.jump_to_final_configuration!(scene_tree)
-# update visualizer
+HG.jump_to_final_configuration!(scene_tree;set_edges=true)
 update_visualizer!(scene_tree,vis_nodes)
 # Visualize construction
 visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;dt=0.1)
 
 # VISUALIZE ROBOT PLACEMENT AROUND PARTS
 
-part_keys = sort(collect(keys(model.parts))[1:10])
-parts = Dict(k=>model.parts[k] for k in part_keys)
-transport_model = (
-    robot_radius = 0.5,
-    max_area_per_robot = 100.0, #3000.0,
-    max_volume_per_robot = 100.0 #20000.0,
-)
-for (k,part) in parts
-    points = map(SVector{3,Float64}, LDrawParser.extract_points(part))
-    if isempty(points)
-        println("Part $k has no geometry!")
-        continue
-    end
-    geom=map(SVector,points)
-    try
-        support_pts = HierarchicalGeometry.select_support_locations(
-            geom,transport_model)
-        polygon = VPolygon(convex_hull(map(p->p[1:2],geom)))
+# part_keys = sort(collect(keys(model.parts))[1:10])
+# parts = Dict(k=>model.parts[k] for k in part_keys)
+# transport_model = (
+#     robot_radius = 0.5,
+#     max_area_per_robot = 100.0, #3000.0,
+#     max_volume_per_robot = 100.0 #20000.0,
+# )
+# for (k,part) in parts
+#     points = map(SVector{3,Float64}, LDrawParser.extract_points(part))
+#     if isempty(points)
+#         println("Part $k has no geometry!")
+#         continue
+#     end
+#     geom=map(SVector,points)
+#     try
+#         support_pts = HierarchicalGeometry.select_support_locations(
+#             geom,transport_model)
+#         polygon = VPolygon(convex_hull(map(p->p[1:2],geom)))
 
-        plt = plot(polygon,aspectratio=1,alpha=0.4)
-        scatter!(plt,map(p->p[1],geom),map(p->p[2],geom),label=k) #,legend=false)
-        plot!(plt,map(p->Ball2(p,transport_model.robot_radius),support_pts), aspectratio=1, alpha=0.4)
-        display(plt)
-    catch e
-        bt = catch_backtrace()
-        showerror(stdout,e,bt)
-    end
-end
-
-
-
-# # construct model graph
-# model_graph = construct_assembly_graph(model)
-# model_tree = convert(GraphUtils.CustomNTree{GraphUtils._node_type(model_graph),String},model_graph)
-# # @assert maximum(map(v->indegree(model_tree,v),vertices(model_tree))) == 1
-# print(model_tree,v->summary(v.val),"\t")
-
-# sched = LDrawParser.construct_model_schedule(model)
-# model_spec = LDrawParser.extract_single_model(sched,"20009 - AT-TE Walker.mpd")
-
-# GraphUtils.validate_graph(model_spec)
+#         plt = plot(polygon,aspectratio=1,alpha=0.4)
+#         scatter!(plt,map(p->p[1],geom),map(p->p[2],geom),label=k) #,legend=false)
+#         plot!(plt,map(p->Ball2(p,transport_model.robot_radius),support_pts), aspectratio=1, alpha=0.4)
+#         display(plt)
+#     catch e
+#         bt = catch_backtrace()
+#         showerror(stdout,e,bt)
+#     end
+# end
