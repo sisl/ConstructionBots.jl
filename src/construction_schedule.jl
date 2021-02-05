@@ -163,7 +163,7 @@ end
 
 for T in (:RobotStart,:ObjectStart,:AssemblyComplete,:AssemblyStart)
     @eval begin
-        $T(n::SceneNode) = $T(n,global_transform(n))
+        $T(n::SceneNode) = $T(n,TransformNode())
         $T(n::ConstructionPredicate) = $T(entity(n),goal_config(n))
         function $T(n::EntityConfigPredicate{A,C}) where {A,C<:TransformNode}
             node = $T(entity(n),start_config(n))
@@ -177,6 +177,7 @@ for T in (:RobotStart,:ObjectStart,:AssemblyComplete,:AssemblyStart)
 end
 for T in (:RobotGo,:TransportUnitGo,:LiftIntoPlace)
     @eval begin
+        $T(n::SceneNode) = $T(n,TransformNode(),TransformNode())
         function $T(n::EntityConfigPredicate{A,C},obj) where {A,C<:TransformNode}
             node = $T(obj,TransformNode(),TransformNode())
             set_parent!(goal_config(node),start_config(n))
@@ -193,8 +194,8 @@ for T in (:RobotGo,:TransportUnitGo,:LiftIntoPlace)
         set_goal_config(n::$T,c) = $T(entity(n),start_config(n),goal_config(n))
     end
 end
-for T in (:RobotGo,:TransportUnitGo,:LiftIntoPlace,:DepositCargo,:FormTransportUnit)
-    @eval $T(n::SceneNode) = $T(n,global_transform(n),global_transform(n))
+for T in (:DepositCargo,:FormTransportUnit)
+    @eval $T(n::SceneNode) = $T(n,TransformNode(),TransformNode())
 end
 
 HierarchicalGeometry.robot_team(n::ConstructionPredicate) = robot_team(entity(n))
@@ -329,23 +330,24 @@ function populate_schedule_build_step!(sched,parent::AssemblyComplete,cb,step_no
         transport_unit = get_node(scene_tree,node_id(TransportUnitNode(cargo)))
         @assert isa(cargo,Union{AssemblyNode,ObjectNode})
         # LiftIntoPlace
-        l = add_node!(sched,    LiftIntoPlace(cargo,TransformNode(),TransformNode())) #######
+        l = add_node!(sched,    LiftIntoPlace(cargo))
         set_parent!(goal_config(l),start_config(parent))
-        set_parent!(start_config(l),start_config(parent)) # point to parent
+        set_parent!(start_config(l),goal_config(l)) # point to parent
         add_edge!(sched,l,cb) # LiftIntoPlace => CloseBuildStep
         # DepositCargo
-        d = add_node!(sched,    DepositCargo(TransportUnitNode(cargo),TransformNode(),TransformNode()))
+        d = add_node!(sched,    DepositCargo(transport_unit))
         set_parent!(goal_config(d),start_config(l))
         set_parent!(start_config(d),goal_config(d))
         add_edge!(sched,d,l) # DepositCargo => LiftIntoPlace
         add_edge!(sched,ob,d) # OpenBuildStep => DepositCargo
         # TransportUnitGo
-        tgo = add_node!(sched,  TransportUnitGo(entity(node_val(d)),TransformNode(),TransformNode()))
+        tgo = add_node!(sched,  TransportUnitGo(transport_unit))
         set_parent!(goal_config(tgo),start_config(d))
         add_edge!(sched,tgo,d) # TransportUnitGo => DepositCargo
         # FormTransportUnit
-        f = add_node!(sched,    FormTransportUnit(entity(node_val(d)),TransformNode(),TransformNode()))
+        f = add_node!(sched,    FormTransportUnit(transport_unit))
         set_parent!(start_config(tgo),goal_config(f))
+        set_parent!(start_config(f),goal_config(f))
         add_edge!(sched,f,tgo) # FormTransportUnit => TransportUnitGo
         if isa(cargo,AssemblyNode) && connect_to_sub_assemblies
             cargo_node = get_node(sched,AssemblyComplete(cargo))
@@ -416,7 +418,9 @@ function construct_partial_construction_schedule(
             populate_schedule_sub_graph!(sched,node_val(a),model_spec,scene_tree,id_map)
         end
     end
-    sched
+    # Add robots
+    set_robot_start_configs!(sched,scene_tree)
+    return sched
 end
 
 export validate_schedule_transform_tree
@@ -461,9 +465,9 @@ function validate_schedule_transform_tree(sched;post_staging=false)
                         lift_node = get_node(sched,vp)
                         @assert matches_template(LiftIntoPlace,lift_node)
                         @assert GraphUtils.has_child(
-                            goal_config(assembly_complete),start_config(lift_node))
-                        @assert GraphUtils.has_child(
                             goal_config(assembly_complete),goal_config(lift_node))
+                        @assert GraphUtils.has_child(
+                            goal_config(lift_node),start_config(lift_node))
                         if post_staging
                             # Show that goal_config(LiftIntoPlace) matches the 
                             # goal config of cargo relative to assembly
@@ -831,15 +835,55 @@ function select_initial_object_grid_locations!(sched,vtxs)
             push!(nodes,cargo)
         end
     end
-    # nodes = sort(filter(node->matches_template(ObjectNode,node),
-    #    get_nodes(scene_tree)))
     tforms = map(
-        v->CoordinateTransformations.Translation(v[1],v[2],0.0) ∘ identity_linear_map(),
+        v->CoordinateTransformations.Translation(v[1],v[2],v[3]) ∘ identity_linear_map(),
         vtxs
         )
     for (node,tform) in zip(nodes,Base.Iterators.cycle(tforms))
         start_node = get_node(sched,ObjectStart(node))
         set_local_transform!(start_config(start_node),tform)
+    end
+    sched
+end
+
+"""
+    add_robots_to_scene!(scene_tree,vtxs,geoms=(default_robot_geom() for v in vtxs))
+
+For each vtx in `vtxs`, place a robot at that location and add it to `scene_tree`
+"""
+function add_robots_to_scene!(scene_tree,vtxs,geoms=(default_robot_geom() for v in vtxs))
+    for (vtx,geom) in zip(vtxs,Base.Iterators.cycle(geoms))
+        tform = CT.Translation(vtx[1],vtx[2],0.0) ∘ identity_linear_map()
+        robot_node = add_node!(scene_tree,
+            RobotNode(get_unique_id(RobotID),GeomNode(geom)))
+        set_local_transform!(robot_node, tform)
+    end
+    scene_tree
+end
+
+"""
+    set_robot_start_configs!(sched,scene_tree)
+
+For each `n::RobotNode` in `SceneTree`, add a corresponding `RobotStart` and 
+`RobotGo` node and set the start transform to `local_transform(n)`.
+"""
+function set_robot_start_configs!(sched,scene_tree)
+    for node in get_nodes(scene_tree)
+        if matches_template(RobotNode,node)
+            if !has_vertex(sched,RobotStart(node))
+                start_node = add_node!(sched,RobotStart(node))
+            else
+                start_node = get_node(sched,RobotStart(node))
+            end
+            set_local_transform!(start_config(start_node),local_transform(node))
+            if !has_vertex(sched,RobotGo(node))
+                go_node = add_node!(sched,RobotGo(node))
+            else
+                go_node = get_node(sched,RobotGo(node))
+            end
+            add_edge!(sched,start_node,go_node)
+            set_parent!(start_config(go_node),goal_config(start_node))
+        end
     end
     sched
 end
@@ -858,36 +902,35 @@ spaced by `spacing`, removing all vertices that fall within `obstacles` or
 outside of `bounds`.
 """
 function construct_vtx_array(;
-    origin=SVector(0.0,0.0),
-    spacing=(1.0,1.0),
-    ranges=(-10:10,-10:10),
+    origin=SVector(0.0,0.0,0.0),
+    spacing=(1.0,1.0,0.0),
+    ranges=(-10:10,-10:10,0:0),
     obstacles=nothing,
     bounds=nothing
     )
-    pts = Vector{SVector{2,Float64}}()
-    for i in ranges[1]
-        for j in ranges[2]
-            pt = origin + SVector(spacing[1]*i, spacing[2]*j)
-            legal = true
-            if !(bounds === nothing)
-                for ob in bounds
-                    if !(pt in ob)
-                        legal = false
-                        break
-                    end
+    pts = Vector{SVector{3,Float64}}()
+    for idxs in Base.Iterators.product(ranges...)
+        pt = origin + SVector(map(i->spacing[i]*idxs[i], 1:length(spacing))...)
+        pt2d = HG.project_to_2d(pt)
+        legal = true
+        if !(bounds === nothing)
+            for ob in bounds
+                if !(pt2d in ob)
+                    legal = false
+                    break
                 end
             end
-            if !(obstacles === nothing)
-                for ob in obstacles
-                    if pt in ob
-                        legal = false
-                        break
-                    end
+        end
+        if !(obstacles === nothing)
+            for ob in obstacles
+                if pt2d in ob
+                    legal = false
+                    break
                 end
             end
-            if legal
-                push!(pts,pt)
-            end
+        end
+        if legal
+            push!(pts,pt)
         end
     end
     return pts

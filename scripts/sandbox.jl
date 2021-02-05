@@ -11,6 +11,8 @@ using LinearAlgebra
 using MeshCat
 const MESHCAT_GRID_DIMS = ((-10.0,10.0),(-10.0,10.0))
 using Plots
+using Random
+Random.seed!(0);
 
 using Logging
 global_logger(ConsoleLogger(stderr, Logging.Info))
@@ -20,10 +22,13 @@ Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
 reset_all_id_counters!()
 reset_all_invalid_id_counters!()
 
-# BASE_ROBOT_HEIGHT   = 0.25
-# BASE_ROBOT_RADIUS   = 0.5
+# factor by which to scale LDraw model (because MeshCat bounds are hard to adjust)
 MODEL_SCALE         = 0.01
-# BASE_ROBOT_SHAPE = get_default_robot_shape(BASE_ROBOT_HEIGHT,BASE_ROBOT_RADIUS)
+ROBOT_HEIGHT        = 10*MODEL_SCALE
+ROBOT_RADIUS        = 25*MODEL_SCALE
+set_default_robot_geom!(
+    Cylinder(Point(0.0,0.0,0.0), Point(0.0,0.0,ROBOT_HEIGHT), ROBOT_RADIUS)
+)
 
 ## LOAD LDRAW FILE
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
@@ -45,28 +50,32 @@ scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
 print(scene_tree,v->"$(summary(node_id(v))) : $(id_map[node_id(v)])","\t")
 # Define TransportUnit configurations
 ConstructionBots.init_transport_units!(scene_tree;robot_radius = 0.5)
-# root = collect(get_all_root_nodes(scene_tree))[1]
-# raise assembly so that it is above the x-y plane
-# set_local_transform!(scene_tree,root,identity_linear_map() ∘ CoordinateTransformations.Translation(0.0,0.0,0.5))
-# capture_child!(scene_tree,AssemblyID(7),AssemblyID(12))
+# validate SceneTree
 root = get_node(scene_tree,collect(get_all_root_nodes(scene_tree))[1])
 validate_tree(HierarchicalGeometry.get_transform_node(root))
 validate_embedded_tree(scene_tree,v->HierarchicalGeometry.get_transform_node(get_node(scene_tree,v)))
-# @assert(length(get_all_root_nodes(scene_tree)) == 1) 
 # visualize
-display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned)
+display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
 
-# Add temporary robots
-ConstructionBots.add_temporary_invalid_robots!(scene_tree;with_edges=true)
-# ConstructionBots.remove_temporary_invalid_robots!(scene_tree)
-display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned)
+## Add some robots to scene tree
+NUM_ROBOTS = 20
+vtxs = ConstructionBots.construct_vtx_array(;spacing=(1.0,1.0), ranges=(-10:10,-10:10))
+robot_vtxs = draw_random_uniform(vtxs,NUM_ROBOTS)
+ConstructionBots.add_robots_to_scene!(scene_tree,robot_vtxs,[default_robot_geom()])
+display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
 
 ## Compute overapproximated geometry
-# remove_geometry!(scene_tree,HypersphereKey())
+# Add temporary dummy robots ############################
+ConstructionBots.add_temporary_invalid_robots!(scene_tree;with_edges=true)
+display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
 HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
+# remove_geometry!(scene_tree,HypersphereKey())
 @assert all(map(node->has_vertex(node.geom_hierarchy,HypersphereKey()), get_nodes(scene_tree)))
 HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
 @assert all(map(node->has_vertex(node.geom_hierarchy,HyperrectangleKey()), get_nodes(scene_tree)))
+# Remove temporary dummy robots ############################
+ConstructionBots.remove_temporary_invalid_robots!(scene_tree)
+display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
 
 ## Construct Partial Schedule
 sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
@@ -80,11 +89,23 @@ display_graph(sched2,scale=1,enforce_visited=true)
 staging_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched)
 @assert validate_schedule_transform_tree(sched;post_staging=true)
 
-# Select initial Object locations
-vtxs = ConstructionBots.construct_vtx_array(;obstacles=collect(values(staging_circles)))
+# Move objects away from the staging plan
+vtxs = ConstructionBots.construct_vtx_array(;
+    origin=SVector(0.0,0.0,10*ROBOT_HEIGHT),
+    obstacles=collect(values(staging_circles)))
 ConstructionBots.select_initial_object_grid_locations!(sched,vtxs)
 
-# Make Assignments
+# Move assemblies up so they float above the robots
+for node in get_nodes(scene_tree)
+    if matches_template(AssemblyNode,node) && is_root_node(scene_tree,node)
+        start_node = get_node(sched,AssemblyComplete(node))
+        set_local_transform!(start_config(start_node),
+            CT.Translation(0.0,0.0,10*ROBOT_HEIGHT) ∘ local_transform(start_config(start_node))
+            )
+    end
+end
+
+# Make Assignments!
 
 ## Visualize assembly
 color_map = construct_color_map(model_spec,id_map)

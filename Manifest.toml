@@ -367,7 +367,7 @@ uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 version = "0.8.19"
 
 [[HierarchicalGeometry]]
-deps = ["CoordinateTransformations", "ECOS", "GeometryBasics", "GraphUtils", "JuMP", "LazySets", "LightGraphs", "LinearAlgebra", "Logging", "MathOptInterface", "Meshing", "Parameters", "Polyhedra", "Rotations", "StaticArrays"]
+deps = ["CoordinateTransformations", "ECOS", "GeometryBasics", "GraphUtils", "JuMP", "LazySets", "LightGraphs", "LinearAlgebra", "Logging", "MathOptInterface", "Meshing", "Parameters", "Polyhedra", "Reexport", "Rotations", "StaticArrays"]
 path = "/home/kylebrown/.julia/dev/HierarchicalGeometry"
 uuid = "a17d2d74-4023-4ab1-aa92-b9763940ddd7"
 version = "0.1.0"
