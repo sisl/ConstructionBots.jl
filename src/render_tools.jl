@@ -50,12 +50,13 @@ function populate_visualizer!(scene_tree,vis;
     for v in topological_sort_by_dfs(scene_tree)
         node = get_node(scene_tree,v)
         id = node_id(node)
-        if is_root_node(scene_tree,v)
-            vis_nodes[id] = vis_root[string(id)]
-        else
-            p = get_vtx_id(scene_tree,get_parent(scene_tree,v))
-            vis_nodes[id] = vis_nodes[p][string(id)]
-        end
+        # if is_root_node(scene_tree,v)
+        #     vis_nodes[id] = vis_root[string(id)]
+        # else
+        #     p = get_vtx_id(scene_tree,get_parent(scene_tree,v))
+        #     vis_nodes[id] = vis_nodes[p][string(id)]
+        # end
+        vis_nodes[id] = vis_root[string(id)]
         vis_node = vis_nodes[id]
         # geometry
         geom = get_base_geom(node)
@@ -77,7 +78,8 @@ function populate_visualizer!(scene_tree,vis;
                 setobject!(vis_node,M)
             end
         end
-        settransform!(vis_node,local_transform(node))
+        # settransform!(vis_node,local_transform(node))
+        settransform!(vis_node,global_transform(node))
     end
     vis_nodes
 end
@@ -114,7 +116,8 @@ Update the MeshCat transform tree.
 """
 function update_visualizer!(scene_tree,vis_nodes,nodes=get_nodes(scene_tree))
     for n in nodes
-        settransform!(vis_nodes[node_id(n)],local_transform(n))
+        # settransform!(vis_nodes[node_id(n)],local_transform(n))
+        settransform!(vis_nodes[node_id(n)],global_transform(n))
     end
     return vis_nodes
 end
@@ -134,8 +137,11 @@ function visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;
         update_nodes = []
         if matches_template(ProjectComplete,node)
         # elseif matches_template(RobotStart,node)
+        #     robot_node = entity(node)
+        #     @assert has_parent(robot_node,robot_node)
         # elseif matches_template(ObjectStart,node)
         #     part_node = get_node(scene_tree,node_id(entity(node)))
+        #     @assert has_parent(part_node,part_node)
         #     set_local_transform!(part_node,local_transform(goal_config(node)))
         elseif matches_template(RobotGo,node)
             robot_node = entity(node)
@@ -146,6 +152,7 @@ function visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;
             transport_unit = entity(node)
             part_node = get_node(scene_tree,cargo_id(transport_unit))
             @assert has_parent(part_node,part_node)
+            @assert has_parent(transport_unit,transport_unit)
             set_local_transform!(transport_unit,global_transform(goal_config(node)))
             set_child!(scene_tree,transport_unit,part_node)
             @assert has_parent(part_node,transport_unit)
@@ -159,13 +166,15 @@ function visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;
         elseif matches_template(DepositCargo,node)
             transport_unit = entity(node)
             part_node = get_node(scene_tree,cargo_id(transport_unit))
+            @assert has_parent(part_node,transport_unit)
             disband!(scene_tree,transport_unit)
             @assert has_parent(part_node,part_node)
-            set_local_transform!(part_node,local_transform(goal_config(node)))
+            set_local_transform!(part_node,global_transform(cargo_deployed_config(node)))
             append!(update_nodes,[transport_unit,part_node])
         elseif matches_template(LiftIntoPlace,node)
             part_node = get_node(scene_tree,node_id(entity(node)))
-            set_local_transform!(part_node,local_transform(goal_config(node)))
+            @assert has_parent(part_node,part_node)
+            set_local_transform!(part_node,global_transform(goal_config(node)))
             append!(update_nodes,[part_node])
         # elseif matches_template(CloseBuildStep,node)
         #     open_build_step = node_val(node)
@@ -175,6 +184,9 @@ function visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;
         #     end
         end
         if !isempty(update_nodes)
+            id = node_id(node)
+            ids = map(n->string(node_id(n))=>string(global_transform(n).translation), update_nodes)
+            @info "Updating nodes" id ids
             call_update!(scene_tree,vis_nodes,update_nodes,dt)
             # update_visualizer!(scene_tree,vis_nodes,[part_node])
             # render(vis)
@@ -202,7 +214,7 @@ GraphPlottingBFS._title_string(::ConstructionBots.AssemblyComplete)  = "M"
 GraphPlottingBFS._title_string(::ConstructionBots.OpenBuildStep)     = "oB"
 GraphPlottingBFS._title_string(::ConstructionBots.CloseBuildStep)    = "cB"
 GraphPlottingBFS._title_string(::ConstructionBots.RobotGo)           = "G"
-GraphPlottingBFS._title_string(::ConstructionBots.FormTransportUnit) = "C"
+GraphPlottingBFS._title_string(::ConstructionBots.FormTransportUnit) = "F"
 GraphPlottingBFS._title_string(::ConstructionBots.DepositCargo)      = "D"
 GraphPlottingBFS._title_string(::ConstructionBots.TransportUnitGo)   = "T"
 GraphPlottingBFS._title_string(::ConstructionBots.LiftIntoPlace)     = "L"
