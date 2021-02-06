@@ -156,8 +156,6 @@ function visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;
             set_local_transform!(transport_unit,global_transform(goal_config(node)))
             set_child!(scene_tree,transport_unit,part_node)
             @assert has_parent(part_node,transport_unit)
-            # set_local_transform!(part_node,global_transform(cargo_start_config()))
-            # call_update!(scene_tree,vis_nodes,[part_node],dt)
             append!(update_nodes,[transport_unit,part_node])
         elseif matches_template(TransportUnitGo,node)
             transport_unit = entity(node)
@@ -175,22 +173,24 @@ function visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;
             part_node = get_node(scene_tree,node_id(entity(node)))
             @assert has_parent(part_node,part_node)
             set_local_transform!(part_node,global_transform(goal_config(node)))
+            if matches_template(AssemblyNode,part_node)
+                @info "$(string(node_id(node)))" part_node
+            end
             append!(update_nodes,[part_node])
-        # elseif matches_template(CloseBuildStep,node)
-        #     open_build_step = node_val(node)
-        #     for (part_id,tform) in assembly_components(open_build_step)
-        #         part_node = get_node(scene_tree,part_id)
-        #         set_local_transform!(part_node,tform)
-        #     end
+        elseif matches_template(CloseBuildStep,node)
+            for (id,_) in assembly_components(node)
+                set_child!(scene_tree,ConstructionBots.get_assembly(node),id)
+                push!(update_nodes,get_node(scene_tree,id))
+            end
         end
         if !isempty(update_nodes)
-            id = node_id(node)
-            ids = map(n->string(node_id(n))=>string(global_transform(n).translation), update_nodes)
-            @info "Updating nodes" id ids
-            call_update!(scene_tree,vis_nodes,update_nodes,dt)
-            # update_visualizer!(scene_tree,vis_nodes,[part_node])
-            # render(vis)
-            # sleep(dt)
+            # id = node_id(node)
+            # ids = map(n->string(node_id(n))=>string(global_transform(n).translation), update_nodes)
+            # @info "Updating nodes" id ids
+            # call_update!(scene_tree,vis_nodes,update_nodes,dt)
+            update_visualizer(scene_tree,vis_nodes)
+            render(vis)
+            sleep(dt)
         end
     end
 end

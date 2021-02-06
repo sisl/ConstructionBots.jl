@@ -102,6 +102,8 @@ abstract type BuildPhasePredicate <: ConstructionPredicate end
 get_assembly(n::BuildPhasePredicate) = n.assembly
 HierarchicalGeometry.assembly_components(n::BuildPhasePredicate) = n.components
 HierarchicalGeometry.assembly_components(n::ConstructionPredicate) = assembly_components(entity(n))
+get_assembly(n::CustomNode) = get_assembly(node_val(n))
+HierarchicalGeometry.assembly_components(n::CustomNode) = assembly_components(node_val(n))
 
 """
     extract_building_phase(n::BuildingStep,tree::SceneTree,model_spec,id_map)
@@ -233,8 +235,8 @@ for T in (:RobotStart,:ObjectStart,:AssemblyComplete,:AssemblyStart)
         #     # set_parent!(goal_config(node),start_config(n))
         #     # node
         # end
-        set_start_config(n::$T,c) = $T(entity(n),c)
-        set_goal_config(n::$T,c) = $T(entity(n),c)
+        # set_start_config(n::$T,c) = $T(entity(n),c)
+        # set_goal_config(n::$T,c) = $T(entity(n),c)
     end
 end
 for T in (:RobotGo,:TransportUnitGo) #,:LiftIntoPlace)

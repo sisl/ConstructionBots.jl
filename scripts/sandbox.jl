@@ -98,10 +98,9 @@ ConstructionBots.select_initial_object_grid_locations!(sched,vtxs)
 # Move assemblies up so they float above the robots
 FLOAT_HEIGHT = 10*ROBOT_HEIGHT
 for node in get_nodes(scene_tree)
-    if matches_template(AssemblyNode,node) && is_root_node(scene_tree,node)
+    if matches_template(AssemblyNode,node) 
         start_node = get_node(sched,AssemblyComplete(node))
-        tform = CT.Translation(0.0,0.0,FLOAT_HEIGHT)
-        set_local_transform!(node,tform)
+        tform = CT.Translation(0.0,0.0,FLOAT_HEIGHT) ∘ local_transform(start_config(start_node))
         set_local_transform!(start_config(start_node),tform)
     end
 end
@@ -127,23 +126,25 @@ end
 
 # check
 # o = get_node(scene_tree,ObjectID(82))
-# tu = get_node(scene_tree,TransportUnitNode(o))
-# f = get_node(sched,FormTransportUnit(tu))
-# d = get_node(sched,DepositCargo(tu))
-# tg = get_node(sched,TransportUnitGo(tu))
-# l = get_node(sched,LiftIntoPlace(o))
 # start = get_node(sched,ObjectStart(o))
-# @show global_transform(start_config(start))
-# @show global_transform(cargo_deployed_config(f))
-# @show global_transform(cargo_loaded_config(f))
-# @show global_transform(start_config(f))
-# @show global_transform(start_config(tg))
-# @show global_transform(goal_config(tg))
-# @show global_transform(start_config(d))
-# @show global_transform(cargo_loaded_config(d))
-# @show global_transform(cargo_deployed_config(d))
-# @show global_transform(start_config(l))
-# @show global_transform(goal_config(l))
+o = get_node(scene_tree,AssemblyID(2))
+start = get_node(sched,AssemblyComplete(o))
+tu = get_node(scene_tree,TransportUnitNode(o))
+f = get_node(sched,FormTransportUnit(tu))
+d = get_node(sched,DepositCargo(tu))
+tg = get_node(sched,TransportUnitGo(tu))
+l = get_node(sched,LiftIntoPlace(o))
+@show global_transform(start_config(start))
+@show global_transform(cargo_deployed_config(f))
+@show global_transform(cargo_loaded_config(f))
+@show global_transform(start_config(f))
+@show global_transform(start_config(tg))
+@show global_transform(goal_config(tg))
+@show global_transform(start_config(d))
+@show global_transform(cargo_loaded_config(d))
+@show global_transform(cargo_deployed_config(d))
+@show global_transform(start_config(l))
+@show global_transform(goal_config(l))
 
 # Make Assignments!
 
@@ -173,11 +174,11 @@ setvisible!(sphere_nodes,false)
 setvisible!(rect_nodes,false)
 setvisible!(staging_nodes,false)
 
-# set staging plan and visualize
-set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
-update_visualizer!(scene_tree,vis_nodes)
 # restore correct configuration
 HG.jump_to_final_configuration!(scene_tree;set_edges=true)
+update_visualizer!(scene_tree,vis_nodes)
+# set staging plan and visualize
+set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
 update_visualizer!(scene_tree,vis_nodes)
 # Visualize construction
 visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;dt=0.1)
