@@ -188,7 +188,7 @@ function visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;
             # ids = map(n->string(node_id(n))=>string(global_transform(n).translation), update_nodes)
             # @info "Updating nodes" id ids
             # call_update!(scene_tree,vis_nodes,update_nodes,dt)
-            update_visualizer(scene_tree,vis_nodes)
+            update_visualizer!(scene_tree,vis_nodes)
             render(vis)
             sleep(dt)
         end

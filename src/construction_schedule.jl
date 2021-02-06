@@ -887,11 +887,33 @@ Set the appropriate transforms for all transport tasks such that
     be directly below the object's start config.
 - DepositTransportUnit
 """
-function process_construction_delivery_tasks!(sched)
+function calibrate_transport_tasks!(sched)
+    for node in get_nodes(sched)
+        if matches_template(LiftIntoPlace,node)
+            cargo = entity(node)
+            start_node, form_transport, _, deposit_node, lift_node = get_transport_node_sequence(sched,cargo)
+            # lift_node = node
+            # form_transport = get_node(sched,FormTransportUnit(TransportUnitNode(cargo)))
+            # transport_unit = entity(form_transport)
+            # deposit_node = get_node(sched,DepositCargo(transport_unit))
+            # if matches_template(ObjectNode,cargo)
+            #     start_node = get_node(sched,ObjectStart(cargo))
+            # else
+            #     start_node = get_node(sched,AssemblyComplete(cargo))
+            # end
+            align_construction_predicates!(sched,start_node,form_transport)
+            align_construction_predicates!(sched,lift_node, deposit_node)
+        end
+    end
+    return sched
 end
 
-align_construction_predicates!(sched,a::CustomNode,b::CustomNode) = align_construction_predicates!(sched,node_val(a),node_val(b))
+"""
+    align_construction_predicates!(sched,start::Union{ObjectStart,AssemblyComplete,LiftIntoPlace},t::Union{DepositCargo,FormTransportUnit})
 
+Line up pick up and drop off so that the carrying config of the cargo is directly
+under its deployed config.
+"""
 function align_construction_predicates!(sched,start::Union{ObjectStart,AssemblyComplete,LiftIntoPlace},t::Union{DepositCargo,FormTransportUnit})
     transport_unit = entity(t)
     cargo = entity(start)
@@ -910,6 +932,56 @@ function align_construction_predicates!(sched,start::Union{ObjectStart,AssemblyC
         cargo_loaded_config(t),
         CT.Translation(0.0, 0.0, delta_z) ∘ identity_linear_map()
     ) # relative to cargo_deployed_config(t)
+end
+align_construction_predicates!(sched,a::CustomNode,b::CustomNode) = align_construction_predicates!(sched,node_val(a),node_val(b))
+
+"""
+    get_transport_node_sequence(sched,cargo::Union{AsemblyNode,ObjectNode})
+
+Retrieves the following node sequence from sched for transporting `cargo`.
+    ObjectStart / AssemblyComplete
+    FormTransportUnit
+    TransportUnitGo
+    DepositCargo
+    LiftIntoPlace
+example
+```julia
+start, form_transport, go, deposit, lift = get_transport_node_sequence(sched,cargo)
+```
+"""
+function get_transport_node_sequence(sched,cargo::Union{AssemblyNode,ObjectNode})
+    if matches_template(ObjectNode,cargo)
+        start_node = get_node(sched,ObjectStart(cargo))
+    else
+        start_node = get_node(sched,AssemblyComplete(cargo))
+    end
+    form_transport = get_node(sched,FormTransportUnit(TransportUnitNode(cargo)))
+    transport_unit = entity(form_transport)
+    go_node = get_node(sched,TransportUnitGo(transport_unit))
+    deposit_node = get_node(sched,DepositCargo(transport_unit))
+    lift_node = get_node(sched,LiftIntoPlace(cargo))
+    return start_node, form_transport, go_node, deposit_node, lift_node
+end
+
+"""
+    transport_sequence_sanity_check(sched,cargo)
+
+Print out the sequence of "stops" for the transport of `cargo`.
+"""
+function transport_sequence_sanity_check(sched,cargo)
+    start_node, form_transport, go_node, deposit_node, lift_node = get_transport_node_sequence(sched,cargo)
+    @show global_transform(start_config(start_node))
+    @show global_transform(cargo_deployed_config(form_transport))
+    @show global_transform(cargo_loaded_config(form_transport))
+    @show global_transform(start_config(form_transport))
+    @show global_transform(start_config(go_node))
+    @show global_transform(goal_config(go_node))
+    @show global_transform(start_config(deposit_node))
+    @show global_transform(cargo_loaded_config(deposit_node))
+    @show global_transform(cargo_deployed_config(deposit_node))
+    @show global_transform(start_config(lift_node))
+    @show global_transform(goal_config(lift_node))
+    return 
 end
 
 

@@ -58,7 +58,7 @@ validate_embedded_tree(scene_tree,v->HierarchicalGeometry.get_transform_node(get
 display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
 
 ## Add some robots to scene tree
-NUM_ROBOTS = 20
+NUM_ROBOTS = 100
 vtxs = ConstructionBots.construct_vtx_array(;spacing=(1.0,1.0,0.0), ranges=(-10:10,-10:10,0:0))
 robot_vtxs = draw_random_uniform(vtxs,NUM_ROBOTS)
 ConstructionBots.add_robots_to_scene!(scene_tree,robot_vtxs,[default_robot_geom()])
@@ -90,61 +90,29 @@ display_graph(sched2,scale=1,enforce_visited=true)
 staging_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched)
 
 # Move objects away from the staging plan
+MAX_CARGO_HEIGHT = maximum(map(n->get_base_geom(n,HyperrectangleKey()).radius[3]*2,
+    filter(n->matches_template(TransportUnitNode,n),get_nodes(scene_tree))))
 vtxs = ConstructionBots.construct_vtx_array(;
-    origin=SVector(0.0,0.0,10*ROBOT_HEIGHT),
+    origin=SVector(0.0,0.0,MAX_CARGO_HEIGHT),
     obstacles=collect(values(staging_circles)))
 ConstructionBots.select_initial_object_grid_locations!(sched,vtxs)
 
 # Move assemblies up so they float above the robots
-FLOAT_HEIGHT = 10*ROBOT_HEIGHT
 for node in get_nodes(scene_tree)
     if matches_template(AssemblyNode,node) 
         start_node = get_node(sched,AssemblyComplete(node))
-        tform = CT.Translation(0.0,0.0,FLOAT_HEIGHT) ∘ local_transform(start_config(start_node))
+        tform = CT.Translation(0.0,0.0,MAX_CARGO_HEIGHT) ∘ local_transform(start_config(start_node))
         set_local_transform!(start_config(start_node),tform)
     end
 end
 
 # Make sure all transforms line up
-for node in get_nodes(sched)
-    if matches_template(Union{AssemblyComplete,ObjectStart},node)
-        # start = node_val(node)
-        cargo = entity(node)
-        if has_vertex(scene_tree,TransportUnitNode(cargo))
-            tu = get_node(scene_tree,TransportUnitNode(cargo))
-            if has_vertex(sched,FormTransportUnit(tu))
-                f = get_node(sched,FormTransportUnit(tu))
-                d = get_node(sched,DepositCargo(tu))
-                l = get_node(sched,LiftIntoPlace(cargo))
-                ConstructionBots.align_construction_predicates!(sched,node,f)
-                ConstructionBots.align_construction_predicates!(sched,l,d)
-            end
-        end
-    end
-end
+ConstructionBots.calibrate_transport_tasks!(sched)
 @assert validate_schedule_transform_tree(sched;post_staging=true)
 
 # check
-# o = get_node(scene_tree,ObjectID(82))
-# start = get_node(sched,ObjectStart(o))
-o = get_node(scene_tree,AssemblyID(2))
-start = get_node(sched,AssemblyComplete(o))
-tu = get_node(scene_tree,TransportUnitNode(o))
-f = get_node(sched,FormTransportUnit(tu))
-d = get_node(sched,DepositCargo(tu))
-tg = get_node(sched,TransportUnitGo(tu))
-l = get_node(sched,LiftIntoPlace(o))
-@show global_transform(start_config(start))
-@show global_transform(cargo_deployed_config(f))
-@show global_transform(cargo_loaded_config(f))
-@show global_transform(start_config(f))
-@show global_transform(start_config(tg))
-@show global_transform(goal_config(tg))
-@show global_transform(start_config(d))
-@show global_transform(cargo_loaded_config(d))
-@show global_transform(cargo_deployed_config(d))
-@show global_transform(start_config(l))
-@show global_transform(goal_config(l))
+# cargo = get_node(scene_tree,ObjectID(82))
+# ConstructionBots.transport_sequence_sanity_check(sched,cargo)
 
 # Make Assignments!
 
@@ -182,6 +150,53 @@ set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
 update_visualizer!(scene_tree,vis_nodes)
 # Visualize construction
 visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;dt=0.1)
+
+# RVO
+using PyCall
+rvo = pyimport("rvo2")
+
+ConstructionBots.set_rvo_python_module!(rvo)
+
+ConstructionBots.set_rvo_default_max_speed!(3.0)
+sim = ConstructionBots.rvo_new_sim()
+ConstructionBots.rvo_add_agents!(scene_tree,sim)
+
+vtxs = ConstructionBots.construct_vtx_array(;spacing=(1.0,1.0,0.0), ranges=(-10:10,-10:10,0:0))
+robot_nodes = filter(n->matches_template(RobotNode,n),get_nodes(scene_tree))
+NUM_RVO_AGENTS = 70
+
+dt = 0.02
+for goal_switch in 1:5
+    agent_nodes = draw_random_uniform(robot_nodes,NUM_RVO_AGENTS)
+    goal_vtxs = draw_random_uniform(vtxs,NUM_RVO_AGENTS)
+    sim = ConstructionBots.rvo_new_sim()
+    ConstructionBots.rvo_add_agents!(scene_tree,sim)
+    for k in 1:500
+        for (node,goal) in zip(get_nodes(ConstructionBots.rvo_global_id_map()),goal_vtxs)
+            id = node_id(node)
+            idx = node_val(node).idx
+            pt = sim.getAgentPosition(idx)
+            d = goal[1:2] .- pt
+            max_vel = sim.getAgentMaxSpeed(idx)
+            if norm(d) >= 2.0*dt*max_vel
+                vel = normalize(d) * max_vel
+            else
+                vel = (0.0,0.0)
+            end
+            sim.setAgentPrefVelocity(idx,(vel[1],vel[2]))
+        end
+        sim.doStep()
+        for node in get_nodes(ConstructionBots.rvo_global_id_map())
+            id = node_id(node)
+            idx = node_val(node).idx
+            pt = sim.getAgentPosition(idx)
+            set_local_transform!(get_node(scene_tree,id),CT.Translation(pt[1],pt[2],0.0))
+        end
+        update_visualizer!(scene_tree,vis_nodes)
+        render(vis)
+        sleep(dt)
+    end
+end
 
 # VISUALIZE ROBOT PLACEMENT AROUND PARTS
 
