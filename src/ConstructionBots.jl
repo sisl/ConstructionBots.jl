@@ -15,7 +15,7 @@ using MathOptInterface
 using LinearAlgebra
 
 # using CRCBS
-# using TaskGraphs
+using TaskGraphs
 using Logging
 
 ################################################################################
@@ -487,6 +487,7 @@ end
 include("construction_schedule.jl")
 include("utils.jl")
 include("rvo_interface.jl")
+include("task_assignment.jl")
 
 ### RVO
 

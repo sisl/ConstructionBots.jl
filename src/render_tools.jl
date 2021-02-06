@@ -223,15 +223,23 @@ GraphPlottingBFS._title_string(::ConstructionBots.ProjectComplete)   = "P"
 for op in (
     :(GraphPlottingBFS._node_shape),
     :(GraphPlottingBFS._node_color),
-    :(GraphPlottingBFS._title_string)
+    :(GraphPlottingBFS._title_string),
+    :(GraphPlottingBFS._subtitle_string)
     )
     @eval $op(n::CustomNode,args...) = $op(node_val(n),args...)
+    @eval $op(n::ScheduleNode,args...) = $op(n.node,args...)
 end
 # GraphPlottingBFS._node_shape(n::CustomNode,args...) = GraphPlottingBFS._node_shape(node_val(n),args...)
 # GraphPlottingBFS._node_color(n::CustomNode,args...) = GraphPlottingBFS._node_color(node_val(n),args...)
 # GraphPlottingBFS._title_string(n::CustomNode,args...) = GraphPlottingBFS._title_string(node_val(n),args...)
 
-GraphPlottingBFS._subtitle_string(n::Union{CustomNode,SceneNode}) = "$(get_id(node_id(n)))"
+GraphPlottingBFS._subtitle_string(n::SceneNode) = "$(get_id(node_id(n)))"
+GraphPlottingBFS._subtitle_string(n::Union{EntityGo,EntityConfigPredicate,FormTransportUnit,DepositCargo}) = GraphPlottingBFS._subtitle_string(entity(n))
+GraphPlottingBFS._subtitle_string(n::BuildPhasePredicate) = GraphPlottingBFS._subtitle_string(n.assembly)
+GraphPlottingBFS._subtitle_string(n::ObjectNode) = "o$(get_id(node_id(n)))"
+GraphPlottingBFS._subtitle_string(n::RobotNode) = "r$(get_id(node_id(n)))"
+GraphPlottingBFS._subtitle_string(n::AssemblyNode) = "a$(get_id(node_id(n)))"
+GraphPlottingBFS._subtitle_string(n::TransportUnitNode) = "t$(get_id(node_id(n)))"
 
 SPACE_GRAY = RGB(0.2,0.2,0.2)
 BRIGHT_RED = RGB(0.6,0.0,0.2)

@@ -15,7 +15,7 @@ using Random
 Random.seed!(0);
 
 using Logging
-global_logger(ConsoleLogger(stderr, Logging.Info))
+global_logger(ConsoleLogger(stderr, Logging.Warn))
 
 Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
 
@@ -23,6 +23,7 @@ reset_all_id_counters!()
 reset_all_invalid_id_counters!()
 
 # factor by which to scale LDraw model (because MeshCat bounds are hard to adjust)
+NUM_ROBOTS          = 2 
 MODEL_SCALE         = 0.01
 ROBOT_HEIGHT        = 10*MODEL_SCALE
 ROBOT_RADIUS        = 25*MODEL_SCALE
@@ -32,14 +33,16 @@ set_default_robot_geom!(
 
 ## LOAD LDRAW FILE
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
-filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","ATTEWalker.mpd")
+# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","ATTEWalker.mpd")
+filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","stack1.ldr")
 model = parse_ldraw_file(filename)
 populate_part_geometry!(model)
 LDrawParser.change_coordinate_system!(model,ldraw_base_transform(),MODEL_SCALE)
 
 ## CONSTRUCT MODEL SPEC
 spec = ConstructionBots.construct_model_spec(model)
-model_spec = ConstructionBots.extract_single_model(spec,"20009 - AT-TE Walker.mpd")
+model_spec = ConstructionBots.extract_single_model(spec,"New Model.ldr")
+# model_spec = ConstructionBots.extract_single_model(spec,"20009 - AT-TE Walker.mpd")
 @assert GraphUtils.validate_graph(model_spec)
 display_graph(model_spec,scale=1,enforce_visited=true)
 
@@ -47,7 +50,7 @@ display_graph(model_spec,scale=1,enforce_visited=true)
 id_map = ConstructionBots.build_id_map(model,model_spec)
 assembly_tree = ConstructionBots.construct_assembly_tree(model,model_spec,id_map)
 scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
-print(scene_tree,v->"$(summary(node_id(v))) : $(id_map[node_id(v)])","\t")
+print(scene_tree,v->"$(summary(node_id(v))) : $(get(id_map,node_id(v),nothing))","\t")
 # Define TransportUnit configurations
 ConstructionBots.init_transport_units!(scene_tree;robot_radius = 0.5)
 # validate SceneTree
@@ -58,7 +61,6 @@ validate_embedded_tree(scene_tree,v->HierarchicalGeometry.get_transform_node(get
 display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
 
 ## Add some robots to scene tree
-NUM_ROBOTS = 100
 vtxs = ConstructionBots.construct_vtx_array(;spacing=(1.0,1.0,0.0), ranges=(-10:10,-10:10,0:0))
 robot_vtxs = draw_random_uniform(vtxs,NUM_ROBOTS)
 ConstructionBots.add_robots_to_scene!(scene_tree,robot_vtxs,[default_robot_geom()])
@@ -82,7 +84,7 @@ HG.jump_to_final_configuration!(scene_tree;set_edges=true)
 sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
 # Check if schedule graph and embedded transform tree are valid
 @assert validate_schedule_transform_tree(sched)
-sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,100)
+sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,500)
 display_graph(sched2,scale=1,enforce_visited=true)
 # display_graph(sched,scale=1,enforce_visited=true)
 
@@ -110,11 +112,25 @@ end
 ConstructionBots.calibrate_transport_tasks!(sched)
 @assert validate_schedule_transform_tree(sched;post_staging=true)
 
-# check
-# cargo = get_node(scene_tree,ObjectID(82))
-# ConstructionBots.transport_sequence_sanity_check(sched,cargo)
+# Task Assignments
+ConstructionBots.add_dummy_robot_go_nodes!(sched)
+@assert validate_schedule_transform_tree(sched;post_staging=true)
 
-# Make Assignments!
+using TaskGraphs
+using JuMP
+
+tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
+# milp_model = GreedyAssignment()
+# milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
+milp_model = SparseAdjacencyMILP()
+milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
+optimize!(milp_model)
+update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
+sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,100)
+display_graph(sched2,scale=3,enforce_visited=true)
+
+
+
 
 ## Visualize assembly
 color_map = construct_color_map(model_spec,id_map)

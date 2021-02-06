@@ -74,6 +74,7 @@ struct RobotGo{R} <: EntityGo{RobotNode}
     entity::R
     start_config::TransformNode
     goal_config::TransformNode
+    id::ActionID # required because there may be multiple RobotGo nodes for one robot
 end
 
 struct TransportUnitGo <: EntityGo{TransportUnitNode}
@@ -206,37 +207,11 @@ for T in (:DepositCargo,:FormTransportUnit)
         end
     end
 end
-# function DepositCargo(n::TransportUnitNode)
-#     t = DepositCargo(n,TransformNode(),TransformNode(),TransformNode())
-#     # cargo_goal -> cargo_start -> entity_config
-#     set_parent!(cargo_start_config(t),cargo_goal_config(t))
-#     set_parent!(start_config(t),cargo_start_config(t))
-#     # set child transform cargo_start -> entity_config
-#     set_local_transform!(start_config(t),inv(child_transform(n,cargo_id(n))))
-#     return t
-# end
-# function FormTransportUnit(n::TransportUnitNode)
-#     t = FormTransportUnit(n,TransformNode(),TransformNode(),TransformNode())
-#     # cargo_start -> cargo_goal -> entity_config
-#     set_parent!(cargo_goal_config(t),cargo_start_config(t))
-#     set_parent!(start_config(t),cargo_goal_config(t))
-#     # set transform of entity_config relative to parent (cargo_goal)
-#     set_local_transform!(start_config(t),inv(child_transform(n,cargo_id(n))))
-#     return t
-# end
 
 for T in (:RobotStart,:ObjectStart,:AssemblyComplete,:AssemblyStart)
     @eval begin
         $T(n::SceneNode) = $T(n,TransformNode())
         $T(n::ConstructionPredicate) = $T(entity(n),goal_config(n))
-        # function $T(n::EntityConfigPredicate{A,C}) where {A,C<:TransformNode}
-        #     node = $T(entity(n),start_config(n))
-        #     # node = $T(entity(n),TransformNode())
-        #     # set_parent!(goal_config(node),start_config(n))
-        #     # node
-        # end
-        # set_start_config(n::$T,c) = $T(entity(n),c)
-        # set_goal_config(n::$T,c) = $T(entity(n),c)
     end
 end
 for T in (:RobotGo,:TransportUnitGo) #,:LiftIntoPlace)
@@ -248,6 +223,7 @@ for T in (:RobotGo,:TransportUnitGo) #,:LiftIntoPlace)
         end
     end
 end
+RobotGo(n::RobotNode,start,goal) = RobotGo(n,start,goal,get_unique_id(ActionID))
 function LiftIntoPlace(n::Union{ObjectNode,AssemblyNode})
     l = LiftIntoPlace(n,TransformNode(),TransformNode())
     set_parent!(start_config(l),goal_config(l)) # point to parent
@@ -278,7 +254,7 @@ GraphUtils.required_predecessors(   ::RobotGo)          = Dict(Union{RobotStart,
 GraphUtils.required_successors(     ::RobotGo)          = Dict()
 GraphUtils.eligible_successors(     ::RobotGo)          = Dict(Union{RobotGo,FormTransportUnit}=>1)
 
-GraphUtils.required_predecessors(  n::FormTransportUnit) = Dict(RobotGo=>length(robot_team(n)),cargo_node_type(n)=>1,Union{ObjectStart,AssemblyComplete}=>1)
+GraphUtils.required_predecessors(  n::FormTransportUnit) = Dict(RobotGo=>length(robot_team(n)),cargo_node_type(n)=>1)
 GraphUtils.required_successors(     ::FormTransportUnit) = Dict(TransportUnitGo=>1)
 
 GraphUtils.required_predecessors(   ::TransportUnitGo)  = Dict(FormTransportUnit=>1)
@@ -299,7 +275,8 @@ GraphUtils.required_successors(    n::OpenBuildStep)    = Dict(DepositCargo=>num
 GraphUtils.required_predecessors(   ::ObjectStart)      = Dict()
 GraphUtils.required_successors(     ::ObjectStart)      = Dict(FormTransportUnit=>1)
 
-GraphUtils.required_predecessors(  n::AssemblyComplete) = Dict(Union{ObjectStart,CloseBuildStep}=>num_components(n))
+# GraphUtils.required_predecessors(  n::AssemblyComplete) = Dict(Union{ObjectStart,CloseBuildStep}=>1)
+GraphUtils.required_predecessors(   ::AssemblyComplete) = Dict(CloseBuildStep=>1)
 GraphUtils.required_successors(     ::AssemblyComplete) = Dict(Union{FormTransportUnit,ProjectComplete}=>1)
 
 GraphUtils.required_predecessors(   ::AssemblyStart)    = Dict()
@@ -312,7 +289,7 @@ GraphUtils.required_successors(     ::ProjectComplete)  = Dict()
 for T in (
     :ObjectStart,
     :RobotStart,
-    :RobotGo,
+    # :RobotGo,
     :AssemblyStart,
     :AssemblyComplete,
     :FormTransportUnit,
@@ -326,6 +303,7 @@ for T in (
         end
     end
 end
+GraphUtils.node_id(n::RobotGo) = n.id
 
 # for T in (
 #     :ObjectStart,
@@ -520,22 +498,23 @@ function validate_schedule_transform_tree(sched;post_staging=false)
                     assert_transform_tree_ancestor(goal_config(deposit_node),start_config(assembly_complete))
                     for vp in outneighbors(sched,v)
                         lift_node = get_node(sched,vp)
-                        @assert matches_template(LiftIntoPlace,lift_node)
-                        @assert GraphUtils.has_child(
-                            goal_config(assembly_complete),goal_config(lift_node))
-                        if post_staging
-                            # Show that goal_config(LiftIntoPlace) matches the 
-                            # goal config of cargo relative to assembly
-                            @assert transformations_approx_equiv(
-                                local_transform(goal_config(lift_node)),
-                                child_transform(assembly,node_id(entity(lift_node)))
-                            )
-                            # Show that start_config(LiftIntoPlace) matches 
-                            # cargo_deployed_config(DepositCargo)
-                            @assert transformations_approx_equiv(
-                                global_transform(start_config(lift_node)),
-                                global_transform(cargo_deployed_config(deposit_node)),
-                            )
+                        if matches_template(LiftIntoPlace,lift_node)
+                            @assert GraphUtils.has_child(
+                                goal_config(assembly_complete),goal_config(lift_node))
+                            if post_staging
+                                # Show that goal_config(LiftIntoPlace) matches the 
+                                # goal config of cargo relative to assembly
+                                @assert transformations_approx_equiv(
+                                    local_transform(goal_config(lift_node)),
+                                    child_transform(assembly,node_id(entity(lift_node)))
+                                )
+                                # Show that start_config(LiftIntoPlace) matches 
+                                # cargo_deployed_config(DepositCargo)
+                                @assert transformations_approx_equiv(
+                                    global_transform(start_config(lift_node)),
+                                    global_transform(cargo_deployed_config(deposit_node)),
+                                )
+                            end
                         end
                     end
                 end
@@ -855,9 +834,9 @@ function solve_ring_placement_problem(θ_des,r,R,rmin=0.0;
     # compute half widths in radians (required radial spacing between parts)
     half_widths = asin.(r ./ (r .+ R))
     # increase R and recompute half widths if ring is too small
-    while sum(half_widths)*2 >= 2π
+    while sum(half_widths)*2 >= 2.0*Float64(π)
         @info "R = $R is too small----sum(half_widths)*2 = $(sum(half_widths)*2)"
-        R = R*sum(half_widths)/(π) + ϵ
+        R = R*sum(half_widths)/(Float64(π)) + ϵ
         half_widths = asin.(r ./ (r .+ R))
         @info "Increased R to $R. sum(half_widths)*2 = $(sum(half_widths)*2)"
     end
@@ -867,7 +846,7 @@ function solve_ring_placement_problem(θ_des,r,R,rmin=0.0;
         @constraint(model, θ[i] + half_widths[i] <= θ[i+1] - half_widths[i+1])
     end
     # wrap-around constraint
-    @constraint(model, θ[n] + half_widths[n] <= θ[1] - half_widths[1] + 2π)
+    @constraint(model, θ[n] + half_widths[n] <= θ[1] - half_widths[1] + 2.0*Float64(π))
     @objective(model, Min, sum(weights .* (θ .- θ_des).^2))
 
     optimize!(model)

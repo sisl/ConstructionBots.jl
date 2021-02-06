@@ -73,10 +73,10 @@ function set_rvo_default_max_speed_volume_factor!(val)
 	global RVO_MAX_SPEED_VOLUME_FACTOR = val
 end
 function rvo_default_min_max_speed()
-	RVO_MIN_SPEED
+	RVO_MIN_MAX_SPEED
 end
 function set_rvo_default_min_max_speed!(val)
-	global RVO_MIN_SPEED = val
+	global RVO_MIN_MAX_SPEED = val
 end
 
 """ get_rvo_max_speed(node) """
