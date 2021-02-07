@@ -5,6 +5,9 @@ using LazySets
 
 using TaskGraphs
 using JuMP
+using Gurobi
+set_default_milp_optimizer!(Gurobi.Optimizer)
+
 using LightGraphs, GraphUtils
 using GeometryBasics, CoordinateTransformations, Rotations
 using StaticArrays
@@ -34,7 +37,8 @@ reset_all_id_counters!()
 reset_all_invalid_id_counters!()
 
 # factor by which to scale LDraw model (because MeshCat bounds are hard to adjust)
-NUM_ROBOTS          = 2 
+# NUM_ROBOTS          = 8 
+NUM_ROBOTS          = 2
 MODEL_SCALE         = 0.01
 ROBOT_HEIGHT        = 10*MODEL_SCALE
 ROBOT_RADIUS        = 25*MODEL_SCALE
@@ -44,8 +48,9 @@ set_default_robot_geom!(
 
 ## LOAD LDRAW FILE
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
-filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","ATTEWalker.mpd")
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","stack1.ldr")
+# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","ATTEWalker.mpd")
+filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","stack1.ldr")
+# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","big_stack.ldr")
 model = parse_ldraw_file(filename)
 populate_part_geometry!(model)
 LDrawParser.change_coordinate_system!(model,ldraw_base_transform(),MODEL_SCALE)
@@ -108,7 +113,9 @@ MAX_CARGO_HEIGHT = maximum(map(n->get_base_geom(n,HyperrectangleKey()).radius[3]
 vtxs = ConstructionBots.construct_vtx_array(;
     origin=SVector(0.0,0.0,MAX_CARGO_HEIGHT),
     obstacles=collect(values(staging_circles)))
-ConstructionBots.select_initial_object_grid_locations!(sched,vtxs)
+NUM_OBJECTS = length(filter(n->matches_template(ObjectNode,n),get_nodes(scene_tree)))
+object_vtxs = draw_random_uniform(vtxs,NUM_OBJECTS)
+ConstructionBots.select_initial_object_grid_locations!(sched,object_vtxs)
 
 # Move assemblies up so they float above the robots
 for node in get_nodes(scene_tree)
@@ -134,7 +141,7 @@ milp_model = SparseAdjacencyMILP()
 milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
 optimize!(milp_model)
 update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
-sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,100)
+sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,200)
 display_graph(sched2,scale=2,enforce_visited=true)
 
 ## Visualize assembly
@@ -157,12 +164,12 @@ for (id,geom) in staging_circles
         )
     staging_nodes[id] = vis_nodes[id]["staging_circle"]
 end
-setvisible!(sphere_nodes,false)
-setvisible!(rect_nodes,false)
-setvisible!(staging_nodes,false)
 setvisible!(sphere_nodes,true)
 setvisible!(rect_nodes,true)
 setvisible!(staging_nodes,true)
+setvisible!(sphere_nodes,false)
+setvisible!(rect_nodes,false)
+setvisible!(staging_nodes,false)
 
 # restore correct configuration
 HG.jump_to_final_configuration!(scene_tree;set_edges=true)
@@ -171,34 +178,22 @@ update_visualizer!(scene_tree,vis_nodes)
 set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
 update_visualizer!(scene_tree,vis_nodes)
 # Visualize construction
-visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;dt=0.1)
+# visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;dt=0.1)
 
 # RVO
 ConstructionBots.set_default_loading_speed!(0.5)
+ConstructionBots.set_rvo_default_time_step!(0.015)
 ConstructionBots.rvo_set_new_sim!()
 env = PlannerEnv(sched=tg_sched,scene_tree=scene_tree)
 active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
-ConstructionBots.rvo_add_agents!(active_nodes)
+ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 
-dt = env.dt
-t0 = 0.0
-time_stamp = t0
-for k in 1:400
-    step_environment!(env)
-    TaskGraphs.update_planning_cache!(env,0.0)
-    if project_complete(env)
-        break
-    end
-    update_visualizer!(scene_tree,vis_nodes)
+update_visualizer_function(env) = begin
+    update_visualizer!(env.scene_tree,vis_nodes)
     render(vis)
-    sleep(dt)
-    time_stamp = t0+k*dt
 end
 
-# Rotation rates
-# v = linear velocity
-# w = angular velocity (vector with magnitude)
-
+ConstructionBots.simulate!(env,update_visualizer_function)
 
 # VISUALIZE ROBOT PLACEMENT AROUND PARTS
 

@@ -194,21 +194,48 @@ rvo_eligible_node(n) = false
 rvo_eligible_node(n::ScheduleNode) = rvo_eligible_node(n.node)
 rvo_eligible_node(n::CustomNode) = rvo_eligible_node(n.node)
 
-function rvo_add_agents!(active_nodes,sim=rvo_global_sim())
-    for node in active_nodes
-        if rvo_eligible_node(node)
-            idx = rvo_add_agent!(entity(node),sim)
+function rvo_add_agents!(scene_tree,active_nodes,sim=rvo_global_sim())
+    for node in get_nodes(scene_tree)
+        if matches_template(RobotNode,node)
+            if is_root_node(scene_tree,node)
+                idx = rvo_add_agent!(node,sim)
+            end
+        elseif matches_template(TransportUnitNode,node)
+            if is_in_formation(node,scene_tree)
+                idx = rvo_add_agent!(node,sim)
+            end
         end
     end
+    # for node in active_nodes
+    #     if rvo_eligible_node(node)
+    #         idx = rvo_add_agent!(entity(node),sim)
+    #     end
+    # end
 end
 
-function rvo_sim_needs_update(active_nodes)
-    ids = Set{AbstractID}([node_id(n) for n in active_nodes])
-    if length(ids) == length(intersect(ids,get_vtx_ids(rvo_global_id_map())))
-        return false
-    else
-        return true
+function rvo_sim_needs_update(scene_tree,active_nodes)
+    for node in get_nodes(scene_tree)
+        if matches_template(RobotNode,node)
+            if is_root_node(scene_tree,node)
+                if !has_vertex(rvo_global_id_map(),node_id(node))
+                    return true
+                end
+            end
+        elseif matches_template(TransportUnitNode,node)
+            if is_in_formation(node,scene_tree)
+                if !has_vertex(rvo_global_id_map(),node_id(node))
+                    return true
+                end
+            end
+        end
     end
+    return false
+    # ids = Set{AbstractID}([node_id(n) for n in active_nodes])
+    # if length(ids) == length(intersect(ids,get_vtx_ids(rvo_global_id_map())))
+    #     return false
+    # else
+    #     return true
+    # end
 end
 
 function rvo_update_sim!(active_nodes=get_nodes(scene_tree))

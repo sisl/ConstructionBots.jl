@@ -41,6 +41,37 @@ function set_default_rotational_loading_speed!(val)
     global ROTATIONAL_LOADING_SPEED = val
 end
 
+function simulate!(env,update_visualizer_function;
+    max_time_steps=2000,
+    )
+    @unpack sched, scene_tree, cache, dt = env
+    t0 = 0.0
+    time_stamp = t0
+    # configs = TransformDict{AbstractID}(
+    #     node_id(node)=>global_transform(node) for node in get_nodes(scene_tree)
+    # )
+    for k in 1:max_time_steps
+        step_environment!(env)
+        # debugging
+        # for node in get_nodes(scene_tree)
+        #     if norm(global_transform(node).translation - configs[node_id(node)].translation) >= 0.5
+        #         @warn "node $(node_id(node)) just jumped" env.cache.active_set
+        #     end
+        #     configs[node_id(node)] = global_transform(node)
+        # end
+        TaskGraphs.update_planning_cache!(env,0.0)
+        if project_complete(env)
+            println("PROJECT COMPLETE!")
+            break
+        end
+        update_visualizer_function(env)
+        sleep(dt)
+        time_stamp = t0+k*dt
+    end
+    return env
+end
+
+
 """
     update_position_from_sim!(agent)
 
@@ -79,13 +110,13 @@ function step_environment!(env::PlannerEnv,sim=rvo_global_sim())
 end
 
 function update_rvo_sim!(env::PlannerEnv)
-    @unpack sched, cache = env
+    @unpack sched, scene_tree, cache = env
     active_nodes = [get_node(sched,v) for v in cache.active_set]
     rvo_nodes = filter(rvo_eligible_node, active_nodes)
-    if rvo_sim_needs_update(rvo_nodes)
-        @debug "New RVO simulation"
+    if rvo_sim_needs_update(scene_tree,rvo_nodes)
+        # @debug "New RVO simulation"
         rvo_set_new_sim!()
-        rvo_add_agents!(rvo_nodes)
+        rvo_add_agents!(scene_tree,rvo_nodes)
     end
 end
 
@@ -97,10 +128,10 @@ function TaskGraphs.update_planning_cache!(env::PlannerEnv,time_stamp::Float64)
         done = true
         for v in collect(cache.active_set)
             node = get_node(sched,v)
-            if is_goal(node,env)
+            if CRCBS.is_goal(node,env)
                 @info "node $(node_id(node)) finished."
                 TaskGraphs.update_planning_cache!(nothing,sched,cache,v,time_stamp)
-                @info "active nodes $([get_vtx_id(sched,v) for v in cache.active_set])"
+                # @info "active nodes $([get_vtx_id(sched,v) for v in cache.active_set])"
                 @assert !(v in cache.active_set)
                 done = false
                 updated = true
@@ -112,9 +143,29 @@ function TaskGraphs.update_planning_cache!(env::PlannerEnv,time_stamp::Float64)
     end
     if updated
         TaskGraphs.process_schedule!(sched)
+        preprocess_env!(env)
         update_rvo_sim!(env)
     end
     cache
+end
+
+"""
+ensure that all transport units (if active) are formed or (conversely) 
+disbanded
+"""
+function preprocess_env!(env::PlannerEnv)
+    @unpack sched, scene_tree, cache = env
+    for v in cache.active_set
+        node = get_node(sched,v)
+        if matches_template(FormTransportUnit,node)
+            if !capture_robots!(entity(node),scene_tree)
+                @warn "Unable to capture robots: $(node_id(node))"
+            end
+        elseif matches_template(RobotGo,node)
+            # ensure that node does not still have a parent
+            @assert has_parent(entity(node),entity(node))
+        end
+    end
 end
 
 function project_complete(env::PlannerEnv)
@@ -128,6 +179,7 @@ end
 
 # CRCBS.is_goal
 CRCBS.is_goal(n::ScheduleNode,env::PlannerEnv) = is_goal(n.node,env)
+CRCBS.is_goal(node::ConstructionPredicate,env) = true
 function CRCBS.is_goal(node::EntityGo,env)
     agent = entity(node)
     state = global_transform(agent)
@@ -141,11 +193,9 @@ If next node is FormTransportUnit, ensure that everybody else is in position.
 """
 function CRCBS.is_goal(node::RobotGo,env)
     @unpack sched, scene_tree = env
-
     agent = entity(node)
     state = global_transform(agent)
     goal = global_transform(goal_config(node))
-    # if norm(goal.translation .- state.translation) >= HG.capture_distance()
     if !is_within_capture_distance(state,goal)
         return false
     end
@@ -172,30 +222,15 @@ function CRCBS.is_goal(node::Union{FormTransportUnit,DepositCargo},env)
     goal = global_transform(cargo_goal_config(node))
     return is_within_capture_distance(state,goal)
 end
-CRCBS.is_goal(node::ConstructionPredicate,env) = true
-
-
-# TaskGraphs.update_env!(node,sched,scene_tree,cache,time_stamp)
-for T in (:BuildPhasePredicate,:EntityConfigPredicate,:ProjectComplete)
-    @eval begin
-        function get_cmd(node::$T,env)
-            return nothing
-        end
-        function apply_cmd!(node::$T,cmd::Nothing,env)
-            return nothing
-        end
-    end
-end
-function apply_cmd!(node::CloseBuildStep,cmd::Nothing,env)
-    @unpack sched, scene_tree = env
-    assembly = get_assembly(node)
-    for (id,tform) in assembly_components(assembly)
-        if !has_edge(scene_tree,assembly,id)
-            capture_child!(scene_tree,assembly,id)
-        end
-    end
+function CRCBS.is_goal(node::LiftIntoPlace,env)
+    @unpack sched, scene_tree, cache, dt = env
+    cargo = entity(node)
+    state = global_transform(cargo)
+    goal = global_transform(goal_config(node))
+    return is_within_capture_distance(state,goal)
 end
 
+get_cmd(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},env) = nothing
 function get_cmd(node::Union{TransportUnitGo,RobotGo},env)
     @unpack sched, scene_tree, dt = env
     agent = entity(node)
@@ -211,8 +246,6 @@ function get_cmd(node::Union{TransportUnitGo,RobotGo},env)
     rvo_set_agent_pref_velocity!(node,twist.vel[1:2])
     return twist
 end
-apply_cmd!(node::Union{TransportUnitGo,RobotGo},cmd,args...) = nothing # ConstructionPredicate.rvo_set_agent_pref_velocity!(node,cmd)
-
 function get_cmd(node::Union{FormTransportUnit,DepositCargo},env)
     @unpack sched, scene_tree, cache, dt = env
     agent = entity(node)
@@ -223,22 +256,6 @@ function get_cmd(node::Union{FormTransportUnit,DepositCargo},env)
     ω_max = default_rotational_loading_speed()
     twist = optimal_twist(tf_error,v_max,ω_max,dt)
 end
-function apply_cmd!(node::Union{FormTransportUnit,DepositCargo},twist,env)
-    @unpack sched, scene_tree, cache, dt = env
-    agent = entity(node)
-    cargo = get_node(scene_tree,cargo_id(agent))
-    for (robot_id,_) in robot_team(agent)
-        if !has_edge(scene_tree,agent,robot_id)
-            capture_child!(scene_tree,agent,robot_id)
-        end
-    end
-    tform = integrate_twist(twist,dt)
-    set_local_transform!(cargo, local_transform(cargo) ∘ tform)
-    if is_within_capture_distance(agent,cargo)
-        capture_child!(scene_tree,agent,cargo)
-    end
-end
-
 function get_cmd(node::LiftIntoPlace,env)
     @unpack sched, scene_tree, cache, dt = env
     cargo = entity(node)
@@ -248,12 +265,52 @@ function get_cmd(node::LiftIntoPlace,env)
     ω_max = default_rotational_loading_speed()
     twist = optimal_twist(tf_error,v_max,ω_max,dt)
 end
+
+apply_cmd!(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},cmd,env) = nothing
+function apply_cmd!(node::CloseBuildStep,cmd::Nothing,env)
+    @unpack sched, scene_tree = env
+    assembly = get_assembly(node)
+    for (id,tform) in assembly_components(assembly)
+        if !has_edge(scene_tree,assembly,id)
+            capture_child!(scene_tree,assembly,id)
+        end
+        @assert has_edge(scene_tree,assembly,id)
+    end
+end
+function apply_cmd!(node::FormTransportUnit,twist,env)
+    @unpack sched, scene_tree, cache, dt = env
+    agent = entity(node)
+    cargo = get_node(scene_tree,cargo_id(agent))
+    for (robot_id,_) in robot_team(agent)
+        if !has_edge(scene_tree,agent,robot_id)
+            capture_child!(scene_tree,agent,robot_id)
+        end
+        @assert has_edge(scene_tree,agent,robot_id)
+    end
+    tform = integrate_twist(twist,dt)
+    set_local_transform!(cargo, local_transform(cargo) ∘ tform)
+    if is_within_capture_distance(agent,cargo)
+        capture_child!(scene_tree,agent,cargo)
+    end
+end
+function apply_cmd!(node::DepositCargo,twist,env)
+    @unpack sched, scene_tree, cache, dt = env
+    agent = entity(node)
+    cargo = get_node(scene_tree,cargo_id(agent))
+    tform = integrate_twist(twist,dt)
+    set_local_transform!(cargo, local_transform(cargo) ∘ tform)
+    if is_goal(node,env)
+        disband!(scene_tree,agent)
+    end
+end
+apply_cmd!(node::Union{TransportUnitGo,RobotGo},cmd,args...) = nothing # ConstructionPredicate.rvo_set_agent_pref_velocity!(node,cmd)
 function apply_cmd!(node::LiftIntoPlace,twist,env)
     @unpack sched, scene_tree, cache, dt = env
     cargo = entity(node)
     tform = integrate_twist(twist,dt)
     set_local_transform!(cargo, local_transform(cargo) ∘ tform)
 end
+
 
 export
     Twist,
@@ -268,7 +325,6 @@ struct Twist
     ω::SVector{3,Float64}
 end
 Base.zero(::Type{Twist}) = Twist(SVector(0.0,0.0,0.0),SVector(0.0,0.0,0.0))
-
 
 """
     optimal_twist(tf_error,v_max,ω_max)
