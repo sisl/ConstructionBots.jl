@@ -138,9 +138,9 @@ function add_build_step!(model_graph,build_step::BuildingStep,preceding_step=-1)
         add_edge!(model_graph,preceding_step,input)
     end
     # if is_root_node(model_graph,node) 
-    # if has_vertex(model_graph,preceding_step) && is_terminal_node(model_graph,preceding_step) 
+    if has_vertex(model_graph,preceding_step) && is_terminal_node(model_graph,preceding_step) 
         add_edge!(model_graph,preceding_step,node) # Do I want this or not?
-    # end
+    end
     node
 end
 function populate_model_subgraph!(model_graph,model::SubModelPlan)
@@ -237,7 +237,8 @@ end
 From a model schedule with (potentially) multiple distinct models, extract just
 the model graph with root id `model_key`.
 """
-function extract_single_model(spec::S,model_key) where {S<:MPDModelGraph}
+function extract_single_model(spec::S,
+        model_key=get_vtx_id(spec,GraphUtils.get_biggest_tree(spec))) where {S<:MPDModelGraph}
     @assert has_vertex(spec,model_key)
     new_spec = S(id_generator=spec.id_generator)
     root = get_vtx(spec,model_key)
@@ -488,7 +489,6 @@ include("construction_schedule.jl")
 include("utils.jl")
 include("rvo_interface.jl")
 include("task_assignment.jl")
-
-### RVO
+include("route_planning.jl")
 
 end

@@ -39,6 +39,7 @@ for op in (:start_config,:goal_config,:entity,
     :cargo_deployed_config,:cargo_loaded_config)
     @eval begin
         $op(n::CustomNode) = $op(node_val(n))
+        $op(n::ScheduleNode) = $op(n.node)
     end
 end
 

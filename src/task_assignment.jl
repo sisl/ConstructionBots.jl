@@ -15,6 +15,14 @@ function TaskGraphs.duration_lower_bound(node::Union{FormTransportUnit,DepositCa
     TaskGraphs.duration_lower_bound(node,start,goal)
 end
 
+TaskGraphs.is_tight(node::Union{TransportUnitGo,RobotGo}) = true
+
+TaskGraphs.needs_path(node::BuildPhasePredicate)    = false
+TaskGraphs.needs_path(node::ObjectStart)            = false
+TaskGraphs.needs_path(node::AssemblyComplete)       = false
+TaskGraphs.needs_path(node::AssemblyStart)          = false
+TaskGraphs.needs_path(node::ProjectComplete)        = false
+
 function TaskGraphs.generate_path_spec(node::ConstructionPredicate)
     PathSpec(
         min_duration=TaskGraphs.duration_lower_bound(node),
@@ -46,8 +54,18 @@ end
 CRCBS.is_valid(node::SceneNode) = CRCBS.is_valid(node_id(node))
 
 TaskGraphs.align_with_successor(node::ConstructionPredicate,succ::ConstructionPredicate) = node
-TaskGraphs.align_with_successor(node::RobotGo,succ::T) where {T<:Union{EntityConfigPredicate,EntityGo}} = RobotGo(TaskGraphs.first_valid(entity(node),entity(succ)),start_config(node),start_config(succ))
-TaskGraphs.align_with_predecessor(node::RobotGo,pred::T) where {T<:Union{EntityConfigPredicate,EntityGo}} = RobotGo(TaskGraphs.first_valid(entity(node),entity(pred)),goal_config(pred),goal_config(node))
+TaskGraphs.align_with_successor(node::RobotGo,succ::T) where {T<:Union{EntityConfigPredicate,EntityGo}} = RobotGo(
+    TaskGraphs.first_valid(entity(node),entity(succ)),
+    start_config(node),
+    start_config(succ),
+    node_id(node)
+    )
+TaskGraphs.align_with_predecessor(node::RobotGo,pred::T) where {T<:Union{EntityConfigPredicate,EntityGo}} = RobotGo(
+    TaskGraphs.first_valid(entity(node),entity(pred)),
+    goal_config(pred),
+    goal_config(node),
+    node_id(node)
+    )
 # TaskGraphs.align_with_successor(node::T,succ::S) where {C,T<:EntityConfigPredicate{C},S<:EntityGo{C}} = T(first_valid(node,succ),start_config(node))
 
 ALIGNMENT_CHECK_TOLERANCE = 1e-3
@@ -84,27 +102,6 @@ function TaskGraphs.align_with_predecessor(node::RobotGo,pred::DepositCargo)
     end
     return node
 end
-# function align_with_predecessor(node::AbstractRobotAction,pred::TEAM_ACTION)
-# 	for i in 1:length(pred.instructions)
-# 		p = pred.instructions[i]
-# 		if get_destination_location_id(p) == get_initial_location_id(node)
-# 			return align_with_predecessor(node,p)
-# 		end
-# 	end
-# 	return node
-# end
-# function align_with_predecessor(node::TEAM_ACTION,pred::TEAM_ACTION)
-# 	for i in 1:length(node.instructions)
-# 		p = node.instructions[i]
-# 		for (j,pj) in enumerate(pred.instructions)
-# 			if get_destination_location_id(pj) == get_initial_location_id(p)
-# 				@assert(i == j, "TEAM_ACTION indices $i and $j do not match")
-# 				node.instructions[i] = align_with_predecessor(p,pj)
-# 			end
-# 		end
-# 	end
-# 	node
-# end
 
 """
     build_and_link_dummy_robot!(node,id,tform)

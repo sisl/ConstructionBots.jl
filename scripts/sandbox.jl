@@ -3,10 +3,17 @@ using LDrawParser
 using HierarchicalGeometry
 using LazySets
 
+using TaskGraphs
+using JuMP
 using LightGraphs, GraphUtils
 using GeometryBasics, CoordinateTransformations, Rotations
 using StaticArrays
 using LinearAlgebra
+
+using PyCall
+rvo = pyimport("rvo2")
+ConstructionBots.set_rvo_python_module!(rvo)
+ConstructionBots.set_rvo_default_max_speed!(3.0)
 
 using MeshCat
 const MESHCAT_GRID_DIMS = ((-10.0,10.0),(-10.0,10.0))
@@ -15,9 +22,13 @@ using Random
 Random.seed!(0);
 
 using Logging
-global_logger(ConsoleLogger(stderr, Logging.Warn))
+global_logger(ConsoleLogger(stderr, Logging.Debug))
 
 Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
+
+# Start MeshCat viewer
+vis = Visualizer()
+render(vis)
 
 reset_all_id_counters!()
 reset_all_invalid_id_counters!()
@@ -41,7 +52,7 @@ LDrawParser.change_coordinate_system!(model,ldraw_base_transform(),MODEL_SCALE)
 
 ## CONSTRUCT MODEL SPEC
 spec = ConstructionBots.construct_model_spec(model)
-model_spec = ConstructionBots.extract_single_model(spec,"New Model.ldr")
+model_spec = ConstructionBots.extract_single_model(spec)
 # model_spec = ConstructionBots.extract_single_model(spec,"20009 - AT-TE Walker.mpd")
 @assert GraphUtils.validate_graph(model_spec)
 display_graph(model_spec,scale=1,enforce_visited=true)
@@ -116,9 +127,6 @@ ConstructionBots.calibrate_transport_tasks!(sched)
 ConstructionBots.add_dummy_robot_go_nodes!(sched)
 @assert validate_schedule_transform_tree(sched;post_staging=true)
 
-using TaskGraphs
-using JuMP
-
 tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 # milp_model = GreedyAssignment()
 # milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
@@ -127,15 +135,10 @@ milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
 optimize!(milp_model)
 update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
 sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,100)
-display_graph(sched2,scale=3,enforce_visited=true)
-
-
-
+display_graph(sched2,scale=2,enforce_visited=true)
 
 ## Visualize assembly
 color_map = construct_color_map(model_spec,id_map)
-vis = Visualizer()
-render(vis)
 delete!(vis)
 vis_nodes = populate_visualizer!(scene_tree,vis;
     color_map=color_map,
@@ -168,50 +171,21 @@ update_visualizer!(scene_tree,vis_nodes)
 visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;dt=0.1)
 
 # RVO
-using PyCall
-rvo = pyimport("rvo2")
+ConstructionBots.rvo_set_new_sim!()
+env = PlannerEnv(sched=tg_sched,scene_tree=scene_tree)
+active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
+ConstructionBots.rvo_add_agents!(active_nodes)
 
-ConstructionBots.set_rvo_python_module!(rvo)
-
-ConstructionBots.set_rvo_default_max_speed!(3.0)
-sim = ConstructionBots.rvo_new_sim()
-ConstructionBots.rvo_add_agents!(scene_tree,sim)
-
-vtxs = ConstructionBots.construct_vtx_array(;spacing=(1.0,1.0,0.0), ranges=(-10:10,-10:10,0:0))
-robot_nodes = filter(n->matches_template(RobotNode,n),get_nodes(scene_tree))
-NUM_RVO_AGENTS = 70
-
-dt = 0.02
-for goal_switch in 1:5
-    agent_nodes = draw_random_uniform(robot_nodes,NUM_RVO_AGENTS)
-    goal_vtxs = draw_random_uniform(vtxs,NUM_RVO_AGENTS)
-    sim = ConstructionBots.rvo_new_sim()
-    ConstructionBots.rvo_add_agents!(scene_tree,sim)
-    for k in 1:500
-        for (node,goal) in zip(get_nodes(ConstructionBots.rvo_global_id_map()),goal_vtxs)
-            id = node_id(node)
-            idx = node_val(node).idx
-            pt = sim.getAgentPosition(idx)
-            d = goal[1:2] .- pt
-            max_vel = sim.getAgentMaxSpeed(idx)
-            if norm(d) >= 2.0*dt*max_vel
-                vel = normalize(d) * max_vel
-            else
-                vel = (0.0,0.0)
-            end
-            sim.setAgentPrefVelocity(idx,(vel[1],vel[2]))
-        end
-        sim.doStep()
-        for node in get_nodes(ConstructionBots.rvo_global_id_map())
-            id = node_id(node)
-            idx = node_val(node).idx
-            pt = sim.getAgentPosition(idx)
-            set_local_transform!(get_node(scene_tree,id),CT.Translation(pt[1],pt[2],0.0))
-        end
-        update_visualizer!(scene_tree,vis_nodes)
-        render(vis)
-        sleep(dt)
-    end
+dt = env.dt
+t0 = 0.0
+time_stamp = t0
+for k in 1:100
+    step_environment!(env)
+    TaskGraphs.update_planning_cache!(env,0.0)
+    update_visualizer!(scene_tree,vis_nodes)
+    render(vis)
+    sleep(dt)
+    time_stamp = t0+k*dt
 end
 
 # VISUALIZE ROBOT PLACEMENT AROUND PARTS

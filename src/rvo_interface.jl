@@ -13,6 +13,10 @@ function set_rvo_id_map!(m::RVOAgentMap,id::AbstractID,idx::Int)
 end
 set_rvo_id_map!(m::RVOAgentMap,idx::Int,id::AbstractID) = set_rvo_id_map!(m,id,idx)
 
+rvo_get_agent_idx(id::AbstractID) = node_val(get_node(rvo_global_id_map(),id)).idx
+rvo_get_agent_idx(node::SceneNode) = rvo_get_agent_idx(node_id(node))
+rvo_get_agent_idx(node::ConstructionPredicate) = rvo_get_agent_idx(entity(node))
+
 global RVO_ID_GLOBAL_MAP = RVOAgentMap()
 function rvo_global_id_map()
 	RVO_ID_GLOBAL_MAP
@@ -27,18 +31,11 @@ function rvo_reset_agent_map!()
 end
 
 global RVO_PYTHON_MODULE = nothing
-global RVO_SIM = nothing
 function rvo_python_module()
 	RVO_PYTHON_MODULE
 end
 function set_rvo_python_module!(val)
 	global RVO_PYTHON_MODULE = val
-end
-function rvo_sim()
-	RVO_SIM
-end
-function set_rvo_sim!(val)
-	global RVO_SIM = val
 end
 function rvo_new_sim(;
     dt::Float64=1/40.0,
@@ -48,13 +45,42 @@ function rvo_new_sim(;
     horizon_obst::Float64=1.0,
     radius::Float64=0.5,
     max_speed::Float64=rvo_default_max_speed(),
+    default_vel=(0.0,0.0)
     )
     rvo_reset_agent_map!()
     rvo_python_module().PyRVOSimulator(
-        dt,neighbor_dist,max_neighbors,horizon,horizon_obst,radius,max_speed
+        dt,neighbor_dist,max_neighbors,horizon,horizon_obst,radius,max_speed,default_vel
         )
 end
 
+# """
+#     RVOSimWrapper
+
+# A wrapper so that can be shared even as the underlying rvo simulations are 
+# constructed and deleted.
+# """
+# mutable struct RVOSimWrapper
+#     sim
+#     # is_up_to_date::Bool
+#     # timestamp::Float64
+# end
+# GraphUtils.is_up_to_date(m::RVOSimWrapper) = m.is_up_to_date
+# GraphUtils.time_stamp(m::RVOSimWrapper) = m.timestamp
+
+# global RVO_SIM_WRAPPER = RVOSimWrapper(nothing)
+global RVO_SIM_WRAPPER = CachedElement{Any}(nothing,false,time())
+rvo_global_sim_wrapper() = RVO_SIM_WRAPPER
+function rvo_set_new_sim!(sim=rvo_new_sim())
+    set_element!(rvo_global_sim_wrapper(),sim)
+    # rvo_global_sim_wrapper().sim = sim
+end
+# rvo_global_sim() = rvo_global_sim_wrapper().sim
+rvo_global_sim() = get_element(rvo_global_sim_wrapper())
+
+function rvo_get_agent_position(n)
+    rvo_idx = rvo_get_agent_idx(n)
+    rvo_global_sim().getAgentPosition(rvo_idx)
+end
 
 # RVO PARAMETERS
 global RVO_MAX_SPEED_VOLUME_FACTOR     = 0.1
@@ -93,6 +119,16 @@ end
 """ get_rvo_radius(node) """
 get_rvo_radius(node) = get_base_geom(node,HypersphereKey()).radius
 
+
+global RVO_DEFAULT_TIME_STEP = 1/40.0
+function rvo_default_time_step()
+    RVO_DEFAULT_TIME_STEP
+end 
+function set_rvo_default_time_step!(val)
+    global RVO_DEFAULT_TIME_STEP = val
+end 
+
+
 global RVO_DEFAULT_NEIGHBOR_DISTANCE = 2.0
 global RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE = 1.0
 global RVO_DEFAULT_NEIGHBORHOOD_VELOCITY_SCALE_FACTOR = 1.0
@@ -122,13 +158,13 @@ function get_rvo_neighbor_distance(node)
     d = max(d - delta_d, rvo_default_min_neighbor_distance())
 end
 
-function rvo_add_agent!(node,sim)
-    rad             = get_rvo_radius(node)
-    max_speed       = get_rvo_max_speed(node)
-    neighbor_dist   = get_rvo_neighbor_distance(node)
-    pt = HG.project_to_2d(global_transform(node).translation)
+function rvo_add_agent!(agent::Union{RobotNode,TransportUnitNode},sim)
+    rad             = get_rvo_radius(agent)
+    max_speed       = get_rvo_max_speed(agent)
+    neighbor_dist   = get_rvo_neighbor_distance(agent)
+    pt = HG.project_to_2d(global_transform(agent).translation)
     agent_idx = sim.addAgent((pt[1],pt[2]))
-    set_rvo_id_map!(node_id(node),agent_idx)
+    set_rvo_id_map!(node_id(agent),agent_idx)
     sim.setAgentNeighborDist(agent_idx, neighbor_dist)
     sim.setAgentMaxSpeed(agent_idx,     max_speed)
     sim.setAgentRadius(agent_idx,       rad)
@@ -138,11 +174,49 @@ end
 #     agent_idx = get_node(rvo_global_id_map(),id).idx
 #     rem_node!(rvo_global_id_map(),id)
 # end
+function rvo_set_agent_pref_velocity!(node,vel)
+    idx = rvo_get_agent_idx(node)
+    rvo_global_sim().setAgentPrefVelocity(idx,(vel[1],vel[2]))
+end
 
-function rvo_add_agents!(scene_tree,sim,active_nodes=get_nodes(scene_tree))
+for T in (
+    :RobotStart,
+    :RobotGo,
+    :FormTransportUnit,
+    :TransportUnitGo,
+    :DepositCargo
+)
+    @eval begin
+        rvo_eligible_node(n::$T) = true
+    end
+end
+rvo_eligible_node(n) = false
+rvo_eligible_node(n::ScheduleNode) = rvo_eligible_node(n.node)
+rvo_eligible_node(n::CustomNode) = rvo_eligible_node(n.node)
+
+function rvo_add_agents!(active_nodes,sim=rvo_global_sim())
     for node in active_nodes
-        if matches_template(RobotNode,node)
-            idx = rvo_add_agent!(node,sim)
+        if rvo_eligible_node(node)
+            idx = rvo_add_agent!(entity(node),sim)
         end
     end
+end
+
+function rvo_sim_needs_update(active_nodes)
+    ids = Set{AbstractID}([node_id(n) for n in active_nodes])
+    if length(ids) == length(intersect(ids,get_vtx_ids(rvo_global_id_map())))
+        return false
+    else
+        return true
+    end
+end
+
+function rvo_update_sim!(active_nodes=get_nodes(scene_tree))
+    if rvo_sim_needs_update(active_nodes)
+        rvo_set_new_sim!()
+        rvo_add_agents!(rvo_global_sim(),active_nodes)
+        @info "Initializing new global rvo simulator"
+    end
+    @info "No need to initialize new global rvo simulator"
+    rvo_global_sim()
 end
