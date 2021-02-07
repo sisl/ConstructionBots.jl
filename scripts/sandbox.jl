@@ -25,7 +25,7 @@ using Random
 Random.seed!(0);
 
 using Logging
-global_logger(ConsoleLogger(stderr, Logging.Warn))
+global_logger(ConsoleLogger(stderr, Logging.Info))
 
 Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
 
@@ -182,7 +182,7 @@ update_visualizer!(scene_tree,vis_nodes)
 
 # RVO
 ConstructionBots.set_default_loading_speed!(0.5)
-ConstructionBots.set_rvo_default_time_step!(0.015)
+ConstructionBots.set_rvo_default_time_step!(1/40.0)
 ConstructionBots.rvo_set_new_sim!()
 env = PlannerEnv(sched=tg_sched,scene_tree=scene_tree)
 active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
