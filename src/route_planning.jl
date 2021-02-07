@@ -2,7 +2,8 @@ export
     PlannerEnv,
     step_environment!,
     get_cmd,
-    apply_cmd!
+    apply_cmd!,
+    project_complete
 
 """
     PlannerEnv
@@ -76,6 +77,7 @@ function step_environment!(env::PlannerEnv,sim=rvo_global_sim())
     end
     return env
 end
+
 function update_rvo_sim!(env::PlannerEnv)
     @unpack sched, cache = env
     active_nodes = [get_node(sched,v) for v in cache.active_set]
@@ -113,6 +115,15 @@ function TaskGraphs.update_planning_cache!(env::PlannerEnv,time_stamp::Float64)
         update_rvo_sim!(env)
     end
     cache
+end
+
+function project_complete(env::PlannerEnv)
+    @unpack sched, cache = env
+    if isempty(cache.active_set)
+        @assert nv(sched) == length(cache.closed_set)
+        return true
+    end
+    return false
 end
 
 # CRCBS.is_goal
@@ -172,7 +183,15 @@ for T in (:BuildPhasePredicate,:EntityConfigPredicate,:ProjectComplete)
         end
         function apply_cmd!(node::$T,cmd::Nothing,env)
             return nothing
-            # update_planning_cache!(nothing,sched,cache,get_vtx(sched,node),time_stamp)
+        end
+    end
+end
+function apply_cmd!(node::CloseBuildStep,cmd::Nothing,env)
+    @unpack sched, scene_tree = env
+    assembly = get_assembly(node)
+    for (id,tform) in assembly_components(assembly)
+        if !has_edge(scene_tree,assembly,id)
+            capture_child!(scene_tree,assembly,id)
         end
     end
 end
@@ -218,6 +237,22 @@ function apply_cmd!(node::Union{FormTransportUnit,DepositCargo},twist,env)
     if is_within_capture_distance(agent,cargo)
         capture_child!(scene_tree,agent,cargo)
     end
+end
+
+function get_cmd(node::LiftIntoPlace,env)
+    @unpack sched, scene_tree, cache, dt = env
+    cargo = entity(node)
+    # compute velocity (angular and translational) for cargo
+    tf_error = relative_transform(global_transform(cargo),global_transform(goal_config(node)))
+    v_max = default_loading_speed()
+    ω_max = default_rotational_loading_speed()
+    twist = optimal_twist(tf_error,v_max,ω_max,dt)
+end
+function apply_cmd!(node::LiftIntoPlace,twist,env)
+    @unpack sched, scene_tree, cache, dt = env
+    cargo = entity(node)
+    tform = integrate_twist(twist,dt)
+    set_local_transform!(cargo, local_transform(cargo) ∘ tform)
 end
 
 export

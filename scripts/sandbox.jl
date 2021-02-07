@@ -44,8 +44,8 @@ set_default_robot_geom!(
 
 ## LOAD LDRAW FILE
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","ATTEWalker.mpd")
-filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","stack1.ldr")
+filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","ATTEWalker.mpd")
+# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","stack1.ldr")
 model = parse_ldraw_file(filename)
 populate_part_geometry!(model)
 LDrawParser.change_coordinate_system!(model,ldraw_base_transform(),MODEL_SCALE)
@@ -183,9 +183,12 @@ ConstructionBots.rvo_add_agents!(active_nodes)
 dt = env.dt
 t0 = 0.0
 time_stamp = t0
-for k in 1:100
+for k in 1:400
     step_environment!(env)
     TaskGraphs.update_planning_cache!(env,0.0)
+    if project_complete(env)
+        break
+    end
     update_visualizer!(scene_tree,vis_nodes)
     render(vis)
     sleep(dt)

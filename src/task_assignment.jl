@@ -54,7 +54,7 @@ end
 CRCBS.is_valid(node::SceneNode) = CRCBS.is_valid(node_id(node))
 
 TaskGraphs.align_with_successor(node::ConstructionPredicate,succ::ConstructionPredicate) = node
-TaskGraphs.align_with_successor(node::RobotGo,succ::T) where {T<:Union{EntityConfigPredicate,EntityGo}} = RobotGo(
+TaskGraphs.align_with_successor(node::RobotGo,succ::T) where {T<:RobotGo} = RobotGo(
     TaskGraphs.first_valid(entity(node),entity(succ)),
     start_config(node),
     start_config(succ),
@@ -93,12 +93,16 @@ function TaskGraphs.align_with_predecessor(node::FormTransportUnit,pred::RobotGo
     end
 	node
 end
-function TaskGraphs.align_with_predecessor(node::RobotGo,pred::DepositCargo) 
+function TaskGraphs.align_with_predecessor(sched::OperatingSchedule,node::RobotGo,pred::DepositCargo) 
     matching_id = get_matching_child_id(pred,node)
     if !(matching_id === nothing)
         if valid_id(matching_id)
-            return RobotGo(RobotNode(matching_id,entity(node)),start_config(node),goal_config(node),node_id(node))
+            # Have to pull the RobotNode from sched, because it's not accessible through DepositCargo
+            robot_start = get_node(sched,RobotStart(RobotNode(matching_id,entity(node))))
+            return RobotGo(RobotNode(matching_id,entity(robot_start)),start_config(node),goal_config(node),node_id(node))
         end
+    else
+        @warn "$(node_id(node)) should be a child of $(node_id(pred))" node pred
     end
     return node
 end
