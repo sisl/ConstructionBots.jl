@@ -22,7 +22,7 @@ using Random
 Random.seed!(0);
 
 using Logging
-global_logger(ConsoleLogger(stderr, Logging.Debug))
+global_logger(ConsoleLogger(stderr, Logging.Warn))
 
 Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
 
@@ -160,6 +160,9 @@ end
 setvisible!(sphere_nodes,false)
 setvisible!(rect_nodes,false)
 setvisible!(staging_nodes,false)
+setvisible!(sphere_nodes,true)
+setvisible!(rect_nodes,true)
+setvisible!(staging_nodes,true)
 
 # restore correct configuration
 HG.jump_to_final_configuration!(scene_tree;set_edges=true)
@@ -171,6 +174,7 @@ update_visualizer!(scene_tree,vis_nodes)
 visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;dt=0.1)
 
 # RVO
+ConstructionBots.set_default_loading_speed!(0.5)
 ConstructionBots.rvo_set_new_sim!()
 env = PlannerEnv(sched=tg_sched,scene_tree=scene_tree)
 active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
@@ -187,6 +191,11 @@ for k in 1:100
     sleep(dt)
     time_stamp = t0+k*dt
 end
+
+# Rotation rates
+# v = linear velocity
+# w = angular velocity (vector with magnitude)
+
 
 # VISUALIZE ROBOT PLACEMENT AROUND PARTS
 

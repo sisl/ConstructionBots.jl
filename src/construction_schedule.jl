@@ -982,17 +982,24 @@ function set_scene_tree_to_initial_condition!(scene_tree,sched;
         end
     end
     for n in get_nodes(sched)
-        if matches_template(LiftIntoPlace,n)
+        # if matches_template(LiftIntoPlace,n)
+        if matches_template(Union{RobotStart,ObjectStart,AssemblyStart,FormTransportUnit},n)
             scene_node = get_node(scene_tree,node_id(entity(n)))
+            @assert has_parent(scene_node,scene_node)
+            set_local_transform!(scene_node,global_transform(start_config(n)))
             # if matches_template(ObjectNode,scene_node)
             #     set_local_transform!(scene_node,local_transform(start_config(n)))
             # end
-        elseif matches_template(AssemblyStart,n)
-            scene_node = get_node(scene_tree,node_id(entity(n)))
-            set_local_transform!(scene_node,global_transform(start_config(n)))
-        elseif matches_template(ObjectStart,n)
-            scene_node = get_node(scene_tree,node_id(entity(n)))
-            set_local_transform!(scene_node,global_transform(start_config(n)))
+        # elseif matches_template(AssemblyStart,n)
+        #     scene_node = get_node(scene_tree,node_id(entity(n)))
+        #     @assert has_parent(scene_node,scene_node)
+        #     set_local_transform!(scene_node,global_transform(start_config(n)))
+        # elseif matches_template(ObjectStart,n)
+        #     scene_node = get_node(scene_tree,node_id(entity(n)))
+        #     set_local_transform!(scene_node,global_transform(start_config(n)))
+        # elseif matches_template(FormTransportUnit,n)
+        #     scene_node = get_node(scene_tree,node_id(entity(n)))
+        #     set_local_transform!(scene_node,global_transform(start_config(n)))
         end
     end
     scene_tree
