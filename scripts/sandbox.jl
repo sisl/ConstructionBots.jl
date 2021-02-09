@@ -37,7 +37,7 @@ reset_all_id_counters!()
 reset_all_invalid_id_counters!()
 
 # factor by which to scale LDraw model (because MeshCat bounds are hard to adjust)
-# NUM_ROBOTS          = 8 
+# NUM_ROBOTS          = 20
 NUM_ROBOTS          = 2
 MODEL_SCALE         = 0.01
 ROBOT_HEIGHT        = 10*MODEL_SCALE
@@ -49,8 +49,8 @@ set_default_robot_geom!(
 ## LOAD LDRAW FILE
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","ATTEWalker.mpd")
-filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","stack1.ldr")
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","big_stack.ldr")
+# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","stack1.ldr")
+filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","big_stack.ldr")
 model = parse_ldraw_file(filename)
 populate_part_geometry!(model)
 LDrawParser.change_coordinate_system!(model,ldraw_base_transform(),MODEL_SCALE)
@@ -135,10 +135,10 @@ ConstructionBots.add_dummy_robot_go_nodes!(sched)
 @assert validate_schedule_transform_tree(sched;post_staging=true)
 
 tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
-# milp_model = GreedyAssignment()
-# milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
-milp_model = SparseAdjacencyMILP()
+milp_model = GreedyAssignment()
 milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
+# milp_model = SparseAdjacencyMILP()
+# milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
 optimize!(milp_model)
 update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
 sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,200)
@@ -183,7 +183,9 @@ update_visualizer!(scene_tree,vis_nodes)
 # RVO
 ConstructionBots.set_default_loading_speed!(0.5)
 ConstructionBots.set_rvo_default_time_step!(1/40.0)
-ConstructionBots.rvo_set_new_sim!()
+ConstructionBots.set_rvo_default_neighbor_distance!(4.0)
+ConstructionBots.set_rvo_default_min_neighbor_distance!(3.0)
+ConstructionBots.rvo_set_new_sim!(ConstructionBots.rvo_new_sim(;horizon=2.0))
 env = PlannerEnv(sched=tg_sched,scene_tree=scene_tree)
 active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
 ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)

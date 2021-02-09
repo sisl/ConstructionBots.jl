@@ -47,18 +47,18 @@ function simulate!(env,update_visualizer_function;
     @unpack sched, scene_tree, cache, dt = env
     t0 = 0.0
     time_stamp = t0
-    # configs = TransformDict{AbstractID}(
-    #     node_id(node)=>global_transform(node) for node in get_nodes(scene_tree)
-    # )
+    configs = TransformDict{AbstractID}(
+        node_id(node)=>global_transform(node) for node in get_nodes(scene_tree)
+    )
     for k in 1:max_time_steps
         step_environment!(env)
         # debugging
-        # for node in get_nodes(scene_tree)
-        #     if norm(global_transform(node).translation - configs[node_id(node)].translation) >= 0.5
-        #         @warn "node $(node_id(node)) just jumped" env.cache.active_set
-        #     end
-        #     configs[node_id(node)] = global_transform(node)
-        # end
+        for node in get_nodes(scene_tree)
+            if norm(global_transform(node).translation - configs[node_id(node)].translation) >= 0.5
+                @warn "node $(node_id(node)) just jumped" env.cache.active_set
+            end
+            configs[node_id(node)] = global_transform(node)
+        end
         TaskGraphs.update_planning_cache!(env,0.0)
         if project_complete(env)
             println("PROJECT COMPLETE!")
@@ -266,6 +266,8 @@ function get_cmd(node::LiftIntoPlace,env)
     v_max = default_loading_speed()
     ω_max = default_rotational_loading_speed()
     twist = optimal_twist(tf_error,v_max,ω_max,dt)
+    @info "twist for LiftIntoPlace" twist
+    twist
 end
 
 apply_cmd!(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},cmd,env) = nothing
@@ -305,13 +307,13 @@ function apply_cmd!(node::DepositCargo,twist,env)
         disband!(scene_tree,agent)
     end
 end
-apply_cmd!(node::Union{TransportUnitGo,RobotGo},cmd,args...) = nothing # ConstructionPredicate.rvo_set_agent_pref_velocity!(node,cmd)
 function apply_cmd!(node::LiftIntoPlace,twist,env)
     @unpack sched, scene_tree, cache, dt = env
     cargo = entity(node)
     tform = integrate_twist(twist,dt)
     set_local_transform!(cargo, local_transform(cargo) ∘ tform)
 end
+apply_cmd!(node::Union{TransportUnitGo,RobotGo},cmd,args...) = nothing # ConstructionPredicate.rvo_set_agent_pref_velocity!(node,cmd)
 
 
 export
