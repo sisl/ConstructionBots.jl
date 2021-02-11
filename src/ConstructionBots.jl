@@ -1,5 +1,4 @@
 module ConstructionBots
-#=  =#
 using Parameters
 using StaticArrays
 using CoordinateTransformations
