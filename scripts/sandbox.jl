@@ -136,21 +136,17 @@ ConstructionBots.add_dummy_robot_go_nodes!(sched)
 
 tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 # Greedy Assignment with enforced build-step ordering
-milp_model = GreedyAssignment()
-milp_model = ConstructionBots.greedy_assignment_with_ordered_build_steps!(
-    milp_model,
-    tg_sched,
-    scene_tree)
-
+# milp_model = SparseAdjacencyMILP()
+milp_model = ConstructionBots.GreedyOrderedAssignment()
 milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
+optimize!(milp_model)
+update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
+@assert validate(tg_sched)
 
-display_graph(tg_sched,scale=3,enforce_visited=true
-    ) |> PDF("/home/kylebrown/Desktop/sched.pdf")
-
+display_graph(tg_sched,scale=3,enforce_visited=true) |> PDF("/home/kylebrown/Desktop/sched.pdf")
 
 # milp_model = SparseAdjacencyMILP()
 # milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
-optimize!(milp_model)
 update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
 sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,200)
 display_graph(sched2,scale=3,enforce_visited=true,aspect_stretch=(0.7,0.7))
