@@ -266,7 +266,7 @@ function get_cmd(node::LiftIntoPlace,env)
     v_max = default_loading_speed()
     ω_max = default_rotational_loading_speed()
     twist = optimal_twist(tf_error,v_max,ω_max,dt)
-    @info "twist for LiftIntoPlace" twist
+    # @info "twist for LiftIntoPlace" twist
     twist
 end
 
@@ -274,6 +274,7 @@ apply_cmd!(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},cm
 function apply_cmd!(node::CloseBuildStep,cmd::Nothing,env)
     @unpack sched, scene_tree = env
     assembly = get_assembly(node)
+    @info "Closing BuildingStep"
     for (id,tform) in assembly_components(assembly)
         if !has_edge(scene_tree,assembly,id)
             capture_child!(scene_tree,assembly,id)
