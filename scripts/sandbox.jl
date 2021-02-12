@@ -50,7 +50,8 @@ set_default_robot_geom!(
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","ATTEWalker.mpd")
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","stack1.ldr")
-filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","big_stack.ldr")
+# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","big_stack.ldr")
+filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","four_stack.mpd")
 model = parse_ldraw_file(filename)
 populate_part_geometry!(model)
 LDrawParser.change_coordinate_system!(model,ldraw_base_transform(),MODEL_SCALE)
@@ -100,8 +101,8 @@ HG.jump_to_final_configuration!(scene_tree;set_edges=true)
 sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
 # Check if schedule graph and embedded transform tree are valid
 @assert validate_schedule_transform_tree(sched)
-sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,500)
-display_graph(sched2,scale=1,enforce_visited=true)
+# sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,500)
+# display_graph(sched2,scale=1,enforce_visited=true)
 # display_graph(sched,scale=1,enforce_visited=true)
 
 ## Generate staging plan

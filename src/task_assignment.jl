@@ -232,10 +232,10 @@ function update_greedy_sets_enforce_order!(sched, cache,
                 push!(Ao,v)
             end
         else
-            return Ai, Ao, C
             break
         end
     end
+    @info "|Ai| = $(length(Ai)), |Ao| = $(length(Ao)), |C| = $(length(C)), nv(sched) = $(nv(sched)), dmin = $dmin"
     return Ai, Ao, C
 end
 function TaskGraphs.update_greedy_sets!(model::GreedyOrderedAssignment,sched,cache,Ai=Set{Int}(),Ao=Set{Int}(),C=Set{Int}();
