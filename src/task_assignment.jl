@@ -258,6 +258,21 @@ function TaskGraphs.formulate_milp(
         cost_model=cost_model
     )
 end
+function set_leaf_vtxs!(sched::OperatingSchedule,template=ProjectComplete)
+    empty!(TaskGraphs.get_terminal_vtxs(sched))
+    empty!(TaskGraphs.get_root_node_weights(sched))
+    for v in vertices(sched)
+        if is_terminal_node(sched,v) && matches_template(template,get_node(sched,v))
+            push!(TaskGraphs.get_terminal_vtxs(sched),v)
+            TaskGraphs.get_root_node_weights(sched)[v] = 1.0
+        end
+    end
+    sched
+end
+function JuMP.optimize!(model::GreedyOrderedAssignment)
+    TaskGraphs.greedy_assignment!(model)
+    set_leaf_vtxs!(model.schedule,ProjectComplete)
+end
 
 # function greedy_assignment_with_ordered_build_steps!(model::GreedyOrderedAssignment,
 #         sched=model.schedule,

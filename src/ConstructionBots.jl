@@ -488,6 +488,6 @@ include("construction_schedule.jl")
 include("utils.jl")
 include("rvo_interface.jl")
 include("task_assignment.jl")
-# include("route_planning.jl")
+include("route_planning.jl")
 
 end
