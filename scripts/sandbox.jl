@@ -135,41 +135,16 @@ ConstructionBots.add_dummy_robot_go_nodes!(sched)
 @assert validate_schedule_transform_tree(sched;post_staging=true)
 
 tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
+# Greedy Assignment with enforced build-step ordering
 milp_model = GreedyAssignment()
+milp_model = ConstructionBots.greedy_assignment_with_ordered_build_steps!(
+    milp_model,
+    tg_sched,
+    scene_tree)
+
 milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
 
-problem_spec        = milp_model.problem_spec
-cache = preprocess_project_schedule(milp_model.schedule,true)
-C = Set{Int}() # Closed set (these nodes have enough predecessors)
-Ai = Set{Int}() # Nodes that don't have enough incoming edges
-Ao = Set{Int}() # Nodes that can have more outgoing edge
-D = TaskGraphs.construct_schedule_distance_matrix(
-    milp_model.schedule,problem_spec)
-TaskGraphs.update_greedy_sets!(milp_model,milp_model.schedule,C,Ai,Ao,
-        cache.n_required_predecessors,cache.n_eligible_successors)
-println("Ao")
-for n in node_iterator(tg_sched,collect(Ao))
-    println(string(node_id(n))," - ", string(node_id(entity(n))), " - ",summary(n.node))
-end
-println("Ai")
-for n in node_iterator(tg_sched,collect(Ai))
-    println(string(node_id(n))," - ", string(node_id(entity(n))), " - ",summary(n.node))
-end
-edge_list = TaskGraphs.select_next_edges(milp_model,D,Ao,Ai)
-println("Next edges")
-for (v,v2) in edge_list
-    n1 = get_node(milp_model.schedule,v)
-    n2 = get_node(milp_model.schedule,v2)
-    println(
-        string(node_id(n1))," - ", string(node_id(entity(n1))), " - ",summary(n1.node),
-        " => ",
-        string(node_id(n2))," - ", string(node_id(entity(n2))), " - ",summary(n2.node),
-        )
-    setdiff!(Ao,v)
-    setdiff!(Ai,v2)
-    add_edge!(tg_sched,n1,n2)
-end
-display_graph(tg_sched,scale=3,enforce_visited=true,aspect_stretch=(0.7,0.7)
+display_graph(tg_sched,scale=3,enforce_visited=true
     ) |> PDF("/home/kylebrown/Desktop/sched.pdf")
 
 

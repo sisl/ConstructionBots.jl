@@ -141,3 +141,89 @@ function add_dummy_robot_go_nodes!(sched)
         end
     end
 end
+
+function compute_backward_depth(sched)
+    forward_depth = zeros(Int,nv(sched))
+    for v in topological_sort_by_dfs(sched)
+        forward_depth[v] = maximum([0, 
+            map(vp->forward_depth[vp]+1,inneighbors(sched,v))...])
+    end
+    backward_depth = deepcopy(forward_depth)
+    for v in reverse(topological_sort_by_dfs(sched))
+        backward_depth[v] = maximum(
+            [backward_depth[v], 
+            map(vp->backward_depth[vp]-1,outneighbors(sched,v))...
+            ])
+    end
+    return backward_depth
+end
+
+struct GreedyOrderedAssignment{C,M,P} <: TaskGraphsMILP
+    schedule::OperatingSchedule = OperatingSchedule()
+    problem_spec::P             = ProblemSpec()
+    cost_model::C               = SumOfMakeSpans()
+    greedy_cost::M              = GreedyPathLengthCost()
+    t0::Vector{Int}             = zeros(Int,nv(schedule))
+    backwark_depth::Vector{Int} = compute_backward_depth(schedule)
+    ordering::Vector{Int}       = sortperm(backward_depth)
+end
+
+function update_greedy_sets_enforce_order!(sched, cache, 
+        Ai=Set{Int}(), 
+        Ao=Set{Int}(), 
+        C=Set{Int}(), 
+        ;
+        backward_depth::Vector{Int}=compute_backward_depth(sched), 
+        ordering::Vector{Int}=sortperm(backward_depth), 
+        dmin::Int=nv(sched),
+        start::Int=1
+        )
+    for v in Base.Iterators.rest(ordering,start)
+        d = backward_depth[v]
+        # Not allowed to make assignments deeper in the schedule until earlier
+        # assignments have been made
+        if d <= dmin
+            if issubset(inneighbors(sched,v),C)
+                if indegree(sched,v) >= cache.n_required_predecessors[v]
+                    push!(C,v)
+                else
+                    push!(Ai,v)
+                end
+            else
+                dmin = d
+            end
+            if (outdegree(sched,v) < cache.n_eligible_successors[v]) && (v in C)
+                push!(Ao,v)
+            end
+        else
+            return Ai, Ao, C
+            break
+        end
+    end
+    return Ai, Ao, C
+end
+
+function greedy_assignment_with_ordered_build_steps!(model::GreedyAssignment,sched,scene_tree)
+    # Compute forward and backward depth 
+    cache = preprocess_project_schedule(sched,true)
+    backward_depth = compute_backward_depth(sched)
+    ordering = sortperm(backward_depth)
+    # Now require the order of assignments to respect the ordering of backward_depth
+    Ai,Ao,C = update_greedy_sets_enforce_order!(sched,cache;
+        backward_depth=backward_depth,
+        ordering=ordering)
+    D = TaskGraphs.construct_schedule_distance_matrix(sched,scene_tree)
+    while length(Ai) > 0
+        for (v,v2) in TaskGraphs.select_next_edges(model,D,Ao,Ai)
+            setdiff!(Ao,v)
+            setdiff!(Ai,v2)
+            add_edge!(sched,v,v2)
+            @info "$(string(node_id(get_node(sched,v)))), $(string(node_id(entity(get_node(sched,v))))) => $(string(node_id(get_node(sched,v2)))), $(string(node_id(entity(get_node(sched,v2)))))"
+        end
+        Ai,Ao,C = update_greedy_sets_enforce_order!(sched,cache,Ai,Ao,C,
+            backward_depth=backward_depth,ordering=ordering)
+    end
+    set_leaf_operation_vtxs!(sched)
+    propagate_valid_ids!(sched,scene_tree)
+    model
+end
