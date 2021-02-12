@@ -140,6 +140,8 @@ tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 milp_model = ConstructionBots.GreedyOrderedAssignment()
 milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
 optimize!(milp_model)
+validate_schedule_transform_tree(ConstructionBots.convert_from_operating_schedule(typeof(sched),tg_sched)
+    ;post_staging=true)
 update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
 @assert validate(tg_sched)
 

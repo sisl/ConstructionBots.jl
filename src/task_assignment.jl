@@ -49,6 +49,16 @@ function convert_to_operating_schedule(sched)
     end
     tg_sched
 end
+function convert_from_operating_schedule(::Type{T},sched::OperatingSchedule) where {T}
+    G = T()
+    for node in get_nodes(sched)
+        add_node!(G,node.node,node_id(node))
+    end
+    for e in edges(sched)
+        add_edge!(G,get_vtx_id(sched,e.src),get_vtx_id(sched,e.dst))
+    end
+    G
+end
 
 # CRCBS.is_valid(node::ConstructionPredicate) = CRCBS.is_valid(node_id(node))
 CRCBS.is_valid(node::SceneNode) = CRCBS.is_valid(node_id(node))
@@ -70,10 +80,25 @@ TaskGraphs.align_with_predecessor(node::RobotGo,pred::T) where {T<:Union{EntityC
 
 ALIGNMENT_CHECK_TOLERANCE = 1e-3
 
-function get_matching_child_id(node::Union{FormTransportUnit,DepositCargo},pred::RobotGo)
+function get_matching_child_id(node::FormTransportUnit,pred::RobotGo)
     t_rel = HG.relative_transform(
         global_transform(goal_config(node)),
         global_transform(goal_config(pred))
+        )
+    transport_unit = entity(node)
+    for id in collect(keys(robot_team(transport_unit)))
+        tform = child_transform(transport_unit,id)
+        if norm(tform.translation - t_rel.translation) <= 1e-3
+            return id
+		end
+    end
+    return nothing
+end
+
+function get_matching_child_id(node::DepositCargo,succ::RobotGo)
+    t_rel = HG.relative_transform(
+        global_transform(goal_config(node)),
+        global_transform(start_config(succ))
         )
     transport_unit = entity(node)
     for id in collect(keys(robot_team(transport_unit)))
