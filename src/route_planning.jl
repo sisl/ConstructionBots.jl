@@ -47,9 +47,7 @@ function simulate!(env,update_visualizer_function;
     @unpack sched, scene_tree, cache, dt = env
     t0 = 0.0
     time_stamp = t0
-    configs = TransformDict{AbstractID}(
-        node_id(node)=>global_transform(node) for node in get_nodes(scene_tree)
-    )
+    configs = TransformDict{AbstractID}(node_id(node)=>global_transform(node) for node in get_nodes(scene_tree))
     for k in 1:max_time_steps
         step_environment!(env)
         # debugging
@@ -106,6 +104,7 @@ function step_environment!(env::PlannerEnv,sim=rvo_global_sim())
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
         tform = update_position_from_sim!(get_node(scene_tree,id))
         # Set velocities to zero for any agents that are no longer "active"
+        # TODO set preferred velocity to "disperse" velocity
         rvo_set_agent_pref_velocity!(id,(0.0,0.0))
     end
     return env
@@ -245,7 +244,8 @@ function get_cmd(node::Union{TransportUnitGo,RobotGo},env)
         ω_max = default_rotational_loading_speed()
         twist = optimal_twist(tf_error,v_max,ω_max,dt)
     end
-    rvo_set_agent_pref_velocity!(node,twist.vel[1:2])
+    rvo_set_agent_max_speed!(agent,get_rvo_max_speed(agent))
+    rvo_set_agent_pref_velocity!(agent,twist.vel[1:2])
     return twist
 end
 function get_cmd(node::Union{FormTransportUnit,DepositCargo},env)
@@ -295,6 +295,9 @@ function apply_cmd!(node::FormTransportUnit,twist,env)
     set_local_transform!(cargo, local_transform(cargo) ∘ tform)
     if is_within_capture_distance(agent,cargo)
         capture_child!(scene_tree,agent,cargo)
+        rvo_set_agent_max_speed!(agent,get_rvo_max_speed(agent))
+    else
+        rvo_set_agent_max_speed!(agent,0.0)
     end
 end
 function apply_cmd!(node::DepositCargo,twist,env)
@@ -305,6 +308,9 @@ function apply_cmd!(node::DepositCargo,twist,env)
     set_local_transform!(cargo, local_transform(cargo) ∘ tform)
     if is_goal(node,env)
         disband!(scene_tree,agent)
+        rvo_set_agent_max_speed!(agent,get_rvo_max_speed(agent))
+    else
+        rvo_set_agent_max_speed!(agent,0.0)
     end
 end
 function apply_cmd!(node::LiftIntoPlace,twist,env)

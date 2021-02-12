@@ -116,6 +116,7 @@ function get_rvo_max_speed(node)
     max_speed = max(vmax - delta_v, rvo_default_min_max_speed())
 end
 
+
 """ get_rvo_radius(node) """
 get_rvo_radius(node) = get_base_geom(node,HypersphereKey()).radius
 
@@ -177,6 +178,11 @@ end
 function rvo_set_agent_pref_velocity!(node,vel)
     idx = rvo_get_agent_idx(node)
     rvo_global_sim().setAgentPrefVelocity(idx,(vel[1],vel[2]))
+end
+
+function rvo_set_agent_max_speed!(node,speed=get_rvo_max_speed(node))
+    idx = rvo_get_agent_idx(node)
+    rvo_global_sim().setAgentMaxSpeed(idx,speed)
 end
 
 for T in (

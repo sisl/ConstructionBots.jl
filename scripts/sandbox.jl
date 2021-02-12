@@ -146,8 +146,8 @@ update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
 @assert validate(tg_sched)
 # display_graph(tg_sched,scale=3,enforce_visited=true) |> PDF("/home/kylebrown/Desktop/sched.pdf")
 
-sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,200)
-display_graph(sched2,scale=3,enforce_visited=true,aspect_stretch=(0.7,0.7))
+# sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,200)
+# display_graph(sched2,scale=3,enforce_visited=true,aspect_stretch=(0.7,0.7))
 
 ## Visualize assembly
 color_map = construct_color_map(model_spec,id_map)
