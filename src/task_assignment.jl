@@ -218,6 +218,13 @@ function update_greedy_sets_enforce_order!(sched, cache,
         d = backward_depth[v]
         # Not allowed to make assignments deeper in the schedule until earlier
         # assignments have been made
+        while (d > dmin)
+            if (isempty(Ai) || isempty(Ao)) && length(C) < nv(sched)
+                dmin += 1 # Prevent premature return of an empty assignment set
+            else
+                break
+            end
+        end
         if d <= dmin
             if issubset(inneighbors(sched,v),C)
                 if indegree(sched,v) >= cache.n_required_predecessors[v]
@@ -236,6 +243,9 @@ function update_greedy_sets_enforce_order!(sched, cache,
         end
     end
     @info "|Ai| = $(length(Ai)), |Ao| = $(length(Ao)), |C| = $(length(C)), nv(sched) = $(nv(sched)), dmin = $dmin"
+    if (isempty(Ai) || isempty(Ao)) && length(C) < nv(sched)
+        @warn "Assignment problem is infeasible"
+    end
     return Ai, Ao, C
 end
 function TaskGraphs.update_greedy_sets!(model::GreedyOrderedAssignment,sched,cache,Ai=Set{Int}(),Ao=Set{Int}(),C=Set{Int}();
@@ -245,6 +255,118 @@ function TaskGraphs.update_greedy_sets!(model::GreedyOrderedAssignment,sched,cac
         ordering=model.ordering,
         )
 end
+
+"""
+    greedy_set_precedence_graph(sched)
+
+Returns a graph whose edges represent precedence constraints on which nodes may
+be added to the "eligible for assignment" sets in the course of an 
+AbstractGreedyAssignment algorithm.
+"""
+function greedy_set_precedence_graph(sched)
+    G = CustomNDiGraph{GraphUtils._node_type(sched),GraphUtils._id_type(sched)}()
+    for n in get_nodes(sched)
+        add_node!(G,n,node_id(n))
+    end
+    for edge in edges(sched)
+        add_edge!(G,get_vtx_id(sched,edge.src),get_vtx_id(sched,edge.dst))
+    end
+    # G = DiGraph(nv(sched))
+    # for edge in edges(sched)
+    #     add_edge!(G,edge)
+    # end
+    close_step_map = backup_descendants(sched,n->matches_template(CloseBuildStep,n))
+    open_step_map = backup_descendants(sched,n->matches_template(OpenBuildStep,n))
+    close_step_groups = Dict{AbstractID,Vector{AbstractID}}() # node_id(CloseBuildStep) => [ancestor_ids...]
+    for (k,id) in close_step_map
+        if !(id === nothing)
+            push!(get!(close_step_groups,id,valtype(close_step_groups)()),k)
+        end
+    end
+
+    for n in filter(n->matches_template(OpenBuildStep,n), get_nodes(sched))
+        close_node_id = close_step_map[node_id(n)]
+        for id in close_step_groups[close_node_id]
+            if !(open_step_map[id] == node_id(n))
+                add_edge!(G,get_vtx(sched,node_id(n)),get_vtx(sched,id))
+            end
+        end
+        # for v in outneighbors(sched,n)
+        #     for vp in inneighbors(sched,v)
+        #         if !(vp == get_vtx(sched,n))
+        #             for e in collect(edges(bfs_tree(sched,vp;dir=:in)))
+        #                 # add_edge!(G,node_id(n),get_vtx_id(sched,e.dst))
+        #                 add_edge!(G,get_vtx(sched,node_id(n)),e.dst)
+        #             end
+        #         end
+        #     end
+        # end
+    end
+    G
+    # cache = preprocess_project_schedule(sched,true)
+    # return dict
+    # @show Aig = filter(v->indegree(sched,v) < cache.n_required_predecessors[v], LightGraphs.vertices(sched))
+    # # @show Aog = filter(v->outdegree(sched,v) < cache.n_eligible_successors[v], LightGraphs.vertices(sched))
+    # @show deposit_nodes = filter(v->matches_template(DepositCargo,get_node(sched,v)), LightGraphs.vertices(sched))
+    # D = GraphUtils.SparseDistanceMatrix(sched)
+    # # G = DiGraph(nv(sched))
+    # G = CustomNDiGraph{GraphUtils._node_type(sched),GraphUtils._id_type(sched)}()
+    # # G = NGraph(DiGraph,Nothing,AbstractID)
+    # for v in union(Aig,deposit_nodes)
+    #     node = get_node(sched,v)
+    #     add_node!(G,node,node_id(node))
+    # end
+    # for n in get_nodes(G)
+    #     v = get_vtx(sched,n)
+    #     for n2 in get_nodes(G)
+    #         v2 = get_vtx(sched,n2)
+    #         if !(v == v2)
+    #             d = D[v2,v]
+    #             if d < nv(sched)
+    #                 @show add_edge!(G,n,n2)
+    #             end
+    #         end
+    #     end
+    # end
+    # return G
+end
+greedy_set_precedence_ordering(sched) = topological_sort_by_dfs(greedy_set_precedence_graph(sched))
+"""
+    update_greedy_sets_ordered!(sched, cache, args...;kwargs...)
+
+Requires that assignments be made in order--a task deeper in the schedule may 
+not be assigned until all tasks less deep in the schedule have bee assigned.
+TODO: Update this to better handle distinct project sub-trees. The key sorting 
+criterion is not depth, but relative depth (i.e., don't make downstream 
+assignments until the upstream assignments have been made).
+"""
+function update_greedy_sets_ordered!(sched, cache, 
+        Ai=Set{Int}(), 
+        Ao=Set{Int}(), 
+        C=Set{Int}(), 
+        ;
+        ordering::Vector{Int}=greedy_set_precedence_ordering(sched),
+        start::Int=1
+        )
+    for v in Base.Iterators.rest(ordering,start)
+        if issubset(inneighbors(sched,v),C)
+            if indegree(sched,v) >= cache.n_required_predecessors[v]
+                push!(C,v)
+            else
+                push!(Ai,v)
+            end
+        end
+        if (outdegree(sched,v) < cache.n_eligible_successors[v]) && (v in C)
+            push!(Ao,v)
+        end
+    end
+    @info "|Ai| = $(length(Ai)), |Ao| = $(length(Ao)), |C| = $(length(C)), nv(sched) = $(nv(sched)), dmin = $dmin"
+    if (isempty(Ai) || isempty(Ao)) && length(C) < nv(sched)
+        @warn "Assignment problem is infeasible"
+    end
+    return Ai, Ao, C
+end
+
 function TaskGraphs.formulate_milp(
         milp_model::GreedyOrderedAssignment,
         sched,

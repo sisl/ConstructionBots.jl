@@ -38,7 +38,7 @@ reset_all_invalid_id_counters!()
 
 # factor by which to scale LDraw model (because MeshCat bounds are hard to adjust)
 # NUM_ROBOTS          = 20
-NUM_ROBOTS          = 8
+NUM_ROBOTS          = 2
 MODEL_SCALE         = 0.01
 ROBOT_HEIGHT        = 10*MODEL_SCALE
 ROBOT_RADIUS        = 25*MODEL_SCALE
