@@ -191,8 +191,10 @@ export GreedyOrderedAssignment
     cost_model::C               = SumOfMakeSpans()
     greedy_cost::M              = TaskGraphs.GreedyPathLengthCost()
     t0::Vector{Int}             = zeros(Int,nv(schedule))
-    backward_depth::Vector{Int} = compute_backward_depth(schedule)
-    ordering::Vector{Int}       = sortperm(backward_depth)
+    # backward_depth::Vector{Int} = compute_backward_depth(schedule)
+    # ordering::Vector{Int}       = sortperm(backward_depth)
+    ordering_graph::DiGraph     = get_graph(greedy_set_precedence_graph(schedule))
+    ordering::Vector{Int}       = topological_sort_by_dfs(ordering_graph)
 end
 
 """
@@ -247,13 +249,6 @@ function update_greedy_sets_enforce_order!(sched, cache,
         @warn "Assignment problem is infeasible"
     end
     return Ai, Ao, C
-end
-function TaskGraphs.update_greedy_sets!(model::GreedyOrderedAssignment,sched,cache,Ai=Set{Int}(),Ao=Set{Int}(),C=Set{Int}();
-    kwargs...)
-    update_greedy_sets_enforce_order!(sched, cache, Ai, Ao, C;
-        backward_depth=model.backward_depth,
-        ordering=model.ordering,
-        )
 end
 
 """
@@ -331,6 +326,7 @@ function greedy_set_precedence_graph(sched)
     # return G
 end
 greedy_set_precedence_ordering(sched) = topological_sort_by_dfs(greedy_set_precedence_graph(sched))
+
 """
     update_greedy_sets_ordered!(sched, cache, args...;kwargs...)
 
@@ -345,13 +341,15 @@ function update_greedy_sets_ordered!(sched, cache,
         Ao=Set{Int}(), 
         C=Set{Int}(), 
         ;
-        ordering::Vector{Int}=greedy_set_precedence_ordering(sched),
-        start::Int=1
+        ordering_graph::DiGraph=get_graph(greedy_set_precedence_graph(sched)),
+        frontier::Set{Int}=get_all_root_nodes(ordering_graph),
         )
-    for v in Base.Iterators.rest(ordering,start)
-        if issubset(inneighbors(sched,v),C)
+    while !isempty(frontier)
+        v = pop!(frontier)
+        if issubset(inneighbors(ordering_graph,v),C)
             if indegree(sched,v) >= cache.n_required_predecessors[v]
                 push!(C,v)
+                union!(frontier,outneighbors(ordering_graph,v))
             else
                 push!(Ai,v)
             end
@@ -360,13 +358,37 @@ function update_greedy_sets_ordered!(sched, cache,
             push!(Ao,v)
         end
     end
-    @info "|Ai| = $(length(Ai)), |Ao| = $(length(Ao)), |C| = $(length(C)), nv(sched) = $(nv(sched)), dmin = $dmin"
-    if (isempty(Ai) || isempty(Ao)) && length(C) < nv(sched)
-        @warn "Assignment problem is infeasible"
-    end
+    @info "|Ai| = $(length(Ai)), |Ao| = $(length(Ao)), |C| = $(length(C)), nv(sched) = $(nv(sched))"
     return Ai, Ao, C
+    # for v in Base.Iterators.rest(ordering,start)
+    #     if issubset(inneighbors(sched,v),C)
+    #         if indegree(sched,v) >= cache.n_required_predecessors[v]
+    #             push!(C,v)
+    #         else
+    #             push!(Ai,v)
+    #         end
+    #     end
+    #     if (outdegree(sched,v) < cache.n_eligible_successors[v]) && (v in C)
+    #         push!(Ao,v)
+    #     end
+    # end
+    # @info "|Ai| = $(length(Ai)), |Ao| = $(length(Ao)), |C| = $(length(C)), nv(sched) = $(nv(sched)), dmin = $dmin"
+    # if (isempty(Ai) || isempty(Ao)) && length(C) < nv(sched)
+    #     @warn "Assignment problem is infeasible"
+    # end
+    # return Ai, Ao, C
 end
 
+function TaskGraphs.update_greedy_sets!(model::GreedyOrderedAssignment,sched,cache,Ai=Set{Int}(),Ao=Set{Int}(),C=Set{Int}();
+    kwargs...)
+    # update_greedy_sets_enforce_order!(sched, cache, Ai, Ao, C;
+    #     backward_depth=model.backward_depth,
+    #     ordering=model.ordering,
+    #     )
+    update_greedy_sets_ordered!(sched, cache, Ai, Ao, C;
+        ordering_graph=model.ordering_graph)
+
+end
 function TaskGraphs.formulate_milp(
         milp_model::GreedyOrderedAssignment,
         sched,
