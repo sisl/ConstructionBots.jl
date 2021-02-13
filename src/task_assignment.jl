@@ -256,7 +256,9 @@ end
 
 Returns a graph whose edges represent precedence constraints on which nodes may
 be added to the "eligible for assignment" sets in the course of an 
-AbstractGreedyAssignment algorithm.
+AbstractGreedyAssignment algorithm. The basic idea is to ensure that no 
+`RobotGo` node is available for an incoming edge to be added until all 
+assignments preceding that node's parent `OpenBuildStep` node have been made.
 """
 function greedy_set_precedence_graph(sched)
     G = CustomNDiGraph{GraphUtils._node_type(sched),GraphUtils._id_type(sched)}()
@@ -286,55 +288,18 @@ function greedy_set_precedence_graph(sched)
                 add_edge!(G,get_vtx(sched,node_id(n)),get_vtx(sched,id))
             end
         end
-        # for v in outneighbors(sched,n)
-        #     for vp in inneighbors(sched,v)
-        #         if !(vp == get_vtx(sched,n))
-        #             for e in collect(edges(bfs_tree(sched,vp;dir=:in)))
-        #                 # add_edge!(G,node_id(n),get_vtx_id(sched,e.dst))
-        #                 add_edge!(G,get_vtx(sched,node_id(n)),e.dst)
-        #             end
-        #         end
-        #     end
-        # end
     end
-    G
-    # cache = preprocess_project_schedule(sched,true)
-    # return dict
-    # @show Aig = filter(v->indegree(sched,v) < cache.n_required_predecessors[v], LightGraphs.vertices(sched))
-    # # @show Aog = filter(v->outdegree(sched,v) < cache.n_eligible_successors[v], LightGraphs.vertices(sched))
-    # @show deposit_nodes = filter(v->matches_template(DepositCargo,get_node(sched,v)), LightGraphs.vertices(sched))
-    # D = GraphUtils.SparseDistanceMatrix(sched)
-    # # G = DiGraph(nv(sched))
-    # G = CustomNDiGraph{GraphUtils._node_type(sched),GraphUtils._id_type(sched)}()
-    # # G = NGraph(DiGraph,Nothing,AbstractID)
-    # for v in union(Aig,deposit_nodes)
-    #     node = get_node(sched,v)
-    #     add_node!(G,node,node_id(node))
-    # end
-    # for n in get_nodes(G)
-    #     v = get_vtx(sched,n)
-    #     for n2 in get_nodes(G)
-    #         v2 = get_vtx(sched,n2)
-    #         if !(v == v2)
-    #             d = D[v2,v]
-    #             if d < nv(sched)
-    #                 @show add_edge!(G,n,n2)
-    #             end
-    #         end
-    #     end
-    # end
-    # return G
+    return G
 end
 greedy_set_precedence_ordering(sched) = topological_sort_by_dfs(greedy_set_precedence_graph(sched))
 
 """
     update_greedy_sets_ordered!(sched, cache, args...;kwargs...)
 
-Requires that assignments be made in order--a task deeper in the schedule may 
-not be assigned until all tasks less deep in the schedule have bee assigned.
-TODO: Update this to better handle distinct project sub-trees. The key sorting 
-criterion is not depth, but relative depth (i.e., don't make downstream 
-assignments until the upstream assignments have been made).
+Ensured that that no `RobotGo` node is available for an incoming edge to be 
+added until all assignments preceding that node's parent `OpenBuildStep` node 
+have been made. This function is identical to `TaskGraphs.update_greedy_sets!` 
+except that the graph being traversed is different from `model.schedule`.
 """
 function update_greedy_sets_ordered!(sched, cache, 
         Ai=Set{Int}(), 
@@ -360,23 +325,6 @@ function update_greedy_sets_ordered!(sched, cache,
     end
     @info "|Ai| = $(length(Ai)), |Ao| = $(length(Ao)), |C| = $(length(C)), nv(sched) = $(nv(sched))"
     return Ai, Ao, C
-    # for v in Base.Iterators.rest(ordering,start)
-    #     if issubset(inneighbors(sched,v),C)
-    #         if indegree(sched,v) >= cache.n_required_predecessors[v]
-    #             push!(C,v)
-    #         else
-    #             push!(Ai,v)
-    #         end
-    #     end
-    #     if (outdegree(sched,v) < cache.n_eligible_successors[v]) && (v in C)
-    #         push!(Ao,v)
-    #     end
-    # end
-    # @info "|Ai| = $(length(Ai)), |Ao| = $(length(Ao)), |C| = $(length(C)), nv(sched) = $(nv(sched)), dmin = $dmin"
-    # if (isempty(Ai) || isempty(Ao)) && length(C) < nv(sched)
-    #     @warn "Assignment problem is infeasible"
-    # end
-    # return Ai, Ao, C
 end
 
 function TaskGraphs.update_greedy_sets!(model::GreedyOrderedAssignment,sched,cache,Ai=Set{Int}(),Ao=Set{Int}(),C=Set{Int}();
