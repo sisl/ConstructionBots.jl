@@ -203,28 +203,32 @@ active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
 ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 
 update_visualizer_function(env) = begin
-    # agents = Set{SceneNode}()
-    # for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
-    #     push!(agents, get_node(env.scene_tree, id))
-    # end
-    # for v in env.cache.active_set
-    #     node = get_node(env.sched,v)
-    #     if matches_template(EntityGo,node)
-    #         agent = entity(node)
-    #     elseif matches_template(Union{FormTransportUnit,DepositCargo},node)
-    #         agent = get_node(env.scene_tree,cargo_id(entity(node)))
-    #     else
-    #         agent = nothing
-    #     end
-    #     if !(agent === nothing)
-    #         push!(agents,agent)
-    #         for vp in collect_descendants(env.scene_tree,agent)
-    #             push!(agents,get_node(env.scene_tree,vp))
-    #         end
-    #     end
-    # end
-    # update_visualizer!(env.scene_tree,vis_nodes,agents)
-    update_visualizer!(env.scene_tree,vis_nodes)
+    agents = Set{SceneNode}()
+    for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
+        agent = get_node(env.scene_tree, id)
+        push!(agents, agent)
+        for vp in collect_descendants(env.scene_tree,agent)
+            push!(agents,get_node(env.scene_tree,vp))
+        end
+    end
+    for v in env.cache.active_set
+        node = get_node(env.sched,v)
+        if matches_template(EntityGo,node)
+            agent = entity(node)
+        elseif matches_template(Union{FormTransportUnit,DepositCargo},node)
+            agent = get_node(env.scene_tree,cargo_id(entity(node)))
+        else
+            agent = nothing
+        end
+        if !(agent === nothing)
+            push!(agents,agent)
+            for vp in collect_descendants(env.scene_tree,agent)
+                push!(agents,get_node(env.scene_tree,vp))
+            end
+        end
+    end
+    update_visualizer!(env.scene_tree,vis_nodes,agents)
+    # update_visualizer!(env.scene_tree,vis_nodes)
     render(vis)
 end
 
