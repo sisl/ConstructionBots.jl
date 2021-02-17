@@ -126,7 +126,11 @@ ConstructionBots.select_initial_object_grid_locations!(sched,object_vtxs)
 for node in get_nodes(scene_tree)
     if matches_template(AssemblyNode,node) 
         start_node = get_node(sched,AssemblyComplete(node))
-        tform = CT.Translation(0.0,0.0,MAX_CARGO_HEIGHT) ∘ local_transform(start_config(start_node))
+        current = global_transform(start_config(start_node))
+        tform_error = CT.Translation(0.0,0.0,MAX_CARGO_HEIGHT-current.translation[3]) # difference to be made up in global frame
+        rot_mat = CT.LinearMap(global_transform(get_parent(HG.get_transform_node(node))).linear)
+        tform = local_transform(start_config(start_node)) ∘ inv(rot_mat) ∘ tform_error
+        # tform = CT.Translation(0.0,0.0,MAX_CARGO_HEIGHT) ∘ local_transform(start_config(start_node))
         set_local_transform!(start_config(start_node),tform)
     end
 end
