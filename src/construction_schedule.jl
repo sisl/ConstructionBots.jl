@@ -389,6 +389,9 @@ function populate_schedule_build_step!(sched,parent::AssemblyComplete,cb,step_no
         else
             cargo_node = add_node!(sched,ObjectStart(cargo,TransformNode()))
         end
+        if connect_to_sub_assemblies
+            set_parent!(goal_config(node_val(cargo_node)), start_config(parent))
+        end
         add_edge!(sched,cargo_node,f) # ObjectStart/AssemblyComplete => FormTransportUnit 
         set_parent!(cargo_deployed_config(f),start_config(cargo_node))
     end
