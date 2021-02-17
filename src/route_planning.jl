@@ -162,7 +162,7 @@ function close_node!(node::CloseBuildStep,env)
     @unpack sched, scene_tree = env
     assembly = get_assembly(node)
     @info "Closing BuildingStep" node
-    for (id,tform) in assembly_components(assembly)
+    for (id,tform) in assembly_components(node)
         if !has_edge(scene_tree,assembly,id)
             if !capture_child!(scene_tree,assembly,id)
                 @warn "Assembly $(string(node_id(assembly))) is unable to capture child $(string(id)). Current relative transform is $(relative_transform(assembly,get_node(scene_tree,id))), but should be $(child_transform(assembly,id))" assembly id 
