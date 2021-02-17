@@ -238,13 +238,15 @@ function get_cmd(node::Union{TransportUnitGo,RobotGo},env)
     update_position_from_sim!(agent)
     if is_goal(node,env)
         twist = zero(Twist)
+        max_speed = 0.0
     else
         tf_error = relative_transform(global_transform(agent), global_transform(goal_config(node)))
         v_max = get_rvo_max_speed(agent)
         ω_max = default_rotational_loading_speed()
         twist = optimal_twist(tf_error,v_max,ω_max,dt)
+        max_speed = get_rvo_max_speed(agent)
     end
-    rvo_set_agent_max_speed!(agent,get_rvo_max_speed(agent))
+    rvo_set_agent_max_speed!(agent,max_speed)
     rvo_set_agent_pref_velocity!(agent,twist.vel[1:2])
     return twist
 end

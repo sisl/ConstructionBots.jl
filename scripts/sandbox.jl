@@ -38,7 +38,7 @@ reset_all_invalid_id_counters!()
 
 # factor by which to scale LDraw model (because MeshCat bounds are hard to adjust)
 # NUM_ROBOTS          = 20
-NUM_ROBOTS          = 2
+NUM_ROBOTS          = 8
 MODEL_SCALE         = 0.01
 ROBOT_HEIGHT        = 10*MODEL_SCALE
 ROBOT_RADIUS        = 25*MODEL_SCALE
@@ -51,7 +51,8 @@ set_default_robot_geom!(
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","ATTEWalker.mpd")
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","stack1.ldr")
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","big_stack.ldr")
-filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","four_stack.mpd")
+filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","triple_stack.mpd")
+# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","four_stack.mpd")
 model = parse_ldraw_file(filename)
 populate_part_geometry!(model)
 LDrawParser.change_coordinate_system!(model,ldraw_base_transform(),MODEL_SCALE)
@@ -145,16 +146,17 @@ validate_schedule_transform_tree(ConstructionBots.convert_from_operating_schedul
     ;post_staging=true)
 update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
 @assert validate(tg_sched)
-display_graph(tg_sched,scale=3,enforce_visited=true) |> PDF("/home/kylebrown/Desktop/sched.pdf")
+# display_graph(tg_sched,scale=3,enforce_visited=true) |> PDF("/home/kylebrown/Desktop/sched.pdf")
 
-# sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,200)
-# display_graph(sched2,scale=3,enforce_visited=true,aspect_stretch=(0.7,0.7))
+sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,200)
+display_graph(sched2,scale=3,enforce_visited=true,aspect_stretch=(0.9,0.9))
 
 ## Visualize assembly
 color_map = construct_color_map(model_spec,id_map)
 delete!(vis)
 vis_nodes = populate_visualizer!(scene_tree,vis;
     color_map=color_map,
+    wireframe=true,
     material_type=MeshPhongMaterial)
 sphere_nodes = show_geometry_layer!(scene_tree,vis_nodes,HypersphereKey())
 rect_nodes = show_geometry_layer!(scene_tree,vis_nodes,HyperrectangleKey();
@@ -176,6 +178,7 @@ setvisible!(staging_nodes,true)
 setvisible!(sphere_nodes,false)
 setvisible!(rect_nodes,false)
 setvisible!(staging_nodes,false)
+
 
 # restore correct configuration
 HG.jump_to_final_configuration!(scene_tree;set_edges=true)
@@ -202,6 +205,7 @@ update_visualizer_function(env) = begin
 end
 
 ConstructionBots.simulate!(env,update_visualizer_function)
+ConstructionBots.simulate!(env,update_visualizer_function,max_time_steps=5000)
 
 # VISUALIZE ROBOT PLACEMENT AROUND PARTS
 
