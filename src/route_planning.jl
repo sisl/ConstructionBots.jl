@@ -193,7 +193,7 @@ end
 If next node is FormTransportUnit, ensure that everybody else is in position.
 """
 function CRCBS.is_goal(node::RobotGo,env)
-    @unpack sched, scene_tree = env
+    @unpack sched, scene_tree, cache = env
     agent = entity(node)
     state = global_transform(agent)
     goal = global_transform(goal_config(node))
@@ -204,6 +204,13 @@ function CRCBS.is_goal(node::RobotGo,env)
         return true
     end
     next_node = get_node(sched,outneighbors(sched,node)[1])
+    # Cannot reach goal until next_node is ready to become active
+    for v in inneighbors(sched,next_node)
+        if !((v in cache.active_set) || (v in cache.closed_set))
+            return false
+        end
+    end
+    # Cannot reach goal until all robots are in place 
     if matches_template(FormTransportUnit,next_node)
         tu = entity(next_node)
         for (id,tform) in robot_team(tu)
@@ -236,7 +243,7 @@ function get_cmd(node::Union{TransportUnitGo,RobotGo},env)
     @unpack sched, scene_tree, dt = env
     agent = entity(node)
     update_position_from_sim!(agent)
-    if is_goal(node,env)
+    if is_goal(node,env) && !is_terminal_node(sched,node)
         twist = zero(Twist)
         max_speed = 0.0
     else
