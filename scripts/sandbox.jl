@@ -156,7 +156,7 @@ color_map = construct_color_map(model_spec,id_map)
 delete!(vis)
 vis_nodes = populate_visualizer!(scene_tree,vis;
     color_map=color_map,
-    wireframe=true,
+    # wireframe=true,
     material_type=MeshPhongMaterial)
 sphere_nodes = show_geometry_layer!(scene_tree,vis_nodes,HypersphereKey())
 rect_nodes = show_geometry_layer!(scene_tree,vis_nodes,HyperrectangleKey();
@@ -200,7 +200,24 @@ active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
 ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 
 update_visualizer_function(env) = begin
-    update_visualizer!(env.scene_tree,vis_nodes)
+    for v in env.cache.active_set
+        node = get_node(env.sched,v)
+        if matches_template(EntityGo,node)
+            agent = entity(node)
+        elseif matches_template(Union{FormTransportUnit,DepositCargo},node)
+            agent = get_node(env.scene_tree,cargo_id(entity(node)))
+        else
+            agent = nothing
+        end
+        if !(agent === nothing)
+            update_visualizer!(env.scene_tree,vis_nodes,[agent])
+            descendants = collect_descendants(env.scene_tree,agent)
+            update_visualizer!(
+                env.scene_tree,vis_nodes,
+                [get_node(env.scene_tree,vp) for vp in descendants])
+        end
+    end
+    # update_visualizer!(env.scene_tree,vis_nodes)
     render(vis)
 end
 

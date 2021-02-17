@@ -47,16 +47,16 @@ function simulate!(env,update_visualizer_function;
     @unpack sched, scene_tree, cache, dt = env
     t0 = 0.0
     time_stamp = t0
-    configs = TransformDict{AbstractID}(node_id(node)=>global_transform(node) for node in get_nodes(scene_tree))
+    # configs = TransformDict{AbstractID}(node_id(node)=>global_transform(node) for node in get_nodes(scene_tree))
     for k in 1:max_time_steps
         step_environment!(env)
         # debugging
-        for node in get_nodes(scene_tree)
-            if norm(global_transform(node).translation - configs[node_id(node)].translation) >= 0.5
-                @warn "node $(node_id(node)) just jumped" env.cache.active_set
-            end
-            configs[node_id(node)] = global_transform(node)
-        end
+        # for node in get_nodes(scene_tree)
+        #     if norm(global_transform(node).translation - configs[node_id(node)].translation) >= 0.5
+        #         @warn "node $(node_id(node)) just jumped" env.cache.active_set
+        #     end
+        #     configs[node_id(node)] = global_transform(node)
+        # end
         TaskGraphs.update_planning_cache!(env,0.0)
         if project_complete(env)
             println("PROJECT COMPLETE!")
@@ -130,6 +130,7 @@ function TaskGraphs.update_planning_cache!(env::PlannerEnv,time_stamp::Float64)
         for v in collect(cache.active_set)
             node = get_node(sched,v)
             if CRCBS.is_goal(node,env)
+                close_node!(node,env)
                 @info "node $(node_id(node)) finished."
                 TaskGraphs.update_planning_cache!(nothing,sched,cache,v,time_stamp)
                 # @info "active nodes $([get_vtx_id(sched,v) for v in cache.active_set])"
@@ -148,6 +149,27 @@ function TaskGraphs.update_planning_cache!(env::PlannerEnv,time_stamp::Float64)
         update_rvo_sim!(env)
     end
     cache
+end
+
+"""
+    close_node!(node,env)
+
+Ensure that a node is completed
+"""
+close_node!(node::ScheduleNode,env) = close_node!(node.node,env)
+close_node!(::ConstructionPredicate,env) = nothing
+function close_node!(node::CloseBuildStep,env)
+    @unpack sched, scene_tree = env
+    assembly = get_assembly(node)
+    @info "Closing BuildingStep" node
+    for (id,tform) in assembly_components(assembly)
+        if !has_edge(scene_tree,assembly,id)
+            if !capture_child!(scene_tree,assembly,id)
+                @warn "Assembly $(string(node_id(assembly))) is unable to capture child $(string(id)). Current relative transform is $(relative_transform(assembly,get_node(scene_tree,id))), but should be $(child_transform(assembly,id))" assembly id 
+            end
+        end
+        @assert has_edge(scene_tree,assembly,id)
+    end
 end
 
 """
@@ -281,15 +303,16 @@ end
 
 apply_cmd!(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},cmd,env) = nothing
 function apply_cmd!(node::CloseBuildStep,cmd::Nothing,env)
-    @unpack sched, scene_tree = env
-    assembly = get_assembly(node)
-    @info "Closing BuildingStep"
-    for (id,tform) in assembly_components(assembly)
-        if !has_edge(scene_tree,assembly,id)
-            capture_child!(scene_tree,assembly,id)
-        end
-        @assert has_edge(scene_tree,assembly,id)
-    end
+    close_node!(node,env)
+    # @unpack sched, scene_tree = env
+    # assembly = get_assembly(node)
+    # @info "Closing BuildingStep"
+    # for (id,tform) in assembly_components(assembly)
+    #     if !has_edge(scene_tree,assembly,id)
+    #         capture_child!(scene_tree,assembly,id)
+    #     end
+    #     @assert has_edge(scene_tree,assembly,id)
+    # end
 end
 function apply_cmd!(node::FormTransportUnit,twist,env)
     @unpack sched, scene_tree, cache, dt = env
