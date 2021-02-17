@@ -212,7 +212,7 @@ end
 for T in (:RobotStart,:ObjectStart,:AssemblyComplete,:AssemblyStart)
     @eval begin
         $T(n::SceneNode) = $T(n,TransformNode())
-        $T(n::ConstructionPredicate) = $T(entity(n),goal_config(n))
+        $T(n::ConstructionPredicate) = $T(entity(n),goal_config(n)) # shared config
     end
 end
 for T in (:RobotGo,:TransportUnitGo) #,:LiftIntoPlace)
@@ -408,8 +408,7 @@ Add all building steps to parent, working backward from parents
 function populate_schedule_sub_graph!(sched,parent::AssemblyComplete,model_spec,scene_tree,id_map)
     parent_assembly = entity(parent)
     # sa = add_node!(sched,AssemblyStart(parent_assembly))
-    sa = add_node!(sched,AssemblyStart(parent)) ################
-    set_parent!(goal_config(sa),goal_config(parent))
+    sa = add_node!(sched,AssemblyStart(parent)) # shares config with AssemblyComplete (AssemblyComplete.config === AssemblyStart.config)
     spec_node = get_node(model_spec, id_map[node_id(parent_assembly)])
     step_node = get_previous_build_step(model_spec,spec_node;skip_first=true)
     immediate_parent = parent
