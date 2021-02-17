@@ -1149,12 +1149,14 @@ end
 Define the transport unit for cargo. `pts` are the eligible support points
 """
 function configure_transport_unit(cargo,pts;
-        robot_radius = 0.5,
-        robot_height = 0.25,
+        robot_radius = default_robot_radius(),
+        robot_height = default_robot_height(),
         optimize_carry_config = false,
     )
     # initialize transport node with cargo id
-    cargo_tform = CT.Translation(0.0, 0.0, robot_height) ∘ identity_linear_map()
+    base_rect = get_base_geom(cargo,HyperrectangleKey())
+    zmin = base_rect.center[3] .- base_rect.radius[3]
+    cargo_tform = CT.Translation(0.0, 0.0, robot_height - zmin) ∘ identity_linear_map()
     transport_unit = TransportUnitNode(node_id(cargo) => cargo_tform)
     # project back to 3D and convert to SVector
     # geom = map(SVector,map(HG.project_to_3d,pts))

@@ -220,7 +220,7 @@ update_visualizer_function(env) = begin
         else
             agent = nothing
         end
-        if !(agent === nothing)
+        if !(agent === nothing) && !(agent in agents)
             push!(agents,agent)
             for vp in collect_descendants(env.scene_tree,agent)
                 push!(agents,get_node(env.scene_tree,vp))
