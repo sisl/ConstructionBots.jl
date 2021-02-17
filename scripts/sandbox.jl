@@ -22,7 +22,6 @@ using MeshCat
 const MESHCAT_GRID_DIMS = ((-10.0,10.0),(-10.0,10.0))
 using Plots
 using Random
-Random.seed!(0);
 
 using Logging
 global_logger(ConsoleLogger(stderr, Logging.Info))
@@ -35,10 +34,11 @@ render(vis)
 
 reset_all_id_counters!()
 reset_all_invalid_id_counters!()
+Random.seed!(0);
 
 # factor by which to scale LDraw model (because MeshCat bounds are hard to adjust)
-# NUM_ROBOTS          = 20
-NUM_ROBOTS          = 8
+NUM_ROBOTS          = 20
+# NUM_ROBOTS          = 8
 MODEL_SCALE         = 0.01
 ROBOT_HEIGHT        = 10*MODEL_SCALE
 ROBOT_RADIUS        = 25*MODEL_SCALE
@@ -51,7 +51,8 @@ set_default_robot_geom!(
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","ATTEWalker.mpd")
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","stack1.ldr")
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","big_stack.ldr")
-filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","triple_stack.mpd")
+# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","triple_stack.mpd")
+filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","quad_nested.mpd")
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","four_stack.mpd")
 model = parse_ldraw_file(filename)
 populate_part_geometry!(model)
@@ -70,6 +71,8 @@ assembly_tree = ConstructionBots.construct_assembly_tree(model,model_spec,id_map
 scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
 print(scene_tree,v->"$(summary(node_id(v))) : $(get(id_map,node_id(v),nothing))","\t")
 # Define TransportUnit configurations
+HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
+HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
 ConstructionBots.init_transport_units!(scene_tree;robot_radius = 0.5)
 # validate SceneTree
 root = get_node(scene_tree,collect(get_all_root_nodes(scene_tree))[1])
@@ -198,7 +201,11 @@ ConstructionBots.set_rvo_default_time_step!(1/40.0)
 ConstructionBots.set_rvo_default_neighbor_distance!(4.0)
 ConstructionBots.set_rvo_default_min_neighbor_distance!(3.0)
 ConstructionBots.rvo_set_new_sim!(ConstructionBots.rvo_new_sim(;horizon=2.0))
-env = PlannerEnv(sched=tg_sched,scene_tree=scene_tree)
+env = PlannerEnv(
+        sched=tg_sched,
+        scene_tree=scene_tree,
+        staging_circles=staging_circles
+        )
 active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
 ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 

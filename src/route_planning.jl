@@ -14,6 +14,7 @@ Contains the Environment state and definition.
     sched::OperatingSchedule    = OperatingSchedule()
     scene_tree::SceneTree       = SceneTree()
     cache::PlanningCache        = initialize_planning_cache(sched)
+    staging_circles::Dict{AbstractID,Ball2} = Dict{AbstractID,Ball2}()
     dt::Float64                 = rvo_default_time_step()
 end
 
