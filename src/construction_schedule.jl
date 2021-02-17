@@ -391,7 +391,6 @@ function populate_schedule_build_step!(sched,parent::AssemblyComplete,cb,step_no
         end
         add_edge!(sched,cargo_node,f) # ObjectStart/AssemblyComplete => FormTransportUnit 
         set_parent!(cargo_deployed_config(f),start_config(cargo_node))
-        # set_parent!(goal_config(f),start_config(cargo_node))
     end
     return ob
 end
@@ -410,6 +409,7 @@ function populate_schedule_sub_graph!(sched,parent::AssemblyComplete,model_spec,
     parent_assembly = entity(parent)
     # sa = add_node!(sched,AssemblyStart(parent_assembly))
     sa = add_node!(sched,AssemblyStart(parent)) ################
+    set_parent!(goal_config(sa),goal_config(parent))
     spec_node = get_node(model_spec, id_map[node_id(parent_assembly)])
     step_node = get_previous_build_step(model_spec,spec_node;skip_first=true)
     immediate_parent = parent
@@ -859,7 +859,7 @@ function solve_ring_placement_problem(θ_des,r,R,rmin=0.0;
 end
 
 """
-    process_construction_delivery_task!(sched,)
+    calibrate_transport_tasks!(sched)
     
 Set the appropriate transforms for all transport tasks such that
 - FormTransportUnit moves the object from its initial condition to its 
@@ -982,24 +982,10 @@ function set_scene_tree_to_initial_condition!(scene_tree,sched;
         end
     end
     for n in get_nodes(sched)
-        # if matches_template(LiftIntoPlace,n)
         if matches_template(Union{RobotStart,ObjectStart,AssemblyStart,FormTransportUnit},n)
             scene_node = get_node(scene_tree,node_id(entity(n)))
             @assert has_parent(scene_node,scene_node)
             set_local_transform!(scene_node,global_transform(start_config(n)))
-            # if matches_template(ObjectNode,scene_node)
-            #     set_local_transform!(scene_node,local_transform(start_config(n)))
-            # end
-        # elseif matches_template(AssemblyStart,n)
-        #     scene_node = get_node(scene_tree,node_id(entity(n)))
-        #     @assert has_parent(scene_node,scene_node)
-        #     set_local_transform!(scene_node,global_transform(start_config(n)))
-        # elseif matches_template(ObjectStart,n)
-        #     scene_node = get_node(scene_tree,node_id(entity(n)))
-        #     set_local_transform!(scene_node,global_transform(start_config(n)))
-        # elseif matches_template(FormTransportUnit,n)
-        #     scene_node = get_node(scene_tree,node_id(entity(n)))
-        #     set_local_transform!(scene_node,global_transform(start_config(n)))
         end
     end
     scene_tree
