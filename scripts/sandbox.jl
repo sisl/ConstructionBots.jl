@@ -154,9 +154,8 @@ validate_schedule_transform_tree(ConstructionBots.convert_from_operating_schedul
 update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
 @assert validate(tg_sched)
 # display_graph(tg_sched,scale=3,enforce_visited=true) |> PDF("/home/kylebrown/Desktop/sched.pdf")
-
-sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,200)
-display_graph(sched2,scale=3,enforce_visited=true,aspect_stretch=(0.9,0.9))
+# sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,200)
+# display_graph(sched2,scale=3,enforce_visited=true,aspect_stretch=(0.9,0.9))
 
 ## Visualize assembly
 color_map = construct_color_map(model_spec,id_map)
@@ -170,17 +169,27 @@ rect_nodes = show_geometry_layer!(scene_tree,vis_nodes,HyperrectangleKey();
     color=RGBA{Float32}(1, 0, 0, 0.3),
 )
 staging_nodes = Dict{AbstractID,Any}()
+staging_vis = vis["staging_circles"]
 for (id,geom) in staging_circles
     node = get_node(scene_tree,id)
     sphere = Ball2([geom.center..., 0.0],geom.radius)
     cylinder = Cylinder(Point(sphere.center...),
         Point((sphere.center.+[0.0,0.0,0.01])...),sphere.radius)
-    setobject!(vis_nodes[id]["staging_circle"],
+    # setobject!(vis_nodes[id]["staging_circle"],
+    setobject!(staging_vis[string(id)],
         # convert_to_renderable(sphere),
         cylinder,
         MeshPhongMaterial(wireframe=true),
         )
-    staging_nodes[id] = vis_nodes[id]["staging_circle"]
+    # staging_nodes[id] = vis_nodes[id]["staging_circle"]
+    staging_nodes[id] = staging_vis[string(id)]
+    cargo = get_node(scene_tree,id)
+    if isa(cargo,AssemblyNode) # && connect_to_sub_assemblies
+        cargo_node = get_node(sched,AssemblyComplete(cargo))
+    else
+        cargo_node = add_node!(sched,ObjectStart(cargo,TransformNode()))
+    end
+    settransform!(staging_nodes[id],global_transform(start_config(cargo_node)))
 end
 setvisible!(sphere_nodes,true)
 setvisible!(rect_nodes,true)
