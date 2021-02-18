@@ -37,7 +37,7 @@ reset_all_invalid_id_counters!()
 Random.seed!(0);
 
 # factor by which to scale LDraw model (because MeshCat bounds are hard to adjust)
-NUM_ROBOTS          = 20
+NUM_ROBOTS          = 40
 # NUM_ROBOTS          = 8
 MODEL_SCALE         = 0.01
 ROBOT_HEIGHT        = 10*MODEL_SCALE
@@ -143,12 +143,21 @@ ConstructionBots.calibrate_transport_tasks!(sched)
 ConstructionBots.add_dummy_robot_go_nodes!(sched)
 @assert validate_schedule_transform_tree(sched;post_staging=true)
 
+# Convert to OperatingSchedule
+ConstructionBots.set_default_loading_speed!(0.5)
+ConstructionBots.set_default_rotational_loading_speed!(0.5)
 tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
+# Black box MILP solver
+TaskGraphs.set_default_optimizer_attributes!(
+    # "SolutionLimit"=>1,
+    "TimeLimit"=>50,
+    MOI.Silent()=>false
+    )
+milp_model = SparseAdjacencyMILP()
 # Greedy Assignment with enforced build-step ordering
-# milp_model = SparseAdjacencyMILP()
-milp_model = ConstructionBots.GreedyOrderedAssignment(
-    greedy_cost = TaskGraphs.GreedyFinalTimeCost(),
-)
+# milp_model = ConstructionBots.GreedyOrderedAssignment(
+#     greedy_cost = TaskGraphs.GreedyFinalTimeCost(),
+# )
 milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
 optimize!(milp_model)
 validate_schedule_transform_tree(ConstructionBots.convert_from_operating_schedule(typeof(sched),tg_sched)
@@ -175,13 +184,14 @@ staging_vis = vis["staging_circles"]
 for (id,geom) in staging_circles
     node = get_node(scene_tree,id)
     sphere = Ball2([geom.center..., 0.0],geom.radius)
-    cylinder = Cylinder(Point(sphere.center...),
-        Point((sphere.center.+[0.0,0.0,0.01])...),sphere.radius)
+    ctr = Point(HG.project_to_2d(sphere.center)..., 0.0)
+    cylinder = Cylinder(ctr,
+        Point((ctr.-[0.0,0.0,0.01])...),sphere.radius)
     # setobject!(vis_nodes[id]["staging_circle"],
     setobject!(staging_vis[string(id)],
         # convert_to_renderable(sphere),
         cylinder,
-        MeshPhongMaterial(wireframe=true),
+        MeshPhongMaterial(color=RGBA{Float32}(1, 0, 1, 0.1)),
         )
     # staging_nodes[id] = vis_nodes[id]["staging_circle"]
     staging_nodes[id] = staging_vis[string(id)]
@@ -191,7 +201,10 @@ for (id,geom) in staging_circles
     else
         cargo_node = add_node!(sched,ObjectStart(cargo,TransformNode()))
     end
-    settransform!(staging_nodes[id],global_transform(start_config(cargo_node)))
+    t = HG.project_to_3d(HG.project_to_2d(global_transform(start_config(cargo_node)).translation))
+    tform = CT.Translation(t) ∘ identity_linear_map()
+    settransform!(staging_nodes[id],tform)
+    # settransform!(staging_nodes[id],global_transform(start_config(cargo_node)))
 end
 setvisible!(sphere_nodes,true)
 setvisible!(rect_nodes,true)
@@ -211,7 +224,6 @@ update_visualizer!(scene_tree,vis_nodes)
 # visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;dt=0.1)
 
 # rvo
-ConstructionBots.set_default_loading_speed!(0.5)
 ConstructionBots.set_rvo_default_time_step!(1/40.0)
 ConstructionBots.set_rvo_default_neighbor_distance!(4.0)
 ConstructionBots.set_rvo_default_min_neighbor_distance!(3.0)
@@ -224,41 +236,12 @@ env = PlannerEnv(
 active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
 ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 
-update_visualizer_function(env) = begin
-    agents = Set{SceneNode}()
-    for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
-        agent = get_node(env.scene_tree, id)
-        push!(agents, agent)
-        for vp in collect_descendants(env.scene_tree,agent)
-            push!(agents,get_node(env.scene_tree,vp))
-        end
-    end
-    for v in env.cache.active_set
-        node = get_node(env.sched,v)
-        if matches_template(EntityGo,node)
-            agent = entity(node)
-        elseif matches_template(Union{FormTransportUnit,DepositCargo},node)
-            agent = get_node(env.scene_tree,cargo_id(entity(node)))
-        else
-            agent = nothing
-        end
-        if !(agent === nothing) && !(agent in agents)
-            push!(agents,agent)
-            for vp in collect_descendants(env.scene_tree,agent)
-                push!(agents,get_node(env.scene_tree,vp))
-            end
-        end
-    end
-    update_visualizer!(env.scene_tree,vis_nodes,agents)
-    # update_visualizer!(env.scene_tree,vis_nodes)
-    render(vis)
-end
+update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes)
 
 # Turn off RVO to see if the project can be completed if we don't worry about collision
 set_use_rvo!(false)
 
-ConstructionBots.simulate!(env,update_visualizer_function)
-ConstructionBots.simulate!(env,update_visualizer_function,max_time_steps=5000)
+ConstructionBots.simulate!(env,update_visualizer_function,max_time_steps=20000)
 
 # VISUALIZE ROBOT PLACEMENT AROUND PARTS
 

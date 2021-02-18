@@ -55,6 +55,7 @@ end
 
 function simulate!(env,update_visualizer_function;
     max_time_steps=2000,
+    dt_vis = env.dt,
     )
     @unpack sched, scene_tree, cache, dt = env
     t0 = 0.0
@@ -67,7 +68,7 @@ function simulate!(env,update_visualizer_function;
             break
         end
         update_visualizer_function(env)
-        sleep(dt)
+        sleep(dt_vis)
         time_stamp = t0+k*dt
     end
     return env

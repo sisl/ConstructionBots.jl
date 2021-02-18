@@ -122,6 +122,39 @@ function update_visualizer!(scene_tree,vis_nodes,nodes=get_nodes(scene_tree))
     return vis_nodes
 end
 
+function construct_visualizer_update_function(vis,vis_nodes)
+    update_visualizer_function(env) = begin
+        agents = Set{SceneNode}()
+        for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
+            agent = get_node(env.scene_tree, id)
+            push!(agents, agent)
+            for vp in collect_descendants(env.scene_tree,agent)
+                push!(agents,get_node(env.scene_tree,vp))
+            end
+        end
+        for v in env.cache.active_set
+            node = get_node(env.sched,v)
+            if matches_template(EntityGo,node)
+                agent = entity(node)
+            elseif matches_template(Union{FormTransportUnit,DepositCargo},node)
+                agent = get_node(env.scene_tree,cargo_id(entity(node)))
+            else
+                agent = nothing
+            end
+            if !(agent === nothing) && !(agent in agents)
+                push!(agents,agent)
+                for vp in collect_descendants(env.scene_tree,agent)
+                    push!(agents,get_node(env.scene_tree,vp))
+                end
+            end
+        end
+        update_visualizer!(env.scene_tree,vis_nodes,agents)
+        # update_visualizer!(env.scene_tree,vis_nodes)
+        render(vis)
+    end
+    return update_visualizer_function
+end
+
 function call_update!(scene_tree,vis_nodes,nodes,dt)
     update_visualizer!(scene_tree,vis_nodes,nodes)
     render(vis)

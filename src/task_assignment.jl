@@ -1,18 +1,28 @@
 TaskGraphs.duration_lower_bound(node::ConstructionPredicate) = 0.0
-function TaskGraphs.duration_lower_bound(node::ConstructionPredicate,start,goal)
+function TaskGraphs.duration_lower_bound(node::ConstructionPredicate,start,goal,max_speed)
     d = norm(goal-start)
-    max_speed = get_rvo_max_speed(entity(node))
     dt = d/max_speed
 end
 function TaskGraphs.duration_lower_bound(node::EntityGo)
     start = global_transform(start_config(node)).translation
     goal = global_transform(goal_config(node)).translation
-    TaskGraphs.duration_lower_bound(node,start,goal)
+    TaskGraphs.duration_lower_bound(node,start,goal,get_rvo_max_speed(entity(node)))
 end
 function TaskGraphs.duration_lower_bound(node::Union{FormTransportUnit,DepositCargo})
     start = global_transform(cargo_start_config(node)).translation
     goal = global_transform(cargo_goal_config(node)).translation
-    TaskGraphs.duration_lower_bound(node,start,goal)
+    TaskGraphs.duration_lower_bound(node,start,goal,default_loading_speed())
+    # d = norm(goal-start)
+    # max_speed = default_loading_speed()
+    # dt = d/max_speed
+end
+function TaskGraphs.duration_lower_bound(node::LiftIntoPlace)
+    start = global_transform(start_config(node)).translation
+    goal = global_transform(goal_config(node)).translation
+    TaskGraphs.duration_lower_bound(node,start,goal,default_loading_speed())
+    # d = norm(goal-start)
+    # max_speed = default_loading_speed()
+    # dt = d/max_speed
 end
 
 TaskGraphs.is_tight(node::Union{TransportUnitGo,RobotGo}) = true
