@@ -190,7 +190,7 @@ export GreedyOrderedAssignment
     problem_spec::P             = ProblemSpec()
     cost_model::C               = SumOfMakeSpans()
     greedy_cost::M              = TaskGraphs.GreedyPathLengthCost()
-    t0::Vector{Int}             = zeros(Int,nv(schedule))
+    t0::Vector{Float64}         = get_tF(schedule)
     # backward_depth::Vector{Int} = compute_backward_depth(schedule)
     # ordering::Vector{Int}       = sortperm(backward_depth)
     ordering_graph::DiGraph     = get_graph(greedy_set_precedence_graph(schedule))
@@ -347,7 +347,9 @@ function TaskGraphs.formulate_milp(
     GreedyOrderedAssignment(
         schedule=sched,
         problem_spec=problem_spec,
-        cost_model=cost_model
+        cost_model=cost_model,
+        greedy_cost = milp_model.greedy_cost,
+
     )
 end
 function set_leaf_vtxs!(sched::OperatingSchedule,template=ProjectComplete)

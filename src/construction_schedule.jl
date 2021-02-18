@@ -1015,7 +1015,10 @@ function select_initial_object_grid_locations!(sched,vtxs)
         )
     for (node,tform) in zip(nodes,Base.Iterators.cycle(tforms))
         start_node = get_node(sched,ObjectStart(node))
-        set_local_transform!(start_config(start_node),tform)
+        parent = get_parent(start_config(start_node))
+        rtf = relative_transform(global_transform(parent),tform)
+        HG.set_local_transform_in_global_frame!(start_config(start_node),rtf)
+        # set_local_transform!(start_config(start_node),tform)
     end
     sched
 end
