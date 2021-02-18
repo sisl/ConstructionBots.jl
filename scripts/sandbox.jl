@@ -210,7 +210,7 @@ update_visualizer!(scene_tree,vis_nodes)
 # Visualize construction
 # visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;dt=0.1)
 
-# RVO
+# rvo
 ConstructionBots.set_default_loading_speed!(0.5)
 ConstructionBots.set_rvo_default_time_step!(1/40.0)
 ConstructionBots.set_rvo_default_neighbor_distance!(4.0)
@@ -254,6 +254,7 @@ update_visualizer_function(env) = begin
     render(vis)
 end
 
+# Turn off RVO to see if the project can be completed if we don't worry about collision
 set_use_rvo!(false)
 
 ConstructionBots.simulate!(env,update_visualizer_function)

@@ -248,6 +248,7 @@ function update_greedy_sets_enforce_order!(sched, cache,
     if (isempty(Ai) || isempty(Ao)) && length(C) < nv(sched)
         @warn "Assignment problem is infeasible"
     end
+    TaskGraphs.process_schedule!(sched)
     return Ai, Ao, C
 end
 
