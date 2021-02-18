@@ -98,7 +98,7 @@ HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
 @assert all(map(node->has_vertex(node.geom_hierarchy,HyperrectangleKey()), get_nodes(scene_tree)))
 # Remove temporary dummy robots ############################
 ConstructionBots.remove_temporary_invalid_robots!(scene_tree)
-display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
+# display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
 
 ## Construct Partial Schedule
 HG.jump_to_final_configuration!(scene_tree;set_edges=true)
@@ -251,6 +251,8 @@ update_visualizer_function(env) = begin
     # update_visualizer!(env.scene_tree,vis_nodes)
     render(vis)
 end
+
+set_use_rvo!(false)
 
 ConstructionBots.simulate!(env,update_visualizer_function)
 ConstructionBots.simulate!(env,update_visualizer_function,max_time_steps=5000)

@@ -5,6 +5,17 @@ export
     apply_cmd!,
     project_complete
 
+
+export
+    use_rvo,
+    set_use_rvo!
+
+global USE_RVO = true 
+use_rvo() = USE_RVO
+function set_use_rvo!(val)
+    global USE_RVO = val
+end
+
 """
     PlannerEnv
 
@@ -48,16 +59,8 @@ function simulate!(env,update_visualizer_function;
     @unpack sched, scene_tree, cache, dt = env
     t0 = 0.0
     time_stamp = t0
-    # configs = TransformDict{AbstractID}(node_id(node)=>global_transform(node) for node in get_nodes(scene_tree))
     for k in 1:max_time_steps
         step_environment!(env)
-        # debugging
-        # for node in get_nodes(scene_tree)
-        #     if norm(global_transform(node).translation - configs[node_id(node)].translation) >= 0.5
-        #         @warn "node $(node_id(node)) just jumped" env.cache.active_set
-        #     end
-        #     configs[node_id(node)] = global_transform(node)
-        # end
         TaskGraphs.update_planning_cache!(env,0.0)
         if project_complete(env)
             println("PROJECT COMPLETE!")
@@ -103,7 +106,10 @@ function step_environment!(env::PlannerEnv,sim=rvo_global_sim())
     # Step RVO
     sim.doStep()
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
-        tform = update_position_from_sim!(get_node(scene_tree,id))
+        if use_rvo()
+            @info "Updating position from rvo"
+            tform = update_position_from_sim!(get_node(scene_tree,id))
+        end
         # Set velocities to zero for any agents that are no longer "active"
         # TODO set preferred velocity to "disperse" velocity
         rvo_set_agent_pref_velocity!(id,(0.0,0.0))
@@ -265,7 +271,9 @@ get_cmd(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},env) 
 function get_cmd(node::Union{TransportUnitGo,RobotGo},env)
     @unpack sched, scene_tree, dt = env
     agent = entity(node)
-    update_position_from_sim!(agent)
+    if use_rvo()
+        update_position_from_sim!(agent)
+    end
     if is_goal(node,env) && !is_terminal_node(sched,node)
         twist = zero(Twist)
         max_speed = 0.0
@@ -303,18 +311,7 @@ function get_cmd(node::LiftIntoPlace,env)
 end
 
 apply_cmd!(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},cmd,env) = nothing
-function apply_cmd!(node::CloseBuildStep,cmd::Nothing,env)
-    close_node!(node,env)
-    # @unpack sched, scene_tree = env
-    # assembly = get_assembly(node)
-    # @info "Closing BuildingStep"
-    # for (id,tform) in assembly_components(assembly)
-    #     if !has_edge(scene_tree,assembly,id)
-    #         capture_child!(scene_tree,assembly,id)
-    #     end
-    #     @assert has_edge(scene_tree,assembly,id)
-    # end
-end
+apply_cmd!(node::CloseBuildStep,cmd::Nothing,env) = close_node!(node,env)
 function apply_cmd!(node::FormTransportUnit,twist,env)
     @unpack sched, scene_tree, cache, dt = env
     agent = entity(node)
@@ -353,7 +350,14 @@ function apply_cmd!(node::LiftIntoPlace,twist,env)
     tform = integrate_twist(twist,dt)
     set_local_transform!(cargo, local_transform(cargo) ∘ tform)
 end
-apply_cmd!(node::Union{TransportUnitGo,RobotGo},cmd,args...) = nothing # ConstructionPredicate.rvo_set_agent_pref_velocity!(node,cmd)
+function apply_cmd!(node::Union{TransportUnitGo,RobotGo},twist,env)
+    @unpack sched, scene_tree, cache, dt = env
+    if !use_rvo()
+        agent = entity(node)
+        tform = integrate_twist(twist,dt)
+        set_local_transform!(agent, local_transform(agent) ∘ tform)
+    end
+end
 
 
 export
