@@ -628,7 +628,7 @@ function generate_staging_plan!(scene_tree,sched;
     # schedule can be moved anywhere. All would-be root TransormNodes will have
     # this root node as their parent, regardless of the edge structure of the 
     # schedule graph
-    return staging_circles
+    return staging_circles, bounding_circles
 end
 
 """
@@ -692,7 +692,7 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                 # Get global orientation parent frame ʷRₚ
                 tform = t ∘ identity_linear_map() # AffineMap transform
                 # set transform of start node
-                @info "Starting config: setting START config of $(node_id(start_node)) to $(tform)"
+                # @info "Starting config: setting START config of $(node_id(start_node)) to $(tform)"
                 HG.set_local_transform_in_global_frame!(start_config(start_node),tform)
                 tform2D = CoordinateTransformations.Translation(t.translation[1:2]...)
                 push!(tformed_geoms,tform2D(geom)) 
@@ -737,19 +737,16 @@ function process_schedule_build_step!(node,sched,scene_tree,
     parts       = map(part_id->get_node(scene_tree,part_id), part_ids)
     θ_des       = Vector{Float64}()
     radii       = Vector{Float64}()
-    tforms      = map(id->child_transform(assembly,id),part_ids) # working in assembly frame
+    # tforms      = map(id->child_transform(assembly,id),part_ids) # working in assembly frame
+    tforms      = map(id->assembly_frame ∘ child_transform(assembly,id),part_ids) # working in assembly frame
     geoms       = Vector{Ball2}()
     for (part_id,part,tform) in zip(part_ids,parts,tforms)
-        # Set goal config of LiftIntoPlace node
-        # lift_node = get_node(sched,LiftIntoPlace(get_node(scene_tree,part_id)))
-        # @info "Staging config: setting GOAL config of $(node_id(lift_node)) to $(tform)"
-        # set_local_transform!(goal_config(lift_node),tform)
         # Store transformed geometry for staging placement optimization
         geom = HG.project_to_2d(tform(get_base_geom(part,HypersphereKey())))
         push!(geoms,geom)
         d = geom.center - bounding_circle.center
         r = geom.radius
-        push!(θ_des, atan(d[2],d[1]))
+        push!(θ_des, wrap_to_pi(atan(d[2],d[1])))
         push!(radii, r)
     end
     if !isempty(geoms)
@@ -767,11 +764,14 @@ function process_schedule_build_step!(node,sched,scene_tree,
         bounding_circle.radius,
         robot_radius,
         )
+    Δθ = θ_star .- θ_des
+    if maximum(abs.(Δθ)) > 0.1
+        @info "ring placement solution $(node_id(node))" assembly_radius radii robot_radius θ_des θ_star Δθ
+    end
     # Compute staging config transforms (relative to parent assembly)
     tformed_geoms = Vector{Ball2}()
     for (i,(θ,r,part_id,part)) in enumerate(zip(θ_star,radii,part_ids,parts))
         lift_node = get_node(sched,LiftIntoPlace(get_node(scene_tree,part_id)))
-        lift_goal = local_transform(goal_config(lift_node))
         # Compute the offset transform (relative to the assembly center)
         R = assembly_radius + r
 
@@ -785,6 +785,7 @@ function process_schedule_build_step!(node,sched,scene_tree,
         HG.set_local_transform_in_global_frame!(start_config(lift_node),tform)
 
         ### Use set_local_transform!
+        # lift_goal = local_transform(goal_config(lift_node))
         # Compute desired transform of start_config(lift_node) relative to AssemblyComplete.config
         # t = CoordinateTransformations.Translation(
         #     R*cos(θ) + bounding_circle.center[1],
@@ -792,10 +793,14 @@ function process_schedule_build_step!(node,sched,scene_tree,
         #     lift_goal.translation[3])
         # tform = inv(lift_goal) ∘ t # AffineMap transform
         # HG.set_local_transform!(start_config(lift_node),tform)
+        # @info "Staging config: setting START config of $(node_id(lift_node)) to $(start_config(lift_node))"
+
+        # Store transformed geometry
         geom = HG.project_to_2d(tform(get_base_geom(part,HypersphereKey())))
         push!(tformed_geoms,geom)
-        @info "Staging config: setting START config of $(node_id(lift_node)) to $(start_config(lift_node))"
     end
+    # Compute next staging circle by overapproximating the current bounding 
+    # circle and the new geometry 
     staging_circles[node_id(assembly)] = overapproximate(
         vcat(tformed_geoms,bounding_circles[node_id(assembly)]),
         Ball2{Float64,SVector{2,Float64}}
@@ -821,11 +826,14 @@ function solve_ring_placement_problem(θ_des,r,R,rmin=0.0;
     model = Model(HG.default_optimizer())
     set_optimizer_attributes(model,HG.default_optimizer_attributes()...)
 
+    θ_des = map(wrap_to_pi, θ_des)
+
     n = length(θ_des)
     @assert length(r) == n
     # sort θ (the unsorted vector will be returned at the end)
     idxs = sortperm(θ_des)
-    reverse_idxs = collect(1:n)[idxs]
+    # reverse_idxs = collect(1:n)[idxs]
+    reverse_idxs = sortperm(idxs)
     θ_des = θ_des[idxs]
     r = r[idxs]
     # compute half widths in radians (required radial spacing between parts)

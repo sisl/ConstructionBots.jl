@@ -110,27 +110,56 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 # display_graph(sched,scale=1,enforce_visited=true)
 
 ## Generate staging plan
-staging_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched)
+staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched)
 
 # Visualize staging plans to debug the rotational offsets
 vis_arrows = vis["arrows"]
 vis_triads = vis["triads"]
+bounding_vis = vis["bounding_circles"]
+delete!(vis_arrows)
+delete!(vis_triads)
+delete!(bounding_vis)
 for n in get_nodes(sched)
     if matches_template(LiftIntoPlace,n)
+        # LiftIntoPlace path
         p1 = Point(global_transform(start_config(n)).translation...)
         p2 = Point(global_transform(goal_config(n)).translation...)
-        arrow_vis = ArrowVisualizer(vis_arrows[string(node_id(n))])
-        setobject!(arrow_vis,MeshPhongMaterial(color=RGBA{Float32}(0, 1, 0, 1.0)))
-        settransform!(arrow_vis,p1,p2)
-    end
-    if matches_template(AssemblyComplete,n)
+        lift_vis = ArrowVisualizer(vis_arrows[string(node_id(n))])
+        setobject!(lift_vis,MeshPhongMaterial(color=RGBA{Float32}(0, 1, 0, 1.0)))
+        settransform!(lift_vis,p1,p2)
+        # Transport path
+        cargo = entity(n)
+        if isa(cargo,AssemblyNode)
+            c = get_node(sched,AssemblyComplete(cargo))
+        else
+            continue
+            # c = get_node(sched,ObjectStart(cargo))
+        end
+        p3 = Point(global_transform(start_config(c)).translation...)
+        transport_vis = ArrowVisualizer(vis_arrows[string(node_id(c))])
+        setobject!(transport_vis,MeshPhongMaterial(color=RGBA{Float32}(1, 0, 0, 1.0)))
+        settransform!(transport_vis,p3,p1)
+    elseif matches_template(AssemblyComplete,n)
         triad_vis = vis_triads[string(node_id(n))]
         setobject!(triad_vis,Triad(0.25))
         settransform!(triad_vis,global_transform(goal_config(n)))
     end
 end
-delete!(vis_arrows)
-delete!(vis_triads)
+for (id,geom) in bounding_circles
+    if isa(id,AssemblyID)
+        node = get_node(scene_tree,id)
+    else
+        node = get_node(scene_tree,node_val(get_node(sched,id)).assembly)
+    end
+    sphere = Ball2([geom.center..., 0.0],geom.radius)
+    b_vis = bounding_vis[string(id)]
+    setobject!(b_vis,
+        convert_to_renderable(sphere),
+        MeshPhongMaterial(color=RGBA{Float32}(1, 0, 1, 0.1)),
+        )
+    cargo_node = get_node(sched,AssemblyComplete(node))
+    settransform!(b_vis,global_transform(start_config(cargo_node)))
+end
 
 # Move objects away from the staging plan
 MAX_CARGO_HEIGHT = maximum(map(n->get_base_geom(n,HyperrectangleKey()).radius[3]*2,
@@ -205,21 +234,18 @@ for (id,geom) in staging_circles
     node = get_node(scene_tree,id)
     sphere = Ball2([geom.center..., 0.0],geom.radius)
     ctr = Point(HG.project_to_2d(sphere.center)..., 0.0)
-    cylinder = Cylinder(ctr,
-        Point((ctr.-[0.0,0.0,0.01])...),sphere.radius)
-    # setobject!(vis_nodes[id]["staging_circle"],
+    cylinder = Cylinder(ctr, Point((ctr.-[0.0,0.0,0.01])...),sphere.radius)
     setobject!(staging_vis[string(id)],
         # convert_to_renderable(sphere),
         cylinder,
         MeshPhongMaterial(color=RGBA{Float32}(1, 0, 1, 0.1)),
         )
-    # staging_nodes[id] = vis_nodes[id]["staging_circle"]
     staging_nodes[id] = staging_vis[string(id)]
     cargo = get_node(scene_tree,id)
-    if isa(cargo,AssemblyNode) # && connect_to_sub_assemblies
+    if isa(cargo,AssemblyNode) 
         cargo_node = get_node(sched,AssemblyComplete(cargo))
     else
-        cargo_node = add_node!(sched,ObjectStart(cargo,TransformNode()))
+        cargo_node = get_node!(sched,ObjectStart(cargo,TransformNode()))
     end
     t = HG.project_to_3d(HG.project_to_2d(global_transform(start_config(cargo_node)).translation))
     tform = CT.Translation(t) ∘ identity_linear_map()
