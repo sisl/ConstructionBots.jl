@@ -63,7 +63,7 @@ spec = ConstructionBots.construct_model_spec(model)
 model_spec = ConstructionBots.extract_single_model(spec)
 # model_spec = ConstructionBots.extract_single_model(spec,"20009 - AT-TE Walker.mpd")
 @assert GraphUtils.validate_graph(model_spec)
-display_graph(model_spec,scale=1,enforce_visited=true)
+# display_graph(model_spec,scale=1,enforce_visited=true)
 
 ## CONSTRUCT SceneTree
 id_map = ConstructionBots.build_id_map(model,model_spec)
@@ -79,13 +79,13 @@ root = get_node(scene_tree,collect(get_all_root_nodes(scene_tree))[1])
 validate_tree(HierarchicalGeometry.get_transform_node(root))
 validate_embedded_tree(scene_tree,v->HierarchicalGeometry.get_transform_node(get_node(scene_tree,v)))
 # visualize
-display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
+# display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
 
 ## Add some robots to scene tree
 vtxs = ConstructionBots.construct_vtx_array(;spacing=(1.0,1.0,0.0), ranges=(-10:10,-10:10,0:0))
 robot_vtxs = draw_random_uniform(vtxs,NUM_ROBOTS)
 ConstructionBots.add_robots_to_scene!(scene_tree,robot_vtxs,[default_robot_geom()])
-display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
+# display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
 
 ## Compute overapproximated geometry
 # Add temporary dummy robots ############################
@@ -111,6 +111,26 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 
 ## Generate staging plan
 staging_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched)
+
+# Visualize staging plans to debug the rotational offsets
+vis_arrows = vis["arrows"]
+vis_triads = vis["triads"]
+for n in get_nodes(sched)
+    if matches_template(LiftIntoPlace,n)
+        p1 = Point(global_transform(start_config(n)).translation...)
+        p2 = Point(global_transform(goal_config(n)).translation...)
+        arrow_vis = ArrowVisualizer(vis_arrows[string(node_id(n))])
+        setobject!(arrow_vis,MeshPhongMaterial(color=RGBA{Float32}(0, 1, 0, 1.0)))
+        settransform!(arrow_vis,p1,p2)
+    end
+    if matches_template(AssemblyComplete,n)
+        triad_vis = vis_triads[string(node_id(n))]
+        setobject!(triad_vis,Triad(0.25))
+        settransform!(triad_vis,global_transform(goal_config(n)))
+    end
+end
+delete!(vis_arrows)
+delete!(vis_triads)
 
 # Move objects away from the staging plan
 MAX_CARGO_HEIGHT = maximum(map(n->get_base_geom(n,HyperrectangleKey()).radius[3]*2,
