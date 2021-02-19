@@ -971,6 +971,11 @@ end
 
 export set_scene_tree_to_initial_condition!
 
+get_start_node(n::SceneNode,sched) = get_node(sched,get_start_node(n))
+get_start_node(n::RobotNode) = RobotStart(n)
+get_start_node(n::ObjectNode) = ObjectStart(n)
+get_start_node(n::AssemblyNode) = AssemblyComplete(n)
+get_start_node(n::TransportUnitNode) = FormTransportUnit(n)
 """
     set_scene_tree_to_initial_condition!(scene_tree,sched)
 
@@ -985,13 +990,23 @@ function set_scene_tree_to_initial_condition!(scene_tree,sched;
             HG.force_remove_edge!(scene_tree,edge_source(e),edge_target(e))
         end
     end
-    for n in get_nodes(sched)
-        if matches_template(Union{RobotStart,ObjectStart,AssemblyStart,FormTransportUnit},n)
-            scene_node = get_node(scene_tree,node_id(entity(n)))
-            @assert has_parent(scene_node,scene_node)
-            set_local_transform!(scene_node,global_transform(start_config(n)))
+    for scene_node in node_iterator(scene_tree, topological_sort_by_dfs(scene_tree))
+        if has_vertex(sched,get_start_node(scene_node))
+            n = get_start_node(scene_node,sched)
+            goal = global_transform(start_config(n))
+        else
+            goal = identity_linear_map()
         end
+        HG.set_desired_global_transform!(scene_node,goal)
     end
+    # for n in get_nodes(sched)
+    #     if matches_template(Union{RobotStart,ObjectStart,AssemblyStart,FormTransportUnit},n)
+    #         scene_node = get_node(scene_tree,node_id(entity(n)))
+    #         # @assert has_parent(scene_node,scene_node)
+    #         # set_local_transform!(scene_node,global_transform(start_config(n)))
+    #         HG.set_desired_global_transform!(scene_node,global_transform(start_config(n)))
+    #     end
+    # end
     scene_tree
 end
 

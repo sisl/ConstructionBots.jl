@@ -61,12 +61,12 @@ LDrawParser.change_coordinate_system!(model,ldraw_base_transform(),MODEL_SCALE)
 ## CONSTRUCT MODEL SPEC
 spec = ConstructionBots.construct_model_spec(model)
 model_spec = ConstructionBots.extract_single_model(spec)
-# model_spec = ConstructionBots.extract_single_model(spec,"20009 - AT-TE Walker.mpd")
+id_map = ConstructionBots.build_id_map(model,model_spec)
+color_map = construct_color_map(model_spec,id_map)
 @assert GraphUtils.validate_graph(model_spec)
 # display_graph(model_spec,scale=1,enforce_visited=true)
 
 ## CONSTRUCT SceneTree
-id_map = ConstructionBots.build_id_map(model,model_spec)
 assembly_tree = ConstructionBots.construct_assembly_tree(model,model_spec,id_map)
 scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
 print(scene_tree,v->"$(summary(node_id(v))) : $(get(id_map,node_id(v),nothing))","\t")
@@ -112,55 +112,6 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 ## Generate staging plan
 staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched)
 
-# Visualize staging plans to debug the rotational offsets
-vis_arrows = vis["arrows"]
-vis_triads = vis["triads"]
-bounding_vis = vis["bounding_circles"]
-delete!(vis_arrows)
-delete!(vis_triads)
-delete!(bounding_vis)
-for n in get_nodes(sched)
-    if matches_template(LiftIntoPlace,n)
-        # LiftIntoPlace path
-        p1 = Point(global_transform(start_config(n)).translation...)
-        p2 = Point(global_transform(goal_config(n)).translation...)
-        lift_vis = ArrowVisualizer(vis_arrows[string(node_id(n))])
-        setobject!(lift_vis,MeshPhongMaterial(color=RGBA{Float32}(0, 1, 0, 1.0)))
-        settransform!(lift_vis,p1,p2)
-        # Transport path
-        cargo = entity(n)
-        if isa(cargo,AssemblyNode)
-            c = get_node(sched,AssemblyComplete(cargo))
-        else
-            continue
-            # c = get_node(sched,ObjectStart(cargo))
-        end
-        p3 = Point(global_transform(start_config(c)).translation...)
-        transport_vis = ArrowVisualizer(vis_arrows[string(node_id(c))])
-        setobject!(transport_vis,MeshPhongMaterial(color=RGBA{Float32}(1, 0, 0, 1.0)))
-        settransform!(transport_vis,p3,p1)
-    elseif matches_template(AssemblyComplete,n)
-        triad_vis = vis_triads[string(node_id(n))]
-        setobject!(triad_vis,Triad(0.25))
-        settransform!(triad_vis,global_transform(goal_config(n)))
-    end
-end
-for (id,geom) in bounding_circles
-    if isa(id,AssemblyID)
-        node = get_node(scene_tree,id)
-    else
-        node = get_node(scene_tree,node_val(get_node(sched,id)).assembly)
-    end
-    sphere = Ball2([geom.center..., 0.0],geom.radius)
-    b_vis = bounding_vis[string(id)]
-    setobject!(b_vis,
-        convert_to_renderable(sphere),
-        MeshPhongMaterial(color=RGBA{Float32}(1, 0, 1, 0.1)),
-        )
-    cargo_node = get_node(sched,AssemblyComplete(node))
-    settransform!(b_vis,global_transform(start_config(cargo_node)))
-end
-
 # Move objects away from the staging plan
 MAX_CARGO_HEIGHT = maximum(map(n->get_base_geom(n,HyperrectangleKey()).radius[3]*2,
     filter(n->matches_template(TransportUnitNode,n),get_nodes(scene_tree))))
@@ -192,6 +143,13 @@ ConstructionBots.calibrate_transport_tasks!(sched)
 ConstructionBots.add_dummy_robot_go_nodes!(sched)
 @assert validate_schedule_transform_tree(sched;post_staging=true)
 
+## Visualize staging plans to debug the rotational shuffling 
+vis_triads, vis_arrows, bounding_vis = visualize_staging_plan(vis,sched,scene_tree)
+delete!(vis_arrows)
+delete!(vis_triads)
+delete!(bounding_vis)
+
+
 # Convert to OperatingSchedule
 ConstructionBots.set_default_loading_speed!(0.5)
 ConstructionBots.set_default_rotational_loading_speed!(0.5)
@@ -218,9 +176,8 @@ update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
 # display_graph(sched2,scale=3,enforce_visited=true,aspect_stretch=(0.9,0.9))
 
 ## Visualize assembly
-color_map = construct_color_map(model_spec,id_map)
 delete!(vis)
-vis_nodes = populate_visualizer!(scene_tree,vis;
+vis_nodes, base_geom_nodes = populate_visualizer!(scene_tree,vis;
     color_map=color_map,
     # wireframe=true,
     material_type=MeshPhongMaterial)
@@ -228,33 +185,12 @@ sphere_nodes = show_geometry_layer!(scene_tree,vis_nodes,HypersphereKey())
 rect_nodes = show_geometry_layer!(scene_tree,vis_nodes,HyperrectangleKey();
     color=RGBA{Float32}(1, 0, 0, 0.3),
 )
-staging_nodes = Dict{AbstractID,Any}()
-staging_vis = vis["staging_circles"]
-for (id,geom) in staging_circles
-    node = get_node(scene_tree,id)
-    sphere = Ball2([geom.center..., 0.0],geom.radius)
-    ctr = Point(HG.project_to_2d(sphere.center)..., 0.0)
-    cylinder = Cylinder(ctr, Point((ctr.-[0.0,0.0,0.01])...),sphere.radius)
-    setobject!(staging_vis[string(id)],
-        # convert_to_renderable(sphere),
-        cylinder,
-        MeshPhongMaterial(color=RGBA{Float32}(1, 0, 1, 0.1)),
-        )
-    staging_nodes[id] = staging_vis[string(id)]
-    cargo = get_node(scene_tree,id)
-    if isa(cargo,AssemblyNode) 
-        cargo_node = get_node(sched,AssemblyComplete(cargo))
-    else
-        cargo_node = get_node!(sched,ObjectStart(cargo,TransformNode()))
-    end
-    t = HG.project_to_3d(HG.project_to_2d(global_transform(start_config(cargo_node)).translation))
-    tform = CT.Translation(t) ∘ identity_linear_map()
-    settransform!(staging_nodes[id],tform)
-    # settransform!(staging_nodes[id],global_transform(start_config(cargo_node)))
-end
+staging_nodes = render_staging_areas!(vis,scene_tree,sched,staging_circles)
+setvisible!(base_geom_nodes,true)
 setvisible!(sphere_nodes,true)
 setvisible!(rect_nodes,true)
 setvisible!(staging_nodes,true)
+# setvisible!(base_geom_nodes,false)
 setvisible!(sphere_nodes,false)
 setvisible!(rect_nodes,false)
 setvisible!(staging_nodes,false)
@@ -268,6 +204,19 @@ set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
 update_visualizer!(scene_tree,vis_nodes)
 # Visualize construction
 # visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;dt=0.1)
+
+
+# render video!
+animate_preprocessing_steps!(
+        vis,
+        vis_nodes,
+        scene_tree,
+        sched,
+        rect_nodes,
+        ;
+        dt_animate=0.0,
+        dt=0.0
+    )
 
 # rvo
 ConstructionBots.set_rvo_default_time_step!(1/40.0)

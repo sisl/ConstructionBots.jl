@@ -47,6 +47,7 @@ function populate_visualizer!(scene_tree,vis;
     )
     vis_root = vis["root"]
     vis_nodes = Dict{AbstractID,Any}()
+    base_geom_nodes = Dict{AbstractID,Any}()
     for v in topological_sort_by_dfs(scene_tree)
         node = get_node(scene_tree,v)
         id = node_id(node)
@@ -58,6 +59,8 @@ function populate_visualizer!(scene_tree,vis;
         # end
         vis_nodes[id] = vis_root[string(id)]
         vis_node = vis_nodes[id]
+        geom_vis_node = vis_node["base_geom"]
+        base_geom_nodes[id] = geom_vis_node
         # geometry
         geom = get_base_geom(node)
         if !(geom === nothing)
@@ -73,15 +76,15 @@ function populate_visualizer!(scene_tree,vis;
             if !(material_type === nothing)
                 mat = material_type(wireframe=wireframe,kwargs...)
                 mat.color = get(color_map,id,mat.color)
-                setobject!(vis_node,M,mat)
+                setobject!(geom_vis_node,M,mat)
             else
-                setobject!(vis_node,M)
+                setobject!(geom_vis_node,M)
             end
         end
         # settransform!(vis_node,local_transform(node))
         settransform!(vis_node,global_transform(node))
     end
-    vis_nodes
+    vis_nodes, base_geom_nodes
 end
 
 convert_to_renderable(geom::Ball2) = GeometryBasics.Sphere(geom)
@@ -101,6 +104,244 @@ function show_geometry_layer!(scene_tree,vis_nodes,key=HypersphereKey();
         geom_nodes[id] = vis_node[node_name]
     end
     geom_nodes
+end
+
+function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="staging_circles")
+    staging_nodes = Dict{AbstractID,Any}()
+    staging_vis = vis[root_key]
+    for (id,geom) in staging_circles
+        node = get_node(scene_tree,id)
+        sphere = Ball2([geom.center..., 0.0],geom.radius)
+        ctr = Point(HG.project_to_2d(sphere.center)..., 0.0)
+        cylinder = Cylinder(ctr, Point((ctr.-[0.0,0.0,0.01])...),sphere.radius)
+        setobject!(staging_vis[string(id)],
+            # convert_to_renderable(sphere),
+            cylinder,
+            MeshPhongMaterial(color=RGBA{Float32}(1, 0, 1, 0.1)),
+            )
+        staging_nodes[id] = staging_vis[string(id)]
+        cargo = get_node(scene_tree,id)
+        if isa(cargo,AssemblyNode) 
+            cargo_node = get_node(sched,AssemblyComplete(cargo))
+        else
+            cargo_node = get_node!(sched,ObjectStart(cargo,TransformNode()))
+        end
+        t = HG.project_to_3d(HG.project_to_2d(global_transform(start_config(cargo_node)).translation))
+        tform = CT.Translation(t) ∘ identity_linear_map()
+        settransform!(staging_nodes[id],tform)
+        # settransform!(staging_nodes[id],global_transform(start_config(cargo_node)))
+    end
+    staging_nodes
+end
+
+"""
+    visualize_staging_plan(vis,sched,scene_tree)
+
+Render arrows pointing from start->goal for LiftIntoPlace nodes.
+"""
+function visualize_staging_plan(vis,sched,scene_tree;
+        objects=false
+    )
+    vis_arrows = vis["arrows"]
+    vis_triads = vis["triads"]
+    bounding_vis = vis["bounding_circles"]
+    delete!(vis_arrows)
+    delete!(vis_triads)
+    delete!(bounding_vis)
+    for n in get_nodes(sched)
+        if matches_template(LiftIntoPlace,n)
+            # LiftIntoPlace path
+            p1 = Point(global_transform(start_config(n)).translation...)
+            p2 = Point(global_transform(goal_config(n)).translation...)
+            lift_vis = ArrowVisualizer(vis_arrows[string(node_id(n))])
+            setobject!(lift_vis,MeshPhongMaterial(color=RGBA{Float32}(0, 1, 0, 1.0)))
+            settransform!(lift_vis,p1,p2)
+            # Transport path
+            cargo = entity(n)
+            if isa(cargo,AssemblyNode)
+                c = get_node(sched,AssemblyComplete(cargo))
+                color = RGBA{Float32}(1, 0, 0, 1.0)
+            elseif objects == true
+                # continue
+                c = get_node(sched,ObjectStart(cargo))
+                color = RGBA{Float32}(0, 0, 1, 1.0)
+            else
+                continue
+            end
+            p3 = Point(global_transform(start_config(c)).translation...)
+            transport_vis = ArrowVisualizer(vis_arrows[string(node_id(c))])
+            setobject!(transport_vis,MeshPhongMaterial(color=color))
+            settransform!(transport_vis,p3,p1)
+        elseif matches_template(AssemblyComplete,n)
+            triad_vis = vis_triads[string(node_id(n))]
+            setobject!(triad_vis,Triad(0.25))
+            settransform!(triad_vis,global_transform(goal_config(n)))
+        end
+    end
+    for (id,geom) in bounding_circles
+        if isa(id,AssemblyID)
+            node = get_node(scene_tree,id)
+        else
+            node = get_node(scene_tree,node_val(get_node(sched,id)).assembly)
+        end
+        sphere = Ball2([geom.center..., 0.0],geom.radius)
+        b_vis = bounding_vis[string(id)]
+        setobject!(b_vis,
+            convert_to_renderable(sphere),
+            MeshPhongMaterial(color=RGBA{Float32}(1, 0, 1, 0.1)),
+            )
+        cargo_node = get_node(sched,AssemblyComplete(node))
+        settransform!(b_vis,global_transform(start_config(cargo_node)))
+    end
+    return vis_triads, vis_arrows, bounding_vis
+end
+
+function animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,nodes=get_nodes(scene_tree);
+    v_max = 1.0,
+    ω_max = 1.0,
+    ϵ_v = 1e-4,
+    ϵ_ω = 1e-4,
+    dt = 0.1,
+    interp=false,
+    interp_steps=10,
+    objects=false,
+    )
+    # HG.jump_to_final_configuration!(scene_tree;set_edges=true)
+    graph = deepcopy(get_graph(scene_tree))
+    # initialize goal sequences for each ObjectNode and AssemblyNode
+    goals = Dict{AbstractID,Vector{CT.AffineMap}}()
+    goal_idxs = Dict{AbstractID,Int}()
+    interp_idxs = Dict{AbstractID,Int}()
+    for node in nodes
+        if matches_template(AssemblyNode,node)
+            start_node = get_node(sched,AssemblyStart(node))
+        elseif matches_template(ObjectNode,node)
+            start_node = get_node(sched,ObjectStart(node))
+        else
+            continue
+        end
+        if !has_vertex(sched,node_id(LiftIntoPlace(node)))
+            continue
+        end
+        lift_node = get_node(sched,LiftIntoPlace(node))
+        goal_list = goals[node_id(node)] = Vector{CT.AffineMap}()
+        goal_idxs[node_id(node)] = 1
+        interp_idxs[node_id(node)] = interp_steps
+        push!(goal_list, global_transform(start_config(start_node)))
+        # push!(goal_list, global_transform(goal_config(lift_node)))
+    end
+    # animate
+    active_set = get_all_root_nodes(graph)
+    closed_set = Set{Int}()
+    _close_node(graph,v,active_set,closed_set) = begin
+        push!(closed_set,v)
+        union!(active_set,outneighbors(graph,v))
+    end
+    while !isempty(active_set)
+        setdiff!(active_set,closed_set)
+        for v in collect(active_set)
+            node = get_node(scene_tree,v)
+            if !haskey(goals, node_id(node))
+                _close_node(graph,v,active_set,closed_set)
+                continue
+            end
+            goal_idx = goal_idxs[node_id(node)]
+            if goal_idx > length(goals[node_id(node)])
+                _close_node(graph,v,active_set,closed_set)
+                continue
+            end
+            goal = goals[node_id(node)][goal_idx]
+            tf_error = relative_transform(global_transform(node),goal)
+            twist = optimal_twist(tf_error,v_max,ω_max,dt)
+            if norm(twist.vel) <= ϵ_v && norm(twist.ω) <= ϵ_ω
+                goal_idxs[node_id(node)] += 1
+                interp_idxs[node_id(node)] = interp_steps
+            end
+            if interp
+                isteps = interp_idxs[node_id(node)]
+                @assert isteps > 0
+                tform = HG.interpolate_transforms(global_transform(node),goal,1.0/isteps)
+                interp_idxs[node_id(node)] -= 1
+            else
+                tform = global_transform(node) ∘ integrate_twist(twist,dt)
+            end
+            HG.set_desired_global_transform!(HG.get_transform_node(node), tform)
+        end
+        to_update = collect_descendants(graph,active_set,true)
+        # to_update = deepcopy(active_set)
+        # for v in collect(to_update)
+        #     union!(to_update,collect_descendants(graph,v))
+        # end
+        update_visualizer!(scene_tree,vis_nodes,[get_node(scene_tree,v) for v in to_update])
+        render(vis)
+        sleep(dt)
+    end
+end
+
+"""
+    animate_preprocessing_steps!
+
+Step through the different phases of preprocessing
+"""
+function animate_preprocessing_steps!(
+        vis,
+        vis_nodes,
+        scene_tree,
+        sched,
+        rect_nodes,
+        ;
+        dt_animate=0.0,
+        dt=0.0
+    )
+
+    # Hide robots 
+    for n in get_nodes(scene_tree)
+        if isa(n,Union{TransportUnitNode,RobotNode})
+            setvisible!(vis_nodes[node_id(n)],false)
+        end
+    end
+    setvisible!(base_geom_nodes,true)
+    setvisible!(rect_nodes,false)
+    HG.jump_to_final_configuration!(scene_tree;set_edges=true)
+    update_visualizer!(scene_tree,vis_nodes)
+    # Begin video
+    for n in get_nodes(scene_tree)
+        if isa(n,Union{AssemblyNode,ObjectNode})
+            setvisible!(rect_nodes[node_id(n)],true)
+            setvisible!(base_geom_nodes[node_id(n)],false)
+            update_visualizer!(scene_tree,vis_nodes,[n])
+            sleep(dt_animate)
+        end
+    end
+    # Show staging plan
+    animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,
+        filter(n->isa(n,AssemblyNode),get_nodes(scene_tree))
+        ;
+        dt=dt, interp=true, interp_steps=40,
+    )
+    # Animate objects moving to their starting positions
+    for n in get_nodes(scene_tree)
+        if isa(n,ObjectNode)
+            setvisible!(base_geom_nodes[node_id(n)],true)
+            setvisible!(rect_nodes[node_id(n)],false)
+            update_visualizer!(scene_tree,vis_nodes,[n])
+            sleep(dt_animate)
+        end
+    end
+    animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,
+        filter(n->isa(n,ObjectNode),get_nodes(scene_tree));
+        dt=0.0, interp=true, interp_steps=80,
+    )
+    setvisible!(rect_nodes,false)
+    setvisible!(base_geom_nodes,true)
+    # Make robots visible again
+    for n in get_nodes(scene_tree)
+        if isa(n,Union{TransportUnitNode,RobotNode})
+            setvisible!(vis_nodes[node_id(n)],true)
+            update_visualizer!(scene_tree,vis_nodes,[n])
+            sleep(dt_animate)
+        end
+    end
 end
 
 function MeshCat.setvisible!(vis_nodes::Dict{AbstractID,Any},val)
