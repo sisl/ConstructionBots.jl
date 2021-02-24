@@ -976,6 +976,26 @@ get_start_node(n::RobotNode) = RobotStart(n)
 get_start_node(n::ObjectNode) = ObjectStart(n)
 get_start_node(n::AssemblyNode) = AssemblyComplete(n)
 get_start_node(n::TransportUnitNode) = FormTransportUnit(n)
+
+function get_parent_build_step(sched,n::DepositCargo)
+    for v in inneighbors(sched,n)
+        np = get_node(sched,v)
+        if matches_template(OpenBuildStep,np)
+            return np
+        end
+    end
+    return nothing
+end
+get_parent_build_step(sched,n::Union{FormTransportUnit,TransportUnitGo}) = get_parent_build_step(sched,get_node(sched,DepositCargo(entity(n))))
+function get_parent_build_step(sched,n::RobotGo)
+    if outdegree(sched,n) > 0
+        return get_parent_build_step(sched,outneighbors(sched,n)[1])
+    end
+    return nothing
+end
+get_parent_build_step(sched,n::ScheduleNode) = get_parent_build_step(sched,n.node)
+get_parent_build_step(sched,v::Int) = get_parent_build_step(sched,get_node(sched,v))
+
 """
     set_scene_tree_to_initial_condition!(scene_tree,sched)
 

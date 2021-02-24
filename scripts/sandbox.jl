@@ -155,16 +155,16 @@ ConstructionBots.set_default_loading_speed!(0.5)
 ConstructionBots.set_default_rotational_loading_speed!(0.5)
 tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 # Black box MILP solver
-TaskGraphs.set_default_optimizer_attributes!(
-    # "SolutionLimit"=>1,
-    "TimeLimit"=>50,
-    MOI.Silent()=>false
-    )
-milp_model = SparseAdjacencyMILP()
+# TaskGraphs.set_default_optimizer_attributes!(
+#     # "SolutionLimit"=>1,
+#     "TimeLimit"=>50,
+#     MOI.Silent()=>false
+#     )
+# milp_model = SparseAdjacencyMILP()
 # Greedy Assignment with enforced build-step ordering
-# milp_model = ConstructionBots.GreedyOrderedAssignment(
-#     greedy_cost = TaskGraphs.GreedyFinalTimeCost(),
-# )
+milp_model = ConstructionBots.GreedyOrderedAssignment(
+    greedy_cost = TaskGraphs.GreedyFinalTimeCost(),
+)
 milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
 optimize!(milp_model)
 validate_schedule_transform_tree(ConstructionBots.convert_from_operating_schedule(typeof(sched),tg_sched)
@@ -234,7 +234,8 @@ ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes)
 
 # Turn off RVO to see if the project can be completed if we don't worry about collision
-set_use_rvo!(false)
+# set_use_rvo!(false)
+set_use_rvo!(true)
 
 ConstructionBots.simulate!(env,update_visualizer_function,max_time_steps=20000)
 

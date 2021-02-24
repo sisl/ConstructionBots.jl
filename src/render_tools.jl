@@ -471,6 +471,7 @@ end
 
 GraphUtils.get_id(s::String) = s
 # Rendering schedule nodes
+GraphPlottingBFS._title_string(n::S) where {S<:SceneNode} = split(string(typeof(n)),".")[end][1]
 GraphPlottingBFS._title_string(n::RobotNode)            = "R"
 GraphPlottingBFS._title_string(n::ObjectNode)           = "O"
 GraphPlottingBFS._title_string(n::AssemblyNode)         = "A"

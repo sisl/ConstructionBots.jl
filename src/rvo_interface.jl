@@ -16,6 +16,7 @@ set_rvo_id_map!(m::RVOAgentMap,idx::Int,id::AbstractID) = set_rvo_id_map!(m,id,i
 rvo_get_agent_idx(id::AbstractID) = node_val(get_node(rvo_global_id_map(),id)).idx
 rvo_get_agent_idx(node::SceneNode) = rvo_get_agent_idx(node_id(node))
 rvo_get_agent_idx(node::ConstructionPredicate) = rvo_get_agent_idx(entity(node))
+rvo_get_agent_idx(node::ScheduleNode) = rvo_get_agent_idx(node.node)
 
 global RVO_ID_GLOBAL_MAP = RVOAgentMap()
 function rvo_global_id_map()
@@ -77,11 +78,6 @@ end
 # rvo_global_sim() = rvo_global_sim_wrapper().sim
 rvo_global_sim() = get_element(rvo_global_sim_wrapper())
 
-function rvo_get_agent_position(n)
-    rvo_idx = rvo_get_agent_idx(n)
-    rvo_global_sim().getAgentPosition(rvo_idx)
-end
-
 # RVO PARAMETERS
 global RVO_MAX_SPEED_VOLUME_FACTOR     = 0.1
 global RVO_MAX_SPEED                   = 1.0
@@ -115,7 +111,6 @@ function get_rvo_max_speed(node)
     delta_v = vol * rvo_default_max_speed_volume_factor()
     max_speed = max(vmax - delta_v, rvo_default_min_max_speed())
 end
-
 
 """ get_rvo_radius(node) """
 get_rvo_radius(node) = get_base_geom(node,HypersphereKey()).radius
@@ -171,6 +166,25 @@ function rvo_add_agent!(agent::Union{RobotNode,TransportUnitNode},sim)
     sim.setAgentRadius(agent_idx,       rad)
     return agent_idx
 end
+
+# Get Interface
+for op in [
+    :getAgentPosition,
+    :getAgentPrefVelocity,
+]
+    @eval begin
+        function $op(node)
+            rvo_idx = rvo_get_agent_idx(n)
+            rvo_global_sim().$op(rvo_idx)
+        end
+    end
+end
+
+function rvo_get_agent_position(n)
+    rvo_idx = rvo_get_agent_idx(n)
+    rvo_global_sim().getAgentPosition(rvo_idx)
+end
+
 # function rvo_remove_agent!(id,sim)
 #     agent_idx = get_node(rvo_global_id_map(),id).idx
 #     rem_node!(rvo_global_id_map(),id)
@@ -183,6 +197,10 @@ end
 function rvo_set_agent_max_speed!(node,speed=get_rvo_max_speed(node))
     idx = rvo_get_agent_idx(node)
     rvo_global_sim().setAgentMaxSpeed(idx,speed)
+end
+function rvo_set_agent_alpha!(node,alpha=0.5)
+    idx = rvo_get_agent_idx(node)
+    rvo_global_sim().setAgentAlpha(idx,alpha)
 end
 
 for T in (

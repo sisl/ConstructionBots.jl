@@ -118,6 +118,37 @@ function step_environment!(env::PlannerEnv,sim=rvo_global_sim())
     return env
 end
 
+function set_rvo_priority!(env,node)
+    @unpack sched, scene_tree, cache, staging_circles = env
+    if matches_template(Union{FormTransportUnit,DepositCargo},node)
+        alpha = 0.0
+    elseif matches_template(TransportUnitGo,node)
+        build_step_node = get_parent_build_step(sched,node)
+        build_step = build_step_node.node
+        parent_assembly = build_step.assembly
+        staging_circle = staging_circles[node_id(parent_assembly)]
+        pos = HG.project_to_2d(global_transform(entity(node)).translation)
+        if get_vtx(sched,build_step_node) in cache.active_set 
+            if pos in staging_circle
+                alpha = 0.0
+            else
+                alpha = 0.5
+            end
+        else
+            alpha = 1.0
+        end
+    elseif matches_template(RobotGo,node)
+        if get_vtx(sched,get_parent_build_step(sched,node)) in cache.active_set 
+            alpha = 0.5
+        else
+            alpha = 1.0
+        end
+    else
+        alpha = 1.0
+    end
+    rvo_set_agent_alpha!(node,alpha)
+end
+
 function update_rvo_sim!(env::PlannerEnv)
     @unpack sched, scene_tree, cache = env
     active_nodes = [get_node(sched,v) for v in cache.active_set]
@@ -126,6 +157,9 @@ function update_rvo_sim!(env::PlannerEnv)
         @info "New RVO simulation"
         rvo_set_new_sim!()
         rvo_add_agents!(scene_tree,rvo_nodes)
+        for node in rvo_nodes
+            set_rvo_priority!(env,node)
+        end
     end
 end
 
@@ -284,6 +318,11 @@ function get_cmd(node::Union{TransportUnitGo,RobotGo},env)
         ω_max = default_rotational_loading_speed()
         twist = optimal_twist(tf_error,v_max,ω_max,dt)
         max_speed = get_rvo_max_speed(agent)
+    end
+    # slack = min(1000.0,minimum(get_slack(sched,node)))
+    # rvo_set_agent_alpha!(agent,slack)
+    if isa(node,TransportUnitGo)
+        set_rvo_priority!(env,node)
     end
     rvo_set_agent_max_speed!(agent,max_speed)
     rvo_set_agent_pref_velocity!(agent,twist.vel[1:2])

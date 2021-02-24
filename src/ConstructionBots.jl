@@ -12,6 +12,7 @@ using JuMP
 using ECOS
 using MathOptInterface
 using LinearAlgebra
+using SpatialIndexing
 
 # using CRCBS
 using TaskGraphs
@@ -489,5 +490,107 @@ include("utils.jl")
 include("rvo_interface.jl")
 include("task_assignment.jl")
 include("route_planning.jl")
+
+"""
+    construct_spatial_index(scene_tree)
+
+Construct a `SpatialIndexing.RTree` for efficiently finding neighbors of an
+    object in the assembly.
+"""
+function construct_spatial_index(scene_tree,frontier=get_all_root_nodes(scene_tree))
+    rtree = RTree{Float64, 3}(Int, AbstractID, leaf_capacity = 10, branch_capacity = 10)
+    HG.jump_to_final_configuration!(scene_tree)
+    bounding_rects = Dict{AbstractID,SpatialIndexing.Rect}()
+    for v in GraphUtils.BFSIterator(scene_tree,frontier)
+        node = get_node(scene_tree,v)
+        geom = get_cached_geom(node,BaseGeomKey())
+        if geom === nothing
+            continue
+        end
+        pt_min = [1.0,1.0,1.0]
+        pt_max = -1 * pt_min
+        for pt in coordinates(geom)
+            for i in 1:3
+                pt_min[i] = min(pt[i],pt_min[i])
+                pt_max[i] = max(pt[i],pt_max[i])
+            end
+        end
+        rect = SpatialIndexing.Rect(
+            (pt_min[1],pt_min[2],pt_min[3]),
+            (pt_max[1],pt_max[2],pt_max[3]),
+            )
+        bounding_rects[node_id(node)] = rect
+        insert!(rtree,rect,v,node_id(node))
+    end
+    rtree, bounding_rects
+end
+
+"""
+    get_candidate_mating_parts(rtree,id)
+
+Return the set of ids whose bounding rectangles overlap with 
+"""
+function get_candidate_mating_parts(rtree,bounding_rects,id)
+    rect = bounding_rects[id]
+    neighbor_ids = Set{AbstractID}()
+    for el in iterate(intersects_with(rtree, rect))
+        push!(neighbor_ids,el.val)
+    end
+    return neighbor_ids
+end
+
+"""
+    identify_closest_surfaces(geom,neighbor_geom,ϵ=1e-4)
+
+Find the geometry elements (line, triangle, quadrilateral) of `geom` and 
+`neighbor_geom` that are within a distance `ϵ` of each other.
+It is assumed that `geom` and `neighbor_geom` are both `Vector{GeometryBasics.Ngon}`
+"""
+function identify_closest_surfaces(geom,neighbor_geom)
+    pairs = Vector{Tuple{Int,Int}}()
+    for (i,a) in enumerate(geom)
+        for (j,b) in enumerate(neighbor_geom)
+            d = distance(a,b)
+            if d < ϵ
+                push!(pairs,a,b)
+            end
+        end
+    end
+end
+
+"""
+    compute_separating_hyperplane(ptsA,ptsB)
+
+Find the optimal separating hyperplane between two point sets
+"""
+function compute_separating_hyperplane(ptsA,ptsB,dim=3)
+    model = JuMP.Model(HG.default_optimizer())
+    set_optimizer_attributes(model,HG.default_optimizer_attributes()...)
+    @variable(model,x[1:dim])
+    @constraint(model, [1.0;x] in SecondOrderCone())
+    @variable(model, a >= 0)
+    for pt in ptsA
+        @constraint(model, a >= dot(x,pt))
+    end
+    @variable(model, b >= 0)
+    for pt in ptsB
+        @constraint(model, b <= dot(x,pt))
+    end
+    @constraint(model,a >= b)
+    @objective(model, Min, a - b)
+    optimize!(model)
+    if !(primal_status(model) == MOI.FEASIBLE_POINT)
+        @warn "Failed to compute optimal separating hyperplane"
+    end
+    return normalize(value.(x))
+end
+
+"""
+    compute_mating_vector(geom,neighbor_geom,element_pairs)
+
+Given a subset of 
+"""
+function compute_mating_vector(geom,neighbor_geom,element_pairs)
+end
 
 end
