@@ -106,7 +106,12 @@ function show_geometry_layer!(scene_tree,vis_nodes,key=HypersphereKey();
     geom_nodes
 end
 
-function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="staging_circles")
+function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="staging_circles";
+        color=RGBA{Float32}(1, 0, 1, 0.1),
+        wireframe=false,
+        material=MeshPhongMaterial(color=color,wireframe=wireframe),
+        include_build_steps=true,
+    )
     staging_nodes = Dict{AbstractID,Any}()
     staging_vis = vis[root_key]
     for (id,geom) in staging_circles
@@ -117,7 +122,7 @@ function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="st
         setobject!(staging_vis[string(id)],
             # convert_to_renderable(sphere),
             cylinder,
-            MeshPhongMaterial(color=RGBA{Float32}(1, 0, 1, 0.1)),
+            material,
             )
         staging_nodes[id] = staging_vis[string(id)]
         cargo = get_node(scene_tree,id)
@@ -130,6 +135,23 @@ function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="st
         tform = CT.Translation(t) ∘ identity_linear_map()
         settransform!(staging_nodes[id],tform)
         # settransform!(staging_nodes[id],global_transform(start_config(cargo_node)))
+    end
+    for n in get_nodes(sched)
+        if matches_template(OpenBuildStep,n)
+            id = node_id(n)
+            sphere = get_cached_geom(node_val(n).staging_circle)
+            ctr = Point(HG.project_to_2d(sphere.center)..., 0.0)
+            cylinder = Cylinder(ctr, Point((ctr.-[0.0,0.0,0.01])...),sphere.radius)
+            setobject!(staging_vis[string(id)],
+                # convert_to_renderable(sphere),
+                cylinder,
+                material,
+                )
+            staging_nodes[id] = staging_vis[string(id)]
+            # t = HG.project_to_3d(HG.project_to_2d(global_transform(start_config(cargo_node)).translation))
+            # tform = CT.Translation(t) ∘ identity_linear_map()
+            # settransform!(staging_nodes[id],tform)
+        end
     end
     staging_nodes
 end
@@ -342,6 +364,8 @@ function animate_preprocessing_steps!(
             sleep(dt_animate)
         end
     end
+    set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
+    update_visualizer!(scene_tree,vis_nodes)
 end
 
 function MeshCat.setvisible!(vis_nodes::Dict{AbstractID,Any},val)
@@ -363,8 +387,10 @@ function update_visualizer!(scene_tree,vis_nodes,nodes=get_nodes(scene_tree))
     return vis_nodes
 end
 
-function construct_visualizer_update_function(vis,vis_nodes)
-    update_visualizer_function(env) = begin
+function construct_visualizer_update_function(vis,vis_nodes,staging_nodes;
+        render_stages=true,
+    )
+    update_visualizer_function(env,newly_updated=Set{Int}()) = begin
         agents = Set{SceneNode}()
         for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
             agent = get_node(env.scene_tree, id)
@@ -373,7 +399,32 @@ function construct_visualizer_update_function(vis,vis_nodes)
                 push!(agents,get_node(env.scene_tree,vp))
             end
         end
-        for v in env.cache.active_set
+        if render_stages
+            # build_steps = Set{AbstractID}(
+            #     node_id(n) for n in get_nodes(sched) if matches_template(OpenBuildStep,n)
+            # )
+            # closed_steps = setdiff(build_steps,env.active_build_steps)
+            closed_steps = setdiff(keys(staging_nodes),env.active_build_steps)
+            for id in closed_steps
+                setvisible!(staging_nodes[id],false)
+            end
+            for id in env.active_build_steps
+                setvisible!(staging_nodes[id],true)
+            end
+        end
+        # for n in get_nodes(sched)
+        #     if matches_template(OpenBuildStep,n)
+        #         if node_id(n) in env.active_build_steps
+        #             setvisible!(staging_nodes[node_id(n)],true)
+        #         else
+        #             setvisible!(staging_nodes[node_id(n)],false)
+        #         end
+        #     end
+        # end
+        for id in env.active_build_steps
+            setvisible!(staging_nodes[id],true)
+        end
+        for v in union(env.cache.active_set,newly_updated)
             node = get_node(env.sched,v)
             if matches_template(EntityGo,node)
                 agent = entity(node)

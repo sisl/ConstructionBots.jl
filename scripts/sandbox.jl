@@ -112,6 +112,7 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 ## Generate staging plan
 staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched)
 
+
 # Move objects away from the staging plan
 MAX_CARGO_HEIGHT = maximum(map(n->get_base_geom(n,HyperrectangleKey()).radius[3]*2,
     filter(n->matches_template(TransportUnitNode,n),get_nodes(scene_tree))))
@@ -143,25 +144,18 @@ ConstructionBots.calibrate_transport_tasks!(sched)
 ConstructionBots.add_dummy_robot_go_nodes!(sched)
 @assert validate_schedule_transform_tree(sched;post_staging=true)
 
-## Visualize staging plans to debug the rotational shuffling 
-vis_triads, vis_arrows, bounding_vis = visualize_staging_plan(vis,sched,scene_tree)
-delete!(vis_arrows)
-delete!(vis_triads)
-delete!(bounding_vis)
-
-
 # Convert to OperatingSchedule
 ConstructionBots.set_default_loading_speed!(0.5)
 ConstructionBots.set_default_rotational_loading_speed!(0.5)
 tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
-# Black box MILP solver
+## Black box MILP solver
 # TaskGraphs.set_default_optimizer_attributes!(
 #     # "SolutionLimit"=>1,
 #     "TimeLimit"=>50,
 #     MOI.Silent()=>false
 #     )
 # milp_model = SparseAdjacencyMILP()
-# Greedy Assignment with enforced build-step ordering
+## Greedy Assignment with enforced build-step ordering
 milp_model = ConstructionBots.GreedyOrderedAssignment(
     greedy_cost = TaskGraphs.GreedyFinalTimeCost(),
 )
@@ -174,6 +168,12 @@ update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
 # display_graph(tg_sched,scale=3,enforce_visited=true) |> PDF("/home/kylebrown/Desktop/sched.pdf")
 # sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,200)
 # display_graph(sched2,scale=3,enforce_visited=true,aspect_stretch=(0.9,0.9))
+
+## Visualize staging plans to debug the rotational shuffling 
+# vis_triads, vis_arrows, bounding_vis = visualize_staging_plan(vis,sched,scene_tree)
+# delete!(vis_arrows)
+# delete!(vis_triads)
+# delete!(bounding_vis)
 
 ## Visualize assembly
 delete!(vis)
@@ -217,6 +217,8 @@ animate_preprocessing_steps!(
         dt_animate=0.0,
         dt=0.0
     )
+set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
+update_visualizer!(scene_tree,vis_nodes)
 
 # rvo
 ConstructionBots.set_rvo_default_time_step!(1/40.0)
@@ -231,11 +233,12 @@ env = PlannerEnv(
 active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
 ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 
-update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes)
+update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,staging_nodes)
 
 # Turn off RVO to see if the project can be completed if we don't worry about collision
-# set_use_rvo!(false)
-set_use_rvo!(true)
+set_use_rvo!(false)
+set_avoid_staging_areas!(false)
+# set_use_rvo!(true)
 
 ConstructionBots.simulate!(env,update_visualizer_function,max_time_steps=20000)
 

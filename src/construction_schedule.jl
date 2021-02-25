@@ -33,6 +33,8 @@ abstract type ConstructionPredicate end
 start_config(n)     = n.start_config
 goal_config(n)      = n.goal_config
 entity(n)           = n.entity
+GraphUtils.add_node!(g::AbstractCustomNGraph, n::ConstructionPredicate) = add_node!(g,n,node_id(n))
+GraphUtils.get_vtx(g::AbstractCustomNGraph,n::ConstructionPredicate) = get_vtx(g,node_id(n))
 
 for op in (:start_config,:goal_config,:entity,
     :cargo_start_config,:cargo_goal_config,
@@ -87,6 +89,7 @@ end
 struct LiftIntoPlace{C} <: EntityGo{C}
     entity::C # AssemblyNode or ObjectNode
     start_config::TransformNode
+    # path plan?
     goal_config::TransformNode
 end
 
@@ -133,6 +136,12 @@ function extract_building_phase(n,tree::SceneTree,model_spec,id_map)
     return assembly, parts 
 end
 
+# struct BuildPhase
+#     components::TransformDict{Union{AssemblyID,ObjectID}}
+#     staging_circle::GeomNode # staging circle - surrounds the staging area--requires tf relative to assembly
+#     bounding_circle::GeomNode # bounding circle - surrounds the current assembly--requires tf relative to assembly
+# end
+
 """
     OpenBuildStep <: ConstructionPredicate
 
@@ -145,17 +154,31 @@ the assembly during this phase
 struct OpenBuildStep <: BuildPhasePredicate
     assembly::AssemblyNode 
     components::TransformDict{Union{AssemblyID,ObjectID}}
+    staging_circle::GeomNode # staging circle - surrounds the staging area--requires tf relative to assembly
+    bounding_circle::GeomNode # bounding circle - surrounds the current assembly--requires tf relative to assembly
+    id::Int # id of this build step
 end
 struct CloseBuildStep <: BuildPhasePredicate
     assembly::AssemblyNode 
     components::TransformDict{Union{AssemblyID,ObjectID}}
+    staging_circle::GeomNode
+    bounding_circle::GeomNode
+    id::Int # id of this build step
 end
 for T in (:OpenBuildStep,:CloseBuildStep)
     @eval begin 
+        $T(a::AssemblyNode,c::Dict,g1::GeomNode,g2::GeomNode) = $T(a,c,g1,g2,get_id(get_unique_id(TemplatedID{$T})))
+        $T(a::AssemblyNode,c::Dict) = $T(a,c,
+            GeomNode(Ball2(zeros(SVector{3,Float64}),0.0)),
+            GeomNode(Ball2(zeros(SVector{3,Float64}),0.0))
+            )
         $T(n::CustomNode,args...) = $T(extract_building_phase(n,args...)...)
-        $T(n::BuildPhasePredicate) = $T(n.assembly,n.components)
+        $T(n::BuildPhasePredicate) = $T(n.assembly,n.components,
+            n.staging_circle,n.bounding_circle,n.id)
     end
 end
+GraphUtils.node_id(n::T) where {T<:BuildPhasePredicate} = TemplatedID{T}(n.id)
+# GraphUtils.add_node!(g::AbstractCustomNGraph, n::P) where {P<:BuildPhasePredicate} = add_node!(g,n,get_unique_id(TemplatedID{P}))
 
 """
     FormTransportUnit <: ConstructionPredicate
@@ -317,9 +340,6 @@ GraphUtils.node_id(n::RobotGo) = n.id
 #         GraphUtils.node_id(n::$T) = TemplatedID{$T}(get_id(node_id(entity(n))))
 #     end
 # end
-GraphUtils.add_node!(g::AbstractCustomNGraph, n::ConstructionPredicate) = add_node!(g,n,node_id(n))
-GraphUtils.add_node!(g::AbstractCustomNGraph, n::P) where {P<:BuildPhasePredicate} = add_node!(g,n,get_unique_id(TemplatedID{P}))
-GraphUtils.get_vtx(g::AbstractCustomNGraph,n::ConstructionPredicate) = get_vtx(g,node_id(n))
 
 """
     get_previous_build_step(model_spec,v)
@@ -419,6 +439,8 @@ function populate_schedule_sub_graph!(sched,parent::AssemblyComplete,model_spec,
         # CloseBuildStep
         cb = add_node!(sched,CloseBuildStep(step_node,scene_tree,model_spec,id_map))
         add_edge!(sched,cb,immediate_parent) # CloseBuildStep => AssemblyComplete / OpenBuildStep
+        set_parent!(node_val(cb).staging_circle, start_config(parent))
+        set_parent!(node_val(cb).bounding_circle,start_config(parent))
         ob = populate_schedule_build_step!(sched,parent,cb,step_node,model_spec,scene_tree,id_map)
         immediate_parent = ob
         step_node = get_previous_build_step(model_spec,step_node;skip_first=true)
@@ -600,6 +622,10 @@ function generate_staging_plan!(scene_tree,sched;
         HierarchicalGeometry.compute_approximate_geometries!(scene_tree,
             HypersphereKey();ϵ=0.0)
     end
+    # For each build step, determine the radius of the largest transform unit
+    # that may be active before the build step closes. This radius will be used 
+    # to inform the size of the buffer zones between staging areas
+
     # store growing bounding circle of each assembly
     bounding_circles = Dict{AbstractID,Ball2}() 
     staging_circles = Dict{AbstractID,Ball2}() 
@@ -645,6 +671,8 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
         robot_radius=0.0,
     )
     # Update assembly start points so that none of the staging regions overlap
+    # TODO: Account for robot and transport unit size along the "highways" that
+    # surround each staging area.
     for node in node_iterator(scene_tree, reverse(topological_sort_by_dfs(scene_tree)))
         if matches_template(AssemblyNode,node)
             # Apply ring solver with child assemblies (not objects)
@@ -697,10 +725,11 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                 tform2D = CoordinateTransformations.Translation(t.translation[1:2]...)
                 push!(tformed_geoms,tform2D(geom)) 
             end
-            staging_circles[node_id(assembly)] = overapproximate(
+            new_ball = overapproximate(
                 vcat(tformed_geoms,staging_circles[node_id(assembly)]),
                 Ball2{Float64,SVector{2,Float64}}
                 )
+            staging_circles[node_id(assembly)] = new_ball
         end
     end
     sched
@@ -737,8 +766,8 @@ function process_schedule_build_step!(node,sched,scene_tree,
     parts       = map(part_id->get_node(scene_tree,part_id), part_ids)
     θ_des       = Vector{Float64}()
     radii       = Vector{Float64}()
-    # tforms      = map(id->child_transform(assembly,id),part_ids) # working in assembly frame
-    tforms      = map(id->assembly_frame ∘ child_transform(assembly,id),part_ids) # working in assembly frame
+    tforms      = map(id->child_transform(assembly,id),part_ids) # working in assembly frame
+    # tforms      = map(id->assembly_frame ∘ child_transform(assembly,id),part_ids) 
     geoms       = Vector{Ball2}()
     for (part_id,part,tform) in zip(part_ids,parts,tforms)
         # Store transformed geometry for staging placement optimization
@@ -756,6 +785,8 @@ function process_schedule_build_step!(node,sched,scene_tree,
             )
         bounding_circles[node_id(assembly)] = new_bounding_circle # for assembly
         bounding_circles[node_id(node)] = new_bounding_circle # for build step
+        # incorporate new bounding circle into OpenBuildStep
+        open_build_step.bounding_circle.base_geom = HG.project_to_3d(new_bounding_circle)
     end
     # optimize placement and increase assembly_radius if necessary
     θ_star, assembly_radius = solve_ring_placement_problem(
@@ -805,6 +836,10 @@ function process_schedule_build_step!(node,sched,scene_tree,
         vcat(tformed_geoms,bounding_circles[node_id(assembly)]),
         Ball2{Float64,SVector{2,Float64}}
         )
+    # incorporate new bounding circle into OpenBuildStep
+    open_build_step.bounding_circle.base_geom = HG.project_to_3d(bounding_circles[node_id(node)])
+    open_build_step.staging_circle.base_geom  = HG.project_to_3d(staging_circles[node_id(assembly)])
+
     sched
 end
 
@@ -876,15 +911,6 @@ function calibrate_transport_tasks!(sched)
         if matches_template(LiftIntoPlace,node)
             cargo = entity(node)
             start_node, form_transport, _, deposit_node, lift_node = get_transport_node_sequence(sched,cargo)
-            # lift_node = node
-            # form_transport = get_node(sched,FormTransportUnit(TransportUnitNode(cargo)))
-            # transport_unit = entity(form_transport)
-            # deposit_node = get_node(sched,DepositCargo(transport_unit))
-            # if matches_template(ObjectNode,cargo)
-            #     start_node = get_node(sched,ObjectStart(cargo))
-            # else
-            #     start_node = get_node(sched,AssemblyComplete(cargo))
-            # end
             align_construction_predicates!(sched,start_node,form_transport)
             align_construction_predicates!(sched,lift_node, deposit_node)
         end

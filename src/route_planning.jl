@@ -8,12 +8,19 @@ export
 
 export
     use_rvo,
-    set_use_rvo!
+    set_use_rvo!,
+    avoid_staging_areas,
+    set_avoid_staging_areas!
 
 global USE_RVO = true 
 use_rvo() = USE_RVO
 function set_use_rvo!(val)
     global USE_RVO = val
+end
+global AVOID_STAGING_AREAS = false
+avoid_staging_areas() = AVOID_STAGING_AREAS
+function set_avoid_staging_areas!(val)
+    global AVOID_STAGING_AREAS = val
 end
 
 """
@@ -26,8 +33,17 @@ Contains the Environment state and definition.
     scene_tree::SceneTree       = SceneTree()
     cache::PlanningCache        = initialize_planning_cache(sched)
     staging_circles::Dict{AbstractID,Ball2} = Dict{AbstractID,Ball2}()
+    active_build_steps::Set{AbstractID} = Set{AbstractID}()
+    # visibility_graph            = nothing
     dt::Float64                 = rvo_default_time_step()
 end
+
+function get_active_build_steps(env::PlannerEnv)
+    @unpack sched, scene_tree, cache, dt = env
+    Base.Iterators.filter(n->matches_template(OpenBuildStep,n),
+        (get_node(sched,v) for v in cache.active_set))
+end
+
 
 """ 
     LOADING_SPEED
@@ -62,14 +78,14 @@ function simulate!(env,update_visualizer_function;
     time_stamp = t0
     for k in 1:max_time_steps
         step_environment!(env)
-        TaskGraphs.update_planning_cache!(env,0.0)
+        newly_updated = TaskGraphs.update_planning_cache!(env,0.0)
+        update_visualizer_function(env,newly_updated)
+        sleep(dt_vis)
+        time_stamp = t0+k*dt
         if project_complete(env)
             println("PROJECT COMPLETE!")
             break
         end
-        update_visualizer_function(env)
-        sleep(dt_vis)
-        time_stamp = t0+k*dt
     end
     return env
 end
@@ -167,16 +183,18 @@ function TaskGraphs.update_planning_cache!(env::PlannerEnv,time_stamp::Float64)
     @unpack sched, cache = env
     # Skip over nodes that are already planned or just don't need planning
     updated = false
+    newly_updated = Set{Int}()
     while true
         done = true
         for v in collect(cache.active_set)
             node = get_node(sched,v)
             if CRCBS.is_goal(node,env)
                 close_node!(node,env)
-                @info "node $(node_id(node)) finished."
+                @info "node $(summary(node_id(node))) finished."
                 TaskGraphs.update_planning_cache!(nothing,sched,cache,v,time_stamp)
                 # @info "active nodes $([get_vtx_id(sched,v) for v in cache.active_set])"
                 @assert !(v in cache.active_set)
+                push!(newly_updated,v)
                 done = false
                 updated = true
             end
@@ -190,7 +208,7 @@ function TaskGraphs.update_planning_cache!(env::PlannerEnv,time_stamp::Float64)
         preprocess_env!(env)
         update_rvo_sim!(env)
     end
-    cache
+    newly_updated
 end
 
 """
@@ -199,11 +217,13 @@ end
 Ensure that a node is completed
 """
 close_node!(node::ScheduleNode,env) = close_node!(node.node,env)
-close_node!(::ConstructionPredicate,env) = nothing
+close_node!(::ConstructionPredicate,env) =  nothing #close_node!(n,env)
+close_node!(n::OpenBuildStep,env) = push!(env.active_build_steps,node_id(n))
 function close_node!(node::CloseBuildStep,env)
     @unpack sched, scene_tree = env
     assembly = get_assembly(node)
-    @info "Closing BuildingStep" node
+    @info "Closing BuildingStep $(node_id(node))"
+    delete!(env.active_build_steps,node_id(OpenBuildStep(node)))
     for (id,tform) in assembly_components(node)
         if !has_edge(scene_tree,assembly,id)
             if !capture_child!(scene_tree,assembly,id)
@@ -302,6 +322,45 @@ function CRCBS.is_goal(node::LiftIntoPlace,env)
     return is_within_capture_distance(state,goal)
 end
 
+function avoid_active_staging_areas(node::Union{TransportUnitGo,RobotGo},twist,env,ϵ=1e-3)
+    @unpack sched, scene_tree, dt = env
+    agent = entity(node)
+    r = HG.get_radius(get_base_geom(agent,HypersphereKey()))
+    pos = HG.project_to_2d(global_transform(agent).translation)
+    goal = HG.project_to_2d(global_transform(goal_config(node)).translation)
+    parent_build_step = get_parent_build_step(sched,node)
+    dmin = Inf
+    id = nothing
+    circ = nothing
+    for build_step_id in env.active_build_steps
+        build_step_id == node_id(parent_build_step) ? continue : nothing
+        build_step = get_node(sched,build_step_id).node
+        circle = HG.project_to_2d(get_cached_geom(build_step.staging_circle))
+        bloated_circle = Ball2(HG.get_center(circle),HG.get_radius(circle)+r)
+        if HG.circle_intersects_line(bloated_circle,pos,goal)
+            d = norm(HG.get_center(bloated_circle) - pos)
+            if HG.get_radius(bloated_circle) < d < dmin
+                d = dmin
+                id = build_step_id
+                circ = bloated_circle
+            end
+        end
+    end 
+    if id === nothing || norm(goal - HG.get_center(circ)) < norm(goal - pos) + ϵ
+        return twist
+    end
+    dvec = pos-HG.get_center(circ)
+    if norm(dvec) < HG.get_radius(circ) + ϵ
+        # return a vector tangent CCW to the circle
+        vec = SVector(-dvec[2],dvec[1])
+    else
+        pt_left, pt_right = HG.get_tangent_pts_on_circle(circ,pos)
+        vec = pt_right-pos
+    end
+    vel = norm(twist.vel) * normalize(vec)
+    Twist(SVector(vel..., 0.0), twist.ω)
+end
+
 get_cmd(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},env) = nothing
 function get_cmd(node::Union{TransportUnitGo,RobotGo},env)
     @unpack sched, scene_tree, dt = env
@@ -317,6 +376,9 @@ function get_cmd(node::Union{TransportUnitGo,RobotGo},env)
         v_max = get_rvo_max_speed(agent)
         ω_max = default_rotational_loading_speed()
         twist = optimal_twist(tf_error,v_max,ω_max,dt)
+        if avoid_staging_areas()
+            twist = avoid_active_staging_areas(node,twist,env)
+        end
         max_speed = get_rvo_max_speed(agent)
     end
     # slack = min(1000.0,minimum(get_slack(sched,node)))
@@ -352,6 +414,7 @@ end
 
 apply_cmd!(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},cmd,env) = nothing
 apply_cmd!(node::CloseBuildStep,cmd::Nothing,env) = close_node!(node,env)
+apply_cmd!(node::OpenBuildStep,cmd::Nothing,env) = close_node!(node,env)
 function apply_cmd!(node::FormTransportUnit,twist,env)
     @unpack sched, scene_tree, cache, dt = env
     agent = entity(node)
