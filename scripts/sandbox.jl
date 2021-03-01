@@ -25,6 +25,7 @@ using Random
 
 using Logging
 global_logger(ConsoleLogger(stderr, Logging.Info))
+# global_logger(ConsoleLogger(stderr, Logging.Debug))
 
 Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
 
@@ -37,26 +38,31 @@ reset_all_invalid_id_counters!()
 Random.seed!(0);
 
 # factor by which to scale LDraw model (because MeshCat bounds are hard to adjust)
-NUM_ROBOTS          = 40
-# NUM_ROBOTS          = 8
 MODEL_SCALE         = 0.01
+NUM_ROBOTS          = 40
+
+## LOAD LDRAW FILE
+filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
+NUM_ROBOTS          = 200
+MODEL_SCALE         = 0.005
+# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","ATTEWalker.mpd")
+# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","stack1.ldr")
+# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","big_stack.ldr")
+# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","triple_stack.mpd")
+# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","quad_nested.mpd")
+# NUM_ROBOTS          = 40
+# MODEL_SCALE         = 0.01
+# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","four_stack.mpd")
+
 ROBOT_HEIGHT        = 10*MODEL_SCALE
 ROBOT_RADIUS        = 25*MODEL_SCALE
 set_default_robot_geom!(
     Cylinder(Point(0.0,0.0,0.0), Point(0.0,0.0,ROBOT_HEIGHT), ROBOT_RADIUS)
 )
 
-## LOAD LDRAW FILE
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","ATTEWalker.mpd")
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","stack1.ldr")
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","big_stack.ldr")
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","triple_stack.mpd")
-filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","quad_nested.mpd")
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","four_stack.mpd")
 model = parse_ldraw_file(filename)
-populate_part_geometry!(model)
-LDrawParser.change_coordinate_system!(model,ldraw_base_transform(),MODEL_SCALE)
+populate_part_geometry!(model);
+LDrawParser.change_coordinate_system!(model,ldraw_base_transform(),MODEL_SCALE);
 
 ## CONSTRUCT MODEL SPEC
 spec = ConstructionBots.construct_model_spec(model)
@@ -73,7 +79,7 @@ print(scene_tree,v->"$(summary(node_id(v))) : $(get(id_map,node_id(v),nothing))"
 # Define TransportUnit configurations
 HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
 HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
-ConstructionBots.init_transport_units!(scene_tree;robot_radius = 0.5)
+ConstructionBots.init_transport_units!(scene_tree;robot_radius = 2*ROBOT_RADIUS)
 # validate SceneTree
 root = get_node(scene_tree,collect(get_all_root_nodes(scene_tree))[1])
 validate_tree(HierarchicalGeometry.get_transform_node(root))
