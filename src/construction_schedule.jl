@@ -683,9 +683,12 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                 continue
             end
             # staging_radii
-            staging_circle = get!(staging_circles, node_id(assembly),
-                Ball2(zeros(SVector{2,Float64}),0.0)
-                )
+            @assert haskey(staging_circles,node_id(assembly))
+            @show node_id(assembly)
+            staging_circle = staging_circles[node_id(assembly)]
+            # staging_circle = get!(staging_circles, node_id(assembly),
+            #     Ball2(zeros(SVector{2,Float64}),0.0)
+            #     )
             parts = map(part_id->get_node(scene_tree,part_id), part_ids)
             θ_des = Vector{Float64}()
             radii = Vector{Float64}()
@@ -700,6 +703,7 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                 push!(θ_des, atan(d[2],d[1]))
                 push!(radii, r)
             end
+            @show radii, 180 .* θ_des ./ π
             # optimize placement and increase staging_radius if necessary
             θ_star, staging_radius = solve_ring_placement_problem(
                 θ_des,
@@ -756,7 +760,7 @@ function process_schedule_build_step!(node,sched,scene_tree,
     open_build_step = node_val(node)
     assembly = open_build_step.assembly
     start_node = get_node(sched,AssemblyComplete(assembly))
-    assembly_frame = CT.LinearMap(global_transform(start_config(start_node)).linear) 
+    # assembly_frame = CT.LinearMap(global_transform(start_config(start_node)).linear) 
     # bounding circle at current stage
     bounding_circle = get!(bounding_circles, node_id(assembly),
         Ball2(zeros(SVector{2,Float64}),0.0)
@@ -789,12 +793,17 @@ function process_schedule_build_step!(node,sched,scene_tree,
         open_build_step.bounding_circle.base_geom = HG.project_to_3d(new_bounding_circle)
     end
     # optimize placement and increase assembly_radius if necessary
-    θ_star, assembly_radius = solve_ring_placement_problem(
-        θ_des,
-        radii,
-        bounding_circle.radius,
-        robot_radius,
-        )
+    if length(geoms) == 1 && bounding_circle.radius < 1e-6
+        @info "Only 1 component to place at first build step--no need for ring optimization"
+        θ_star, assembly_radius = θ_des, bounding_circle.radius
+    else
+        θ_star, assembly_radius = solve_ring_placement_problem(
+            θ_des,
+            radii,
+            bounding_circle.radius,
+            robot_radius,
+            )
+    end
     Δθ = θ_star .- θ_des
     if maximum(abs.(Δθ)) > 0.1
         @info "ring placement solution $(node_id(node))" assembly_radius radii robot_radius θ_des θ_star Δθ
@@ -804,7 +813,12 @@ function process_schedule_build_step!(node,sched,scene_tree,
     for (i,(θ,r,part_id,part)) in enumerate(zip(θ_star,radii,part_ids,parts))
         lift_node = get_node(sched,LiftIntoPlace(get_node(scene_tree,part_id)))
         # Compute the offset transform (relative to the assembly center)
-        R = assembly_radius + r
+        if length(geoms) == 1 && assembly_radius < 1e-1
+            @info "Only 1 component to place at first build step--R = 0"
+            R = 0.0
+        else
+            R = assembly_radius + r
+        end
 
         ### Use set_local_transform_in_global_frame!
         t = CoordinateTransformations.Translation(

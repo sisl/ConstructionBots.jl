@@ -301,6 +301,92 @@ function animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,nodes=get_
 end
 
 """
+    plot_staging_plan_2d(sched,scene_tree;
+
+Plot the staging plan in 2D.
+"""
+function plot_staging_plan_2d(sched,scene_tree;
+        nominal_width=10cm,
+        _fontsize=20pt,
+        _show_final_stages=true,
+        _show_intermediate_stages=false,
+        _show_bounding_circs=false,
+        _show_dropoffs=false,
+    )
+    staging_circs = []
+    final_staging_circs = []
+    bounding_circs = []
+    dropoff_circs = []
+    for n in node_iterator(sched,topological_sort_by_dfs(sched))
+        if matches_template(CloseBuildStep,n)
+            # if _show_intermediate_stages
+                push!(staging_circs,node_id(n) => get_cached_geom(node_val(n).staging_circle))
+            # end
+            if _show_bounding_circs
+                push!(bounding_circs,node_id(n) => get_cached_geom(node_val(n).bounding_circle))
+            end
+            if _show_final_stages
+                is_terminal_build_step = true
+                for v in outneighbors(sched,n)
+                    if matches_template(OpenBuildStep,get_node(sched,v))
+                        is_terminal_build_step = false
+                    end
+                end
+                is_terminal_build_step ? nothing : continue
+                push!(final_staging_circs,node_id(n) => get_cached_geom(node_val(n).staging_circle))
+            end
+        elseif matches_template(DepositCargo,n)
+            if _show_dropoffs
+                tu = entity(n)
+                set_local_transform!(tu,global_transform(goal_config(n)))
+                push!(dropoff_circs,node_id(n)=>get_cached_geom(tu,HypersphereKey()))
+            end
+        end
+    end
+    xlo = minimum(c.center[1]-c.radius for (k,c) in staging_circs)
+    ylo = minimum(c.center[2]-c.radius for (k,c) in staging_circs)
+    xhi = maximum(c.center[1]+c.radius for (k,c) in staging_circs)
+    yhi = maximum(c.center[2]+c.radius for (k,c) in staging_circs)
+    Compose.set_default_graphic_size(nominal_width,((yhi-ylo)/(xhi-xlo))*nominal_width)
+    Compose.compose(
+        context(units=UnitBox(xlo,ylo,xhi-xlo,yhi-ylo)),
+        # (context(),
+        # Compose.circle(0.0,0.0,0.05),
+        # Compose.stroke("yellow"),
+        # Compose.fill("yellow"),
+        # ),
+        (context(),
+        [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in dropoff_circs]...,
+        Compose.stroke("green"),
+        Compose.fill(RGBA(0.0,1.0,0.0,0.5)),
+        ),
+        (context(),
+        [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in bounding_circs]...,
+        Compose.stroke("blue"),
+        Compose.fill(RGBA(0.0,0.0,1.0,0.5)),
+        ),
+        (context(),
+        [Compose.text(c.center[1],c.center[2],
+            string(get_id(node_id(node_val(get_node(sched,k)).assembly))),
+            hcenter,vcenter,
+            ) for (k,c) in final_staging_circs]...,
+        Compose.fontsize(_fontsize),
+        Compose.fill("black")
+        ),
+        (context(),
+        [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in final_staging_circs]...,
+        Compose.stroke("red"),
+        Compose.fill(RGBA(1.0,0.0,0.0,0.5)),
+        ),
+        (context(),
+        [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in staging_circs if _show_intermediate_stages]...,
+        Compose.stroke("yellow"),
+        Compose.fill(RGBA(1.0,1.0,0.0,0.5)),
+        ),
+    )
+end
+
+"""
     animate_preprocessing_steps!
 
 Step through the different phases of preprocessing
