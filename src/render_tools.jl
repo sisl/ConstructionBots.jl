@@ -338,6 +338,7 @@ function plot_staging_plan_2d(sched,scene_tree;
         elseif matches_template(DepositCargo,n)
             if _show_dropoffs
                 tu = entity(n)
+                # a = get_node(scene_tree,cargo_id(tu))
                 set_local_transform!(tu,global_transform(goal_config(n)))
                 push!(dropoff_circs,node_id(n)=>get_cached_geom(tu,HypersphereKey()))
             end

@@ -698,7 +698,7 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                 tform = local_transform(start_config(lift_node))
                 geom = staging_circles[part_id]
                 # d = HG.project_to_2d(tform.translation) - (staging_circle.center + geom.center)
-                d = HG.project_to_2d(tform.translation) - (staging_circle.center + geom.center)
+                d = HG.project_to_2d(tform.translation) + geom.center - staging_circle.center
                 r = geom.radius
                 push!(θ_des, atan(d[2],d[1]))
                 push!(radii, r)
@@ -718,8 +718,10 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                 geom = staging_circles[part_id]
                 R = staging_radius + r
                 t = CoordinateTransformations.Translation(
-                    R*cos(θ) + (staging_circle.center[1] + geom.center[1]),
-                    R*sin(θ) + (staging_circle.center[2] + geom.center[2]),
+                    # R*cos(θ) + (staging_circle.center[1] + geom.center[1]),
+                    # R*sin(θ) + (staging_circle.center[2] + geom.center[2]),
+                    R*cos(θ) + (staging_circle.center[1] - geom.center[1]),
+                    R*sin(θ) + (staging_circle.center[2] - geom.center[2]),
                     0.0)
                 # Get global orientation parent frame ʷRₚ
                 tform = t ∘ identity_linear_map() # AffineMap transform
@@ -775,6 +777,7 @@ function process_schedule_build_step!(node,sched,scene_tree,
     geoms       = Vector{Ball2}()
     for (part_id,part,tform) in zip(part_ids,parts,tforms)
         # Store transformed geometry for staging placement optimization
+        # TODO should be using the transform unit geometry here---not just the cargo
         geom = HG.project_to_2d(tform(get_base_geom(part,HypersphereKey())))
         push!(geoms,geom)
         d = geom.center - bounding_circle.center
@@ -783,6 +786,7 @@ function process_schedule_build_step!(node,sched,scene_tree,
         push!(radii, r)
     end
     if !isempty(geoms)
+        # Compute new bounding circle which contains the assembly at the end of this build step
         new_bounding_circle = overapproximate(
             vcat(geoms,bounding_circle),
             Ball2{Float64,SVector{2,Float64}}

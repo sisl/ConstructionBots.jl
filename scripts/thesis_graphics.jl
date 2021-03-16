@@ -73,7 +73,7 @@ model_spec = ConstructionBots.extract_single_model(spec)
 id_map = ConstructionBots.build_id_map(model,model_spec)
 color_map = construct_color_map(model_spec,id_map)
 @assert GraphUtils.validate_graph(model_spec)
-display_graph(model_spec,scale=1) #,enforce_visited=true)
+# display_graph(model_spec,scale=1) #,enforce_visited=true)
 
 ## CONSTRUCT SceneTree
 assembly_tree = ConstructionBots.construct_assembly_tree(model,model_spec,id_map)
@@ -116,15 +116,15 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 @assert validate_schedule_transform_tree(sched)
 # sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,500)
 # display_graph(sched2,scale=1,enforce_visited=true)
-display_graph(sched,scale=1) #,enforce_visited=true)
+# display_graph(sched,scale=1) #,enforce_visited=true)
 
 ## Generate staging plan
 staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched)
 # plot staging plan
 plot_staging_plan_2d(sched,scene_tree,
     # _show_intermediate_stages=true,
-    # _show_bounding_circs=true,
-    # _show_dropoffs=true,
+    _show_bounding_circs=true,
+    _show_dropoffs=true,
     )
 
 # Move objects away from the staging plan
