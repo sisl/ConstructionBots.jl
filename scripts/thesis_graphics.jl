@@ -46,11 +46,11 @@ NUM_ROBOTS          = 4
 # NUM_ROBOTS          = 200
 # MODEL_SCALE         = 0.005
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","DemoStack.mpd")
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","ATTEWalker.mpd")
+filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","ATTEWalker.mpd")
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","stack1.ldr")
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","big_stack.ldr")
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","triple_stack.mpd")
-filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","quad_nested.mpd")
+# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","quad_nested.mpd")
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","small_quad_nested.mpd")
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","simple_quad_stack.mpd")
 # NUM_ROBOTS          = 40
@@ -124,9 +124,9 @@ staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scen
 )
 # plot staging plan
 plot_staging_plan_2d(sched,scene_tree,
-    _fontsize=10pt,
+    _fontsize=20pt,
     nominal_width=20cm,
-    # _show_intermediate_stages=true,
+    _show_intermediate_stages=true,
     _show_bounding_circs=true,
     _show_dropoffs=true,
     )
@@ -168,16 +168,16 @@ ConstructionBots.set_default_loading_speed!(0.5)
 ConstructionBots.set_default_rotational_loading_speed!(0.5)
 tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 ## Black box MILP solver
-# TaskGraphs.set_default_optimizer_attributes!(
-#     # "SolutionLimit"=>1,
-#     "TimeLimit"=>50,
-#     MOI.Silent()=>false
-#     )
-# milp_model = SparseAdjacencyMILP()
+TaskGraphs.set_default_optimizer_attributes!(
+    # "SolutionLimit"=>1,
+    "TimeLimit"=>50,
+    MOI.Silent()=>false
+    )
+milp_model = SparseAdjacencyMILP()
 ## Greedy Assignment with enforced build-step ordering
-milp_model = ConstructionBots.GreedyOrderedAssignment(
-    greedy_cost = TaskGraphs.GreedyFinalTimeCost(),
-)
+# milp_model = ConstructionBots.GreedyOrderedAssignment(
+#     greedy_cost = TaskGraphs.GreedyFinalTimeCost(),
+# )
 milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
 optimize!(milp_model)
 validate_schedule_transform_tree(ConstructionBots.convert_from_operating_schedule(typeof(sched),tg_sched)
@@ -213,6 +213,7 @@ setvisible!(staging_nodes,true)
 setvisible!(sphere_nodes,false)
 setvisible!(rect_nodes,false)
 setvisible!(staging_nodes,false)
+render(vis)
 
 
 # restore correct configuration

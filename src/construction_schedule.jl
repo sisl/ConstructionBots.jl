@@ -564,8 +564,8 @@ function validate_schedule_transform_tree(sched;post_staging=false)
                     o = cargo
                     d = get_node(sched,DepositCargo(tu))
                     l = get_node(sched,LiftIntoPlace(o))
-                    @assert isapprox(global_transform(start_config(f)).translation[3], 0.0;rtol=1e-6,atol=1e-6)
-                    @assert isapprox(global_transform(start_config(d)).translation[3], 0.0;rtol=1e-6,atol=1e-6)
+                    @assert isapprox(global_transform(start_config(f)).translation[3], 0.0;rtol=1e-6,atol=1e-6) "Z translation should be 0 for $(summary(node_id(f)))"
+                    @assert isapprox(global_transform(start_config(d)).translation[3], 0.0;rtol=1e-6,atol=1e-6) "Z translation should be 0 for $(summary(node_id(d)))"
                     transformations_approx_equiv(
                         global_transform(start_config(n)),
                         global_transform(cargo_deployed_config(f))
@@ -698,11 +698,11 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                     # retrieve staging config from LiftIntoPlace node
                     lift_node = get_node(sched,LiftIntoPlace(part))
                     # give coords of the dropoff point (we want `part` to be built as close as possible to here.)
-                    # tform = local_transform(start_config(lift_node))
-                    # tform = local_transform(goal_config(lift_node)) ∘ local_transform(start_config(lift_node))
-                    tform = relative_transform(
+                    # crucial: must be relative to the assembly origin
+                    tr = relative_transform(
                         global_transform(goal_config(start_node)),
-                        global_transform(start_config(lift_node)))
+                        global_transform(start_config(lift_node))).translation
+                    tform = CT.Translation(tr...)
                     geom = staging_circles[part_id]
                     # the vector from the circle center to the goal location
                     d_ = HG.project_to_2d(tform.translation) - staging_circle.center
@@ -725,7 +725,6 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                     R*cos(θ) + staging_circle.center[1] - geom.center[1],
                     R*sin(θ) + staging_circle.center[2] - geom.center[2],
                     0.0)
-                @show t, staging_circle.center, geom.center, R*cos(θ), R*sin(θ)
                 # Get global orientation parent frame ʷRₚ
                 tform = t ∘ identity_linear_map() # AffineMap transform
                 # set transform of start node
@@ -771,17 +770,6 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
     bounding_circle = get!(bounding_circles, node_id(assembly),
         Ball2(zeros(SVector{2,Float64}),0.0)
         )
-    # if length(part_ids) == 1
-    #     # so that there won't be a pointless shift if the bounding circle
-    #     tu = get_node(scene_tree,TransportUnitNode(collect(parts)[1]))
-    #     bounding_circle = get!(bounding_circles, node_id(assembly),
-    #         HG.project_to_2d(get_base_geom(tu,HypersphereKey()))
-    #     )
-    # else
-    #     bounding_circle = get!(bounding_circles, node_id(assembly),
-    #         Ball2(zeros(SVector{2,Float64}),0.0)
-    #         )
-    # end
     for (part_id,part,tform) in zip(part_ids,parts,tforms)
         tu = get_node(scene_tree,TransportUnitNode(part))
         tu_tform = tform ∘ inv(child_transform(tu,part_id))
@@ -822,6 +810,11 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
         Δθ = θ_star .- θ_des
         if maximum(abs.(Δθ)) > 0.1
             @info "ring placement solution $(node_id(node))" assembly_radius radii θ_des θ_star Δθ
+            # @show assembly_radius
+            # @show radii
+            # @show θ_des
+            # @show θ_star
+            # @show Δθ
         end
     end
     # Compute staging config transforms (relative to parent assembly)
@@ -838,17 +831,19 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
             HG.set_local_transform_in_global_frame!(start_config(lift_node),t)
         else
             R = assembly_radius + r
-        ### Use set_local_transform_in_global_frame!
-        t = CoordinateTransformations.Translation(
-            R*cos(θ) + bounding_circle.center[1] + _child_tform[1],
-            R*sin(θ) + bounding_circle.center[2] + _child_tform[2],
-            0.0)
-        # @show t
-        # set start config of lift node - have to add the ∘ inv(tform) because lift_node's goal_config() is already at tform
-        # both of the lines below work
-        HG.set_local_transform_in_global_frame!(start_config(lift_node),t ∘ inv(tform))
-        # HG.set_local_transform_in_global_frame!(start_config(lift_node),t ∘ inv(local_transform(goal_config(lift_node))))
-        # HG.set_local_transform_in_global_frame!(start_config(lift_node),t)
+            ### Use set_local_transform_in_global_frame!
+            t = CoordinateTransformations.Translation(
+                R*cos(θ) + bounding_circle.center[1] + _child_tform[1],
+                R*sin(θ) + bounding_circle.center[2] + _child_tform[2],
+                0.0)
+            # @show t
+            # set start config of lift node - have to add the ∘ inv(tform) because lift_node's goal_config() is already at tform
+            # both of the lines below work
+            tr = CT.Translation(tform.translation...)
+            HG.set_local_transform_in_global_frame!(start_config(lift_node),t ∘ inv(tr))
+            # HG.set_local_transform_in_global_frame!(start_config(lift_node),t ∘ inv(tform))
+            # HG.set_local_transform_in_global_frame!(start_config(lift_node),t ∘ inv(local_transform(goal_config(lift_node))))
+            # HG.set_local_transform_in_global_frame!(start_config(lift_node),t)
         end
 
         # Store transformed geometry
