@@ -339,10 +339,11 @@ function plot_staging_plan_2d(sched,scene_tree;
             if _show_dropoffs
                 tu = entity(n)
                 a = get_node(scene_tree,cargo_id(tu))
-                if isa(a,AssemblyNode)
-                set_local_transform!(tu,global_transform(goal_config(n)))
-                push!(dropoff_circs,node_id(n)=>get_cached_geom(tu,HypersphereKey()))
-                end
+                # if isa(a,AssemblyNode)
+                tf = global_transform(goal_config(n))
+                # set_local_transform!(tu,global_transform(goal_config(n)))
+                push!(dropoff_circs,node_id(n)=>tf(get_base_geom(tu,HypersphereKey())))
+                # end
             end
         end
     end
@@ -353,17 +354,29 @@ function plot_staging_plan_2d(sched,scene_tree;
     Compose.set_default_graphic_size(nominal_width,((yhi-ylo)/(xhi-xlo))*nominal_width)
     Compose.compose(
         context(units=UnitBox(xlo,ylo,xhi-xlo,yhi-ylo)),
-        # (context(),
-        # Compose.circle(0.0,0.0,0.05),
-        # Compose.stroke("yellow"),
-        # Compose.fill("yellow"),
-        # ),
+        (context(),
+        Compose.fontsize(_fontsize),
+            (context(),[Compose.text(c.center[1],c.center[2],
+                string(get_id(node_id(node_val(get_node(sched,k)).assembly))),
+                hcenter,vcenter,
+                ) for (k,c) in final_staging_circs]...,
+            Compose.fill("black")
+            ),
+            (context(),[Compose.text(c.center[1],c.center[2],
+                string(get_id(node_id(node_val(get_node(sched,k)).assembly))),
+                hcenter,vcenter,
+                ) for (k,c) in bounding_circs]...,
+            Compose.fill("blue")
+            ),
+            (context(),[Compose.text(c.center[1],c.center[2],
+                string(get_id(k)),
+                hcenter,vcenter,
+                ) for (k,c) in dropoff_circs]...,
+            Compose.fill(RGB(0.0,1.0,0.0)),
+            ),
+        ),
         (context(),
         [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in dropoff_circs]...,
-        [Compose.text(c.center[1],c.center[2],
-            string(get_id(k)),
-            hcenter,vcenter,
-            ) for (k,c) in dropoff_circs]...,
         Compose.stroke("green"),
         Compose.fill(RGBA(0.0,1.0,0.0,0.5)),
         ),
@@ -372,14 +385,14 @@ function plot_staging_plan_2d(sched,scene_tree;
         Compose.stroke("blue"),
         Compose.fill(RGBA(0.0,0.0,1.0,0.5)),
         ),
-        (context(),
-        [Compose.text(c.center[1],c.center[2],
-            string(get_id(node_id(node_val(get_node(sched,k)).assembly))),
-            hcenter,vcenter,
-            ) for (k,c) in final_staging_circs]...,
-        Compose.fontsize(_fontsize),
-        Compose.fill("black")
-        ),
+        # (context(),
+        # [Compose.text(c.center[1],c.center[2],
+        #     string(get_id(node_id(node_val(get_node(sched,k)).assembly))),
+        #     hcenter,vcenter,
+        #     ) for (k,c) in final_staging_circs]...,
+        # Compose.fontsize(_fontsize),
+        # Compose.fill("black")
+        # ),
         (context(),
         [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in final_staging_circs]...,
         Compose.stroke("red"),
