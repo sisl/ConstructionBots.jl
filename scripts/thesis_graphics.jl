@@ -119,7 +119,9 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 # display_graph(sched,scale=1) #,enforce_visited=true)
 
 ## Generate staging plan
-staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched)
+staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched;
+    buffer_radius = 0.5,
+)
 # plot staging plan
 plot_staging_plan_2d(sched,scene_tree,
     # _show_intermediate_stages=true,

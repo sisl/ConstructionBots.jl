@@ -338,9 +338,11 @@ function plot_staging_plan_2d(sched,scene_tree;
         elseif matches_template(DepositCargo,n)
             if _show_dropoffs
                 tu = entity(n)
-                # a = get_node(scene_tree,cargo_id(tu))
+                a = get_node(scene_tree,cargo_id(tu))
+                if isa(a,AssemblyNode)
                 set_local_transform!(tu,global_transform(goal_config(n)))
                 push!(dropoff_circs,node_id(n)=>get_cached_geom(tu,HypersphereKey()))
+                end
             end
         end
     end
@@ -358,6 +360,10 @@ function plot_staging_plan_2d(sched,scene_tree;
         # ),
         (context(),
         [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in dropoff_circs]...,
+        [Compose.text(c.center[1],c.center[2],
+            string(get_id(k)),
+            hcenter,vcenter,
+            ) for (k,c) in dropoff_circs]...,
         Compose.stroke("green"),
         Compose.fill(RGBA(0.0,1.0,0.0,0.5)),
         ),

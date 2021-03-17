@@ -616,7 +616,7 @@ for each component of the assembly.
     consecutive build steps may overlap in the arrival times of subcomponents).
 """
 function generate_staging_plan!(scene_tree,sched;
-        robot_radius=0.0,
+        buffer_radius=0.0,
     )
     if !all(map(n->has_vertex(n.geom_hierarchy, HypersphereKey()), get_nodes(scene_tree)))
         HierarchicalGeometry.compute_approximate_geometries!(scene_tree,
@@ -641,13 +641,13 @@ function generate_staging_plan!(scene_tree,sched;
                 bounding_circles,
                 staging_circles,
                 ;
-                robot_radius=robot_radius,
+                # buffer_radius=buffer_radius,
             )
         end
     end
     # Update assembly start points so that none of the staging regions overlap
     select_assembly_start_configs!(sched,scene_tree,staging_circles;
-        robot_radius=robot_radius,
+        buffer_radius=buffer_radius,
     )
     # TODO store a TransformNode in ProjectComplete() (or in the schedule itself,
     # once there is a dedicated ConstructionSchedule type) so that an entire 
@@ -659,7 +659,7 @@ end
 
 """
     select_assembly_start_configs!(sched,scene_tree,staging_radii;
-        robot_radius=0.0)
+        buffer_radius=0.0)
 
 Select the start configs (i.e., the build location) for each assembly. The 
 location is selected by minimizing distance to the assembly's staging location 
@@ -668,7 +668,7 @@ area. Uses the same ring optimization approach as for selectig staging
 locations.
 """
 function select_assembly_start_configs!(sched,scene_tree,staging_circles;
-        robot_radius=0.0,
+        buffer_radius=0.0,
     )
     # Update assembly start points so that none of the staging regions overlap
     # TODO: Account for robot and transport unit size along the "highways" that
@@ -686,9 +686,6 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
             @assert haskey(staging_circles,node_id(assembly))
             @show node_id(assembly)
             staging_circle = staging_circles[node_id(assembly)]
-            # staging_circle = get!(staging_circles, node_id(assembly),
-            #     Ball2(zeros(SVector{2,Float64}),0.0)
-            #     )
             parts = map(part_id->get_node(scene_tree,part_id), part_ids)
             θ_des = Vector{Float64}()
             radii = Vector{Float64}()
@@ -697,8 +694,9 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                 lift_node = get_node(sched,LiftIntoPlace(part))
                 tform = local_transform(start_config(lift_node))
                 geom = staging_circles[part_id]
-                # d = HG.project_to_2d(tform.translation) - (staging_circle.center + geom.center)
-                d = HG.project_to_2d(tform.translation) + geom.center - staging_circle.center
+                d_ = HG.project_to_2d(tform.translation) - staging_circle.center
+                d = (d_ / norm(d_)) * (staging_circle.radius + buffer_radius) + geom.center 
+                # d = HG.project_to_2d(tform.translation) + geom.center - staging_circle.center
                 r = geom.radius
                 push!(θ_des, atan(d[2],d[1]))
                 push!(radii, r)
@@ -708,8 +706,8 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
             θ_star, staging_radius = solve_ring_placement_problem(
                 θ_des,
                 radii,
-                staging_circle.radius,
-                robot_radius,
+                staging_circle.radius + buffer_radius,
+                # buffer_radius,
                 )
             # Compute staging config transforms (relative to parent assembly)
             tformed_geoms = Vector{Ball2}()
@@ -718,8 +716,6 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                 geom = staging_circles[part_id]
                 R = staging_radius + r
                 t = CoordinateTransformations.Translation(
-                    # R*cos(θ) + (staging_circle.center[1] + geom.center[1]),
-                    # R*sin(θ) + (staging_circle.center[2] + geom.center[2]),
                     R*cos(θ) + (staging_circle.center[1] - geom.center[1]),
                     R*sin(θ) + (staging_circle.center[2] - geom.center[2]),
                     0.0)
@@ -757,7 +753,7 @@ function process_schedule_build_step!(node,sched,scene_tree,
         bounding_circles,
         staging_circles,
         ;
-        robot_radius=0.0,
+        buffer_radius=0.0,
     )
     open_build_step = node_val(node)
     assembly = open_build_step.assembly
@@ -776,12 +772,18 @@ function process_schedule_build_step!(node,sched,scene_tree,
     # tforms      = map(id->assembly_frame ∘ child_transform(assembly,id),part_ids) 
     geoms       = Vector{Ball2}()
     for (part_id,part,tform) in zip(part_ids,parts,tforms)
+        tu = get_node(scene_tree,TransportUnitNode(part))
+        tu_tform = tform ∘ inv(child_transform(tu,part_id))
+        tu_geom = HG.project_to_2d(tu_tform(get_base_geom(tu,HypersphereKey())))
+        d = tu_geom.center - bounding_circle.center
+        r = tu_geom.radius
+        push!(geoms,tu_geom)
         # Store transformed geometry for staging placement optimization
         # TODO should be using the transform unit geometry here---not just the cargo
-        geom = HG.project_to_2d(tform(get_base_geom(part,HypersphereKey())))
-        push!(geoms,geom)
-        d = geom.center - bounding_circle.center
-        r = geom.radius
+        # geom = HG.project_to_2d(tform(get_base_geom(part,HypersphereKey())))
+        # push!(geoms,geom)
+        # d = geom.center - bounding_circle.center
+        # r = geom.radius
         push!(θ_des, wrap_to_pi(atan(d[2],d[1])))
         push!(radii, r)
     end
@@ -805,16 +807,18 @@ function process_schedule_build_step!(node,sched,scene_tree,
             θ_des,
             radii,
             bounding_circle.radius,
-            robot_radius,
+            buffer_radius,
             )
     end
     Δθ = θ_star .- θ_des
     if maximum(abs.(Δθ)) > 0.1
-        @info "ring placement solution $(node_id(node))" assembly_radius radii robot_radius θ_des θ_star Δθ
+        @info "ring placement solution $(node_id(node))" assembly_radius radii buffer_radius θ_des θ_star Δθ
     end
     # Compute staging config transforms (relative to parent assembly)
     tformed_geoms = Vector{Ball2}()
     for (i,(θ,r,part_id,part)) in enumerate(zip(θ_star,radii,part_ids,parts))
+        tu = get_node(scene_tree,TransportUnitNode(part))
+        _child_tform = child_transform(tu,part_id).translation
         lift_node = get_node(sched,LiftIntoPlace(get_node(scene_tree,part_id)))
         # Compute the offset transform (relative to the assembly center)
         if length(geoms) == 1 && assembly_radius < 1e-1
@@ -826,8 +830,8 @@ function process_schedule_build_step!(node,sched,scene_tree,
 
         ### Use set_local_transform_in_global_frame!
         t = CoordinateTransformations.Translation(
-            R*cos(θ) + bounding_circle.center[1],
-            R*sin(θ) + bounding_circle.center[2],
+            R*cos(θ) + bounding_circle.center[1] + _child_tform[1],
+            R*sin(θ) + bounding_circle.center[2] + _child_tform[2],
             0.0)
         # set start config of lift node
         tform = t # AffineMap transform
