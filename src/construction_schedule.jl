@@ -681,6 +681,7 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
             if isempty(part_ids) 
                 continue
             end
+            start_node = get_node(sched,AssemblyComplete(assembly))
             # staging_radii
             @assert haskey(staging_circles,node_id(assembly))
             staging_circle = staging_circles[node_id(assembly)]
@@ -697,7 +698,11 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                     # retrieve staging config from LiftIntoPlace node
                     lift_node = get_node(sched,LiftIntoPlace(part))
                     # give coords of the dropoff point (we want `part` to be built as close as possible to here.)
-                    tform = local_transform(start_config(lift_node))
+                    # tform = local_transform(start_config(lift_node))
+                    # tform = local_transform(goal_config(lift_node)) ∘ local_transform(start_config(lift_node))
+                    tform = relative_transform(
+                        global_transform(goal_config(start_node)),
+                        global_transform(start_config(lift_node)))
                     geom = staging_circles[part_id]
                     # the vector from the circle center to the goal location
                     d_ = HG.project_to_2d(tform.translation) - staging_circle.center
