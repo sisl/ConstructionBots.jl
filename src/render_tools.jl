@@ -312,6 +312,7 @@ function plot_staging_plan_2d(sched,scene_tree;
         _show_intermediate_stages=false,
         _show_bounding_circs=false,
         _show_dropoffs=false,
+        _assembly_dropoffs_only=false,
     )
     staging_circs = []
     final_staging_circs = []
@@ -339,11 +340,10 @@ function plot_staging_plan_2d(sched,scene_tree;
             if _show_dropoffs
                 tu = entity(n)
                 a = get_node(scene_tree,cargo_id(tu))
-                # if isa(a,AssemblyNode)
+                if isa(a,AssemblyNode) || !_assembly_dropoffs_only
                 tf = global_transform(goal_config(n))
-                # set_local_transform!(tu,global_transform(goal_config(n)))
                 push!(dropoff_circs,node_id(n)=>tf(get_base_geom(tu,HypersphereKey())))
-                # end
+                end
             end
         end
     end

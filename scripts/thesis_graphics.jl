@@ -50,9 +50,9 @@ NUM_ROBOTS          = 4
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","stack1.ldr")
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","big_stack.ldr")
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","triple_stack.mpd")
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","quad_nested.mpd")
+filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","quad_nested.mpd")
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","small_quad_nested.mpd")
-filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","simple_quad_stack.mpd")
+# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","simple_quad_stack.mpd")
 # NUM_ROBOTS          = 40
 # MODEL_SCALE         = 0.01
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","four_stack.mpd")
@@ -120,10 +120,12 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 
 ## Generate staging plan
 staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched;
-    buffer_radius = 0.5,
+    buffer_radius = 0.0,
 )
 # plot staging plan
 plot_staging_plan_2d(sched,scene_tree,
+    _fontsize=10pt,
+    nominal_width=20cm,
     # _show_intermediate_stages=true,
     _show_bounding_circs=true,
     _show_dropoffs=true,

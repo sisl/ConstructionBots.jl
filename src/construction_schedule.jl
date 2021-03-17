@@ -717,9 +717,10 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                 R = staging_radius + r
                 # shift by vector from geom.center to part origin
                 t = CoordinateTransformations.Translation(
-                    R*cos(θ) + (staging_circle.center[1] - geom.center[1]),
-                    R*sin(θ) + (staging_circle.center[2] - geom.center[2]),
+                    R*cos(θ) + staging_circle.center[1] - geom.center[1],
+                    R*sin(θ) + staging_circle.center[2] - geom.center[2],
                     0.0)
+                @show t, staging_circle.center, geom.center, R*cos(θ), R*sin(θ)
                 # Get global orientation parent frame ʷRₚ
                 tform = t ∘ identity_linear_map() # AffineMap transform
                 # set transform of start node
@@ -754,10 +755,6 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
     open_build_step = node_val(node)
     assembly = open_build_step.assembly
     start_node = get_node(sched,AssemblyComplete(assembly))
-    # bounding circle at current stage
-    bounding_circle = get!(bounding_circles, node_id(assembly),
-        Ball2(zeros(SVector{2,Float64}),0.0)
-        )
     # optimize staging locations
     part_ids    = sort(collect(keys(assembly_components(open_build_step))))
     parts       = (get_node(scene_tree,part_id) for part_id in part_ids)
@@ -765,6 +762,21 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
     θ_des       = Vector{Float64}()
     radii       = Vector{Float64}()
     geoms       = Vector{Ball2}()
+    # bounding circle at current stage
+    bounding_circle = get!(bounding_circles, node_id(assembly),
+        Ball2(zeros(SVector{2,Float64}),0.0)
+        )
+    # if length(part_ids) == 1
+    #     # so that there won't be a pointless shift if the bounding circle
+    #     tu = get_node(scene_tree,TransportUnitNode(collect(parts)[1]))
+    #     bounding_circle = get!(bounding_circles, node_id(assembly),
+    #         HG.project_to_2d(get_base_geom(tu,HypersphereKey()))
+    #     )
+    # else
+    #     bounding_circle = get!(bounding_circles, node_id(assembly),
+    #         Ball2(zeros(SVector{2,Float64}),0.0)
+    #         )
+    # end
     for (part_id,part,tform) in zip(part_ids,parts,tforms)
         tu = get_node(scene_tree,TransportUnitNode(part))
         tu_tform = tform ∘ inv(child_transform(tu,part_id))
@@ -793,7 +805,7 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
         open_build_step.bounding_circle.base_geom = HG.project_to_3d(new_bounding_circle)
     end
     if length(geoms) == 1 && bounding_circle.radius < 1e-6
-        @info "Only 1 component to place at first build step--no need for ring optimization"
+        @info "Only 1 component to place at first build step--no need for ring optimization - $(summary(part_ids[1]))"
         θ_star, assembly_radius = θ_des, bounding_circle.radius
     else
         # optimize placement and increase assembly_radius if necessary
@@ -814,21 +826,25 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
         _child_tform = child_transform(tu,part_id).translation
         lift_node = get_node(sched,LiftIntoPlace(get_node(scene_tree,part_id)))
         # Compute the offset transform (relative to the assembly center)
+        t = identity_linear_map()
         if length(geoms) == 1 && assembly_radius < 1e-6
             @info "Only 1 component to place at first build step--R = 0"
             R = 0.0
+            HG.set_local_transform_in_global_frame!(start_config(lift_node),t)
         else
             R = assembly_radius + r
-        end
         ### Use set_local_transform_in_global_frame!
         t = CoordinateTransformations.Translation(
             R*cos(θ) + bounding_circle.center[1] + _child_tform[1],
             R*sin(θ) + bounding_circle.center[2] + _child_tform[2],
             0.0)
+        # @show t
         # set start config of lift node - have to add the ∘ inv(tform) because lift_node's goal_config() is already at tform
         # both of the lines below work
         HG.set_local_transform_in_global_frame!(start_config(lift_node),t ∘ inv(tform))
-        # HG.set_local_transform_in_global_frame!(start_config(lift_node),t ∘ local_transform(goal_config(lift_node)))
+        # HG.set_local_transform_in_global_frame!(start_config(lift_node),t ∘ inv(local_transform(goal_config(lift_node))))
+        # HG.set_local_transform_in_global_frame!(start_config(lift_node),t)
+        end
 
         # Store transformed geometry
         geom = HG.project_to_2d(t(get_base_geom(tu,HypersphereKey())))
