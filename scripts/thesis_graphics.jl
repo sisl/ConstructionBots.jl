@@ -46,13 +46,13 @@ NUM_ROBOTS          = 20
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
 # NUM_ROBOTS          = 200
 # MODEL_SCALE         = 0.005
-model_name = "simple_quad_stack.mpd"
+# model_name = "simple_quad_stack.mpd"
 # model_name = "DemoStack.mpd"
 # model_name = "ATTEWalker.mpd"
 # model_name = "stack1.ldr"
 # model_name = "big_stack.ldr"
 # model_name = "triple_stack.mpd"
-# model_name = "quad_nested.mpd"
+model_name = "quad_nested.mpd"
 # model_name = "small_quad_nested.mpd"
 filename = joinpath(dirname(pathof(LDrawParser)),"..","assets",model_name)
 # NUM_ROBOTS          = 40
@@ -136,7 +136,7 @@ plt = plot_staging_plan_2d(sched,scene_tree,
     nominal_width=20cm,
     _show_bounding_circs=true,
     _show_dropoffs=true,
-    base_geom_layer=plot_assemblies(sched,scene_tree,fill_color=RGBA(0.0,0.0,0.0,0.0))
+    base_geom_layer=plot_assemblies(sched,scene_tree,fill_color=RGBA(0.0,0.0,0.0,0.0),geom_key=HyperrectangleKey())
     )
 display(plt)
 draw(PDF(joinpath(graphics_path,"staging_plan.pdf")),plt)
@@ -238,6 +238,9 @@ update_visualizer!(scene_tree,vis_nodes)
 
 
 # render video!
+HG.jump_to_final_configuration!(scene_tree;set_edges=true)
+update_visualizer!(scene_tree,vis_nodes)
+anim = AnimationWrapper(0)
 animate_preprocessing_steps!(
         vis,
         vis_nodes,
@@ -246,8 +249,13 @@ animate_preprocessing_steps!(
         rect_nodes,
         ;
         dt_animate=0.0,
-        dt=0.0
+        dt=0.0,
+        anim=anim,
     )
+setanimation!(vis,anim.anim)
+open(joinpath(graphics_path,"animate_preprocessing.html"),"w") do io
+    write(io,static_html(vis))
+end
 set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
 update_visualizer!(scene_tree,vis_nodes)
 
@@ -264,7 +272,7 @@ env = PlannerEnv(
 active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
 ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 
-update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,staging_nodes)
+update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,staging_nodes;anim=anim)
 
 # Turn off RVO to see if the project can be completed if we don't worry about collision
 set_use_rvo!(false)
@@ -272,6 +280,10 @@ set_avoid_staging_areas!(false)
 # set_use_rvo!(true)
 
 ConstructionBots.simulate!(env,update_visualizer_function,max_time_steps=20000)
+setanimation!(vis,anim.anim)
+open(joinpath(graphics_path,"construction_simulation.html"),"w") do io
+    write(io,static_html(vis))
+end
 
 # VISUALIZE ROBOT PLACEMENT AROUND PARTS
 

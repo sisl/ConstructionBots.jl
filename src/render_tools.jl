@@ -10,6 +10,20 @@ import Cairo #, Fontconfig
 using GraphPlottingBFS
 using Compose
 
+struct AnimationWrapper
+    anim::MeshCat.Animation
+    step::Counter
+end
+AnimationWrapper(step::Int) = AnimationWrapper(MeshCat.Animation(),Counter(step))
+current_frame(a::AnimationWrapper) = get_counter_status(a.step)
+current_frame(::Nothing) = 0
+step_animation!(::Nothing,step=1) = nothing
+step_animation!(a::AnimationWrapper,step=1) = set_counter_status!(a.step,current_frame(a)+step)
+set_current_frame!(a::AnimationWrapper,val) = set_counter_status!(a.step,val)
+
+MeshCat.atframe(f, anim::AnimationWrapper, frame::Integer) = atframe(f,anim.anim,frame)
+MeshCat.atframe(f, anim::Nothing, frame::Integer) = f()
+
 """
     construct_color_map(model_spec,id_map)
 
@@ -111,7 +125,7 @@ function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="st
         wireframe=false,
         material=MeshPhongMaterial(color=color,wireframe=wireframe),
         include_build_steps=true,
-        dz=0.001,
+        dz=0.0,
     )
     staging_nodes = Dict{AbstractID,Any}()
     staging_vis = vis[root_key]
@@ -231,6 +245,7 @@ function animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,nodes=get_
     interp=false,
     interp_steps=10,
     objects=false,
+    anim=nothing,
     )
     # HG.jump_to_final_configuration!(scene_tree;set_edges=true)
     graph = deepcopy(get_graph(scene_tree))
@@ -294,11 +309,7 @@ function animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,nodes=get_
             HG.set_desired_global_transform!(HG.get_transform_node(node), tform)
         end
         to_update = collect_descendants(graph,active_set,true)
-        # to_update = deepcopy(active_set)
-        # for v in collect(to_update)
-        #     union!(to_update,collect_descendants(graph,v))
-        # end
-        update_visualizer!(scene_tree,vis_nodes,[get_node(scene_tree,v) for v in to_update])
+        animate_update_visualizer!(scene_tree,vis_nodes,[get_node(scene_tree,v) for v in to_update];anim=anim)
         render(vis)
         sleep(dt)
     end
@@ -417,17 +428,28 @@ function plot_base_geom_2d(node,scene_tree;
         _show_quadrilaterals=true,
         _use_unit_box=false,
         tform=identity_linear_map(),
+        geom_key=BaseGeomKey(),
     )
     forms = Vector{Compose.Form}()
-    for geom_list in recurse_child_geometry(node,scene_tree)
-        for geom in geom_list
-            if isa(geom,GeometryBasics.Line) && _show_lines
-                push!(forms,Compose.line(Vector([(p[1],p[2]) for p in tform(geom).points])))
-            elseif isa(geom,Triangle) && _show_triangles
-                push!(forms,Compose.polygon(Vector([(p[1],p[2]) for p in tform(geom).points])))
-            elseif isa(geom,GeometryBasics.Quadrilateral) && _show_quadrilaterals
-                push!(forms,Compose.polygon(Vector([(p[1],p[2]) for p in tform(geom).points])))
+    for geom_element in recurse_child_geometry(node,scene_tree,geom_key)
+        if isa(geom_key,BaseGeomKey)
+            for geom in geom_element
+                if isa(geom,GeometryBasics.Line) && _show_lines
+                    push!(forms,Compose.line(Vector([(p[1],p[2]) for p in tform(geom).points])))
+                elseif isa(geom,Triangle) && _show_triangles
+                    push!(forms,Compose.polygon(Vector([(p[1],p[2]) for p in tform(geom).points])))
+                elseif isa(geom,GeometryBasics.Quadrilateral) && _show_quadrilaterals
+                    push!(forms,Compose.polygon(Vector([(p[1],p[2]) for p in tform(geom).points])))
+                end
             end
+        elseif isa(geom_key,HyperrectangleKey)
+            r = tform(geom_element)
+            push!(forms,Compose.rectangle(
+                    r.center[1]-r.radius[1],
+                    r.center[2]-r.radius[2],
+                    2*r.radius[1],
+                    2*r.radius[2],
+                ))
         end
     end
     if _use_unit_box
@@ -467,14 +489,6 @@ function plot_assemblies(sched,scene_tree;
     Compose.compose(base_ctx,ctxs...)
 end
 
-struct AnimationWrapper
-    anim::MeshCat.Animation
-    step::Counter
-end
-AnimationWrapper(step::Int) = AnimationWrapper(MeshCat.Animation(),Counter(step))
-current_frame(a::AnimationWrapper) = get_counter_status(a.step)
-step_animation!(a::AnimationWrapper,step=1) = set_counter_status!(a.step,current_frame(a)+step)
-set_current_frame!(a::AnimationWrapper,val) = set_counter_status!(a.step,val)
 
 """
     animate_preprocessing_steps!
@@ -490,24 +504,31 @@ function animate_preprocessing_steps!(
         ;
         dt_animate=0.0,
         dt=0.0,
+        anim=nothing
     )
 
-    # Hide robots 
-    for n in get_nodes(scene_tree)
-        if isa(n,Union{TransportUnitNode,RobotNode})
-            setvisible!(vis_nodes[node_id(n)],false)
+    atframe(anim,current_frame(anim)) do
+        # Hide robots 
+        for n in get_nodes(scene_tree)
+            if isa(n,Union{TransportUnitNode,RobotNode})
+                setvisible!(vis_nodes[node_id(n)],false)
+            end
         end
+        setvisible!(base_geom_nodes,true)
+        setvisible!(rect_nodes,false)
+        HG.jump_to_final_configuration!(scene_tree;set_edges=true)
+        update_visualizer!(scene_tree,vis_nodes)
     end
-    setvisible!(base_geom_nodes,true)
-    setvisible!(rect_nodes,false)
-    HG.jump_to_final_configuration!(scene_tree;set_edges=true)
-    update_visualizer!(scene_tree,vis_nodes)
+    step_animation!(anim)
     # Begin video
     for n in get_nodes(scene_tree)
         if isa(n,Union{AssemblyNode,ObjectNode})
-            setvisible!(rect_nodes[node_id(n)],true)
-            setvisible!(base_geom_nodes[node_id(n)],false)
-            update_visualizer!(scene_tree,vis_nodes,[n])
+            atframe(anim,current_frame(anim)) do
+                setvisible!(rect_nodes[node_id(n)],true)
+                setvisible!(base_geom_nodes[node_id(n)],false)
+                update_visualizer!(scene_tree,vis_nodes,[n])
+            end
+            step_animation!(anim)
             sleep(dt_animate)
         end
     end
@@ -515,33 +536,46 @@ function animate_preprocessing_steps!(
     animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,
         filter(n->isa(n,AssemblyNode),get_nodes(scene_tree))
         ;
-        dt=dt, interp=true, interp_steps=40,
+        dt=dt, interp=true, interp_steps=40, anim=anim,
     )
     # Animate objects moving to their starting positions
     for n in get_nodes(scene_tree)
         if isa(n,ObjectNode)
-            setvisible!(base_geom_nodes[node_id(n)],true)
-            setvisible!(rect_nodes[node_id(n)],false)
-            update_visualizer!(scene_tree,vis_nodes,[n])
+            atframe(anim,current_frame(anim)) do
+                setvisible!(base_geom_nodes[node_id(n)],true)
+                setvisible!(rect_nodes[node_id(n)],false)
+                update_visualizer!(scene_tree,vis_nodes,[n])
+            end
+            step_animation!(anim)
             sleep(dt_animate)
         end
     end
     animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,
         filter(n->isa(n,ObjectNode),get_nodes(scene_tree));
-        dt=0.0, interp=true, interp_steps=80,
+        dt=0.0, interp=true, interp_steps=80, anim=anim,
     )
-    setvisible!(rect_nodes,false)
-    setvisible!(base_geom_nodes,true)
+    atframe(anim,current_frame(anim)) do
+        setvisible!(rect_nodes,false)
+        setvisible!(base_geom_nodes,true)
+    end
+    step_animation!(anim)
     # Make robots visible again
     for n in get_nodes(scene_tree)
         if isa(n,Union{TransportUnitNode,RobotNode})
-            setvisible!(vis_nodes[node_id(n)],true)
-            update_visualizer!(scene_tree,vis_nodes,[n])
+            atframe(anim,current_frame(anim)) do
+                setvisible!(vis_nodes[node_id(n)],true)
+                update_visualizer!(scene_tree,vis_nodes,[n])
+            end
+            step_animation!(anim)
             sleep(dt_animate)
         end
     end
-    set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
-    update_visualizer!(scene_tree,vis_nodes)
+    atframe(anim,current_frame(anim)) do
+        set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
+        update_visualizer!(scene_tree,vis_nodes)
+    end
+    step_animation!(anim)
+    vis
 end
 
 function MeshCat.setvisible!(vis_nodes::Dict{AbstractID,Any},val)
@@ -563,63 +597,71 @@ function update_visualizer!(scene_tree,vis_nodes,nodes=get_nodes(scene_tree))
     return vis_nodes
 end
 
+function animate_update_visualizer!(args...;anim=nothing,step=1)
+    if anim === nothing
+        return update_visualizer!(args...)
+    else
+        atframe(anim.anim,current_frame(anim)) do
+            return update_visualizer!(args...)
+        end
+        step_animation!(anim,step)
+    end
+end
+
 function construct_visualizer_update_function(vis,vis_nodes,staging_nodes;
         render_stages=true,
+        anim=nothing,
     )
     update_visualizer_function(env,newly_updated=Set{Int}()) = begin
-        agents = Set{SceneNode}()
-        for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
-            agent = get_node(env.scene_tree, id)
-            push!(agents, agent)
-            for vp in collect_descendants(env.scene_tree,agent)
-                push!(agents,get_node(env.scene_tree,vp))
-            end
-        end
-        if render_stages
-            # build_steps = Set{AbstractID}(
-            #     node_id(n) for n in get_nodes(sched) if matches_template(OpenBuildStep,n)
-            # )
-            # closed_steps = setdiff(build_steps,env.active_build_steps)
-            closed_steps = setdiff(keys(staging_nodes),env.active_build_steps)
-            for id in closed_steps
-                setvisible!(staging_nodes[id],false)
-            end
-            for id in env.active_build_steps
-                setvisible!(staging_nodes[id],true)
-            end
-        end
-        # for n in get_nodes(sched)
-        #     if matches_template(OpenBuildStep,n)
-        #         if node_id(n) in env.active_build_steps
-        #             setvisible!(staging_nodes[node_id(n)],true)
-        #         else
-        #             setvisible!(staging_nodes[node_id(n)],false)
-        #         end
-        #     end
-        # end
-        for id in env.active_build_steps
-            setvisible!(staging_nodes[id],true)
-        end
-        for v in union(env.cache.active_set,newly_updated)
-            node = get_node(env.sched,v)
-            if matches_template(EntityGo,node)
-                agent = entity(node)
-            elseif matches_template(Union{FormTransportUnit,DepositCargo},node)
-                agent = get_node(env.scene_tree,cargo_id(entity(node)))
-            else
-                agent = nothing
-            end
-            if !(agent === nothing) && !(agent in agents)
-                push!(agents,agent)
+        atframe(anim,current_frame(anim)) do
+            agents = Set{SceneNode}()
+            for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
+                agent = get_node(env.scene_tree, id)
+                push!(agents, agent)
                 for vp in collect_descendants(env.scene_tree,agent)
                     push!(agents,get_node(env.scene_tree,vp))
                 end
             end
+            if render_stages
+                closed_steps = setdiff(keys(staging_nodes),env.active_build_steps)
+                for id in closed_steps
+                    setvisible!(staging_nodes[id],false)
+                end
+                for id in env.active_build_steps
+                    setvisible!(staging_nodes[id],true)
+                end
+            end
+            for id in env.active_build_steps
+                setvisible!(staging_nodes[id],true)
+            end
+            for v in union(env.cache.active_set,newly_updated)
+                node = get_node(env.sched,v)
+                if matches_template(EntityGo,node)
+                    agent = entity(node)
+                elseif matches_template(Union{FormTransportUnit,DepositCargo},node)
+                    agent = get_node(env.scene_tree,cargo_id(entity(node)))
+                else
+                    agent = nothing
+                end
+                if !(agent === nothing) && !(agent in agents)
+                    push!(agents,agent)
+                    for vp in collect_descendants(env.scene_tree,agent)
+                        push!(agents,get_node(env.scene_tree,vp))
+                    end
+                end
+            end
+            update_visualizer!(env.scene_tree,vis_nodes,agents)
+            render(vis)
         end
-        update_visualizer!(env.scene_tree,vis_nodes,agents)
-        # update_visualizer!(env.scene_tree,vis_nodes)
-        render(vis)
+        step_animation!(anim)
     end
+    # if !(anim === nothing)
+    #     anim_function(args...) = begin
+    #         atframe(anim.anim, current_frame(anim)) do
+    #             update_visualizer_function(args)
+    #         end
+    #     end
+    # end
     return update_visualizer_function
 end
 
