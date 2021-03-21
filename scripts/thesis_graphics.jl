@@ -29,6 +29,7 @@ global_logger(ConsoleLogger(stderr, Logging.Info))
 
 Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
 
+
 # Start MeshCat viewer
 vis = Visualizer()
 render(vis)
@@ -39,23 +40,27 @@ Random.seed!(0);
 
 # factor by which to scale LDraw model (because MeshCat bounds are hard to adjust)
 MODEL_SCALE         = 0.01
-NUM_ROBOTS          = 4
+NUM_ROBOTS          = 20
 
 ## LOAD LDRAW FILE
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
 # NUM_ROBOTS          = 200
 # MODEL_SCALE         = 0.005
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","DemoStack.mpd")
-filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","ATTEWalker.mpd")
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","stack1.ldr")
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","big_stack.ldr")
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","triple_stack.mpd")
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","quad_nested.mpd")
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","small_quad_nested.mpd")
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","simple_quad_stack.mpd")
+model_name = "simple_quad_stack.mpd"
+# model_name = "DemoStack.mpd"
+# model_name = "ATTEWalker.mpd"
+# model_name = "stack1.ldr"
+# model_name = "big_stack.ldr"
+# model_name = "triple_stack.mpd"
+# model_name = "quad_nested.mpd"
+# model_name = "small_quad_nested.mpd"
+filename = joinpath(dirname(pathof(LDrawParser)),"..","assets",model_name)
 # NUM_ROBOTS          = 40
 # MODEL_SCALE         = 0.01
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","four_stack.mpd")
+
+base_graphics_path = "/scratch/Repositories/Sandbox/thesis_graphics/LEGO"
+graphics_path = joinpath(base_graphics_path,model_name)
+mkpath(graphics_path)
 
 ROBOT_HEIGHT        = 10*MODEL_SCALE
 ROBOT_RADIUS        = 25*MODEL_SCALE
@@ -73,7 +78,10 @@ model_spec = ConstructionBots.extract_single_model(spec)
 id_map = ConstructionBots.build_id_map(model,model_spec)
 color_map = construct_color_map(model_spec,id_map)
 @assert GraphUtils.validate_graph(model_spec)
-# display_graph(model_spec,scale=1) #,enforce_visited=true)
+plt = display_graph(model_spec,scale=1) #,enforce_visited=true)
+display(plt)
+draw(PDF(joinpath(graphics_path,"model_spec.pdf")),plt)
+
 
 ## CONSTRUCT SceneTree
 assembly_tree = ConstructionBots.construct_assembly_tree(model,model_spec,id_map)
@@ -123,13 +131,16 @@ staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scen
     buffer_radius = 0.0,
 )
 # plot staging plan
-plot_staging_plan_2d(sched,scene_tree,
+plt = plot_staging_plan_2d(sched,scene_tree,
     _fontsize=20pt,
     nominal_width=20cm,
-    _show_intermediate_stages=true,
     _show_bounding_circs=true,
     _show_dropoffs=true,
+    base_geom_layer=plot_assemblies(sched,scene_tree,fill_color=RGBA(0.0,0.0,0.0,0.0))
     )
+display(plt)
+draw(PDF(joinpath(graphics_path,"staging_plan.pdf")),plt)
+
 
 # Move objects away from the staging plan
 MAX_CARGO_HEIGHT = maximum(map(n->get_base_geom(n,HyperrectangleKey()).radius[3]*2,
@@ -168,16 +179,15 @@ ConstructionBots.set_default_loading_speed!(0.5)
 ConstructionBots.set_default_rotational_loading_speed!(0.5)
 tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 ## Black box MILP solver
-TaskGraphs.set_default_optimizer_attributes!(
-    # "SolutionLimit"=>1,
-    "TimeLimit"=>50,
-    MOI.Silent()=>false
-    )
-milp_model = SparseAdjacencyMILP()
+# TaskGraphs.set_default_optimizer_attributes!(
+#     "TimeLimit"=>50,
+#     MOI.Silent()=>false
+#     )
+# milp_model = SparseAdjacencyMILP()
 ## Greedy Assignment with enforced build-step ordering
-# milp_model = ConstructionBots.GreedyOrderedAssignment(
-#     greedy_cost = TaskGraphs.GreedyFinalTimeCost(),
-# )
+milp_model = ConstructionBots.GreedyOrderedAssignment(
+    greedy_cost = TaskGraphs.GreedyFinalTimeCost(),
+)
 milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
 optimize!(milp_model)
 validate_schedule_transform_tree(ConstructionBots.convert_from_operating_schedule(typeof(sched),tg_sched)
@@ -204,7 +214,8 @@ sphere_nodes = show_geometry_layer!(scene_tree,vis_nodes,HypersphereKey())
 rect_nodes = show_geometry_layer!(scene_tree,vis_nodes,HyperrectangleKey();
     color=RGBA{Float32}(1, 0, 0, 0.3),
 )
-staging_nodes = render_staging_areas!(vis,scene_tree,sched,staging_circles)
+staging_nodes = render_staging_areas!(vis,scene_tree,sched,staging_circles;
+    dz=0.01,color=RGB(0.4,0.0,0.4))
 setvisible!(base_geom_nodes,true)
 setvisible!(sphere_nodes,true)
 setvisible!(rect_nodes,true)

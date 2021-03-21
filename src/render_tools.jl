@@ -111,6 +111,7 @@ function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="st
         wireframe=false,
         material=MeshPhongMaterial(color=color,wireframe=wireframe),
         include_build_steps=true,
+        dz=0.001,
     )
     staging_nodes = Dict{AbstractID,Any}()
     staging_vis = vis[root_key]
@@ -120,7 +121,6 @@ function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="st
         ctr = Point(HG.project_to_2d(sphere.center)..., 0.0)
         cylinder = Cylinder(ctr, Point((ctr.-[0.0,0.0,0.01])...),sphere.radius)
         setobject!(staging_vis[string(id)],
-            # convert_to_renderable(sphere),
             cylinder,
             material,
             )
@@ -136,11 +136,15 @@ function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="st
         settransform!(staging_nodes[id],tform)
         # settransform!(staging_nodes[id],global_transform(start_config(cargo_node)))
     end
-    for n in get_nodes(sched)
+    zval=-dz
+    for n in node_iterator(sched, topological_sort_by_dfs(sched))
+    # for n in get_nodes(sched)
         if matches_template(OpenBuildStep,n)
             id = node_id(n)
             sphere = get_cached_geom(node_val(n).staging_circle)
-            ctr = Point(HG.project_to_2d(sphere.center)..., 0.0)
+            # ctr = Point(HG.project_to_2d(sphere.center)..., 0.0)
+            ctr = Point(HG.project_to_2d(sphere.center)..., zval)
+            zval -= dz
             cylinder = Cylinder(ctr, Point((ctr.-[0.0,0.0,0.01])...),sphere.radius)
             setobject!(staging_vis[string(id)],
                 # convert_to_renderable(sphere),
@@ -300,6 +304,14 @@ function animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,nodes=get_
     end
 end
 
+function staging_plan_bbox(staging_circs)
+    xlo = minimum(c.center[1]-c.radius for (k,c) in staging_circs)
+    ylo = minimum(c.center[2]-c.radius for (k,c) in staging_circs)
+    xhi = maximum(c.center[1]+c.radius for (k,c) in staging_circs)
+    yhi = maximum(c.center[2]+c.radius for (k,c) in staging_circs)
+    GeometryBasics.Rect2D(xlo,ylo,xhi-xlo,yhi-ylo)
+end
+
 """
     plot_staging_plan_2d(sched,scene_tree;
 
@@ -313,11 +325,14 @@ function plot_staging_plan_2d(sched,scene_tree;
         _show_bounding_circs=false,
         _show_dropoffs=false,
         _assembly_dropoffs_only=false,
+        _show_base_geom=true,
+        base_geom_layer=plot_assemblies(sched,scene_tree),
     )
     staging_circs = []
     final_staging_circs = []
     bounding_circs = []
     dropoff_circs = []
+    base_geoms = []
     for n in node_iterator(sched,topological_sort_by_dfs(sched))
         if matches_template(CloseBuildStep,n)
             # if _show_intermediate_stages
@@ -341,20 +356,15 @@ function plot_staging_plan_2d(sched,scene_tree;
                 tu = entity(n)
                 a = get_node(scene_tree,cargo_id(tu))
                 if isa(a,AssemblyNode) || !_assembly_dropoffs_only
-                tf = global_transform(goal_config(n))
-                push!(dropoff_circs,node_id(n)=>tf(get_base_geom(tu,HypersphereKey())))
+                    tf = global_transform(goal_config(n))
+                    push!(dropoff_circs,node_id(n)=>tf(get_base_geom(tu,HypersphereKey())))
                 end
             end
         end
     end
-    xlo = minimum(c.center[1]-c.radius for (k,c) in staging_circs)
-    ylo = minimum(c.center[2]-c.radius for (k,c) in staging_circs)
-    xhi = maximum(c.center[1]+c.radius for (k,c) in staging_circs)
-    yhi = maximum(c.center[2]+c.radius for (k,c) in staging_circs)
-    Compose.set_default_graphic_size(nominal_width,((yhi-ylo)/(xhi-xlo))*nominal_width)
-    Compose.compose(
-        context(units=UnitBox(xlo,ylo,xhi-xlo,yhi-ylo)),
-        (context(),
+    bbox = staging_plan_bbox(staging_circs)
+    Compose.set_default_graphic_size(nominal_width,(bbox.widths[2]/bbox.widths[1])*nominal_width)
+    text_ctx = (context(),
         Compose.fontsize(_fontsize),
             (context(),[Compose.text(c.center[1],c.center[2],
                 string(get_id(node_id(node_val(get_node(sched,k)).assembly))),
@@ -363,18 +373,13 @@ function plot_staging_plan_2d(sched,scene_tree;
             Compose.fill("black")
             ),
             (context(),[Compose.text(c.center[1],c.center[2],
-                string(get_id(node_id(node_val(get_node(sched,k)).assembly))),
-                hcenter,vcenter,
-                ) for (k,c) in bounding_circs]...,
-            Compose.fill("blue")
-            ),
-            (context(),[Compose.text(c.center[1],c.center[2],
                 string(get_id(k)),
                 hcenter,vcenter,
-                ) for (k,c) in dropoff_circs]...,
+                ) for (k,c) in dropoff_circs if _show_dropoffs]...,
             Compose.fill(RGB(0.0,1.0,0.0)),
             ),
-        ),
+        )
+    circles_ctx = (context(),
         (context(),
         [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in dropoff_circs]...,
         Compose.stroke("green"),
@@ -385,14 +390,6 @@ function plot_staging_plan_2d(sched,scene_tree;
         Compose.stroke("blue"),
         Compose.fill(RGBA(0.0,0.0,1.0,0.5)),
         ),
-        # (context(),
-        # [Compose.text(c.center[1],c.center[2],
-        #     string(get_id(node_id(node_val(get_node(sched,k)).assembly))),
-        #     hcenter,vcenter,
-        #     ) for (k,c) in final_staging_circs]...,
-        # Compose.fontsize(_fontsize),
-        # Compose.fill("black")
-        # ),
         (context(),
         [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in final_staging_circs]...,
         Compose.stroke("red"),
@@ -402,9 +399,82 @@ function plot_staging_plan_2d(sched,scene_tree;
         [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in staging_circs if _show_intermediate_stages]...,
         Compose.stroke("yellow"),
         Compose.fill(RGBA(1.0,1.0,0.0,0.5)),
-        ),
+        )
+    )
+    Compose.compose(
+        context(units=UnitBox(bbox.origin...,bbox.widths...)),
+        base_geom_layer,
+        text_ctx,
+        circles_ctx,
     )
 end
+
+function plot_base_geom_2d(node,scene_tree;
+        fill_color=RGBA(1.0,0.0,0.0,0.5),
+        stroke_color=RGBA(0.0,0.0,0.0,1.0),
+        _show_lines=false,
+        _show_triangles=false,
+        _show_quadrilaterals=true,
+        _use_unit_box=false,
+        tform=identity_linear_map(),
+    )
+    forms = Vector{Compose.Form}()
+    for geom_list in recurse_child_geometry(node,scene_tree)
+        for geom in geom_list
+            if isa(geom,GeometryBasics.Line) && _show_lines
+                push!(forms,Compose.line(Vector([(p[1],p[2]) for p in tform(geom).points])))
+            elseif isa(geom,Triangle) && _show_triangles
+                push!(forms,Compose.polygon(Vector([(p[1],p[2]) for p in tform(geom).points])))
+            elseif isa(geom,GeometryBasics.Quadrilateral) && _show_quadrilaterals
+                push!(forms,Compose.polygon(Vector([(p[1],p[2]) for p in tform(geom).points])))
+            end
+        end
+    end
+    if _use_unit_box
+        r = get_base_geom(node,HyperrectangleKey())
+        unit_box = unit_box_from_rect(r)
+        ctx = context(units=unit_box)
+    else
+        ctx = context()
+    end
+    ctx = context()
+    Compose.compose(
+        ctx,
+        forms...,
+        Compose.fill(fill_color),
+        Compose.stroke(stroke_color)
+        )
+end
+function unit_box_from_rect(r)
+    unit_box = UnitBox(
+        r.center[1]-r.radius[1],
+        r.center[2]-r.radius[2],
+        2*r.radius[1],
+        2*r.radius[2],
+        )
+end
+function plot_assemblies(sched,scene_tree;
+        base_ctx=context(),
+        kwargs...,
+        )
+    ctxs = []
+    for n in get_nodes(sched)
+        if matches_template(AssemblyComplete,n)
+            tform = global_transform(goal_config(n))
+            push!(ctxs,plot_base_geom_2d(entity(n),scene_tree;tform=tform,kwargs...))
+        end
+    end
+    Compose.compose(base_ctx,ctxs...)
+end
+
+struct AnimationWrapper
+    anim::MeshCat.Animation
+    step::Counter
+end
+AnimationWrapper(step::Int) = AnimationWrapper(MeshCat.Animation(),Counter(step))
+current_frame(a::AnimationWrapper) = get_counter_status(a.step)
+step_animation!(a::AnimationWrapper,step=1) = set_counter_status!(a.step,current_frame(a)+step)
+set_current_frame!(a::AnimationWrapper,val) = set_counter_status!(a.step,val)
 
 """
     animate_preprocessing_steps!
@@ -419,7 +489,7 @@ function animate_preprocessing_steps!(
         rect_nodes,
         ;
         dt_animate=0.0,
-        dt=0.0
+        dt=0.0,
     )
 
     # Hide robots 

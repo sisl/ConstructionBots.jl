@@ -839,7 +839,7 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
             # @show t
             # set start config of lift node - have to add the ∘ inv(tform) because lift_node's goal_config() is already at tform
             # both of the lines below work
-            tr = CT.Translation(tform.translation...)
+            tr = CT.Translation(tform.translation[1:2]..., 0.0)
             HG.set_local_transform_in_global_frame!(start_config(lift_node),t ∘ inv(tr))
             # HG.set_local_transform_in_global_frame!(start_config(lift_node),t ∘ inv(tform))
             # HG.set_local_transform_in_global_frame!(start_config(lift_node),t ∘ inv(local_transform(goal_config(lift_node))))
