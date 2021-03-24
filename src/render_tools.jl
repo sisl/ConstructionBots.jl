@@ -123,7 +123,7 @@ end
 function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="staging_circles";
         color=RGBA{Float32}(1, 0, 1, 0.1),
         wireframe=false,
-        material=MeshPhongMaterial(color=color,wireframe=wireframe),
+        material=MeshLambertMaterial(color=color,wireframe=wireframe),
         include_build_steps=true,
         dz=0.0,
     )

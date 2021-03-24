@@ -189,8 +189,6 @@ configuration to its `FormTransportUnit.cargo_goal_config` configuration.
 struct FormTransportUnit <: ConstructionPredicate
     entity::TransportUnitNode
     config::TransformNode
-    # start_config::TransformNode 
-    # goal_config::TransformNode
     cargo_start_config::TransformNode 
     cargo_goal_config::TransformNode # offset from config by child_transform(entity,cargo_id(entity))
 end
@@ -204,8 +202,6 @@ configuration to its `LiftIntoPlace.start_config` configuration.
 struct DepositCargo <: ConstructionPredicate
     entity::TransportUnitNode
     config::TransformNode
-    # start_config::TransformNode 
-    # goal_config::TransformNode
     cargo_start_config::TransformNode # offset from config by child_transform(entity,cargo_id(entity))
     cargo_goal_config::TransformNode 
 end

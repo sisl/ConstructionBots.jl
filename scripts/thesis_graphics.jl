@@ -128,7 +128,7 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 
 ## Generate staging plan
 staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched;
-    buffer_radius = 3*default_robot_radius(),
+    buffer_radius = 5*default_robot_radius(),
     build_step_buffer_radius=default_robot_radius()/2,
 )
 # plot staging plan
@@ -178,8 +178,8 @@ ConstructionBots.add_dummy_robot_go_nodes!(sched)
 
 
 # Convert to OperatingSchedule
-ConstructionBots.set_default_loading_speed!(0.5)
-ConstructionBots.set_default_rotational_loading_speed!(0.5)
+ConstructionBots.set_default_loading_speed!(10*default_robot_radius())
+ConstructionBots.set_default_rotational_loading_speed!(10*default_robot_radius())
 tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 ## Black box MILP solver
 # TaskGraphs.set_default_optimizer_attributes!(
@@ -227,7 +227,7 @@ rect_nodes = show_geometry_layer!(scene_tree,vis_nodes,HyperrectangleKey();
     color=RGBA{Float32}(1, 0, 0, 0.3),
 )
 staging_nodes = render_staging_areas!(vis,scene_tree,sched,staging_circles;
-    dz=0.01,color=RGB(0.4,0.0,0.4))
+    dz=0.01,color=RGBA(0.4,0.0,0.4,0.5))
 setvisible!(base_geom_nodes,true)
 setvisible!(sphere_nodes,true)
 setvisible!(rect_nodes,true)
@@ -272,10 +272,10 @@ update_visualizer!(scene_tree,vis_nodes)
 
 # rvo
 ConstructionBots.set_rvo_default_time_step!(1/40.0)
-ConstructionBots.set_rvo_default_neighbor_distance!(8*default_robot_radius())
-ConstructionBots.set_rvo_default_min_neighbor_distance!(6*default_robot_radius())
+ConstructionBots.set_rvo_default_neighbor_distance!(16*default_robot_radius()) # 4
+ConstructionBots.set_rvo_default_min_neighbor_distance!(10*default_robot_radius()) # 3
 ConstructionBots.rvo_set_new_sim!(ConstructionBots.rvo_new_sim(;horizon=2.0))
-ConstructionBots.set_staging_buffer_radius!(default_robot_radius()*2)
+ConstructionBots.set_staging_buffer_radius!(default_robot_radius())
 env = PlannerEnv(
         sched=tg_sched,
         scene_tree=scene_tree,
@@ -289,7 +289,7 @@ update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,
     # anim=anim,
     )
 
-    
+
 # Turn off RVO to see if the project can be completed if we don't worry about collision
 # set_use_rvo!(false)
 # set_avoid_staging_areas!(false)
