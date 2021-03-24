@@ -29,7 +29,6 @@ global_logger(ConsoleLogger(stderr, Logging.Info))
 
 Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
 
-
 # Start MeshCat viewer
 vis = Visualizer()
 render(vis)
@@ -46,13 +45,13 @@ NUM_ROBOTS          = 20
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
 # NUM_ROBOTS          = 200
 # MODEL_SCALE         = 0.005
-model_name = "simple_quad_stack.mpd"
+# model_name = "simple_quad_stack.mpd"
 # model_name = "DemoStack.mpd"
 # model_name = "ATTEWalker.mpd"
 # model_name = "stack1.ldr"
 # model_name = "big_stack.ldr"
 # model_name = "triple_stack.mpd"
-# model_name = "quad_nested.mpd"
+model_name = "quad_nested.mpd"
 # model_name = "small_quad_nested.mpd"
 filename = joinpath(dirname(pathof(LDrawParser)),"..","assets",model_name)
 # NUM_ROBOTS          = 40
@@ -128,8 +127,8 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 
 ## Generate staging plan
 staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched;
-    # buffer_radius = 0.0,
-    buffer_radius = 2*default_robot_radius(),
+    buffer_radius = 3*default_robot_radius(),
+    build_step_buffer_radius=default_robot_radius()/2,
 )
 # plot staging plan
 plt = plot_staging_plan_2d(sched,scene_tree,
@@ -148,7 +147,9 @@ MAX_CARGO_HEIGHT = maximum(map(n->get_base_geom(n,HyperrectangleKey()).radius[3]
     filter(n->matches_template(TransportUnitNode,n),get_nodes(scene_tree))))
 vtxs = ConstructionBots.construct_vtx_array(;
     origin=SVector(0.0,0.0,MAX_CARGO_HEIGHT),
-    obstacles=collect(values(staging_circles)))
+    obstacles=collect(values(staging_circles)),
+    ranges=(-10:10,-10:10,0:2),
+    )
 NUM_OBJECTS = length(filter(n->matches_template(ObjectNode,n),get_nodes(scene_tree)))
 object_vtxs = draw_random_uniform(vtxs,NUM_OBJECTS)
 ConstructionBots.select_initial_object_grid_locations!(sched,object_vtxs)

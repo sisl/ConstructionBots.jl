@@ -617,6 +617,7 @@ for each component of the assembly.
 """
 function generate_staging_plan!(scene_tree,sched;
         buffer_radius=0.0,
+        build_step_buffer_radius=0.0,
     )
     if !all(map(n->has_vertex(n.geom_hierarchy, HypersphereKey()), get_nodes(scene_tree)))
         HierarchicalGeometry.compute_approximate_geometries!(scene_tree,
@@ -641,6 +642,7 @@ function generate_staging_plan!(scene_tree,sched;
                 bounding_circles,
                 staging_circles,
                 ;
+                build_step_buffer_radius=build_step_buffer_radius,
             )
         end
     end
@@ -754,8 +756,13 @@ of assembly as more parts are added to it.
 Updates:
 - `staging_circles`
 - the relevant `LiftIntoPlace` nodes (start_config and goal_config transforms)
+Keyword Args:
+- build_step_buffer_radius = 0.0 - amount by which to inflate each transport unit
+when layout out the build step.
 """
-function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,staging_circles)
+function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,staging_circles;
+        build_step_buffer_radius=0.0,
+    )
     open_build_step = node_val(node)
     assembly = open_build_step.assembly
     start_node = get_node(sched,AssemblyComplete(assembly))
@@ -784,7 +791,7 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
         # d = geom.center - bounding_circle.center
         # r = geom.radius
         push!(θ_des, wrap_to_pi(atan(d[2],d[1])))
-        push!(radii, r)
+        push!(radii, r + build_step_buffer_radius)
     end
     if !isempty(geoms)
         # Compute new bounding circle which contains the assembly at the end of this build step
