@@ -153,7 +153,6 @@ NUM_OBJECTS = length(filter(n->matches_template(ObjectNode,n),get_nodes(scene_tr
 object_vtxs = draw_random_uniform(vtxs,NUM_OBJECTS)
 ConstructionBots.select_initial_object_grid_locations!(sched,object_vtxs)
 
-
 # Move assemblies up so they float above the robots
 for node in get_nodes(scene_tree)
     if matches_template(AssemblyNode,node) 
@@ -236,7 +235,6 @@ setvisible!(sphere_nodes,false)
 setvisible!(rect_nodes,false)
 setvisible!(staging_nodes,false)
 render(vis)
-
 
 # restore correct configuration
 HG.jump_to_final_configuration!(scene_tree;set_edges=true)
