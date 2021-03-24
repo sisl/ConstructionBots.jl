@@ -40,7 +40,7 @@ Random.seed!(0);
 # factor by which to scale LDraw model (because MeshCat bounds are hard to adjust)
 # MODEL_SCALE         = 0.01
 MODEL_SCALE         = 0.0075
-NUM_ROBOTS          = 20
+NUM_ROBOTS          = 30
 
 ## LOAD LDRAW FILE
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
@@ -176,21 +176,20 @@ ConstructionBots.calibrate_transport_tasks!(sched)
 ConstructionBots.add_dummy_robot_go_nodes!(sched)
 @assert validate_schedule_transform_tree(sched;post_staging=true)
 
-
 # Convert to OperatingSchedule
 ConstructionBots.set_default_loading_speed!(10*default_robot_radius())
 ConstructionBots.set_default_rotational_loading_speed!(10*default_robot_radius())
 tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 ## Black box MILP solver
-# TaskGraphs.set_default_optimizer_attributes!(
-#     "TimeLimit"=>50,
-#     MOI.Silent()=>false
-#     )
-# milp_model = SparseAdjacencyMILP()
+TaskGraphs.set_default_optimizer_attributes!(
+    "TimeLimit"=>50,
+    MOI.Silent()=>false
+    )
+milp_model = SparseAdjacencyMILP()
 ## Greedy Assignment with enforced build-step ordering
-milp_model = ConstructionBots.GreedyOrderedAssignment(
-    greedy_cost = TaskGraphs.GreedyFinalTimeCost(),
-)
+# milp_model = ConstructionBots.GreedyOrderedAssignment(
+#     greedy_cost = TaskGraphs.GreedyFinalTimeCost(),
+# )
 milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
 optimize!(milp_model)
 validate_schedule_transform_tree(ConstructionBots.convert_from_operating_schedule(typeof(sched),tg_sched)
@@ -221,7 +220,7 @@ delete!(vis)
 vis_nodes, base_geom_nodes = populate_visualizer!(scene_tree,vis;
     color_map=color_map,
     # wireframe=true,
-    material_type=MeshPhongMaterial)
+    material_type=MeshLambertMaterial)
 sphere_nodes = show_geometry_layer!(scene_tree,vis_nodes,HypersphereKey())
 rect_nodes = show_geometry_layer!(scene_tree,vis_nodes,HyperrectangleKey();
     color=RGBA{Float32}(1, 0, 0, 0.3),
@@ -264,6 +263,7 @@ animate_preprocessing_steps!(
         anim=anim,
     )
 setanimation!(vis,anim.anim)
+render(vis)
 # open(joinpath(graphics_path,"animate_preprocessing.html"),"w") do io
 #     write(io,static_html(vis))
 # end
@@ -285,8 +285,8 @@ active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
 ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 
 update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,staging_nodes;
-    anim=nothing,
-    # anim=anim,
+    # anim=nothing,
+    anim=anim,
     )
 
 
@@ -301,7 +301,7 @@ setanimation!(vis,anim.anim)
 # open(joinpath(graphics_path,"construction_simulation.html"),"w") do io
 #     write(io,static_html(vis))
 # end
-
+render(vis)
 
 # Test circle_avoidance_policy
 circles = [

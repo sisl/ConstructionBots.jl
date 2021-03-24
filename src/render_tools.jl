@@ -107,7 +107,7 @@ convert_to_renderable(geom::Hyperrectangle) = GeometryBasics.HyperRectangle(geom
 function show_geometry_layer!(scene_tree,vis_nodes,key=HypersphereKey();
         color=RGBA{Float32}(0, 1, 0, 0.3),
         wireframe=true,
-        material=MeshPhongMaterial(color=color,wireframe=wireframe),
+        material=MeshLambertMaterial(color=color,wireframe=wireframe),
     )
     geom_nodes = Dict{AbstractID,Any}()
     for (id,vis_node) in vis_nodes

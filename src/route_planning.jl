@@ -82,6 +82,9 @@ function simulate!(env,update_visualizer_function;
     t0 = 0.0
     time_stamp = t0
     for k in 1:max_time_steps
+        if mod(k,100) == 0
+            @info " ******************* BEGINNING TIME STEP $k *******************"
+        end
         step_environment!(env)
         newly_updated = TaskGraphs.update_planning_cache!(env,0.0)
         update_visualizer_function(env,newly_updated)
