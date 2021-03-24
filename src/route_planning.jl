@@ -129,7 +129,7 @@ function step_environment!(env::PlannerEnv,sim=rvo_global_sim())
     sim.doStep()
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
         if use_rvo()
-            @info "Updating position from rvo"
+            # @info "Updating position from rvo"
             tform = update_position_from_sim!(get_node(scene_tree,id))
         end
         # Set velocities to zero for any agents that are no longer "active"
