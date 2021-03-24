@@ -38,7 +38,8 @@ reset_all_invalid_id_counters!()
 Random.seed!(0);
 
 # factor by which to scale LDraw model (because MeshCat bounds are hard to adjust)
-MODEL_SCALE         = 0.01
+# MODEL_SCALE         = 0.01
+MODEL_SCALE         = 0.0075
 NUM_ROBOTS          = 20
 
 ## LOAD LDRAW FILE
@@ -271,8 +272,8 @@ update_visualizer!(scene_tree,vis_nodes)
 
 # rvo
 ConstructionBots.set_rvo_default_time_step!(1/40.0)
-ConstructionBots.set_rvo_default_neighbor_distance!(4.0)
-ConstructionBots.set_rvo_default_min_neighbor_distance!(3.0)
+ConstructionBots.set_rvo_default_neighbor_distance!(8*default_robot_radius())
+ConstructionBots.set_rvo_default_min_neighbor_distance!(6*default_robot_radius())
 ConstructionBots.rvo_set_new_sim!(ConstructionBots.rvo_new_sim(;horizon=2.0))
 ConstructionBots.set_staging_buffer_radius!(default_robot_radius()*2)
 env = PlannerEnv(
@@ -288,6 +289,7 @@ update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,
     # anim=anim,
     )
 
+    
 # Turn off RVO to see if the project can be completed if we don't worry about collision
 # set_use_rvo!(false)
 # set_avoid_staging_areas!(false)
