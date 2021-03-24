@@ -46,13 +46,13 @@ NUM_ROBOTS          = 20
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
 # NUM_ROBOTS          = 200
 # MODEL_SCALE         = 0.005
-# model_name = "simple_quad_stack.mpd"
+model_name = "simple_quad_stack.mpd"
 # model_name = "DemoStack.mpd"
 # model_name = "ATTEWalker.mpd"
 # model_name = "stack1.ldr"
 # model_name = "big_stack.ldr"
 # model_name = "triple_stack.mpd"
-model_name = "quad_nested.mpd"
+# model_name = "quad_nested.mpd"
 # model_name = "small_quad_nested.mpd"
 filename = joinpath(dirname(pathof(LDrawParser)),"..","assets",model_name)
 # NUM_ROBOTS          = 40
@@ -128,7 +128,8 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 
 ## Generate staging plan
 staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched;
-    buffer_radius = 0.0,
+    # buffer_radius = 0.0,
+    buffer_radius = 2*default_robot_radius(),
 )
 # plot staging plan
 plt = plot_staging_plan_2d(sched,scene_tree,
@@ -151,6 +152,7 @@ vtxs = ConstructionBots.construct_vtx_array(;
 NUM_OBJECTS = length(filter(n->matches_template(ObjectNode,n),get_nodes(scene_tree)))
 object_vtxs = draw_random_uniform(vtxs,NUM_OBJECTS)
 ConstructionBots.select_initial_object_grid_locations!(sched,object_vtxs)
+
 
 # Move assemblies up so they float above the robots
 for node in get_nodes(scene_tree)
@@ -197,6 +199,15 @@ update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
 # display_graph(tg_sched,scale=3,enforce_visited=true) |> PDF("/home/kylebrown/Desktop/sched.pdf")
 # sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,200)
 # display_graph(sched2,scale=3,enforce_visited=true,aspect_stretch=(0.9,0.9))
+
+# Try assigning robots to "home" locations so they don't sit around in each others' way
+go_nodes = [n for n in get_nodes(tg_sched) if matches_template(RobotGo,n) && is_terminal_node(tg_sched,n)]
+home_vtxs = draw_random_uniform(vtxs,length(go_nodes))
+for (vtx,n) in zip(home_vtxs,go_nodes)
+    HG.set_desired_global_transform!(goal_config(n),
+        CT.Translation(vtx[1],vtx[2],0.0) ∘ identity_linear_map()
+    )
+end
 
 ## Visualize staging plans to debug the rotational shuffling 
 # vis_triads, vis_arrows, bounding_vis = visualize_staging_plan(vis,sched,scene_tree)
@@ -253,9 +264,9 @@ animate_preprocessing_steps!(
         anim=anim,
     )
 setanimation!(vis,anim.anim)
-open(joinpath(graphics_path,"animate_preprocessing.html"),"w") do io
-    write(io,static_html(vis))
-end
+# open(joinpath(graphics_path,"animate_preprocessing.html"),"w") do io
+#     write(io,static_html(vis))
+# end
 set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
 update_visualizer!(scene_tree,vis_nodes)
 
@@ -264,6 +275,7 @@ ConstructionBots.set_rvo_default_time_step!(1/40.0)
 ConstructionBots.set_rvo_default_neighbor_distance!(4.0)
 ConstructionBots.set_rvo_default_min_neighbor_distance!(3.0)
 ConstructionBots.rvo_set_new_sim!(ConstructionBots.rvo_new_sim(;horizon=2.0))
+ConstructionBots.set_staging_buffer_radius!(default_robot_radius()*2)
 env = PlannerEnv(
         sched=tg_sched,
         scene_tree=scene_tree,
@@ -272,18 +284,58 @@ env = PlannerEnv(
 active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
 ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 
-update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,staging_nodes;anim=anim)
+update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,staging_nodes;
+    anim=nothing,
+    # anim=anim,
+    )
 
 # Turn off RVO to see if the project can be completed if we don't worry about collision
-set_use_rvo!(false)
-set_avoid_staging_areas!(false)
-# set_use_rvo!(true)
+# set_use_rvo!(false)
+# set_avoid_staging_areas!(false)
+set_use_rvo!(true)
+set_avoid_staging_areas!(true)
 
-ConstructionBots.simulate!(env,update_visualizer_function,max_time_steps=20000)
+ConstructionBots.simulate!(env,update_visualizer_function,max_time_steps=2000)
 setanimation!(vis,anim.anim)
-open(joinpath(graphics_path,"construction_simulation.html"),"w") do io
-    write(io,static_html(vis))
+# open(joinpath(graphics_path,"construction_simulation.html"),"w") do io
+#     write(io,static_html(vis))
+# end
+
+
+# Test circle_avoidance_policy
+circles = [
+    LazySets.Ball2(SVector(0.0,0.0),1.0),
+    # LazySets.Ball2(SVector(1.0,-3.0),1.0),
+    LazySets.Ball2(SVector(0.0,4.0),2.0),
+    ]
+goal = [0.0,8.0]
+pos =  [0.0,-6.0]
+agent_radius = default_robot_radius()
+dt = 0.025
+vmax = 1.0
+delete!(vis)
+setobject!(vis[:robot],default_robot_geom(),MeshLambertMaterial(color=RGB(0.1,0.1,0.1)))
+settransform!(vis[:robot],CT.Translation(pos...,0.0))
+setobject!(vis[:goal],default_robot_geom(),MeshLambertMaterial(color=RGBA(0.0,1.0,0.0,0.2)))
+settransform!(vis[:goal],CT.Translation(goal...,0.0))
+for (i,c) in enumerate(circles)
+    setobject!(vis[:circles][string(i)],convert(GeometryBasics.Sphere,HG.project_to_3d(c)),
+     MeshLambertMaterial(color=RGBA(1.0,0.0,0.0,0.1)))
 end
+for t in 1:1000
+    goal_pt = ConstructionBots.circle_avoidance_policy(circles,agent_radius,pos,goal;buffer=0.5)
+    vel = normalize(goal_pt - pos) * min(vmax,norm(goal_pt - pos)/dt)
+    if any(isnan,vel)
+        vel = [0.0,0.0]
+        break
+    end
+    pos = pos .+ vel*dt
+    # update visualizer
+    settransform!(vis[:robot],CT.Translation(pos...,0.0))
+    sleep(dt)
+end
+
+
 
 # VISUALIZE ROBOT PLACEMENT AROUND PARTS
 

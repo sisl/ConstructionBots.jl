@@ -22,6 +22,11 @@ avoid_staging_areas() = AVOID_STAGING_AREAS
 function set_avoid_staging_areas!(val)
     global AVOID_STAGING_AREAS = val
 end
+global STAGING_BUFFER_RADIUS = 0.0
+staging_buffer_radius() = STAGING_BUFFER_RADIUS
+function set_staging_buffer_radius!(val)
+    global STAGING_BUFFER_RADIUS = val
+end
 
 """
     PlannerEnv
@@ -134,6 +139,11 @@ function step_environment!(env::PlannerEnv,sim=rvo_global_sim())
     return env
 end
 
+"""
+    set_rvo_priority!(env,node)
+
+Low alpha means higher priority
+"""
 function set_rvo_priority!(env,node)
     @unpack sched, scene_tree, cache, staging_circles = env
     if matches_template(Union{FormTransportUnit,DepositCargo},node)
@@ -154,7 +164,8 @@ function set_rvo_priority!(env,node)
             alpha = 1.0
         end
     elseif matches_template(RobotGo,node)
-        if get_vtx(sched,get_parent_build_step(sched,node)) in cache.active_set 
+        parent_build_step = get_parent_build_step(sched,node)
+        if !(parent_build_step === nothing) && get_vtx(sched,parent_build_step) in cache.active_set 
             alpha = 0.5
         else
             alpha = 1.0
@@ -338,29 +349,149 @@ function avoid_active_staging_areas(node::Union{TransportUnitGo,RobotGo},twist,e
         circle = HG.project_to_2d(get_cached_geom(build_step.staging_circle))
         bloated_circle = Ball2(HG.get_center(circle),HG.get_radius(circle)+r)
         if HG.circle_intersects_line(bloated_circle,pos,goal)
-            d = norm(HG.get_center(bloated_circle) - pos)
-            if HG.get_radius(bloated_circle) < d < dmin
-                d = dmin
+            d = HG.get_radius(bloated_circle) - norm(HG.get_center(bloated_circle) - pos) # penetration
+            if d < 0 && d < dmin
+                # in circle
+                dmin = d
                 id = build_step_id
                 circ = bloated_circle
             end
         end
-    end 
-    if id === nothing || norm(goal - HG.get_center(circ)) < norm(goal - pos) + ϵ
+    end
+    # If on the "exiting" end of circle, just leave,
+    if id === nothing ||  norm(goal - pos) + ϵ < norm(goal - HG.get_center(circ))
         return twist
     end
     dvec = pos-HG.get_center(circ)
+    # return a vector tangent CCW to the circle
     if norm(dvec) < HG.get_radius(circ) + ϵ
-        # return a vector tangent CCW to the circle
+        # start position is on or in circ
         vec = SVector(-dvec[2],dvec[1])
     else
+        # start position is not on or in circ
         pt_left, pt_right = HG.get_tangent_pts_on_circle(circ,pos)
         vec = pt_right-pos
     end
     vel = norm(twist.vel) * normalize(vec)
+    @info "$(summary(node_id(agent))) avoiding $id with vel = $vel"
     Twist(SVector(vel..., 0.0), twist.ω)
 end
 
+"""
+    circle_avoidance_policy()
+
+Returns a 2D goal vector that will take the robot outside of circular boundary 
+regions while pursuing its main goal
+"""
+function circle_avoidance_policy(circles,agent_radius,pos,nominal_goal;
+        planning_radius::Float64=agent_radius*2,
+        detour_horizon::Float64=2*planning_radius,
+        buffer=staging_buffer_radius(),
+        )
+    dmin = Inf
+    id = nothing
+    circ = nothing
+    # Get the first circle to be intersected
+    for (i,c) in enumerate(circles)
+        x = HG.get_center(c)
+        r = HG.get_radius(c)
+        bloated_circle = Ball2(x,r+agent_radius+buffer)
+        if HG.circle_intersects_line(bloated_circle,pos,nominal_goal)
+            d = norm(x - pos) - (r + agent_radius) #- norm(x - pos) # penetration
+            if d < dmin
+                # penetration < 0 => pos is in circle
+                dmin = d
+                idx = i
+                circ = bloated_circle
+            end
+        end
+    end
+    goal = nominal_goal
+    if circ === nothing
+        # nothing in the way
+        return nominal_goal
+    end
+    c = HG.get_center(circ)
+    r = HG.get_radius(circ)
+    if norm(nominal_goal - c) < r # nominal_goal is in circle
+        # wait outside
+        if norm(nominal_goal - c) > 1e-3
+            goal = c + normalize(nominal_goal - c)*r
+        else
+            goal = c + normalize(pos - c)*r
+        end
+    elseif dmin >= 0
+        # not currently in a circle, but on a course for intersection
+        if norm(nominal_goal - pos) < norm(nominal_goal - c)
+            # Just keep going toward goal (on the clear side)--should never be reached
+            goal = nominal_goal
+        elseif dmin < detour_horizon
+            # detour to "skim" the circle
+            if dmin < 1e-3
+                dvec = pos - c
+                goal = pos .+ [-dvec[2],dvec[1]]
+            else
+                # Pick a tangent point to shoot for
+                pts = GraphUtils.nearest_points_between_circles(
+                    pos[1:2], c[1:2], norm(pos - c), r
+                )
+                goal = sort([pts...],by=p->norm(nominal_goal-[p...]))[1]
+            end
+        else
+            goal = nominal_goal
+        end
+    else
+        # get goal points on the edge of the circle
+        pts = GraphUtils.nearest_points_between_circles(
+            pos[1:2],HG.get_center(circ)[1:2],planning_radius,HG.get_radius(circ),
+        )
+        if pts === nothing
+            goal = nominal_goal
+        else
+            # select closest point to goal
+            goal = sort([pts...],by=p->norm(nominal_goal-[p...]))[1]
+        end
+    end
+    nominal_pt = pos + normalize(nominal_goal - pos) * min(planning_radius,norm(nominal_goal - pos))
+    f = g->HG.circle_intersection_with_line(circ,pos,g)
+    # if norm(nominal_pt .- c) > norm(goal .- c)
+    if f(nominal_pt) > f(goal)
+        return nominal_goal
+    else
+        return goal
+    end
+end
+
+function active_staging_circles(env,exclude_ids=Set())
+    node_iter = (get_node(env.sched,id).node for id in env.active_build_steps if !(id in exclude_ids))
+    circle_iter = (HG.project_to_2d(get_cached_geom(n.staging_circle)) for n in node_iter)
+end
+
+"""
+    get_goal_transform(node)
+"""
+function get_goal_transform(node,env)
+    @unpack sched, scene_tree, dt = env
+    goal = global_transform(goal_config(node))
+    # TODO modify goal if it would lead to entry into an out-of-bounds, region, etc.
+    if avoid_staging_areas()
+        agent = entity(node)
+        r = HG.get_radius(get_base_geom(agent,HypersphereKey()))
+        pos = HG.project_to_2d(global_transform(agent).translation)
+        parent_build_step = get_parent_build_step(sched,node)
+        excluded_ids = Set{AbstractID}()
+        if !(parent_build_step === nothing)
+            push!(excluded_ids, node_id(parent_build_step))
+        end
+        circles = active_staging_circles(env,excluded_ids)
+        goal_pt = circle_avoidance_policy(circles,r,pos,HG.project_to_2d(goal.translation))
+        goal = CT.Translation(goal_pt...,0.0) ∘ CT.LinearMap(goal.linear)
+    end
+    # If highways
+
+    # If potential field
+    return goal
+end
 get_cmd(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},env) = nothing
 function get_cmd(node::Union{TransportUnitGo,RobotGo},env)
     @unpack sched, scene_tree, dt = env
@@ -372,13 +503,14 @@ function get_cmd(node::Union{TransportUnitGo,RobotGo},env)
         twist = zero(Twist)
         max_speed = 0.0
     else
-        tf_error = relative_transform(global_transform(agent), global_transform(goal_config(node)))
+        goal = get_goal_transform(node,env)
+        tf_error = relative_transform(global_transform(agent), goal)
         v_max = get_rvo_max_speed(agent)
         ω_max = default_rotational_loading_speed()
         twist = optimal_twist(tf_error,v_max,ω_max,dt)
-        if avoid_staging_areas()
-            twist = avoid_active_staging_areas(node,twist,env)
-        end
+        # if avoid_staging_areas()
+        #     twist = avoid_active_staging_areas(node,twist,env)
+        # end
         max_speed = get_rvo_max_speed(agent)
     end
     # slack = min(1000.0,minimum(get_slack(sched,node)))
