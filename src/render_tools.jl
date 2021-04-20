@@ -5,6 +5,10 @@ using GeometryBasics
 using LDrawParser
 using HierarchicalGeometry
 using Colors
+using FactoryRendering
+using Printf
+
+const FR = FactoryRendering
 
 import Cairo #, Fontconfig
 using GraphPlottingBFS
@@ -88,7 +92,7 @@ function populate_visualizer!(scene_tree,vis;
                 )
             end
             if !(material_type === nothing)
-                mat = material_type(wireframe=wireframe,kwargs...)
+                mat = material_type(;wireframe=wireframe,kwargs...)
                 mat.color = get(color_map,id,mat.color)
                 setobject!(geom_vis_node,M,mat)
             else
@@ -101,8 +105,10 @@ function populate_visualizer!(scene_tree,vis;
     vis_nodes, base_geom_nodes
 end
 
+convert_to_renderable(geom) = geom
 convert_to_renderable(geom::Ball2) = GeometryBasics.Sphere(geom)
 convert_to_renderable(geom::Hyperrectangle) = GeometryBasics.HyperRectangle(geom)
+convert_to_renderable(geom::HG.BufferedPolygonPrism) = GeometryBasics.Mesh(coordinates(geom),faces(geom))
 
 function show_geometry_layer!(scene_tree,vis_nodes,key=HypersphereKey();
         color=RGBA{Float32}(0, 1, 0, 0.3),
@@ -118,6 +124,35 @@ function show_geometry_layer!(scene_tree,vis_nodes,key=HypersphereKey();
         geom_nodes[id] = vis_node[node_name]
     end
     geom_nodes
+end
+
+"""
+    rotate_camera!(vis,anim;
+
+Rotate camera at fixed angular rate while keeping focus on a given point
+"""
+function rotate_camera!(vis,anim;
+    rc = 10,
+    dθ = 0.005,
+    hc = 2,
+    θ_start=0,
+    k_start=0,
+    k_final=current_frame(anim),
+    radial_decay_factor=0.0,
+    origin=[0.0,0.0,0.0],
+    )
+    θ = θ_start
+    for k in k_start:k_final
+        rc -= k*radial_decay_factor # spiral
+        # Y-coord is up for camera
+        camera_tform = CT.Translation(rc*cos(θ),hc,-rc*sin(θ)) 
+        θ = wrap_to_pi(θ+dθ)
+        atframe(anim,k) do
+            setprop!(vis["/Cameras/default/rotated/<object>"],"position",camera_tform.translation)
+            settransform!(vis["/Cameras/default"],CT.Translation(origin...))
+        end
+    end
+    anim
 end
 
 function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="staging_circles";
@@ -332,12 +367,23 @@ function plot_staging_plan_2d(sched,scene_tree;
         nominal_width=10cm,
         _fontsize=20pt,
         _show_final_stages=true,
+        _final_stage_stroke_color=FR.get_render_param(:Color,:Stroke,:StagingCircle,:Final,default="red"),
+        _final_stage_bg_color=FR.get_render_param(:Color,:Fill,:StagingCircle,:Final,default=RGBA(1.0,0.0,0.0,0.5)),
+        _stage_label_color=FR.get_render_param(:Color,:Label,:StagingCircle,:Final,default="black"),
         _show_intermediate_stages=false,
+        _stage_stroke_color=FR.get_render_param(:Color,:Stroke,:StagingCircle,default="yellow"),
+        _stage_bg_color=FR.get_render_param(:Color,:Fill,:StagingCircle,default=RGBA(1.0,1.0,0.0,0.5)),
         _show_bounding_circs=false,
+        _bounding_stroke_color=FR.get_render_param(:Color,:Stroke,:BoundingCircle,default="blue"),
+        _bounding_bg_color=FR.get_render_param(:Color,:Fill,:BoundingCircle,default=RGBA(0.0,0.0,1.0,0.5)),
         _show_dropoffs=false,
+        _dropoff_stroke_color=FR.get_render_param(:Color,:Stroke,:DropoffCircle,default="green"),
+        _dropoff_bg_color=FR.get_render_param(:Color,:Fill,:DropoffCircle,default=RGBA(0.0,1.0,0.0,0.5)),
+        _dropoff_label_color=FR.get_render_param(:Color,:Label,:DropoffCircle,default="black"),
         _assembly_dropoffs_only=false,
         _show_base_geom=true,
         base_geom_layer=plot_assemblies(sched,scene_tree),
+        bg_color="white",
     )
     staging_circs = []
     final_staging_circs = []
@@ -374,6 +420,7 @@ function plot_staging_plan_2d(sched,scene_tree;
         end
     end
     bbox = staging_plan_bbox(staging_circs)
+    bg_ctx = (context(),Compose.rectangle(),Compose.fill(bg_color))
     Compose.set_default_graphic_size(nominal_width,(bbox.widths[2]/bbox.widths[1])*nominal_width)
     text_ctx = (context(),
         Compose.fontsize(_fontsize),
@@ -381,35 +428,35 @@ function plot_staging_plan_2d(sched,scene_tree;
                 string(get_id(node_id(node_val(get_node(sched,k)).assembly))),
                 hcenter,vcenter,
                 ) for (k,c) in final_staging_circs]...,
-            Compose.fill("black")
+            Compose.fill(_stage_label_color),
             ),
             (context(),[Compose.text(c.center[1],c.center[2],
                 string(get_id(k)),
                 hcenter,vcenter,
                 ) for (k,c) in dropoff_circs if _show_dropoffs]...,
-            Compose.fill(RGB(0.0,1.0,0.0)),
+            Compose.fill(_dropoff_label_color),
             ),
         )
     circles_ctx = (context(),
         (context(),
         [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in dropoff_circs]...,
-        Compose.stroke("green"),
-        Compose.fill(RGBA(0.0,1.0,0.0,0.5)),
+        Compose.stroke(_dropoff_stroke_color),
+        Compose.fill(_dropoff_bg_color),
         ),
         (context(),
         [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in bounding_circs]...,
-        Compose.stroke("blue"),
-        Compose.fill(RGBA(0.0,0.0,1.0,0.5)),
+        Compose.stroke(_bounding_stroke_color),
+        Compose.fill(_bounding_bg_color),
         ),
         (context(),
         [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in final_staging_circs]...,
-        Compose.stroke("red"),
-        Compose.fill(RGBA(1.0,0.0,0.0,0.5)),
+        Compose.stroke(_final_stage_stroke_color),
+        Compose.fill(_final_stage_bg_color),
         ),
         (context(),
         [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in staging_circs if _show_intermediate_stages]...,
-        Compose.stroke("yellow"),
-        Compose.fill(RGBA(1.0,1.0,0.0,0.5)),
+        Compose.stroke(_stage_stroke_color),
+        Compose.fill(_stage_bg_color),
         )
     )
     Compose.compose(
@@ -417,6 +464,61 @@ function plot_staging_plan_2d(sched,scene_tree;
         base_geom_layer,
         text_ctx,
         circles_ctx,
+        bg_ctx,
+    )
+end
+
+function render_transport_unit_2d(scene_tree,tu,cvx_hull=[];
+    scale=4cm,
+    hull_thickness=0.01,
+    line_thickness=0.0025,
+    hull_color=RGB(0.0,1.0,0.0),
+    config_pt_radius=2*hull_thickness,
+    config_pt_color=FR.get_render_param(:Color,:Object),
+    robot_color=FR.get_render_param(:Color,:Robot,default=RGB(0.0,0.0,1.0)),
+    geom_fill_color=RGBA(0.9,0.9,0.9,0.3),
+    geom_stroke_color=RGBA(0.0,0.0,0.0,1.0),
+    robot_radius = FR.get_render_param(:Radius,:Robot,default=ROBOT_RADIUS),
+    rect2d = HG.project_to_2d(get_base_geom(tu,HyperrectangleKey())),
+    xpad=(0,0),
+    ypad=(0,0),
+    bg_color=nothing,
+    overlay_for_single_robot=false,
+    )
+    if length(robot_team(tu)) == 1 && overlay_for_single_robot
+        robot_overlay = (context(),
+            [Compose.circle(HG.project_to_2d(tform.translation)...,ROBOT_RADIUS) for (id,tform) in robot_team(tu)]...,
+            Compose.fill(RGBA(robot_color,0.8)),
+        )
+    else
+        robot_overlay = (context(),)
+    end
+    set_default_graphic_size(rect2d.radius[1]*scale,rect2d.radius[2]*scale)
+    Compose.compose(
+        context(units=unit_box_from_rect(rect2d,xpad=xpad,ypad=ypad)),
+        (context(),
+            robot_overlay,
+            plot_base_geom_2d(get_node(scene_tree,cargo_id(tu)),scene_tree;
+                fill_color=geom_fill_color,
+                stroke_color=geom_stroke_color,
+            ),
+            Compose.linewidth(line_thickness*max(h,w)),
+            (context(),
+            Compose.polygon([(p[1],p[2]) for p in cvx_hull]),
+            Compose.stroke(hull_color),
+            Compose.linewidth(hull_thickness*max(h,w)),
+            Compose.fill(nothing),
+            ),
+            (context(),
+                [Compose.circle(HG.project_to_2d(tform.translation)...,config_pt_radius*max(h,w)) for (id,tform) in robot_team(tu)]...,
+                Compose.fill(config_pt_color),
+            ),
+        ),
+        (context(),
+            [Compose.circle(HG.project_to_2d(tform.translation)...,robot_radius) for (id,tform) in robot_team(tu)]...,
+            Compose.fill(robot_color),
+        ),
+        (context(),Compose.rectangle(),Compose.fill(bg_color))
     )
 end
 
@@ -430,26 +532,26 @@ function plot_base_geom_2d(node,scene_tree;
         tform=identity_linear_map(),
         geom_key=BaseGeomKey(),
     )
-    forms = Vector{Compose.Form}()
+    polygon_pts = []
     for geom_element in recurse_child_geometry(node,scene_tree,geom_key)
         if isa(geom_key,BaseGeomKey)
             for geom in geom_element
                 if isa(geom,GeometryBasics.Line) && _show_lines
-                    push!(forms,Compose.line(Vector([(p[1],p[2]) for p in tform(geom).points])))
+                    push!(polygon_pts,Vector([(p[1],p[2]) for p in tform(geom).points]))
                 elseif isa(geom,Triangle) && _show_triangles
-                    push!(forms,Compose.polygon(Vector([(p[1],p[2]) for p in tform(geom).points])))
+                    push!(polygon_pts,Vector([(p[1],p[2]) for p in tform(geom).points]))
                 elseif isa(geom,GeometryBasics.Quadrilateral) && _show_quadrilaterals
-                    push!(forms,Compose.polygon(Vector([(p[1],p[2]) for p in tform(geom).points])))
+                    push!(polygon_pts,Vector([(p[1],p[2]) for p in tform(geom).points]))
                 end
             end
         elseif isa(geom_key,HyperrectangleKey)
             r = tform(geom_element)
-            push!(forms,Compose.rectangle(
-                    r.center[1]-r.radius[1],
-                    r.center[2]-r.radius[2],
-                    2*r.radius[1],
-                    2*r.radius[2],
-                ))
+            push!(polygon_pts,[
+                (r.center[1]-r.radius[1],r.center[2]-r.radius[2]),
+                (r.center[1]-r.radius[1],r.center[2]+r.radius[2]),
+                (r.center[1]+r.radius[1],r.center[2]+r.radius[2]),
+                (r.center[1]+r.radius[1],r.center[2]-r.radius[2]),
+            ])
         end
     end
     if _use_unit_box
@@ -459,20 +561,23 @@ function plot_base_geom_2d(node,scene_tree;
     else
         ctx = context()
     end
-    ctx = context()
     Compose.compose(
         ctx,
-        forms...,
+        Compose.polygon(polygon_pts),
         Compose.fill(fill_color),
-        Compose.stroke(stroke_color)
+        Compose.stroke(stroke_color),
         )
 end
-function unit_box_from_rect(r)
+function unit_box_from_rect(r;
+        pad=0.0,
+        xpad=(pad,pad),
+        ypad=(pad,pad),
+        )
     unit_box = UnitBox(
-        r.center[1]-r.radius[1],
-        r.center[2]-r.radius[2],
-        2*r.radius[1],
-        2*r.radius[2],
+        r.center[1]-r.radius[1]-xpad[1],
+        r.center[2]-r.radius[2]-ypad[1],
+        2*r.radius[1]+sum(xpad),
+        2*r.radius[2]+sum(ypad),
         )
 end
 function plot_assemblies(sched,scene_tree;
@@ -736,6 +841,77 @@ function visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;
             sleep(dt)
         end
     end
+end
+
+function render_model_spec_with_pictures(model_spec;
+        base_image_path="",
+        bg_color="white",
+        stroke_color="black",
+        use_original_coords=true,
+        picture_scale=2.0,
+        scale=1,
+        aspect_stretch=(1.0,1.0),
+        label_pos=(0.0,0.0),
+        label_fontsize=14pt,
+        label_radius=1cm,
+        label_bg_color=nothing,
+        label_stroke_color=nothing,
+        labels = Dict(),
+        kwargs...
+    )
+    plt_spec = GraphUtils.contract_by_predicate(model_spec,n->matches_template(BuildingStep,n))
+    plt = display_graph(plt_spec,scale=1) #,enforce_visited=true)
+    # match pictures to assembly names
+    counts = Dict()
+    file_names = Dict()
+    for n in node_iterator(plt_spec,topological_sort_by_dfs(plt_spec))
+        parent_name = node_val(n).parent
+        count = get!(counts,parent_name,1)
+        name_string = split(node_val(n).parent,".")[1]
+        filename = joinpath(base_image_path,string(name_string,@sprintf("%02i",count),".png"))
+        file_names[node_id(n)] = filename
+        counts[parent_name] = counts[parent_name] + 1
+    end
+    if use_original_coords
+        coords = GraphPlottingBFS.get_layout_coords(model_spec)
+        x = [coords[1][get_vtx(model_spec,id)] for id in get_vtx_ids(plt_spec)]
+        y = [coords[2][get_vtx(model_spec,id)] for id in get_vtx_ids(plt_spec)]
+    else
+        x,y = GraphPlottingBFS.get_layout_coords(plt_spec)
+    end
+
+    _color_func = (v,c)->haskey(labels,get_vtx_id(plt_spec,v)) ? c : nothing
+    
+    plt = display_graph(plt_spec,(x,y),
+        draw_node_function=(G,v)->Compose.compose(
+            Compose.context(),
+            (Compose.context(),
+                (context(),
+                    Compose.text(
+                        label_pos...,
+                        get(labels,get_vtx_id(plt_spec,v),""),
+                        hcenter,
+                        vcenter,
+                        ),
+                        Compose.fontsize(label_fontsize),
+                    ),
+                (context(),
+                    Compose.circle(label_pos...,label_radius),
+                        Compose.fill(_color_func(v,label_bg_color)),
+                        Compose.stroke(_color_func(v,label_stroke_color)),
+                        ),
+                ),
+            (Compose.context(),bitmap("image/png",read(file_names[get_vtx_id(G,v)]),
+                -(picture_scale-1.0)/2,
+                -(picture_scale-1.0)/2,
+                picture_scale,
+                picture_scale,
+                )),
+            (Compose.context(),circle(),fill(bg_color),Compose.stroke(stroke_color)),
+            ),
+        scale=scale,
+        aspect_stretch=aspect_stretch,
+    )
 end
 
 GraphUtils.get_id(s::String) = s

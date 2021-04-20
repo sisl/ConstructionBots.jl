@@ -855,6 +855,10 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
     end
     # Compute next staging circle by overapproximating the current bounding 
     # circle and the new geometry 
+    if haskey(staging_circles,node_id(assembly))
+        # carry over existing staging circle geometry
+        push!(tformed_geoms,staging_circles[node_id(assembly)])
+    end
     staging_circles[node_id(assembly)] = overapproximate(
         vcat(tformed_geoms,bounding_circles[node_id(assembly)]),
         Ball2{Float64,SVector{2,Float64}}
@@ -1213,6 +1217,7 @@ function init_transport_units!(scene_tree;
     for (id,pts) in cvx_hulls
         isempty(pts) ? continue : nothing
         cargo = get_node(scene_tree,id)
+        # @info "configuring transport unit for $(summary(id))"
         transport_unit = configure_transport_unit(cargo,pts;kwargs...)
         if has_vertex(scene_tree,node_id(transport_unit))
             @warn "scene tree already has node $(node_id(transport_unit))"
@@ -1220,7 +1225,7 @@ function init_transport_units!(scene_tree;
             add_node!(scene_tree,transport_unit)
         end
     end
-    scene_tree
+    scene_tree, cvx_hulls
 end
 
 """
@@ -1229,7 +1234,7 @@ end
 Define the transport unit for cargo. `pts` are the eligible support points
 """
 function configure_transport_unit(cargo,pts;
-        robot_radius = default_robot_radius(),
+        robot_radius = HG.default_robot_radius(),
         robot_height = default_robot_height(),
         optimize_carry_config = false,
     )
