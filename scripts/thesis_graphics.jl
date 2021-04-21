@@ -187,15 +187,15 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 @assert validate_schedule_transform_tree(sched)
 # sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,500)
 # display_graph(sched2,scale=1,enforce_visited=true)
-# display_graph(sched,scale=1) #,enforce_visited=true)
+display_graph(sched,scale=1) #,enforce_visited=true)
 
 ## Generate staging plan
 staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched;
     # buffer_radius = 3*HG.default_robot_radius(),
     # build_step_buffer_radius=HG.default_robot_radius()/2,
     build_step_buffer_radius=0.0,
-    buffer_radius = 0.0,
-)
+    buffer_radius = 0.0
+);
 # plot staging plan
 FR.set_render_param!(:Color,:Fill,:StagingCircle,nothing)
 FR.set_render_param!(:Color,:Fill,:BoundingCircle,nothing)
@@ -207,6 +207,7 @@ plt = plot_staging_plan_2d(sched,scene_tree,
     nominal_width=30cm,
     _show_bounding_circs=true,
     _show_dropoffs=true,
+    # _show_intermediate_stages=true,
     base_geom_layer=plot_assemblies(sched,scene_tree,
         fill_color=RGBA(0.9,0.9,0.9,0.9),
         stroke_color=RGBA(0.0,0.0,0.0,1.0),
@@ -218,6 +219,7 @@ plt = plot_staging_plan_2d(sched,scene_tree,
 # build more clear staging plan graphic
 circs = Dict()
 for n in node_iterator(sched,topological_sort_by_dfs(sched))
+# for n in node_iterator(sched,reverse(topological_sort_by_dfs(sched)))
     if matches_template(CloseBuildStep,n)
         circs[node_id(node_val(n).assembly)] = HG.project_to_2d(
             get_cached_geom(node_val(n).staging_circle)

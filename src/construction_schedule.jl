@@ -670,7 +670,12 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
     # Update assembly start points so that none of the staging regions overlap
     # TODO: Account for robot and transport unit size along the "highways" that
     # surround each staging area.
-    for node in node_iterator(scene_tree, reverse(topological_sort_by_dfs(scene_tree)))
+    # for node in node_iterator(scene_tree, reverse(topological_sort_by_dfs(scene_tree)))
+    for start_node in node_iterator(sched, topological_sort_by_dfs(sched))
+        if !matches_template(AssemblyComplete,start_node)
+            continue
+        end
+        node = entity(start_node)
         if matches_template(AssemblyNode,node)
             # Apply ring solver with child assemblies (not objects)
             assembly = node 
@@ -679,7 +684,7 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
             if isempty(part_ids) 
                 continue
             end
-            start_node = get_node(sched,AssemblyComplete(assembly))
+            # start_node = get_node(sched,AssemblyComplete(assembly))
             # staging_radii
             @assert haskey(staging_circles,node_id(assembly))
             staging_circle = staging_circles[node_id(assembly)]
@@ -715,7 +720,7 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
             # Compute staging config transforms (relative to parent assembly)
             tformed_geoms = Vector{Ball2}()
             for (i,(θ,r,part_id,part)) in enumerate(zip(θ_star,radii,part_ids,parts))
-                start_node = get_node(sched,AssemblyComplete(part))
+                part_start_node = get_node(sched,AssemblyComplete(part))
                 geom = staging_circles[part_id]
                 R = staging_radius + r
                 # shift by vector from geom.center to part origin
@@ -727,15 +732,18 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                 tform = t ∘ identity_linear_map() # AffineMap transform
                 # set transform of start node
                 # @info "Starting config: setting START config of $(node_id(start_node)) to $(tform)"
-                HG.set_local_transform_in_global_frame!(start_config(start_node),tform)
+                HG.set_local_transform_in_global_frame!(start_config(part_start_node),tform)
                 tform2D = CoordinateTransformations.Translation(t.translation[1:2]...)
                 push!(tformed_geoms,tform2D(geom)) 
             end
+            old_ball = staging_circles[node_id(assembly)]
             new_ball = overapproximate(
                 vcat(tformed_geoms,staging_circles[node_id(assembly)]),
                 Ball2{Float64,SVector{2,Float64}}
                 )
+            @assert new_ball.radius > old_ball.radius+norm(new_ball.center .- old_ball.center)
             staging_circles[node_id(assembly)] = new_ball
+            @info "Updating staging_circle for $(summary(node_id(assembly))) to $(staging_circles[node_id(assembly)])"
         end
     end
     sched
@@ -781,11 +789,6 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
         r = tu_geom.radius
         push!(geoms,tu_geom)
         # Store transformed geometry for staging placement optimization
-        # TODO should be using the transform unit geometry here---not just the cargo
-        # geom = HG.project_to_2d(tform(get_base_geom(part,HypersphereKey())))
-        # push!(geoms,geom)
-        # d = geom.center - bounding_circle.center
-        # r = geom.radius
         push!(θ_des, wrap_to_pi(atan(d[2],d[1])))
         push!(radii, r + build_step_buffer_radius)
     end
@@ -813,11 +816,6 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
         Δθ = θ_star .- θ_des
         if maximum(abs.(Δθ)) > 0.1
             @info "ring placement solution $(node_id(node))" assembly_radius radii θ_des θ_star Δθ
-            # @show assembly_radius
-            # @show radii
-            # @show θ_des
-            # @show θ_star
-            # @show Δθ
         end
     end
     # Compute staging config transforms (relative to parent assembly)
@@ -841,29 +839,27 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
                 0.0)
             # @show t
             # set start config of lift node - have to add the ∘ inv(tform) because lift_node's goal_config() is already at tform
-            # both of the lines below work
             tr = CT.Translation(tform.translation[1:2]..., 0.0)
             HG.set_local_transform_in_global_frame!(start_config(lift_node),t ∘ inv(tr))
-            # HG.set_local_transform_in_global_frame!(start_config(lift_node),t ∘ inv(tform))
-            # HG.set_local_transform_in_global_frame!(start_config(lift_node),t ∘ inv(local_transform(goal_config(lift_node))))
-            # HG.set_local_transform_in_global_frame!(start_config(lift_node),t)
         end
-
         # Store transformed geometry
         geom = HG.project_to_2d(t(get_base_geom(tu,HypersphereKey())))
         push!(tformed_geoms,geom)
     end
-    # Compute next staging circle by overapproximating the current bounding 
-    # circle and the new geometry 
+    # Compute next staging circle by overapproximating current bounding circle and new geometry 
     if haskey(staging_circles,node_id(assembly))
         # carry over existing staging circle geometry
         push!(tformed_geoms,staging_circles[node_id(assembly)])
     end
-    staging_circles[node_id(assembly)] = overapproximate(
+    old_ball = get(staging_circles,node_id(assembly),Ball2(zeros(SVector{2,Float64}),0.0))
+    new_ball = overapproximate(
         vcat(tformed_geoms,bounding_circles[node_id(assembly)]),
         Ball2{Float64,SVector{2,Float64}}
         )
+    @assert new_ball.radius + 1e-5 > old_ball.radius+norm(new_ball.center .- old_ball.center) "$(summary(node_id(assembly))) old ball $(old_ball), new_ball $(new_ball)"
+    staging_circles[node_id(assembly)] = new_ball
     # incorporate new bounding circle into OpenBuildStep
+    @info "Updating staging_circle for $(summary(node_id(assembly))) to $(staging_circles[node_id(assembly)]) based on $(summary(node_id(node)))"
     open_build_step.bounding_circle.base_geom = HG.project_to_3d(bounding_circles[node_id(node)])
     open_build_step.staging_circle.base_geom  = HG.project_to_3d(staging_circles[node_id(assembly)])
 
