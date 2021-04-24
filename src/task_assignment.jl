@@ -201,8 +201,6 @@ export GreedyOrderedAssignment
     cost_model::C               = SumOfMakeSpans()
     greedy_cost::M              = TaskGraphs.GreedyPathLengthCost()
     t0::Vector{Float64}         = get_tF(schedule)
-    # backward_depth::Vector{Int} = compute_backward_depth(schedule)
-    # ordering::Vector{Int}       = sortperm(backward_depth)
     # ordering_graph::DiGraph     = get_graph(greedy_set_precedence_graph(schedule))
     ordering_graph::DiGraph     = get_graph(construct_build_step_graph(schedule))
     ordering::Vector{Int}       = topological_sort_by_dfs(ordering_graph)
@@ -269,122 +267,120 @@ function construct_build_step_graph(sched)
     build_step_graph
 end
 
-"""
-    update_greedy_sets_enforce_order!(sched, cache, args...;kwargs...)
+# """
+#     update_greedy_sets_enforce_order!(sched, cache, args...;kwargs...)
 
-Requires that assignments be made in order--a task deeper in the schedule may 
-not be assigned until all tasks less deep in the schedule have been assigned.
-TODO: Update this to better handle distinct project sub-trees. The key sorting 
-criterion is not depth, but relative depth (i.e., don't make downstream 
-assignments until the upstream assignments have been made).
-"""
-function update_greedy_sets_enforce_order!(sched, cache, 
-        Ai=Set{Int}(), 
-        Ao=Set{Int}(), 
-        C=Set{Int}(), 
-        ;
-        backward_depth::Vector{Int}=compute_backward_depth(sched), 
-        ordering::Vector{Int}=sortperm(backward_depth), 
-        dmin::Int=nv(sched),
-        start::Int=1
-        )
-    for v in Base.Iterators.rest(ordering,start)
-        d = backward_depth[v]
-        # Not allowed to make assignments deeper in the schedule until earlier
-        # assignments have been made
-        while (d > dmin)
-            if (isempty(Ai) || isempty(Ao)) && length(C) < nv(sched)
-                dmin += 1 # Prevent premature return of an empty assignment set
-            else
-                break
-            end
-        end
-        if d <= dmin
-            if issubset(inneighbors(sched,v),C)
-                if indegree(sched,v) >= cache.n_required_predecessors[v]
-                    push!(C,v)
-                else
-                    push!(Ai,v)
-                end
-            else
-                dmin = d
-            end
-            if (outdegree(sched,v) < cache.n_eligible_successors[v]) && (v in C)
-                push!(Ao,v)
-            end
-        else
-            break
-        end
-    end
-    @info "|Ai| = $(length(Ai)), |Ao| = $(length(Ao)), |C| = $(length(C)), nv(sched) = $(nv(sched)), dmin = $dmin"
-    if (isempty(Ai) || isempty(Ao)) && length(C) < nv(sched)
-        @warn "Assignment problem is infeasible"
-    end
-    TaskGraphs.process_schedule!(sched)
-    return Ai, Ao, C
-end
+# Requires that assignments be made in order--a task deeper in the schedule may 
+# not be assigned until all tasks less deep in the schedule have been assigned.
+# TODO: Update this to better handle distinct project sub-trees. The key sorting 
+# criterion is not depth, but relative depth (i.e., don't make downstream 
+# assignments until the upstream assignments have been made).
+# """
+# function update_greedy_sets_enforce_order!(sched, cache, 
+#         Ai=Set{Int}(), 
+#         Ao=Set{Int}(), 
+#         C=Set{Int}(), 
+#         ;
+#         backward_depth::Vector{Int}=compute_backward_depth(sched), 
+#         ordering::Vector{Int}=sortperm(backward_depth), 
+#         dmin::Int=nv(sched),
+#         start::Int=1
+#         )
+#     for v in Base.Iterators.rest(ordering,start)
+#         d = backward_depth[v]
+#         # Not allowed to make assignments deeper in the schedule until earlier
+#         # assignments have been made
+#         while (d > dmin)
+#             if (isempty(Ai) || isempty(Ao)) && length(C) < nv(sched)
+#                 dmin += 1 # Prevent premature return of an empty assignment set
+#             else
+#                 break
+#             end
+#         end
+#         if d <= dmin
+#             if issubset(inneighbors(sched,v),C)
+#                 if indegree(sched,v) >= cache.n_required_predecessors[v]
+#                     push!(C,v)
+#                 else
+#                     push!(Ai,v)
+#                 end
+#             else
+#                 dmin = d
+#             end
+#             if (outdegree(sched,v) < cache.n_eligible_successors[v]) && (v in C)
+#                 push!(Ao,v)
+#             end
+#         else
+#             break
+#         end
+#     end
+#     @info "|Ai| = $(length(Ai)), |Ao| = $(length(Ao)), |C| = $(length(C)), nv(sched) = $(nv(sched)), dmin = $dmin"
+#     if (isempty(Ai) || isempty(Ao)) && length(C) < nv(sched)
+#         @warn "Assignment problem is infeasible"
+#     end
+#     TaskGraphs.process_schedule!(sched)
+#     return Ai, Ao, C
+# end
 
-"""
-    greedy_set_precedence_graph(sched)
+# """
+#     greedy_set_precedence_graph(sched)
 
-Returns a graph whose edges represent precedence constraints on which nodes may
-be added to the "eligible for assignment" sets in the course of an 
-AbstractGreedyAssignment algorithm. The basic idea is to ensure that no 
-`RobotGo` node is available for an incoming edge to be added until all 
-assignments preceding that node's parent `OpenBuildStep` node have been made.
-"""
-function greedy_set_precedence_graph(sched)
-    G = CustomNDiGraph{GraphUtils._node_type(sched),GraphUtils._id_type(sched)}()
-    # copy graph topology
-    for n in get_nodes(sched)
-        add_node!(G,n,node_id(n))
-    end
-    for edge in edges(sched)
-        add_edge!(G,get_vtx_id(sched,edge.src),get_vtx_id(sched,edge.dst))
-    end
-    close_step_map = backup_descendants(sched,n->matches_template(CloseBuildStep,n))
-    open_step_map = backup_descendants(sched,n->matches_template(OpenBuildStep,n))
-    close_step_groups = Dict{AbstractID,Vector{AbstractID}}() # node_id(CloseBuildStep) => [ancestor_ids...]
-    for (k,id) in close_step_map
-        if !(id === nothing)
-            push!(get!(close_step_groups,id,valtype(close_step_groups)()),k)
-        end
-    end
-
-    for n in filter(n->matches_template(OpenBuildStep,n), get_nodes(sched))
-        close_node_id = close_step_map[node_id(n)]
-        for id in close_step_groups[close_node_id]
-            if !(open_step_map[id] == node_id(n))
-                add_edge!(G,get_vtx(sched,node_id(n)),get_vtx(sched,id))
-            end
-        end
-    end
-    # for n in filter(n->matches_template(CloseBuildStep,n), get_nodes(sched))
-    #     blanket = GraphUtils.backward_cover(sched,node_id(n),np->matches_template(CloseBuildStep,np))
-    #     for np in blanket
-    #         add_edge!(G,np,OpenBuildStep(n.node))
-    #     end
-    # end
-
-    # for n in filter(n->matches_template(OpenBuildStep,n), get_nodes(sched))
-    #     for component in keys(assembly_components(n.node))
-    #         if matches_template(ObjectID,component)
-    #             cargo = ObjectNode(component,GeomNode(nothing))
-    #         else
-    #             @assert (matches_template(AssemblyID,component))
-    #             cargo = AssemblyNode(component,GeomNode(nothing))
-    #         end
-    #         form_transport_unit = get_node(sched,FormTransportUnit(TransportUnitNode(cargo)))
-    #         for np in node_iterator(sched,inneighbors(sched,form_transport_unit))
-    #             if matches_template(RobotGo,np)
-    #                 add_edge!(G,n,np)
-    #             end
-    #         end
-    #     end
-    # end
-    return G
-end
-greedy_set_precedence_ordering(sched) = topological_sort_by_dfs(greedy_set_precedence_graph(sched))
+# Returns a graph whose edges represent precedence constraints on which nodes may
+# be added to the "eligible for assignment" sets in the course of an 
+# AbstractGreedyAssignment algorithm. The basic idea is to ensure that no 
+# `RobotGo` node is available for an incoming edge to be added until all 
+# assignments preceding that node's parent `OpenBuildStep` node have been made.
+# """
+# function greedy_set_precedence_graph(sched)
+#     G = CustomNDiGraph{GraphUtils._node_type(sched),GraphUtils._id_type(sched)}()
+#     # copy graph topology
+#     for n in get_nodes(sched)
+#         add_node!(G,n,node_id(n))
+#     end
+#     for edge in edges(sched)
+#         add_edge!(G,get_vtx_id(sched,edge.src),get_vtx_id(sched,edge.dst))
+#     end
+#     close_step_map = backup_descendants(sched,n->matches_template(CloseBuildStep,n))
+#     open_step_map = backup_descendants(sched,n->matches_template(OpenBuildStep,n))
+#     close_step_groups = Dict{AbstractID,Vector{AbstractID}}() # node_id(CloseBuildStep) => [ancestor_ids...]
+#     for (k,id) in close_step_map
+#         if !(id === nothing)
+#             push!(get!(close_step_groups,id,valtype(close_step_groups)()),k)
+#         end
+#     end
+#     for n in filter(n->matches_template(OpenBuildStep,n), get_nodes(sched))
+#         close_node_id = close_step_map[node_id(n)]
+#         for id in close_step_groups[close_node_id]
+#             if !(open_step_map[id] == node_id(n))
+#                 add_edge!(G,get_vtx(sched,node_id(n)),get_vtx(sched,id))
+#             end
+#         end
+#     end
+#     # for n in filter(n->matches_template(CloseBuildStep,n), get_nodes(sched))
+#     #     blanket = GraphUtils.backward_cover(sched,node_id(n),np->matches_template(CloseBuildStep,np))
+#     #     for np in blanket
+#     #         add_edge!(G,np,OpenBuildStep(n.node))
+#     #     end
+#     # end
+#     # for n in filter(n->matches_template(OpenBuildStep,n), get_nodes(sched))
+#     #     for component in keys(assembly_components(n.node))
+#     #         if matches_template(ObjectID,component)
+#     #             cargo = ObjectNode(component,GeomNode(nothing))
+#     #         else
+#     #             @assert (matches_template(AssemblyID,component))
+#     #             cargo = AssemblyNode(component,GeomNode(nothing))
+#     #         end
+#     #         form_transport_unit = get_node(sched,FormTransportUnit(TransportUnitNode(cargo)))
+#     #         for np in node_iterator(sched,inneighbors(sched,form_transport_unit))
+#     #             if matches_template(RobotGo,np)
+#     #                 add_edge!(G,n,np)
+#     #             end
+#     #         end
+#     #     end
+#     # end
+#     return G
+# end
+# greedy_set_precedence_ordering(sched) = topological_sort_by_dfs(greedy_set_precedence_graph(sched))
 
 """
     update_greedy_sets_ordered!(sched, cache, args...;kwargs...)
@@ -465,33 +461,3 @@ function JuMP.optimize!(model::GreedyOrderedAssignment)
     TaskGraphs.greedy_assignment!(model)
     set_leaf_vtxs!(model.schedule,ProjectComplete)
 end
-
-# function greedy_assignment_with_ordered_build_steps!(model::GreedyOrderedAssignment,
-#         sched=model.schedule,
-#         scene_tree=model.problem_spec,
-#         )
-#     # Compute forward and backward depth 
-#     cache = preprocess_project_schedule(sched,true)
-#     backward_depth = model.backward_depth
-#     ordering = model.ordering
-#     # backward_depth = compute_backward_depth(sched)
-#     # ordering = sortperm(backward_depth)
-#     # Now require the order of assignments to respect the ordering of backward_depth
-#     Ai,Ao,C = update_greedy_sets_enforce_order!(sched,cache;
-#         backward_depth=backward_depth,
-#         ordering=ordering)
-#     D = TaskGraphs.construct_schedule_distance_matrix(sched,scene_tree)
-#     while length(Ai) > 0
-#         for (v,v2) in TaskGraphs.select_next_edges(model,D,Ao,Ai)
-#             setdiff!(Ao,v)
-#             setdiff!(Ai,v2)
-#             add_edge!(sched,v,v2)
-#             @info "$(string(node_id(get_node(sched,v)))), $(string(node_id(entity(get_node(sched,v))))) => $(string(node_id(get_node(sched,v2)))), $(string(node_id(entity(get_node(sched,v2)))))"
-#         end
-#         Ai,Ao,C = update_greedy_sets_enforce_order!(sched,cache,Ai,Ao,C,
-#             backward_depth=backward_depth,ordering=ordering)
-#     end
-#     set_leaf_operation_vtxs!(sched)
-#     propagate_valid_ids!(sched,scene_tree)
-#     model
-# end

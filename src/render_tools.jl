@@ -329,12 +329,14 @@ function animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,nodes=get_
             goal = goals[node_id(node)][goal_idx]
             tf_error = relative_transform(global_transform(node),goal)
             twist = optimal_twist(tf_error,v_max,ω_max,dt)
-            if norm(twist.vel) <= ϵ_v && norm(twist.ω) <= ϵ_ω
+            @show tf_error, twist
+            if norm(twist.vel) <= ϵ_v && norm(twist.ω) <= ϵ_ω || interp_idxs[node_id(node)] == 0
                 goal_idxs[node_id(node)] += 1
                 interp_idxs[node_id(node)] = interp_steps
             end
             if interp
                 isteps = interp_idxs[node_id(node)]
+                @show summary(node_id(node)), goal_idxs[node_id(node)], goal, isteps
                 @assert isteps > 0
                 tform = HG.interpolate_transforms(global_transform(node),goal,1.0/isteps)
                 interp_idxs[node_id(node)] -= 1
@@ -744,8 +746,10 @@ function animate_preprocessing_steps!(
         rect_nodes,
         ;
         dt_animate=0.0,
+        anim=nothing,
         dt=0.0,
-        anim=nothing
+        interp_steps=40,
+        kwargs...,
     )
 
     atframe(anim,current_frame(anim)) do
@@ -777,7 +781,11 @@ function animate_preprocessing_steps!(
     animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,
         filter(n->isa(n,AssemblyNode),get_nodes(scene_tree))
         ;
-        dt=dt, interp=true, interp_steps=40, anim=anim,
+        anim=anim,
+        interp=true, 
+        dt=dt, 
+        interp_steps=interp_steps, 
+        kwargs...
     )
     # Animate objects moving to their starting positions
     for n in get_nodes(scene_tree)

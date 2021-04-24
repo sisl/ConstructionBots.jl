@@ -124,7 +124,6 @@ let
     # draw(SVG(joinpath(graphics_path,"model_spec_with_pictures.svg")),plt)
 end
 
-
 ## CONSTRUCT SceneTree
 assembly_tree = ConstructionBots.construct_assembly_tree(model,model_spec,id_map)
 scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
@@ -251,7 +250,6 @@ end
 # render each node type to a separate file
 let
     render_node_types_and_table(sched,scene_tree;graphics_path=joinpath(graphics_path,"node_table"))
-
 end
 
 ## Generate staging plan
@@ -501,52 +499,53 @@ setvisible!(staging_nodes,true)
 setvisible!(sphere_nodes,false)
 setvisible!(rect_nodes,false)
 setvisible!(staging_nodes,false)
-render(vis)
+MeshCat.render(vis)
 
-HG.compute_approximate_geometries!(scene_tree,CylinderKey())
-cylinder_nodes = show_geometry_layer!(scene_tree,vis_nodes,CylinderKey())
-setvisible!(cylinder_nodes,false)
-HG.compute_approximate_geometries!(scene_tree,OctagonalPrismKey())
-prism_nodes = show_geometry_layer!(scene_tree,vis_nodes,OctagonalPrismKey())
-setvisible!(prism_nodes,false)
+let
+    HG.compute_approximate_geometries!(scene_tree,CylinderKey())
+    cylinder_nodes = show_geometry_layer!(scene_tree,vis_nodes,CylinderKey())
+    setvisible!(cylinder_nodes,false)
+    HG.compute_approximate_geometries!(scene_tree,OctagonalPrismKey())
+    prism_nodes = show_geometry_layer!(scene_tree,vis_nodes,OctagonalPrismKey())
+    setvisible!(prism_nodes,false)
 
-# Visualize overapproximated geometry
-a = get_node(scene_tree,AssemblyID(1))
-geom = recurse_child_geometry(a,scene_tree,BaseGeomKey())
-P = overapproximate(geom,HG.BufferedPolygonPrism(HG.regular_buffered_polygon(8,1.0;buffer=0.1)),0.01)
-C = overapproximate(geom,Cylinder)
-S = overapproximate(geom,Ball2{Float64,SVector{3,Float64}})
-p_color = RGBA(1.0,0.7,0.0)
-setobject!(vis[:prism_overapprox][:solid],GeometryBasics.Mesh(coordinates(P),faces(P)),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
-setobject!(vis[:prism_overapprox][:wireframe],HG.get_wireframe_mesh(P),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
-setobject!(vis[:cylinder][:solid],C,MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
-setobject!(vis[:cylinder][:wireframe],HG.get_wireframe_mesh(C),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
-setobject!(vis[:sphere][:solid],convert(HyperSphere,S),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
-setobject!(vis[:sphere][:wireframe],convert(HyperSphere,S),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=1pt))
+    # Visualize overapproximated geometry
+    a = get_node(scene_tree,AssemblyID(1))
+    geom = recurse_child_geometry(a,scene_tree,BaseGeomKey())
+    P = overapproximate(geom,HG.BufferedPolygonPrism(HG.regular_buffered_polygon(8,1.0;buffer=0.1)),0.01)
+    C = overapproximate(geom,Cylinder)
+    S = overapproximate(geom,Ball2{Float64,SVector{3,Float64}})
+    p_color = RGBA(1.0,0.7,0.0)
+    setobject!(vis[:prism_overapprox][:solid],GeometryBasics.Mesh(coordinates(P),faces(P)),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
+    setobject!(vis[:prism_overapprox][:wireframe],HG.get_wireframe_mesh(P),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
+    setobject!(vis[:cylinder][:solid],C,MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
+    setobject!(vis[:cylinder][:wireframe],HG.get_wireframe_mesh(C),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
+    setobject!(vis[:sphere][:solid],convert(HyperSphere,S),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
+    setobject!(vis[:sphere][:wireframe],convert(HyperSphere,S),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=1pt))
 
-# visualize overapproximated geometry of a transform unit
-o = get_node(scene_tree,ObjectID(6))
-tu = get_node(scene_tree,TransportUnitNode(o))
-set_child!(scene_tree,tu,node_id(o))
-setvisible!(vis_nodes,false)
-setvisible!(vis_nodes[node_id(o)],true)
-setvisible!(vis_nodes[node_id(tu)],true)
-for (id,tform) in robot_team(tu)
-    setvisible!(vis_nodes[id],true)
-    set_child!(scene_tree,tu,id)
+    # visualize overapproximated geometry of a transform unit
+    o = get_node(scene_tree,ObjectID(6))
+    tu = get_node(scene_tree,TransportUnitNode(o))
+    set_child!(scene_tree,tu,node_id(o))
+    setvisible!(vis_nodes,false)
+    setvisible!(vis_nodes[node_id(o)],true)
+    setvisible!(vis_nodes[node_id(tu)],true)
+    for (id,tform) in robot_team(tu)
+        setvisible!(vis_nodes[id],true)
+        set_child!(scene_tree,tu,id)
+    end
+    update_visualizer!(scene_tree,vis_nodes)
+    P = get_cached_geom(tu,OctagonalPrismKey())
+    C = get_cached_geom(tu,CylinderKey())
+    S = get_cached_geom(tu,HypersphereKey())
+    p_color = RGBA(1.0,0.7,0.0)
+    setobject!(vis[:prism_overapprox][:solid],GeometryBasics.Mesh(coordinates(P),faces(P)),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
+    setobject!(vis[:prism_overapprox][:wireframe],HG.get_wireframe_mesh(P),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
+    setobject!(vis[:cylinder][:solid],C,MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
+    setobject!(vis[:cylinder][:wireframe],HG.get_wireframe_mesh(C),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
+    setobject!(vis[:sphere][:solid],convert(HyperSphere,S),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
+    setobject!(vis[:sphere][:wireframe],convert(HyperSphere,S),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=1pt))
 end
-update_visualizer!(scene_tree,vis_nodes)
-P = get_cached_geom(tu,OctagonalPrismKey())
-C = get_cached_geom(tu,CylinderKey())
-S = get_cached_geom(tu,HypersphereKey())
-p_color = RGBA(1.0,0.7,0.0)
-setobject!(vis[:prism_overapprox][:solid],GeometryBasics.Mesh(coordinates(P),faces(P)),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
-setobject!(vis[:prism_overapprox][:wireframe],HG.get_wireframe_mesh(P),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
-setobject!(vis[:cylinder][:solid],C,MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
-setobject!(vis[:cylinder][:wireframe],HG.get_wireframe_mesh(C),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
-setobject!(vis[:sphere][:solid],convert(HyperSphere,S),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
-setobject!(vis[:sphere][:wireframe],convert(HyperSphere,S),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=1pt))
-
 
 # restore correct configuration
 HG.jump_to_final_configuration!(scene_tree;set_edges=true)
@@ -560,6 +559,7 @@ update_visualizer!(scene_tree,vis_nodes)
 
 # render video!
 anim = AnimationWrapper(0)
+# anim = nothing
 atframe(anim,current_frame(anim)) do
     HG.jump_to_final_configuration!(scene_tree;set_edges=true)
     update_visualizer!(scene_tree,vis_nodes)
@@ -578,6 +578,7 @@ animate_preprocessing_steps!(
         dt_animate=0.0,
         dt=0.0,
         anim=anim,
+        interp_steps=40,
     )
 setanimation!(vis,anim.anim)
 render(vis)
@@ -602,7 +603,6 @@ active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
 ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 
 update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,staging_nodes;
-    # anim=nothing,
     anim=anim,
     )
 
