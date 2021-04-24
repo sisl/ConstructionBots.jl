@@ -1,6 +1,7 @@
-function extract_small_sched_for_plotting(sched,LIM=100)
+function extract_small_sched_for_plotting(sched,LIM=100;
+        frontier = collect(get_all_terminal_nodes(sched))
+    )
     sched2 = typeof(sched)()
-    frontier = collect(get_all_terminal_nodes(sched))
     explored = Set{Int}()
     while length(explored) < LIM && !isempty(frontier)
         v = popfirst!(frontier)

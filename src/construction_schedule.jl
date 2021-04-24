@@ -691,7 +691,8 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
             staging_radius = staging_circle.radius + buffer_radius
             ring_radius = -1
             parts = (get_node(scene_tree,part_id) for part_id in part_ids)
-            radii = [staging_circles[id].radius for id in part_ids]
+            # radii = [staging_circles[id].radius for id in part_ids]
+            radii = [staging_circles[id].radius + buffer_radius/2 for id in part_ids]
             θ_des = Vector{Float64}()
             θ_star = nothing
             # repeat to ensure correct alignment
@@ -1017,6 +1018,20 @@ function transport_sequence_sanity_check(sched,cargo)
     return 
 end
 
+"""
+    get_max_object_transport_unit_radius(scene_tree,key=HypersphereKey())
+"""
+function get_max_object_transport_unit_radius(scene_tree,key=HypersphereKey())
+    r = 0.0
+    for n in get_nodes(scene_tree)
+        if matches_template(TransportUnitNode,n)
+            if matches_template(ObjectNode,cargo_type(n))
+                r = max(r, get_base_geom(n,key).radius)
+            end
+        end
+    end
+    return r
+end
 
 export set_scene_tree_to_initial_condition!
 

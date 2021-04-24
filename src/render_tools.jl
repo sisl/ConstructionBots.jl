@@ -357,6 +357,28 @@ function staging_plan_bbox(staging_circs)
     yhi = maximum(c.center[2]+c.radius for (k,c) in staging_circs)
     GeometryBasics.Rect2D(xlo,ylo,xhi-xlo,yhi-ylo)
 end
+staging_plan_bbox(sched::AbstractGraph) = staging_plan_bbox(extract_build_step_staging_circles(sched))
+
+function extract_build_step_staging_circles(sched)
+    circs = Dict()
+    for n in get_nodes(sched)
+        if matches_template(CloseBuildStep,n)
+            circs[node_id(n)] = get_cached_geom(node_val(n).staging_circle)
+        end
+    end
+    circs
+end
+
+function transform_final_assembly_staging_circles(sched,scene_tree,staging_circles)
+    circs = Dict()
+    for (k,v) in staging_circles
+        tform = global_transform(goal_config(get_node(sched,
+            AssemblyComplete(get_node(scene_tree,k)))))
+        circ = LazySets.translate(v,tform.translation[1:2])
+        circs[k] = circ
+    end
+    circs
+end
 
 """
     plot_staging_plan_2d(sched,scene_tree;
@@ -384,13 +406,16 @@ function plot_staging_plan_2d(sched,scene_tree;
         _show_base_geom=true,
         base_geom_layer=plot_assemblies(sched,scene_tree),
         bg_color="white",
+        text_placement_func=circ->circ.center[1:2],
+        node_list=node_iterator(sched,topological_sort_by_dfs(sched)),
+        bbox = staging_plan_bbox(sched),
     )
     staging_circs = []
     final_staging_circs = []
     bounding_circs = []
     dropoff_circs = []
     base_geoms = []
-    for n in node_iterator(sched,topological_sort_by_dfs(sched))
+    for n in node_list
         if matches_template(CloseBuildStep,n)
             # if _show_intermediate_stages
                 push!(staging_circs,node_id(n) => get_cached_geom(node_val(n).staging_circle))
@@ -419,18 +444,18 @@ function plot_staging_plan_2d(sched,scene_tree;
             end
         end
     end
-    bbox = staging_plan_bbox(staging_circs)
+    # bbox = staging_plan_bbox(staging_circs)
     bg_ctx = (context(),Compose.rectangle(),Compose.fill(bg_color))
     Compose.set_default_graphic_size(nominal_width,(bbox.widths[2]/bbox.widths[1])*nominal_width)
     text_ctx = (context(),
         Compose.fontsize(_fontsize),
-            (context(),[Compose.text(c.center[1],c.center[2],
+            (context(),[Compose.text(text_placement_func(c)...,
                 string(get_id(node_id(node_val(get_node(sched,k)).assembly))),
                 hcenter,vcenter,
                 ) for (k,c) in final_staging_circs]...,
             Compose.fill(_stage_label_color),
             ),
-            (context(),[Compose.text(c.center[1],c.center[2],
+            (context(),[Compose.text(text_placement_func(c)...,
                 string(get_id(k)),
                 hcenter,vcenter,
                 ) for (k,c) in dropoff_circs if _show_dropoffs]...,
@@ -438,6 +463,16 @@ function plot_staging_plan_2d(sched,scene_tree;
             ),
         )
     circles_ctx = (context(),
+        (context(),
+        [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in final_staging_circs]...,
+        Compose.stroke(_final_stage_stroke_color),
+        Compose.fill(_final_stage_bg_color),
+        ),
+        (context(),
+        [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in staging_circs if _show_intermediate_stages]...,
+        Compose.stroke(_stage_stroke_color),
+        Compose.fill(_stage_bg_color),
+        ),
         (context(),
         [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in dropoff_circs]...,
         Compose.stroke(_dropoff_stroke_color),
@@ -448,21 +483,11 @@ function plot_staging_plan_2d(sched,scene_tree;
         Compose.stroke(_bounding_stroke_color),
         Compose.fill(_bounding_bg_color),
         ),
-        (context(),
-        [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in final_staging_circs]...,
-        Compose.stroke(_final_stage_stroke_color),
-        Compose.fill(_final_stage_bg_color),
-        ),
-        (context(),
-        [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in staging_circs if _show_intermediate_stages]...,
-        Compose.stroke(_stage_stroke_color),
-        Compose.fill(_stage_bg_color),
-        )
     )
     Compose.compose(
         context(units=UnitBox(bbox.origin...,bbox.widths...)),
-        base_geom_layer,
         text_ctx,
+        base_geom_layer,
         circles_ctx,
         bg_ctx,
     )
@@ -592,6 +617,117 @@ function plot_assemblies(sched,scene_tree;
         end
     end
     Compose.compose(base_ctx,ctxs...)
+end
+
+function render_node_types_and_table(
+        sched,scene_tree;
+        graphics_path=pwd(),
+        robot=get_node(scene_tree,RobotID(1)),
+        object=get_node(scene_tree,ObjectID(1)),
+        assembly=get_node(scene_tree,AssemblyID(2)),
+        tu = get_node(scene_tree,TransportUnitNode(assembly)),
+    )
+    mkpath(graphics_path)
+    r = get_node(sched,RobotStart(robot))
+    rg = get_node(sched,outneighbors(sched,r)[1])
+    o = get_node(sched,ObjectStart(object))
+    s = get_node(sched,AssemblyStart(assembly))
+    c, f, tg, d, l = ConstructionBots.get_transport_node_sequence(sched,assembly)
+    cb = get_node(sched,inneighbors(sched,c)[1])
+    ob = get_node(sched,OpenBuildStep(node_val(cb)))
+    p = get_node(sched,ProjectComplete(1))
+
+    set_default_graphic_size(5cm,5cm)
+    paths = Dict()
+    for n in [r,rg,o,s,f,tg,d,l,c,p,ob,cb]
+        plt = draw_node(n;subtitle_text="",title_scale=0.5)
+        display(plt)
+        path = joinpath(graphics_path,string(typeof(node_val(n)).name,".pdf"))
+        paths[string(typeof(node_val(n)).name)] = path
+        paths[node_id(n)] = path
+        # draw node
+        draw(PDF(path),plt)
+    end
+    # build table with required predecessos and successors
+    neighbor_dict = Dict()
+    xkeys = []
+    name_func(k) = string("\\schednodeinline{$(paths[string(k)])}")
+    # for n in [r,rg,o,s,f,tg,d,l,c,p,ob,cb]
+    for n in [p,o,s,c,ob,cb,r,rg,f,tg,d,l]
+        nname = name_func(typeof(node_val(n)).name)
+        push!(xkeys,Dict(:type=>nname))
+        my_dict = neighbor_dict[nname] = Dict()
+        for (neighbor_list,neighbor_key) in [
+                (required_predecessors(sched,n), "\\textsc{Req. Pred.}"),
+                (required_successors(sched,n), "\\textsc{Req. Succ.}"),
+                (eligible_predecessors(sched,n), "\\textsc{El. Pred.}"),
+                (required_successors(sched,n), "\\textsc{El. Succ.}"),
+            ]
+            pred_strings = []
+            for (k,v) in neighbor_list
+                if v > 1
+                    v = "\\textsc{variable}"
+                end
+                if isa(k,Union)
+                    type_key = k
+                    pred_list = []
+                    while isa(type_key,Union)
+                        push!(pred_list,name_func(type_key.a))
+                        type_key = type_key.b
+                    end 
+                    push!(pred_list,name_func(type_key))
+                    push!(pred_strings,string(join(pred_list," / ")," \$\\times\$ $v"))
+                else
+                    push!(pred_strings,string(name_func(k)," \$\\times\$ $v"))
+                end
+            end
+            my_dict[neighbor_key] = ""
+            if length(pred_strings) > 0
+                cell_tab = init_table(
+                    [Dict(:row=>k) for k in 1:length(pred_strings)],
+                    [Dict(:col=>1)],
+                )
+                for (k,p) in enumerate(pred_strings)
+                    cell_tab.data[k] = p
+                end
+                io = IOBuffer()
+                print(io,"{\\renewcommand{\\arraystretch}{1.0}\n")
+                write_tex_table(io,cell_tab;
+                    print_func=print_real,
+                    print_row_start=false,
+                    print_column_labels=false,
+                    alignspec="t"
+                )
+                print(io,"}\n")
+                my_dict[neighbor_key] = String(take!(io))
+            end
+            # my_dict[neighbor_key] = join(pred_strings,"; ")
+        end
+    end
+    # @show neighbor_dict
+    # xkeys = [Dict(:type=>k) for k in sort(collect(keys(neighbor_dict)))]
+    ykeys = [Dict(:direction=>k) for k in sort(collect(keys(collect(values(neighbor_dict))[1])))]
+    tab = init_table(xkeys,ykeys)
+    for (i,xdict) in enumerate(get_xkeys(tab))
+        k = xdict[:type]
+        dict = neighbor_dict[k]
+        for (j,ydict) in enumerate(get_ykeys(tab))
+            tab.data[i,j] = dict[ydict[:direction]]
+        end
+    end
+    # tab.data
+    # io = IOBuffer()
+    # write_tex_table(io,tab;
+    #     print_func=print)
+    # println(String(take!(io)))
+    write_tex_table(joinpath(graphics_path,"node_table.tex"),tab;
+        # print_func=print,
+        print_func=print_real,
+        row_label_func=(k,v)->"\$$(v)\$",
+        col_label_func=(k,v)->"\$$(v)\$",
+        alignspec="t",
+        group_delim=" ",
+        )
 end
 
 
@@ -929,8 +1065,8 @@ GraphPlottingBFS._title_string(::SubModelPlan)          = "M"
 GraphPlottingBFS._title_string(n::ConstructionBots.EntityConfigPredicate) = _title_string(n.entity)
 GraphPlottingBFS._title_string(::ConstructionBots.RobotStart)        = "R"
 GraphPlottingBFS._title_string(n::ConstructionBots.ObjectStart)      = "O"
-GraphPlottingBFS._title_string(::ConstructionBots.AssemblyStart)     = "M"
-GraphPlottingBFS._title_string(::ConstructionBots.AssemblyComplete)  = "M"
+GraphPlottingBFS._title_string(::ConstructionBots.AssemblyStart)     = "sA"
+GraphPlottingBFS._title_string(::ConstructionBots.AssemblyComplete)  = "cA"
 GraphPlottingBFS._title_string(::ConstructionBots.OpenBuildStep)     = "oB"
 GraphPlottingBFS._title_string(::ConstructionBots.CloseBuildStep)    = "cB"
 GraphPlottingBFS._title_string(::ConstructionBots.RobotGo)           = "G"
@@ -944,11 +1080,16 @@ for op in (
     :(GraphPlottingBFS._node_shape),
     :(GraphPlottingBFS._node_color),
     :(GraphPlottingBFS._title_string),
-    :(GraphPlottingBFS._subtitle_string)
+    :(GraphPlottingBFS._subtitle_string),
+    :(GraphPlottingBFS._subtitle_text_scale),
+    :(GraphPlottingBFS._title_text_scale)
     )
     @eval $op(n::CustomNode,args...) = $op(node_val(n),args...)
     @eval $op(n::ScheduleNode,args...) = $op(n.node,args...)
 end
+
+GraphPlottingBFS._subtitle_text_scale(n::Union{ConstructionPredicate,SceneNode}) = 0.28
+GraphPlottingBFS._title_text_scale(n::Union{ConstructionPredicate,SceneNode}) = 0.28
 # GraphPlottingBFS._node_shape(n::CustomNode,args...) = GraphPlottingBFS._node_shape(node_val(n),args...)
 # GraphPlottingBFS._node_color(n::CustomNode,args...) = GraphPlottingBFS._node_color(node_val(n),args...)
 # GraphPlottingBFS._title_string(n::CustomNode,args...) = GraphPlottingBFS._title_string(node_val(n),args...)
@@ -959,7 +1100,8 @@ GraphPlottingBFS._subtitle_string(n::BuildPhasePredicate) = GraphPlottingBFS._su
 GraphPlottingBFS._subtitle_string(n::ObjectNode) = "o$(get_id(node_id(n)))"
 GraphPlottingBFS._subtitle_string(n::RobotNode) = "r$(get_id(node_id(n)))"
 GraphPlottingBFS._subtitle_string(n::AssemblyNode) = "a$(get_id(node_id(n)))"
-GraphPlottingBFS._subtitle_string(n::TransportUnitNode) = "t$(get_id(node_id(n)))"
+GraphPlottingBFS._subtitle_string(n::TransportUnitNode) = cargo_type(n) == AssemblyNode ? "a$(get_id(node_id(n)))" : "o$(get_id(node_id(n)))"
+
 
 SPACE_GRAY = RGB(0.2,0.2,0.2)
 BRIGHT_RED = RGB(0.6,0.0,0.2)
