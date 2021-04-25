@@ -96,32 +96,32 @@ plt = display_graph(model_spec,scale=1,aspect_stretch=(1.2,1.0)) #,enforce_visit
 
 # Render the model spec with pictures of the assembly stages
 let
-    labels = Dict()
-    for n in get_nodes(model_spec)
-        if matches_template(BuildingStep,n)
-            for np in node_iterator(model_spec, outneighbors(model_spec,n))
-                if matches_template(SubModelPlan,np)
-                    labels[node_id(n)] = string("A",get_id(id_map[node_val(n).parent]))
-                    labels[id_map[node_val(n).parent]] = labels[node_id(n)]
-                    break
-                end
-            end
-        end
-    end
-    plt = render_model_spec_with_pictures(model_spec,
-        base_image_path=joinpath(dirname(pathof(LDrawParser)),"..","assets","tractor"),
-        scale=4,
-        aspect_stretch=(0.8,0.4),
-        picture_scale=1.8,
-        labels = labels,
-        label_pos = (0.1,0.1),
-        label_fontsize = 18pt,
-        label_radius = 0.6cm,
-        label_bg_color = RGB(0.9,0.9,0.9),
-        label_stroke_color = "black",
-        )
-    # convert to pdf later
-    # draw(SVG(joinpath(graphics_path,"model_spec_with_pictures.svg")),plt)
+    # labels = Dict()
+    # for n in get_nodes(model_spec)
+    #     if matches_template(BuildingStep,n)
+    #         for np in node_iterator(model_spec, outneighbors(model_spec,n))
+    #             if matches_template(SubModelPlan,np)
+    #                 labels[node_id(n)] = string("A",get_id(id_map[node_val(n).parent]))
+    #                 labels[id_map[node_val(n).parent]] = labels[node_id(n)]
+    #                 break
+    #             end
+    #         end
+    #     end
+    # end
+    # plt = render_model_spec_with_pictures(model_spec,
+    #     base_image_path=joinpath(dirname(pathof(LDrawParser)),"..","assets","tractor"),
+    #     scale=4,
+    #     aspect_stretch=(0.8,0.4),
+    #     picture_scale=1.8,
+    #     labels = labels,
+    #     label_pos = (0.1,0.1),
+    #     label_fontsize = 18pt,
+    #     label_radius = 0.6cm,
+    #     label_bg_color = RGB(0.9,0.9,0.9),
+    #     label_stroke_color = "black",
+    #     )
+    # # convert to pdf later
+    # # draw(SVG(joinpath(graphics_path,"model_spec_with_pictures.svg")),plt)
 end
 
 ## CONSTRUCT SceneTree
@@ -160,23 +160,25 @@ HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
 @assert all(map(node->has_vertex(node.geom_hierarchy,HyperrectangleKey()), get_nodes(scene_tree)))
 
 # render transport units 2D
-# base_rect2d = get_base_geom(get_node(scene_tree,TransportUnitNode(AssemblyID(1))),HyperrectangleKey())
-# for n in get_nodes(scene_tree)
-#     if matches_template(TransportUnitNode,n)
-#         cargo = get_node(scene_tree,cargo_id(n))
-#         plt = render_transport_unit_2d(scene_tree,n,cvx_hulls[node_id(cargo)],
-#             hull_thickness=0.015,
-#             line_thickness=0.0025,
-#             rect2d = Hyperrectangle(get_base_geom(n,HyperrectangleKey()).center,base_rect2d.radius),
-#             xpad = (0.2,0.2),
-#             ypad = (0.2,0.2),
-#             )
-#         outpath = joinpath(graphics_path,"transport_configs")
-#         mkpath(outpath)
-#         filename = joinpath(outpath,"$(typeof(cargo))_$(get_id(node_id(cargo))).pdf")
-#         draw(PDF(filename),plt)
-#     end
-# end
+let
+    # base_rect2d = get_base_geom(get_node(scene_tree,TransportUnitNode(AssemblyID(1))),HyperrectangleKey())
+    # for n in get_nodes(scene_tree)
+    #     if matches_template(TransportUnitNode,n)
+    #         cargo = get_node(scene_tree,cargo_id(n))
+    #         plt = render_transport_unit_2d(scene_tree,n,cvx_hulls[node_id(cargo)],
+    #             hull_thickness=0.015,
+    #             line_thickness=0.0025,
+    #             rect2d = Hyperrectangle(get_base_geom(n,HyperrectangleKey()).center,base_rect2d.radius),
+    #             xpad = (0.2,0.2),
+    #             ypad = (0.2,0.2),
+    #             )
+    #         outpath = joinpath(graphics_path,"transport_configs")
+    #         mkpath(outpath)
+    #         filename = joinpath(outpath,"$(typeof(cargo))_$(get_id(node_id(cargo))).pdf")
+    #         draw(PDF(filename),plt)
+    #     end
+    # end
+end
 
 # Remove temporary dummy robots ############################
 ConstructionBots.remove_temporary_invalid_robots!(scene_tree)
@@ -187,69 +189,76 @@ HG.jump_to_final_configuration!(scene_tree;set_edges=true)
 sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
 # Check if schedule graph and embedded transform tree are valid
 @assert validate_schedule_transform_tree(sched)
+# display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
+
+## Construct Partial Schedule
+HG.jump_to_final_configuration!(scene_tree;set_edges=true)
+sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
+# Check if schedule graph and embedded transform tree are valid
+@assert validate_schedule_transform_tree(sched)
 let
-    sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,25;
-        frontier=[get_vtx(sched,ProjectComplete(1))],
-        )
-    plt = display_graph(sched2,scale=1,grow_mode=:from_left)
-    display(plt)
-    draw(PDF(joinpath(graphics_path,"sub_schedule_top.pdf")),plt)
-    for a in [2,4,6]
-        sched3 = ConstructionBots.extract_small_sched_for_plotting(sched,55;
-            frontier=[get_vtx(sched,AssemblyComplete(get_node(scene_tree,AssemblyID(a)))),
-                [get_vtx(sched,outneighbors(sched,get_node(sched,RobotStart(
-                    get_node(scene_tree,RobotID(i)))))[1]) for i in [1]]...,
-            ],
-            )
-        let
-            _node_type_check(n) = matches_template((ObjectStart,AssemblyStart,AssemblyComplete,FormTransportUnit,TransportUnitGo,DepositCargo,LiftIntoPlace),n)
-            plt = display_graph(sched3,scale=1,grow_mode=:from_left,
-                align_mode=:root_aligned,
-                draw_node_function=(G,v)->draw_node(get_node(G,v);
-                    title_text= _node_type_check(get_node(G,v)
-                        ) ? string(GraphPlottingBFS._title_string(get_node(G,v)),"$(get_id(node_id(get_node(G,v))))") : GraphPlottingBFS._title_string(get_node(G,v)),
-                    subtitle_text="",
-                    title_scale = _node_type_check(get_node(G,v)
-                        ) ? GraphPlottingBFS._title_text_scale(get_node(G,v)) : 0.45,
-                ),
-                pad=(0.0,0.0),
-            ) 
-            display(plt)
-            draw(PDF(joinpath(graphics_path,"sub_schedule_assembly$(a).pdf")),plt)
-        end
-        codes = unique([GraphPlottingBFS._subtitle_string(n) for n in get_nodes(sched3)])
-        cmap = distinguishable_colors(length(codes),lchoices=[50],cchoices=[30])
-        color_dict = Dict(k=>c for (k,c) in zip(codes,cmap))
-        bg_map = Dict('o'=>"white",'r'=>RGB(0.6,0.6,0.8),'a'=>RGB(0.8,0.8,0.8))
-        plt = display_graph(sched3,scale=1,grow_mode=:from_left,
-            draw_node_function=(G,v)->draw_node(get_node(G,v);
-                subtitle_text="",
-                text_color="black",
-                # bg_color= findfirst("o",GraphPlottingBFS._subtitle_string(get_node(G,v))) === nothing ? RGB(0.8,0.8,0.8) : "white",
-                bg_color= bg_map[GraphPlottingBFS._subtitle_string(get_node(G,v))[1]],
-                title_scale=0.45,
-                node_color=color_dict[GraphPlottingBFS._subtitle_string(get_node(G,v))],
-            )
-        )
-        display(plt)
-        draw(PDF(joinpath(graphics_path,"sub_schedule_assembly$(a)_colored.pdf")),plt)
-    end
-    sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,500;
-        frontier=[get_vtx(sched,ProjectComplete(1))],
-        )
-    plt = display_graph(sched2,scale=1,grow_mode=:from_left,
-        draw_node_function=(G,v)->GraphPlottingBFS.draw_node(get_node(G,v);
-            subtitle_text="",title_scale=0.4),
-            align_mode=:split_aligned,
-    ) 
-    display(plt)
-    draw(PDF(joinpath(graphics_path,"schedule_unassigned.pdf")),plt)
+    # sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,25;
+    #     frontier=[get_vtx(sched,ProjectComplete(1))],
+    #     )
+    # plt = display_graph(sched2,scale=1,grow_mode=:from_left)
+    # display(plt)
+    # draw(PDF(joinpath(graphics_path,"sub_schedule_top.pdf")),plt)
+    # for a in [2,4,6]
+    #     sched3 = ConstructionBots.extract_small_sched_for_plotting(sched,55;
+    #         frontier=[get_vtx(sched,AssemblyComplete(get_node(scene_tree,AssemblyID(a)))),
+    #             [get_vtx(sched,outneighbors(sched,get_node(sched,RobotStart(
+    #                 get_node(scene_tree,RobotID(i)))))[1]) for i in [1]]...,
+    #         ],
+    #         )
+    #     let
+    #         _node_type_check(n) = matches_template((ObjectStart,AssemblyStart,AssemblyComplete,FormTransportUnit,TransportUnitGo,DepositCargo,LiftIntoPlace),n)
+    #         plt = display_graph(sched3,scale=1,grow_mode=:from_left,
+    #             align_mode=:root_aligned,
+    #             draw_node_function=(G,v)->draw_node(get_node(G,v);
+    #                 title_text= _node_type_check(get_node(G,v)
+    #                     ) ? string(GraphPlottingBFS._title_string(get_node(G,v)),"$(get_id(node_id(get_node(G,v))))") : GraphPlottingBFS._title_string(get_node(G,v)),
+    #                 subtitle_text="",
+    #                 title_scale = _node_type_check(get_node(G,v)
+    #                     ) ? GraphPlottingBFS._title_text_scale(get_node(G,v)) : 0.45,
+    #             ),
+    #             pad=(0.0,0.0),
+    #         ) 
+    #         display(plt)
+    #         draw(PDF(joinpath(graphics_path,"sub_schedule_assembly$(a).pdf")),plt)
+    #     end
+    #     codes = unique([GraphPlottingBFS._subtitle_string(n) for n in get_nodes(sched3)])
+    #     cmap = distinguishable_colors(length(codes),lchoices=[50],cchoices=[30])
+    #     color_dict = Dict(k=>c for (k,c) in zip(codes,cmap))
+    #     bg_map = Dict('o'=>"white",'r'=>RGB(0.6,0.6,0.8),'a'=>RGB(0.8,0.8,0.8))
+    #     plt = display_graph(sched3,scale=1,grow_mode=:from_left,
+    #         draw_node_function=(G,v)->draw_node(get_node(G,v);
+    #             subtitle_text="",
+    #             text_color="black",
+    #             # bg_color= findfirst("o",GraphPlottingBFS._subtitle_string(get_node(G,v))) === nothing ? RGB(0.8,0.8,0.8) : "white",
+    #             bg_color= bg_map[GraphPlottingBFS._subtitle_string(get_node(G,v))[1]],
+    #             title_scale=0.45,
+    #             node_color=color_dict[GraphPlottingBFS._subtitle_string(get_node(G,v))],
+    #         )
+    #     )
+    #     display(plt)
+    #     draw(PDF(joinpath(graphics_path,"sub_schedule_assembly$(a)_colored.pdf")),plt)
+    # end
+    # sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,500;
+    #     frontier=[get_vtx(sched,ProjectComplete(1))],
+    #     )
+    # plt = display_graph(sched2,scale=1,grow_mode=:from_left,
+    #     draw_node_function=(G,v)->GraphPlottingBFS.draw_node(get_node(G,v);
+    #         subtitle_text="",title_scale=0.4),
+    #         align_mode=:split_aligned,
+    # ) 
+    # display(plt)
+    # draw(PDF(joinpath(graphics_path,"schedule_unassigned.pdf")),plt)
 
 end
 
 # render each node type to a separate file
 let
-    render_node_types_and_table(sched,scene_tree;graphics_path=joinpath(graphics_path,"node_table"))
+    # render_node_types_and_table(sched,scene_tree;graphics_path=joinpath(graphics_path,"node_table"))
 end
 
 ## Generate staging plan
@@ -263,89 +272,89 @@ staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scen
 );
 # plot staging plan
 let
-    FR.set_render_param!(:Color,:Fill,:StagingCircle,nothing)
-    FR.set_render_param!(:Color,:Fill,:BoundingCircle,nothing)
-    FR.set_render_param!(:Color,:Fill,:DropoffCircle,nothing)
-    # FR.set_render_param!(:Color,:Label,:StagingCircle,nothing)
-    FR.set_render_param!(:Color,:Label,:StagingCircle,"red")
-    FR.set_render_param!(:Color,:Label,:DropoffCircle,nothing)
-    plt = plot_staging_plan_2d(sched,scene_tree,
-        nominal_width=30cm,
-        _show_bounding_circs=true,
-        _show_dropoffs=true,
-        base_geom_layer=Compose.compose(
-            context(),
-            Compose.linewidth(0.02pt),
-            plot_assemblies(sched,scene_tree,
-                # fill_color=RGBA(0.3,0.3,0.3,0.9),
-                # stroke_color=RGBA(0.0,0.0,0.0,1.0),
-                fill_color=RGBA(0.5,0.5,0.5,0.9),
-                stroke_color=nothing,
-                # geom_key=HyperrectangleKey(),
-            )),
-        _fontsize=30pt,
-        bg_color=nothing,
-        text_placement_func=circ-> (circ.center[1:2] .- [0.0,0.35-circ.radius])
-        )
-    # build more clear staging plan graphic
-    bbox = staging_plan_bbox(sched)
-    circs = transform_final_assembly_staging_circles(sched,scene_tree,staging_circles)
-    for k in [4,5,6,7,8]
-        delete!(circs,AssemblyID(k))
-    end
-    # delete!(circs,AssemblyID(1))
-    forms = [Compose.circle(v.center...,v.radius) for v in values(circs)]
-    stage_plt = Compose.compose(context(),plt,
-        (context(units=UnitBox(bbox.origin...,bbox.widths...)),
-            forms...,
-            Compose.fill(nothing),
-            # Compose.stroke(RGBA(1.0,1.0,1.0,1.0)),
-            Compose.stroke(RGBA(0.5,0.5,0.5,1.0)),
-            ),
-        (context(),Compose.rectangle(),
-            Compose.fill(RGB(0.25,0.25,0.25)),
-            )
-        )
-    display(stage_plt)
-    # draw(PDF(joinpath(graphics_path,"staging_plan.pdf")),stage_plt)
-    # draw(PDF(joinpath(graphics_path,"staging_plan_with_buffer.pdf")),stage_plt)
-    # draw(SVG(joinpath(graphics_path,"staging_plan.svg")),stage_plt)
+    # FR.set_render_param!(:Color,:Fill,:StagingCircle,nothing)
+    # FR.set_render_param!(:Color,:Fill,:BoundingCircle,nothing)
+    # FR.set_render_param!(:Color,:Fill,:DropoffCircle,nothing)
+    # # FR.set_render_param!(:Color,:Label,:StagingCircle,nothing)
+    # FR.set_render_param!(:Color,:Label,:StagingCircle,"red")
+    # FR.set_render_param!(:Color,:Label,:DropoffCircle,nothing)
+    # plt = plot_staging_plan_2d(sched,scene_tree,
+    #     nominal_width=30cm,
+    #     _show_bounding_circs=true,
+    #     _show_dropoffs=true,
+    #     base_geom_layer=Compose.compose(
+    #         context(),
+    #         Compose.linewidth(0.02pt),
+    #         plot_assemblies(sched,scene_tree,
+    #             # fill_color=RGBA(0.3,0.3,0.3,0.9),
+    #             # stroke_color=RGBA(0.0,0.0,0.0,1.0),
+    #             fill_color=RGBA(0.5,0.5,0.5,0.9),
+    #             stroke_color=nothing,
+    #             # geom_key=HyperrectangleKey(),
+    #         )),
+    #     _fontsize=30pt,
+    #     bg_color=nothing,
+    #     text_placement_func=circ-> (circ.center[1:2] .- [0.0,0.35-circ.radius])
+    #     )
+    # # build more clear staging plan graphic
+    # bbox = staging_plan_bbox(sched)
+    # circs = transform_final_assembly_staging_circles(sched,scene_tree,staging_circles)
+    # for k in [4,5,6,7,8]
+    #     delete!(circs,AssemblyID(k))
+    # end
+    # # delete!(circs,AssemblyID(1))
+    # forms = [Compose.circle(v.center...,v.radius) for v in values(circs)]
+    # stage_plt = Compose.compose(context(),plt,
+    #     (context(units=UnitBox(bbox.origin...,bbox.widths...)),
+    #         forms...,
+    #         Compose.fill(nothing),
+    #         # Compose.stroke(RGBA(1.0,1.0,1.0,1.0)),
+    #         Compose.stroke(RGBA(0.5,0.5,0.5,1.0)),
+    #         ),
+    #     (context(),Compose.rectangle(),
+    #         Compose.fill(RGB(0.25,0.25,0.25)),
+    #         )
+    #     )
+    # display(stage_plt)
+    # # draw(PDF(joinpath(graphics_path,"staging_plan.pdf")),stage_plt)
+    # # draw(PDF(joinpath(graphics_path,"staging_plan_with_buffer.pdf")),stage_plt)
+    # # draw(SVG(joinpath(graphics_path,"staging_plan.svg")),stage_plt)
     
-    # for each build step?
-    a = get_node(scene_tree,AssemblyID(1))
-    start = get_node(sched,AssemblyComplete(a))
-    steps = [n for n in node_iterator(sched,topological_sort_by_dfs(sched)) if matches_template(CloseBuildStep,n) && node_id(node_val(n).assembly)==node_id(a)]
-    components = Dict()
-    for build_step_node in steps
-        components = merge(components,node_val(build_step_node).components)
-        # filt_func = n -> (matches_template(CloseBuildStep,n) && node_id(node_val(n).assembly)==node_id(a) || (matches_template(DepositCargo,n) && haskey(a.components,cargo_id(entity(n)))))
-        filt_func = n -> ( n === build_step_node || (matches_template(DepositCargo,n) && haskey(node_val(build_step_node).components,cargo_id(entity(n)))))
-        # node_list = (n for n in node_iterator(sched,topological_sort_by_dfs(sched)) if matches_template(CloseBuildStep,n) && node_id(node_val(n).assembly)==node_id(a))
-        node_list = (n for n in node_iterator(sched,topological_sort_by_dfs(sched)) if filt_func(n))
-        plt = plot_staging_plan_2d(sched,scene_tree,
-            nominal_width=30cm,
-            _show_bounding_circs=true,
-            _show_dropoffs=true,
-            _show_intermediate_stages=true,
-            _stage_stroke_color="red",
-            base_geom_layer=Compose.compose(
-                context(), 
-                Compose.linewidth(0.02pt),
-                [plot_base_geom_2d(get_node(scene_tree,k),scene_tree,
-                    # tform=global_transform(goal_config(start)) ∘ tform,
-                    tform=global_transform(goal_config(get_node(sched,
-                        DepositCargo(get_node(scene_tree,TransportUnitNode(k)))))),
-                    fill_color=RGBA(0.5,0.5,0.5,0.9),stroke_color=nothing,
-                    ) for (k,tform) in components]...),
-                # plot_base_geom_2d(a,scene_tree,
-                #     fill_color=RGBA(0.5,0.5,0.5,0.9),stroke_color=nothing,)),
-            _fontsize=30pt,
-            bg_color=nothing,
-            text_placement_func=circ-> (circ.center[1:2] .- [0.0,0.35-circ.radius]),
-            node_list=node_list,
-            )
-        display(plt)
-    end
+    # # for each build step?
+    # a = get_node(scene_tree,AssemblyID(1))
+    # start = get_node(sched,AssemblyComplete(a))
+    # steps = [n for n in node_iterator(sched,topological_sort_by_dfs(sched)) if matches_template(CloseBuildStep,n) && node_id(node_val(n).assembly)==node_id(a)]
+    # components = Dict()
+    # for build_step_node in steps
+    #     components = merge(components,node_val(build_step_node).components)
+    #     # filt_func = n -> (matches_template(CloseBuildStep,n) && node_id(node_val(n).assembly)==node_id(a) || (matches_template(DepositCargo,n) && haskey(a.components,cargo_id(entity(n)))))
+    #     filt_func = n -> ( n === build_step_node || (matches_template(DepositCargo,n) && haskey(node_val(build_step_node).components,cargo_id(entity(n)))))
+    #     # node_list = (n for n in node_iterator(sched,topological_sort_by_dfs(sched)) if matches_template(CloseBuildStep,n) && node_id(node_val(n).assembly)==node_id(a))
+    #     node_list = (n for n in node_iterator(sched,topological_sort_by_dfs(sched)) if filt_func(n))
+    #     plt = plot_staging_plan_2d(sched,scene_tree,
+    #         nominal_width=30cm,
+    #         _show_bounding_circs=true,
+    #         _show_dropoffs=true,
+    #         _show_intermediate_stages=true,
+    #         _stage_stroke_color="red",
+    #         base_geom_layer=Compose.compose(
+    #             context(), 
+    #             Compose.linewidth(0.02pt),
+    #             [plot_base_geom_2d(get_node(scene_tree,k),scene_tree,
+    #                 # tform=global_transform(goal_config(start)) ∘ tform,
+    #                 tform=global_transform(goal_config(get_node(sched,
+    #                     DepositCargo(get_node(scene_tree,TransportUnitNode(k)))))),
+    #                 fill_color=RGBA(0.5,0.5,0.5,0.9),stroke_color=nothing,
+    #                 ) for (k,tform) in components]...),
+    #             # plot_base_geom_2d(a,scene_tree,
+    #             #     fill_color=RGBA(0.5,0.5,0.5,0.9),stroke_color=nothing,)),
+    #         _fontsize=30pt,
+    #         bg_color=nothing,
+    #         text_placement_func=circ-> (circ.center[1:2] .- [0.0,0.35-circ.radius]),
+    #         node_list=node_list,
+    #         )
+    #     display(plt)
+    # end
 end
 
 # Move objects away from the staging plan
@@ -361,17 +370,27 @@ object_vtxs = draw_random_uniform(vtxs,NUM_OBJECTS)
 ConstructionBots.select_initial_object_grid_locations!(sched,object_vtxs)
 
 # Move assemblies up so they float above the robots
+# TODO Debug error here
 for node in get_nodes(scene_tree)
     if matches_template(AssemblyNode,node) 
         start_node = get_node(sched,AssemblyComplete(node))
+        # raise start 
         current = global_transform(start_config(start_node))
-        tform_error = CT.Translation(0.0,0.0,MAX_CARGO_HEIGHT-current.translation[3]) # difference to be made up in global frame
-        rot_mat = CT.LinearMap(global_transform(get_parent(HG.get_transform_node(node))).linear)
-        tform = local_transform(start_config(start_node)) ∘ inv(rot_mat) ∘ tform_error
-        set_local_transform!(start_config(start_node),tform)
+        rect = current(get_base_geom(node,HyperrectangleKey()))
+        dh = MAX_CARGO_HEIGHT - (rect.center .- rect.radius)[3]
+        @show summary(node_id(node)), dh
+        set_desired_global_transform_without_affecting_children!(
+        # set_desired_global_transform!(
+            start_config(start_node),
+            CT.Translation(current.translation[1:2]...,dh) ∘ CT.LinearMap(current.linear)
+        )
+
+        # tform_error = CT.Translation(0.0,0.0,MAX_CARGO_HEIGHT-current.translation[3]) # difference to be made up in global frame
+        # rot_mat = CT.LinearMap(global_transform(get_parent(HG.get_transform_node(node))).linear)
+        # tform = local_transform(start_config(start_node)) ∘ inv(rot_mat) ∘ tform_error
+        # set_local_transform!(start_config(start_node),tform)
     end
 end
-
 # Make sure all transforms line up
 ConstructionBots.calibrate_transport_tasks!(sched)
 @assert validate_schedule_transform_tree(sched;post_staging=true)
@@ -380,54 +399,54 @@ ConstructionBots.calibrate_transport_tasks!(sched)
 ConstructionBots.add_dummy_robot_go_nodes!(sched)
 @assert validate_schedule_transform_tree(sched;post_staging=true)
 let 
-    # Plot partial schedule with dummy RobotGo nodes
-    for a in [1,2,4,6]
-        frontier = [get_vtx(sched,AssemblyComplete(get_node(scene_tree,AssemblyID(a))))]
-        sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,25;frontier=frontier)
-        frontier = [get_vtx(sched,AssemblyComplete(get_node(scene_tree,AssemblyID(a))))]
-        for n in get_nodes(sched)
-            if matches_template(RobotGo,n)
-                for np in get_nodes(sched2)
-                    if has_edge(sched,n,np) || has_edge(sched,np,n)
-                        push!(frontier,get_vtx(sched,n))
-                    end
-                end
-            end
-        end
-        # r = get_node(sched,RobotStart(get_node(scene_tree,RobotID(1))))
-        # push!(frontier,outneighbors(sched,r)[1])
-        sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,52;frontier=frontier)
-        _node_type_check(n) = matches_template((ObjectStart,AssemblyStart,AssemblyComplete,FormTransportUnit,TransportUnitGo,DepositCargo,LiftIntoPlace),n)
-        plt = display_graph(sched2,scale=1,grow_mode=:from_left,
-            draw_node_function=(G,v)->draw_node(get_node(G,v);
-                title_text= _node_type_check(get_node(G,v)
-                    ) ? string(GraphPlottingBFS._title_string(get_node(G,v)),"$(get_id(node_id(get_node(G,v))))") : GraphPlottingBFS._title_string(get_node(G,v)),
-                subtitle_text="",
-                title_scale = _node_type_check(get_node(G,v)
-                    ) ? GraphPlottingBFS._title_text_scale(get_node(G,v)) : 0.45,
-            ),
-            # align_mode=:root_aligned,
-            align_mode=:split_aligned,
-            pad=(0.0,0.0),
-        )
-        display(plt)
-        draw(PDF(joinpath(graphics_path,"sub_graph$(a)_dummy_go_nodes.pdf")),plt)
-    end
-    frontier = []
-    for i in 1:5
-        r = get_node(sched,RobotStart(get_node(scene_tree,RobotID(i))))
-        push!(frontier,outneighbors(sched,r)[1])
-    end
-    sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,50;frontier=frontier)
-    plt = display_graph(sched2,scale=1,grow_mode=:from_left,
-        draw_node_function=(G,v)->draw_node(get_node(G,v);
-            subtitle_text="",
-            title_scale=0.45,
-        ),
-        align_mode=:split_aligned,
-        pad=(0.0,0.0),
-    )
-    draw(PDF(joinpath(graphics_path,"sub_graph_robots_alone.pdf")),plt)
+    # # Plot partial schedule with dummy RobotGo nodes
+    # for a in [1,2,4,6]
+    #     frontier = [get_vtx(sched,AssemblyComplete(get_node(scene_tree,AssemblyID(a))))]
+    #     sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,25;frontier=frontier)
+    #     frontier = [get_vtx(sched,AssemblyComplete(get_node(scene_tree,AssemblyID(a))))]
+    #     for n in get_nodes(sched)
+    #         if matches_template(RobotGo,n)
+    #             for np in get_nodes(sched2)
+    #                 if has_edge(sched,n,np) || has_edge(sched,np,n)
+    #                     push!(frontier,get_vtx(sched,n))
+    #                 end
+    #             end
+    #         end
+    #     end
+    #     # r = get_node(sched,RobotStart(get_node(scene_tree,RobotID(1))))
+    #     # push!(frontier,outneighbors(sched,r)[1])
+    #     sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,52;frontier=frontier)
+    #     _node_type_check(n) = matches_template((ObjectStart,AssemblyStart,AssemblyComplete,FormTransportUnit,TransportUnitGo,DepositCargo,LiftIntoPlace),n)
+    #     plt = display_graph(sched2,scale=1,grow_mode=:from_left,
+    #         draw_node_function=(G,v)->draw_node(get_node(G,v);
+    #             title_text= _node_type_check(get_node(G,v)
+    #                 ) ? string(GraphPlottingBFS._title_string(get_node(G,v)),"$(get_id(node_id(get_node(G,v))))") : GraphPlottingBFS._title_string(get_node(G,v)),
+    #             subtitle_text="",
+    #             title_scale = _node_type_check(get_node(G,v)
+    #                 ) ? GraphPlottingBFS._title_text_scale(get_node(G,v)) : 0.45,
+    #         ),
+    #         # align_mode=:root_aligned,
+    #         align_mode=:split_aligned,
+    #         pad=(0.0,0.0),
+    #     )
+    #     display(plt)
+    #     draw(PDF(joinpath(graphics_path,"sub_graph$(a)_dummy_go_nodes.pdf")),plt)
+    # end
+    # frontier = []
+    # for i in 1:5
+    #     r = get_node(sched,RobotStart(get_node(scene_tree,RobotID(i))))
+    #     push!(frontier,outneighbors(sched,r)[1])
+    # end
+    # sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,50;frontier=frontier)
+    # plt = display_graph(sched2,scale=1,grow_mode=:from_left,
+    #     draw_node_function=(G,v)->draw_node(get_node(G,v);
+    #         subtitle_text="",
+    #         title_scale=0.45,
+    #     ),
+    #     align_mode=:split_aligned,
+    #     pad=(0.0,0.0),
+    # )
+    # draw(PDF(joinpath(graphics_path,"sub_graph_robots_alone.pdf")),plt)
 
 end
 
@@ -450,8 +469,8 @@ tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 # end
 # ## Greedy Assignment with enforced build-step ordering
 milp_model = ConstructionBots.GreedyOrderedAssignment(
-    # greedy_cost = TaskGraphs.GreedyFinalTimeCost(),
-    greedy_cost = TaskGraphs.GreedyPathLengthCost(),
+    greedy_cost = TaskGraphs.GreedyFinalTimeCost(),
+    # greedy_cost = TaskGraphs.GreedyPathLengthCost(),
 )
 milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
 optimize!(milp_model)
@@ -502,49 +521,49 @@ setvisible!(staging_nodes,false)
 MeshCat.render(vis)
 
 let
-    HG.compute_approximate_geometries!(scene_tree,CylinderKey())
-    cylinder_nodes = show_geometry_layer!(scene_tree,vis_nodes,CylinderKey())
-    setvisible!(cylinder_nodes,false)
-    HG.compute_approximate_geometries!(scene_tree,OctagonalPrismKey())
-    prism_nodes = show_geometry_layer!(scene_tree,vis_nodes,OctagonalPrismKey())
-    setvisible!(prism_nodes,false)
+    # HG.compute_approximate_geometries!(scene_tree,CylinderKey())
+    # cylinder_nodes = show_geometry_layer!(scene_tree,vis_nodes,CylinderKey())
+    # setvisible!(cylinder_nodes,false)
+    # HG.compute_approximate_geometries!(scene_tree,OctagonalPrismKey())
+    # prism_nodes = show_geometry_layer!(scene_tree,vis_nodes,OctagonalPrismKey())
+    # setvisible!(prism_nodes,false)
 
-    # Visualize overapproximated geometry
-    a = get_node(scene_tree,AssemblyID(1))
-    geom = recurse_child_geometry(a,scene_tree,BaseGeomKey())
-    P = overapproximate(geom,HG.BufferedPolygonPrism(HG.regular_buffered_polygon(8,1.0;buffer=0.1)),0.01)
-    C = overapproximate(geom,Cylinder)
-    S = overapproximate(geom,Ball2{Float64,SVector{3,Float64}})
-    p_color = RGBA(1.0,0.7,0.0)
-    setobject!(vis[:prism_overapprox][:solid],GeometryBasics.Mesh(coordinates(P),faces(P)),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
-    setobject!(vis[:prism_overapprox][:wireframe],HG.get_wireframe_mesh(P),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
-    setobject!(vis[:cylinder][:solid],C,MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
-    setobject!(vis[:cylinder][:wireframe],HG.get_wireframe_mesh(C),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
-    setobject!(vis[:sphere][:solid],convert(HyperSphere,S),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
-    setobject!(vis[:sphere][:wireframe],convert(HyperSphere,S),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=1pt))
+    # # Visualize overapproximated geometry
+    # a = get_node(scene_tree,AssemblyID(1))
+    # geom = recurse_child_geometry(a,scene_tree,BaseGeomKey())
+    # P = overapproximate(geom,HG.BufferedPolygonPrism(HG.regular_buffered_polygon(8,1.0;buffer=0.1)),0.01)
+    # C = overapproximate(geom,Cylinder)
+    # S = overapproximate(geom,Ball2{Float64,SVector{3,Float64}})
+    # p_color = RGBA(1.0,0.7,0.0)
+    # setobject!(vis[:prism_overapprox][:solid],GeometryBasics.Mesh(coordinates(P),faces(P)),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
+    # setobject!(vis[:prism_overapprox][:wireframe],HG.get_wireframe_mesh(P),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
+    # setobject!(vis[:cylinder][:solid],C,MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
+    # setobject!(vis[:cylinder][:wireframe],HG.get_wireframe_mesh(C),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
+    # setobject!(vis[:sphere][:solid],convert(HyperSphere,S),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
+    # setobject!(vis[:sphere][:wireframe],convert(HyperSphere,S),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=1pt))
 
-    # visualize overapproximated geometry of a transform unit
-    o = get_node(scene_tree,ObjectID(6))
-    tu = get_node(scene_tree,TransportUnitNode(o))
-    set_child!(scene_tree,tu,node_id(o))
-    setvisible!(vis_nodes,false)
-    setvisible!(vis_nodes[node_id(o)],true)
-    setvisible!(vis_nodes[node_id(tu)],true)
-    for (id,tform) in robot_team(tu)
-        setvisible!(vis_nodes[id],true)
-        set_child!(scene_tree,tu,id)
-    end
-    update_visualizer!(scene_tree,vis_nodes)
-    P = get_cached_geom(tu,OctagonalPrismKey())
-    C = get_cached_geom(tu,CylinderKey())
-    S = get_cached_geom(tu,HypersphereKey())
-    p_color = RGBA(1.0,0.7,0.0)
-    setobject!(vis[:prism_overapprox][:solid],GeometryBasics.Mesh(coordinates(P),faces(P)),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
-    setobject!(vis[:prism_overapprox][:wireframe],HG.get_wireframe_mesh(P),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
-    setobject!(vis[:cylinder][:solid],C,MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
-    setobject!(vis[:cylinder][:wireframe],HG.get_wireframe_mesh(C),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
-    setobject!(vis[:sphere][:solid],convert(HyperSphere,S),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
-    setobject!(vis[:sphere][:wireframe],convert(HyperSphere,S),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=1pt))
+    # # visualize overapproximated geometry of a transform unit
+    # o = get_node(scene_tree,ObjectID(6))
+    # tu = get_node(scene_tree,TransportUnitNode(o))
+    # set_child!(scene_tree,tu,node_id(o))
+    # setvisible!(vis_nodes,false)
+    # setvisible!(vis_nodes[node_id(o)],true)
+    # setvisible!(vis_nodes[node_id(tu)],true)
+    # for (id,tform) in robot_team(tu)
+    #     setvisible!(vis_nodes[id],true)
+    #     set_child!(scene_tree,tu,id)
+    # end
+    # update_visualizer!(scene_tree,vis_nodes)
+    # P = get_cached_geom(tu,OctagonalPrismKey())
+    # C = get_cached_geom(tu,CylinderKey())
+    # S = get_cached_geom(tu,HypersphereKey())
+    # p_color = RGBA(1.0,0.7,0.0)
+    # setobject!(vis[:prism_overapprox][:solid],GeometryBasics.Mesh(coordinates(P),faces(P)),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
+    # setobject!(vis[:prism_overapprox][:wireframe],HG.get_wireframe_mesh(P),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
+    # setobject!(vis[:cylinder][:solid],C,MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
+    # setobject!(vis[:cylinder][:wireframe],HG.get_wireframe_mesh(C),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
+    # setobject!(vis[:sphere][:solid],convert(HyperSphere,S),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
+    # setobject!(vis[:sphere][:wireframe],convert(HyperSphere,S),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=1pt))
 end
 
 # restore correct configuration
@@ -608,10 +627,10 @@ update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,
 
 
 # Turn off RVO to see if the project can be completed if we don't worry about collision
-set_use_rvo!(false)
-set_avoid_staging_areas!(false)
-# set_use_rvo!(true)
-# set_avoid_staging_areas!(true)
+# set_use_rvo!(false)
+# set_avoid_staging_areas!(false)
+set_use_rvo!(true)
+set_avoid_staging_areas!(true)
 
 ConstructionBots.simulate!(env,update_visualizer_function,max_time_steps=5000)
 setanimation!(vis,anim.anim)

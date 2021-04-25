@@ -303,8 +303,8 @@ function animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,nodes=get_
         goal_list = goals[node_id(node)] = Vector{CT.AffineMap}()
         goal_idxs[node_id(node)] = 1
         interp_idxs[node_id(node)] = interp_steps
+        # push!(goal_list, global_transform(start_config(lift_node)))
         push!(goal_list, global_transform(start_config(start_node)))
-        # push!(goal_list, global_transform(goal_config(lift_node)))
     end
     # animate
     active_set = get_all_root_nodes(graph)
@@ -329,7 +329,7 @@ function animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,nodes=get_
             goal = goals[node_id(node)][goal_idx]
             tf_error = relative_transform(global_transform(node),goal)
             twist = optimal_twist(tf_error,v_max,ω_max,dt)
-            @show tf_error, twist
+            # @show tf_error, twist
             if norm(twist.vel) <= ϵ_v && norm(twist.ω) <= ϵ_ω || interp_idxs[node_id(node)] == 0
                 goal_idxs[node_id(node)] += 1
                 interp_idxs[node_id(node)] = interp_steps

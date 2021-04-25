@@ -384,6 +384,10 @@ function populate_schedule_build_step!(sched,parent::AssemblyComplete,cb,step_no
         l = add_node!(sched,    LiftIntoPlace(cargo))
         set_parent!(goal_config(l),start_config(parent))
         set_local_transform!(goal_config(l),child_transform(entity(parent),node_id(cargo)))
+        # ensure that LiftIntoPlace starts in the carry configuration
+        HG.set_desired_global_transform!(start_config(l),
+            CT.Translation(global_transform(start_config(l)).translation) 
+            )
         @info "Staging config: setting GOAL config of $(node_id(l)) to $(goal_config(l))"
         add_edge!(sched,l,cb) # LiftIntoPlace => CloseBuildStep
         # DepositCargo
@@ -932,11 +936,22 @@ Set the appropriate transforms for all transport tasks such that
 """
 function calibrate_transport_tasks!(sched)
     for node in get_nodes(sched)
-        if matches_template(LiftIntoPlace,node)
-            cargo = entity(node)
-            start_node, form_transport, _, deposit_node, lift_node = get_transport_node_sequence(sched,cargo)
-            align_construction_predicates!(sched,start_node,form_transport)
-            align_construction_predicates!(sched,lift_node, deposit_node)
+        if matches_template(AssemblyComplete,node)
+            assembly = entity(node)
+            for (id,tf) in assembly_components(assembly)
+                if matches_template(ObjectID,id)
+                    cargo = ObjectNode(id,GeomNode(nothing))
+                else
+                    cargo = AssemblyNode(id,GeomNode(nothing))
+                end
+                start_node, form_transport, go_node, deposit_node, lift_node = get_transport_node_sequence(sched,cargo)
+                cargo = entity(lift_node)
+                # line up lift_node to target assembly
+                set_local_transform!(goal_config(lift_node),tf)
+                # line up deposit and collect nodes with floor
+                align_construction_predicates!(sched,start_node,form_transport)
+                align_construction_predicates!(sched,lift_node, deposit_node)
+            end
         end
     end
     return sched
@@ -957,10 +972,7 @@ function align_construction_predicates!(sched,start::Union{ObjectStart,AssemblyC
 
     # Park Transport Unit so that cargo can drop straight down
     tform = child_transform(transport_unit,node_id(cargo))
-    # inv_tform = inv(tform)
     delta_z = tform.translation[3] - global_transform(cargo_deployed_config(t)).translation[3]
-    # delta_2d = HG.project_to_2d(inv_tform.translation)
-
     # TODO would be nice to have constrained transforms (e.g., fix to X-Y plane)
     set_local_transform!( 
         cargo_loaded_config(t),
