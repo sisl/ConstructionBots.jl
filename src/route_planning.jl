@@ -543,6 +543,10 @@ function get_cmd(node::LiftIntoPlace,env)
     v_max = default_loading_speed()
     ω_max = default_rotational_loading_speed()
     twist = optimal_twist(tf_error,v_max,ω_max,dt)
+    if norm(twist.ω) >= 1e-2
+        # rotate first
+        return Twist(0*twist.vel,twist.ω)
+    end
     # @info "twist for LiftIntoPlace" twist
     twist
 end
