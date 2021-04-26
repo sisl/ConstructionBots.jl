@@ -357,6 +357,9 @@ let
     # end
 end
 
+# construct highway
+Revise.includet("/home/kylebrown/.julia/dev/ConstructionBots/src/highway.jl")
+
 # Move objects away from the staging plan
 MAX_CARGO_HEIGHT = maximum(map(n->get_base_geom(n,HyperrectangleKey()).radius[3]*2,
     filter(n->matches_template(TransportUnitNode,n),get_nodes(scene_tree))))

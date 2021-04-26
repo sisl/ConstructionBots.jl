@@ -13,8 +13,8 @@ start_pt(a::Arc)    = a.center + a.radius * [cos(a.a),sin(a.a)]
 end_pt(a::Arc)      = a.center + a.radius * [cos(a.b),sin(a.b)]
 
 arclength(a::GeometryBasics.Line)   = norm(a.points[2]-a.points[1])
-start_pt(a::GeometryBasics)         = a.points[1]
-end_pt(a::GeometryBasics)           = a.points[2]
+start_pt(a::GeometryBasics.Line)         = a.points[1]
+end_pt(a::GeometryBasics.Line)           = a.points[2]
 
 @with_kw mutable struct Lane
     id::LaneID = get_unique_id(LaneID)
@@ -23,7 +23,7 @@ end_pt(a::GeometryBasics)           = a.points[2]
     max_speed::Float64 = 1.0
     length::Float64 = arclength(refline)
     # something about neighbors / adjacent zones
-    zones::Set{AbstractID} = Set{AbstractID}()
+    # zone::AssemblyID = AssemblyID(-1) # point to zone?
 end
 GraphUtils.node_id(lane::Lane) = lane.id
 
@@ -34,54 +34,113 @@ GraphUtils.node_id(lane::Lane) = lane.id
     vtx_ids             ::Vector{LaneID}        = Vector{LaneID}() # maps vertex uid to actual graph node
 end
 
-function construct_highway(zones::Dict;
+"""
+    construct_nested_highway
+
+Build a nested highway with CCW lanes
+"""
+function construct_nested_highway(
+        sched,
+        scene_tree,
+        staging_zones, # Final staging areas (without transformation)
+        ;
         lane_width=1.0,
         max_speed=1.0,
-        )
-    highway = Highway()
-    lane_dict = Dict(id=>Dict(:incoming=>Set{LaneID}(),:outgoing=>Set{LaneID}()) for id in keys(zones))
-    # Add straight lanes
-    # for all circles, find CCW tangent lines
-    for (i,circ1) in zones
-        for (j,circ2) in zones
-            if i != j
-                continue
-            end
-            line = tangent_line_on_circs(circ1,circ2)
-            clear_path = true
-            for (k,circ) in zones
-                if (k == i) || (k == j)
-                    continue
-                end
-                if circle_intersection_with_line(inflate(circ,lane_width),line)
-                    clear_path = false
-                    break
-                end
-            end
-            if clear_path
-                lane = Lane(
-                    refline=line,
-                    width=lane_width,
-                    max_speed=max_speed,
-                    zones=Set([i,j])
+        gkey = HypersphereKey(),
+    )
+    # ensure that scene_tree represents fully connected assembly
+    HG.jump_to_final_configuration!(scene_tree;set_edges=true)
+    # preprocessing
+    dropoff_zones = Dict{AbstractID,Point2{Float64}}()
+    inner_staging_zones = Dict{AbstractID,Ball2}() # inner zones in global frame
+    outer_staging_zones = Dict{AbstractID,Ball2}() # outer zones in global frame
+    for n in get_nodes(sched)
+        if matches_template(DepositCargo,n)
+            pt = HG.project_to_2d(global_transform(goal_config(n)).translation)
+            # may need to account for TransportUnitNode center...
+            dropoff_zones[cargo_id(entity(n))] = Point2{Float64}(pt...)
+        elseif matches_template(AssemblyComplete,n)
+            # get bounding circle from final build step
+            final_build_step = get_node(sched,first(inneighbors(sched,n)))
+            inner_zone = get_cached_geom(node_val(final_build_step).staging_circle)
+            outer_zone = global_transform(goal_config(n))(
+                HG.project_to_3d(staging_zones[node_id(entity(n))])
                 )
-                add_node!(highway,lane,node_id(lane))
-                push!(lane_dict[:outgoing][i],node_id(lane))
-                push!(lane_dict[:incoming][j],node_id(lane))
+            inner_staging_zones[node_id(entity(n))] = inner_zone
+            outer_staging_zones[node_id(entity(n))] = outer_zone
+        end
+    end
+    dropoff_zones, inner_staging_zones, outer_staging_zones
+    # initialize highway
+    highway = Highway()
+    # starting with leaf nodes:
+    for n in node_iterator(sched, topological_sort_by_dfs(sched))
+        if matches_template(AssemblyComplete,n)
+            assembly = entity(n)
+            # create outer lane surrounding circle
+
+            zone = get_cached_geom(n,gkey) # outer zone
+            # if has child assemblies
+            if !isempty(assembly_components(assembly))
+                # add lane for own inner zone from final build step
+                # add junctions to/from child assembly staging areas
             end
         end
     end
-    # TODO curved lanes
-    for (id,circ) in zones
-        angles = Vector{Pair{LaneID,Float64}}()
-        for lane_id in lane_dict[id][:incoming] 
-            lane = get_node(highway,lane_id)
-            push!(angles,lane_id=>atan(reverse(end_pt(lane))...))
-            # iteratively split lanes
-        end
-    end
-    return highway
+    # create full circular lane around 
 end
+
+# """
+#     construct_highway(zones::Dict;
+# """
+# function construct_highway(zones::Dict;
+#         lane_width=1.0,
+#         max_speed=1.0,
+#         )
+#     highway = Highway()
+#     lane_dict = Dict(id=>Dict(:incoming=>Set{LaneID}(),:outgoing=>Set{LaneID}()) for id in keys(zones))
+#     # Add straight lanes
+#     # for all circles, find CCW tangent lines
+#     for (i,circ1) in zones
+#         for (j,circ2) in zones
+#             if i != j
+#                 continue
+#             end
+#             line = tangent_line_on_circs(circ1,circ2)
+#             clear_path = true
+#             for (k,circ) in zones
+#                 if (k == i) || (k == j)
+#                     continue
+#                 end
+#                 if circle_intersection_with_line(inflate(circ,lane_width),line)
+#                     clear_path = false
+#                     break
+#                 end
+#             end
+#             if clear_path
+#                 lane = Lane(
+#                     refline=line,
+#                     width=lane_width,
+#                     max_speed=max_speed,
+#                     zones=Set([i,j])
+#                 )
+#                 add_node!(highway,lane,node_id(lane))
+#                 push!(lane_dict[:outgoing][i],node_id(lane))
+#                 push!(lane_dict[:incoming][j],node_id(lane))
+#             end
+#         end
+#     end
+#     # TODO curved lanes
+#     for (id,circ) in zones
+#         angles = Vector{Pair{LaneID,Float64}}()
+#         for lane_id in lane_dict[id][:incoming] 
+#             lane = get_node(highway,lane_id)
+#             push!(angles,lane_id=>atan(reverse(end_pt(lane))...))
+#             # iteratively split lanes
+#         end
+#     end
+#     return highway
+# end
 
 inflate(c::GeometryBasics.Circle,r::Float64) = GeometryBasics.Circle(c.center,c.r+r)
 

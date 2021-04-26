@@ -60,10 +60,23 @@ end
 struct AssemblyComplete <: EntityConfigPredicate{AssemblyNode}
     entity::AssemblyNode
     config::TransformNode
+    staging_circle::GeomNode # staging circle - surrounds the staging area--requires tf relative to assembly
+end
+function AssemblyComplete(n::SceneNode,t::TransformNode)
+    geom = GeomNode(Ball2(zeros(SVector{3,Float64}),0.0))
+    node = AssemblyComplete(n,t,geom)
+    set_parent!(geom,t)
+    node
 end
 struct AssemblyStart <: EntityConfigPredicate{AssemblyNode}
     entity::AssemblyNode
     config::TransformNode
+end
+for T in (:RobotStart,:ObjectStart,:AssemblyComplete,:AssemblyStart)
+    @eval begin
+        $T(n::SceneNode) = $T(n,TransformNode())
+        $T(n::ConstructionPredicate) = $T(entity(n),goal_config(n)) # shared config
+    end
 end
 
 """
@@ -228,12 +241,6 @@ for T in (:DepositCargo,:FormTransportUnit)
     end
 end
 
-for T in (:RobotStart,:ObjectStart,:AssemblyComplete,:AssemblyStart)
-    @eval begin
-        $T(n::SceneNode) = $T(n,TransformNode())
-        $T(n::ConstructionPredicate) = $T(entity(n),goal_config(n)) # shared config
-    end
-end
 for T in (:RobotGo,:TransportUnitGo) #,:LiftIntoPlace)
     @eval begin
         function $T(n::SceneNode)
@@ -679,6 +686,7 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
         if !matches_template(AssemblyComplete,start_node)
             continue
         end
+        assembly_complete = node_val(start_node)
         node = entity(start_node)
         if matches_template(AssemblyNode,node)
             # Apply ring solver with child assemblies (not objects)
@@ -748,6 +756,8 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                 )
             @assert new_ball.radius > old_ball.radius+norm(new_ball.center .- old_ball.center)
             staging_circles[node_id(assembly)] = new_ball
+            # add directly as staging circle of AssemblyComplete node
+            # assembly_complete.staging_circle.base_geom  = HG.project_to_3d(staging_circles[node_id(assembly)])
             @info "Updating staging_circle for $(summary(node_id(assembly))) to $(staging_circles[node_id(assembly)])"
         end
     end
