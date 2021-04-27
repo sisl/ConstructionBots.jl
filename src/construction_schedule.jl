@@ -60,12 +60,15 @@ end
 struct AssemblyComplete <: EntityConfigPredicate{AssemblyNode}
     entity::AssemblyNode
     config::TransformNode
-    staging_circle::GeomNode # staging circle - surrounds the staging area--requires tf relative to assembly
+    inner_staging_circle::GeomNode # inner staging circle 
+    outer_staging_circle::GeomNode # outer staging circle 
 end
 function AssemblyComplete(n::SceneNode,t::TransformNode)
-    geom = GeomNode(Ball2(zeros(SVector{3,Float64}),0.0))
-    node = AssemblyComplete(n,t,geom)
-    set_parent!(geom,t)
+    inner_staging_circle = GeomNode(Ball2(zeros(SVector{3,Float64}),0.0))
+    outer_staging_circle = GeomNode(Ball2(zeros(SVector{3,Float64}),0.0))
+    node = AssemblyComplete(n,t,inner_staging_circle,outer_staging_circle)
+    set_parent!(inner_staging_circle,t)
+    set_parent!(outer_staging_circle,t)
     node
 end
 struct AssemblyStart <: EntityConfigPredicate{AssemblyNode}
@@ -757,7 +760,8 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
             @assert new_ball.radius > old_ball.radius+norm(new_ball.center .- old_ball.center)
             staging_circles[node_id(assembly)] = new_ball
             # add directly as staging circle of AssemblyComplete node
-            # assembly_complete.staging_circle.base_geom  = HG.project_to_3d(staging_circles[node_id(assembly)])
+            assembly_complete.inner_staging_circle.base_geom  = HG.project_to_3d(old_ball)
+            assembly_complete.outer_staging_circle.base_geom  = HG.project_to_3d(new_ball)
             @info "Updating staging_circle for $(summary(node_id(assembly))) to $(staging_circles[node_id(assembly)])"
         end
     end
