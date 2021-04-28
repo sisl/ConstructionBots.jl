@@ -507,6 +507,20 @@ version = "1.38.1"
 deps = ["Printf"]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
 
+[[LibSpatialIndex]]
+deps = ["LibSpatialIndex_jll"]
+git-tree-sha1 = "5d521af3c6e306555ba4bfb790500f15741af9a8"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaGeo/LibSpatialIndex.jl.git"
+uuid = "f19c2e90-9d16-5f2d-a2a7-af3fb29e4907"
+version = "0.2.0"
+
+[[LibSpatialIndex_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "6ae08fa8add51103b76c7576f380e46cb10ee02a"
+uuid = "00e98e2a-4326-5239-88cb-15dcbe1c18d0"
+version = "1.8.5+0"
+
 [[Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
@@ -728,10 +742,10 @@ uuid = "79098fc4-a85e-5d69-aa6a-4863f24498fa"
 version = "0.6.1"
 
 [[Rmath_jll]]
-deps = ["Libdl", "Pkg"]
-git-tree-sha1 = "d76185aa1f421306dec73c057aa384bad74188f0"
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "1b7bf41258f6c5c9c31df8c1ba34c1fc88674957"
 uuid = "f50d1b31-88e8-58de-be2c-1cc44531875f"
-version = "0.2.2+1"
+version = "0.2.2+2"
 
 [[Rotations]]
 deps = ["LinearAlgebra", "StaticArrays", "Statistics"]
