@@ -545,7 +545,7 @@ function tangent_bug_policy!(policy,circles,pos,nominal_goal)
         throw(ErrorException("Unknown controller mode $mode"))
     end
 
-    @show mode, dmin
+    # @show mode, dmin
 
     # if !(mode == :MOVE_TOWARD_GOAL)
     #     nominal_pt = pos + normalize(nominal_goal - pos) * min(planning_radius,norm(nominal_goal - pos))
@@ -645,13 +645,14 @@ function circle_avoidance_policy(circles,agent_radius,pos,nominal_goal;
     end
 end
 
-inflate_circle(circ::C,r::Float64) = typeof(circ)(HG.get_center(circ),HG.get_radius(circ)+r)
+inflate_circle(circ::Ball2,r::Float64) = Ball2(HG.get_center(circ),HG.get_radius(circ)+r)
+# inflate_circle(circ::GeometryBasics.HyperSphere,r::Float64) = GeometryBasics.HyperSphere(HG.get_center(circ),HG.get_radius(circ)+r)
 
 function active_staging_circles(env,exclude_ids=Set())
-    buffer = env.staging_buffer # to increase radius of staging circles when necessary
+    buffer = env.staging_buffers # to increase radius of staging circles when necessary
     node_iter = (get_node(env.sched,id).node for id in env.active_build_steps if !(id in exclude_ids))
     circle_iter = (node_id(n)=>HG.project_to_2d(
-        inflate_circ(get_cached_geom(n.staging_circle), get(buffer,node_id(n),0.0)
+        inflate_circle(get_cached_geom(n.staging_circle), get(buffer,node_id(n),0.0)
         )) for n in node_iter)
 end
 
