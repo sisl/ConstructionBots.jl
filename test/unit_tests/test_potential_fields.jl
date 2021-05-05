@@ -78,7 +78,7 @@ render(vis)
 robots = Dict(
     1=>PotentialController(
         x = [8.0,0.0], 
-        circ_idx = -1, 
+        circ_idx = 1, 
         goal = [0.0,0.0], 
         radius = ROBOT_RADIUS
     ),

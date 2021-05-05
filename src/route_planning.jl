@@ -380,6 +380,184 @@ function avoid_active_staging_areas(node::Union{TransportUnitGo,RobotGo},twist,e
     Twist(SVector(vel..., 0.0), twist.ω)
 end
 
+function search_local_tangent_graph(circles,agent_radius,pos,nominal_goal)
+end
+
+@with_kw mutable struct TangentBugPolicy
+    mode                = :MOVE_TOWARD_GOAL
+    vmax                = 1.0
+    dt                  = 0.05 
+    proximity_tolerance = 1e-2
+    agent_radius        = 0.5
+    planning_radius     = 2*agent_radius
+    detour_horizon      = 2*planning_radius
+    buffer              = staging_buffer_radius()
+end
+
+"""
+    first_intersection_pt(circle,p1,p2)
+
+Return closest point of intersection of `circle` with line from `p1` to `p2`
+"""
+function first_intersection_pt(circle,p1,p2)
+    c = HG.get_center(circle)
+    r = HG.get_radius(circle)
+    pt = HG.project_point_to_line(c,p1,p2)
+    b = norm(pt-c)
+    if b > r
+        return nothing
+    end
+    a = sqrt(r^2 - b^2)
+    vec = pt-p1
+    return p1 + normalize(vec) * (norm(vec)-a)
+end
+
+"""
+    get_closest_interfering_circle(policy,circles,pos,nominal_goal)
+
+Returns the id and bloated (by policy.agent_radius+buffer) circle closest to pos
+"""
+function get_closest_interfering_circle(policy,circles,pos,nominal_goal)
+    @unpack planning_radius, detour_horizon, proximity_tolerance, buffer, 
+        agent_radius, vmax, dt = policy
+    dmin = Inf
+    id = nothing
+    circ = nothing
+    pt = nominal_goal
+    for (circ_id,c) in circles
+        x = HG.get_center(c)
+        r = HG.get_radius(c)
+        bloated_circle = Ball2(x,r+agent_radius+buffer)
+        # if !(pt === nothing)
+        # end
+        if HG.circle_intersects_line(bloated_circle,pos,nominal_goal)
+            # d = norm(x - pos) - (r + agent_radius) #- norm(x - pos) # penetration
+            d = norm(x - pos) - HG.get_radius(bloated_circle) #- norm(x - pos) # penetration
+            if d < dmin
+                # penetration < 0 => pos is in circle
+                dmin = d
+                id = circ_id
+                circ = bloated_circle
+                pt = first_intersection_pt(bloated_circle,pos,nominal_goal)
+            end
+        end
+    end
+    return id, circ, pt
+end
+
+function set_policy_mode!(policy,circ,pos,nominal_goal)
+    @unpack planning_radius, detour_horizon, proximity_tolerance, buffer, 
+        agent_radius, vmax, dt = policy
+    dmin = Inf
+    c = nothing
+    r = nothing
+    if !(circ === nothing)
+        c = HG.get_center(circ)
+        r = HG.get_radius(circ)
+        dmin = norm(c - pos) - r
+    end
+
+    mode = policy.mode
+    if circ === nothing
+        mode = :MOVE_TOWARD_GOAL
+    else
+        if norm(nominal_goal - c) < r 
+            # nominal_goal is in circle
+            mode = :WAIT_OUTSIDE
+        elseif dmin + proximity_tolerance >= 0 
+            # not currently in a circle, but on a course for intersection
+            # if norm(nominal_goal - pos) + 30*proximity_tolerance < norm(nominal_goal - c)
+            if norm(nominal_goal - pos) + agent_radius/2 < norm(nominal_goal - c)
+                # Just keep going toward goal (on the clear side)--this statement should never be reached
+                mode = :MOVE_TOWARD_GOAL
+            elseif dmin < detour_horizon
+                # detour
+                if dmin < 2*proximity_tolerance
+                    # right at circle---just turn right to skim
+                    mode = :MOVE_ALONG_CIRCLE
+                else
+                    # Pick a tangent point to shoot for
+                    mode = :MOVE_TANGENT
+                end
+            else
+                mode = :MOVE_TOWARD_GOAL
+            end
+        else
+            # INSIDE CIRCLE
+            mode = :EXIT_CIRCLE
+        end
+    end
+    policy.mode = mode
+end
+
+function tangent_bug_policy!(policy,circles,pos,nominal_goal)
+    @unpack planning_radius, detour_horizon, proximity_tolerance, buffer, 
+        agent_radius, vmax, dt = policy
+    
+    c = nothing
+    r = nothing
+    id = nothing
+    dmin = Inf
+    id, circ, waypoint = get_closest_interfering_circle(policy,circles,pos,nominal_goal)
+    if !(circ === nothing)
+        c = HG.get_center(circ)
+        r = HG.get_radius(circ)
+        dmin = norm(c - pos) - r
+    end
+    # select operating mode
+    mode = set_policy_mode!(policy,circ,pos,nominal_goal)
+
+    # Select waypoint
+    goal = nominal_goal
+    if mode == :WAIT_OUTSIDE 
+        if norm(nominal_goal - c) > 1e-3
+            goal = c + normalize(nominal_goal - c)*r
+        else
+            goal = c + normalize(pos - c)*r
+        end
+    elseif mode == :MOVE_TOWARD_GOAL
+        goal = nominal_goal
+    elseif mode == :MOVE_ALONG_CIRCLE
+        dvec = normalize(pos - c) * (r + proximity_tolerance)
+        # compute sector to traverse
+        dr = vmax * dt
+        dθ = 2*sin(0.5*dr / r)
+        goal = c + [cos(dθ) -sin(dθ); sin(dθ) cos(dθ)] * dvec
+    elseif mode == :MOVE_TANGENT
+        vec = c - pos # vector from pos to circle center
+        ψ = asin(r/norm(vec)) # yaw angle of right tangent line
+        dθ = π/2 - ψ # CCW angular offset to tangent point 
+        dvec = normalize(pos - c) * r
+        goal = c + [cos(dθ) -sin(dθ); sin(dθ) cos(dθ)] * dvec
+        # if goal causes intersection with another circle, choose waypoint instead
+        new_id, _, _ = get_closest_interfering_circle(policy,circles,pos,goal)
+        if !(new_id === nothing || new_id == id)
+            policy.mode = :MOVE_TOWARD_GOAL
+            goal = waypoint
+        end
+    elseif mode == :EXIT_CIRCLE
+        vec = pos - c
+        if norm(vec) < 1e-3
+            goal = nominal_goal
+        else
+            goal = c + (r + 2*proximity_tolerance) * normalize(vec)
+        end
+    else
+        throw(ErrorException("Unknown controller mode $mode"))
+    end
+
+    @show mode, dmin
+
+    # if !(mode == :MOVE_TOWARD_GOAL)
+    #     nominal_pt = pos + normalize(nominal_goal - pos) * min(planning_radius,norm(nominal_goal - pos))
+    #     f = g->HG.circle_intersection_with_line(circ,pos,g)
+    #     if f(nominal_pt) > f(goal)
+    #         goal = nominal_goal
+    #     end
+    # end
+    return goal
+end
+
 """
     circle_avoidance_policy()
 
@@ -395,7 +573,8 @@ function circle_avoidance_policy(circles,agent_radius,pos,nominal_goal;
     id = nothing
     circ = nothing
     # Get the first circle to be intersected
-    for (i,c) in enumerate(circles)
+    # for (i,c) in enumerate(circles)
+    for (circ_id,c) in circles
         x = HG.get_center(c)
         r = HG.get_radius(c)
         bloated_circle = Ball2(x,r+agent_radius+buffer)
@@ -404,7 +583,8 @@ function circle_avoidance_policy(circles,agent_radius,pos,nominal_goal;
             if d < dmin
                 # penetration < 0 => pos is in circle
                 dmin = d
-                idx = i
+                # idx = i
+                id = circ_id
                 circ = bloated_circle
             end
         end
@@ -418,6 +598,7 @@ function circle_avoidance_policy(circles,agent_radius,pos,nominal_goal;
     r = HG.get_radius(circ)
     if norm(nominal_goal - c) < r # nominal_goal is in circle
         # wait outside
+        # how to scale buffer here?
         if norm(nominal_goal - c) > 1e-3
             goal = c + normalize(nominal_goal - c)*r
         else
@@ -426,7 +607,7 @@ function circle_avoidance_policy(circles,agent_radius,pos,nominal_goal;
     elseif dmin >= 0
         # not currently in a circle, but on a course for intersection
         if norm(nominal_goal - pos) < norm(nominal_goal - c)
-            # Just keep going toward goal (on the clear side)--should never be reached
+            # Just keep going toward goal (on the clear side)--this statement should never be reached
             goal = nominal_goal
         elseif dmin < detour_horizon
             # detour to "skim" the circle
@@ -467,7 +648,7 @@ end
 
 function active_staging_circles(env,exclude_ids=Set())
     node_iter = (get_node(env.sched,id).node for id in env.active_build_steps if !(id in exclude_ids))
-    circle_iter = (HG.project_to_2d(get_cached_geom(n.staging_circle)) for n in node_iter)
+    circle_iter = (node_id(n)=>HG.project_to_2d(get_cached_geom(n.staging_circle)) for n in node_iter)
 end
 
 """
@@ -492,7 +673,7 @@ function get_goal_transform(node,env)
     end
     # If highways
 
-    # If potential field
+    # If potential field (to use at goal?)
     return goal
 end
 get_cmd(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},env) = nothing

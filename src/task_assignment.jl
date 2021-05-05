@@ -204,6 +204,7 @@ export GreedyOrderedAssignment
     # ordering_graph::DiGraph     = get_graph(greedy_set_precedence_graph(schedule))
     ordering_graph::DiGraph     = get_graph(construct_build_step_graph(schedule))
     ordering::Vector{Int}       = topological_sort_by_dfs(ordering_graph)
+    frontier::Set{Int}          = get_all_root_nodes(ordering_graph)
 end
 
 """
@@ -383,30 +384,38 @@ end
 # greedy_set_precedence_ordering(sched) = topological_sort_by_dfs(greedy_set_precedence_graph(sched))
 
 """
-    update_greedy_sets_ordered!(sched, cache, args...;kwargs...)
+    update_greedy_sets_ordered!(model,sched, cache, args...;kwargs...)
 
 Ensured that that no `RobotGo` node is available for an incoming edge to be 
 added until all assignments preceding that node's parent `OpenBuildStep` node 
 have been made. This function is identical to `TaskGraphs.update_greedy_sets!` 
 except that the graph being traversed is different from `model.schedule`.
 """
-function update_greedy_sets_ordered!(sched, cache, 
+function update_greedy_sets_ordered!(model,sched, cache, 
         Ai=Set{Int}(), 
         Ao=Set{Int}(), 
         C=Set{Int}(), 
         ;
         ordering_graph::DiGraph=get_graph(greedy_set_precedence_graph(sched)),
-        frontier::Set{Int}=get_all_root_nodes(ordering_graph),
+        # frontier::Set{Int}=get_all_root_nodes(ordering_graph),
+        frontier::Set{Int}=model.frontier,
         )
     explored = Set{Int}()
     ordered_frontier = Vector{Int}(collect(frontier))
     # while !isempty(frontier)
         # v = pop!(frontier)
+    t = time()
     while !isempty(ordered_frontier)
         v = popfirst!(ordered_frontier)
+        # if !(v in C) && issubset(inneighbors(ordering_graph,v),C)
         if issubset(inneighbors(ordering_graph,v),C)
             if indegree(sched,v) >= cache.n_required_predecessors[v]
                 push!(C,v)
+                # remove inneighbors from model.frontier
+                # push!(model.frontier,v)
+                # for vp in inneighbors(ordering_graph,v)
+                #     setdiff!(model.frontier,vp)
+                # end
                 # union!(frontier,outneighbors(ordering_graph,v))
                 for vp in outneighbors(ordering_graph,v)
                     # if !(vp in explored)
@@ -421,15 +430,27 @@ function update_greedy_sets_ordered!(sched, cache,
             push!(Ao,v)
         end
         push!(explored,v)
+        if issubset(outneighbors(ordering_graph,v),C)
+            setdiff!(model.frontier,v)
+        else
+            push!(model.frontier,v)
+        end
     end
+    @info "update took $(time()-t) seconds"
     @info "|Ai| = $(length(Ai)), |Ao| = $(length(Ao)), |C| = $(length(C)), nv(sched) = $(nv(sched))"
     return Ai, Ao, C
 end
 
 function TaskGraphs.update_greedy_sets!(model::GreedyOrderedAssignment,sched,cache,Ai=Set{Int}(),Ao=Set{Int}(),C=Set{Int}();
-    kwargs...)
-    update_greedy_sets_ordered!(sched, cache, Ai, Ao, C;
-        ordering_graph=model.ordering_graph)
+    # frontier=Set{Int}(),
+    kwargs...,
+    )
+    # @show frontier
+    update_greedy_sets_ordered!(model,sched, cache, Ai, Ao, C;
+        ordering_graph=model.ordering_graph,
+        # frontier=union(frontier,Ao)
+        # kwargs...
+        )
 
 end
 function TaskGraphs.formulate_milp(
@@ -461,3 +482,17 @@ function JuMP.optimize!(model::GreedyOrderedAssignment)
     TaskGraphs.greedy_assignment!(model)
     set_leaf_vtxs!(model.schedule,ProjectComplete)
 end
+
+# global GREEDY_UPDATE_COUNTER = 10
+# function TaskGraphs.update_greedy_cost_model!(model::GreedyOrderedAssignment,args...) 
+#     TaskGraphs.update_schedule_times!(model.schedule)
+#     # global GREEDY_UPDATE_COUNTER
+#     # if GREEDY_UPDATE_COUNTER == 0
+#     #     GREEDY_UPDATE_COUNTER = 10
+#     #     TaskGraphs.update_schedule_times!(model.schedule)
+#     # else
+#     #     GREEDY_UPDATE_COUNTER -= 1
+#     # end
+#     # return nothing
+#     # update_greedy_cost_model!(model.greedy_cost,model,args...) 
+# end

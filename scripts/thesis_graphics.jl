@@ -40,8 +40,8 @@ Random.seed!(0);
 
 # factor by which to scale LDraw model (because MeshCat bounds are hard to adjust)
 # MODEL_SCALE         = 0.01
-MODEL_SCALE         = 0.01
-NUM_ROBOTS          = 12
+# MODEL_SCALE         = 0.01
+# NUM_ROBOTS          = 12
 
 ## LOAD LDRAW FILE
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
@@ -55,14 +55,15 @@ NUM_ROBOTS          = 12
 # model_name = "triple_stack.mpd"
 # model_name = "quad_nested.mpd"
 
-# model_name = "StarDestroyer.mpd"
-# MODEL_SCALE         = 0.004
-# NUM_ROBOTS          = 100
-
-model_name = "tractor.mpd"
-MODEL_SCALE         = 0.01
+model_name = "StarDestroyer.mpd"
+MODEL_SCALE         = 0.004
+NUM_ROBOTS          = 100
 ROBOT_SCALE         = MODEL_SCALE * 0.7
-NUM_ROBOTS          = 12
+
+# model_name = "tractor.mpd"
+# MODEL_SCALE         = 0.01
+# ROBOT_SCALE         = MODEL_SCALE * 0.7
+# NUM_ROBOTS          = 12
 
 # model_name = "small_quad_nested.mpd"
 filename = joinpath(dirname(pathof(LDrawParser)),"..","assets",model_name)
@@ -90,7 +91,7 @@ model_spec = ConstructionBots.extract_single_model(spec)
 id_map = ConstructionBots.build_id_map(model,model_spec)
 color_map = construct_color_map(model_spec,id_map)
 @assert GraphUtils.validate_graph(model_spec)
-plt = display_graph(model_spec,scale=1,aspect_stretch=(1.2,1.0)) #,enforce_visited=true)
+# plt = display_graph(model_spec,scale=1,aspect_stretch=(1.2,1.0)) #,enforce_visited=true)
 # display(plt)
 # draw(PDF(joinpath(graphics_path,"model_spec.pdf")),plt)
 
@@ -368,7 +369,7 @@ MAX_CARGO_HEIGHT = maximum(map(n->get_base_geom(n,HyperrectangleKey()).radius[3]
 vtxs = ConstructionBots.construct_vtx_array(;
     origin=SVector(0.0,0.0,MAX_CARGO_HEIGHT),
     obstacles=collect(values(staging_circles)),
-    ranges=(-10:10,-10:10,0:2),
+    ranges=(-10:10,-10:10,0:8),
     )
 NUM_OBJECTS = length(filter(n->matches_template(ObjectNode,n),get_nodes(scene_tree)))
 object_vtxs = draw_random_uniform(vtxs,NUM_OBJECTS)
@@ -582,7 +583,6 @@ update_visualizer!(scene_tree,vis_nodes)
 
 
 # render video!
-HG.jump_to_final_configuration!(scene_tree;set_edges=true)
 anim = AnimationWrapper(0)
 # anim = nothing
 atframe(anim,current_frame(anim)) do
