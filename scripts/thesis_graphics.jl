@@ -358,9 +358,9 @@ let
 end
 
 # construct highway
-Revise.includet("/home/kylebrown/.julia/dev/ConstructionBots/src/highway.jl")
+# Revise.includet("/home/kylebrown/.julia/dev/ConstructionBots/src/highway.jl")
 
-construct_nested_highway(sched,scene_tree,staging_circles)
+# construct_nested_highway(sched,scene_tree,staging_circles)
 
 # Move objects away from the staging plan
 MAX_CARGO_HEIGHT = maximum(map(n->get_base_geom(n,HyperrectangleKey()).radius[3]*2,
@@ -582,6 +582,7 @@ update_visualizer!(scene_tree,vis_nodes)
 
 
 # render video!
+HG.jump_to_final_configuration!(scene_tree;set_edges=true)
 anim = AnimationWrapper(0)
 # anim = nothing
 atframe(anim,current_frame(anim)) do

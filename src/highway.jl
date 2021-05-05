@@ -312,6 +312,10 @@ end
 get_parent_entrance_lanes(hwy::CircleHighway)   = hwy.entrances
 get_parent_exit_lanes(hwy::CircleHighway)       = hwy.exits
 
+
+
+
+
 @with_kw struct Highway <: AbstractCustomNGraph{DiGraph,Lane,LaneID}
     # Graph Stuff
     graph       ::DiGraph                   = DiGraph()

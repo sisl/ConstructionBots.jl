@@ -336,7 +336,7 @@ function animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,nodes=get_
             end
             if interp
                 isteps = interp_idxs[node_id(node)]
-                @show summary(node_id(node)), goal_idxs[node_id(node)], goal, isteps
+                # @show summary(node_id(node)), goal_idxs[node_id(node)], goal, isteps
                 @assert isteps > 0
                 tform = HG.interpolate_transforms(global_transform(node),goal,1.0/isteps)
                 interp_idxs[node_id(node)] -= 1
