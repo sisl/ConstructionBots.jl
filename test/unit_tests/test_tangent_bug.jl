@@ -22,8 +22,9 @@ circles = [
         # (Point(-5.0,-2.25),1.5),
         # (Point(5.0,-2.5),1.5),
         (Point(-7.9,0.0),1.0),
-        (Point(-5,1.0),1.0),
+        (Point(-5,3.0),1.0),
         (Point(-2.0,-1.0),1.0),
+        (Point(-2.0,-3.75),1.0),
         (Point(2.0,1.0),1.0),
         (Point(5.0,-1.0),1.0),
     ])
@@ -67,7 +68,7 @@ for time_step in 1:800
     vec = waypoint - pos
     if norm(vec) > vmax*dt
         vel = vmax * normalize(vec)
-    elseif norm(vec) < 0.5*vmax/dt
+    elseif policy.mode == :MOVE_TOWARD_GOAL && norm(vec) < 0.5*vmax/dt
         println("FINISHED")
         break
     else

@@ -41,6 +41,8 @@ Contains the Environment state and definition.
     active_build_steps::Set{AbstractID} = Set{AbstractID}()
     # visibility_graph            = nothing
     dt::Float64                 = rvo_default_time_step()
+    agent_policies::Dict        = Dict()
+    staging_buffers::Dict{AbstractID,Float64} = Dict{AbstractID,Float64}() # dynamic buffer for staging areas
 end
 
 function get_active_build_steps(env::PlannerEnv)
@@ -380,9 +382,6 @@ function avoid_active_staging_areas(node::Union{TransportUnitGo,RobotGo},twist,e
     Twist(SVector(vel..., 0.0), twist.ω)
 end
 
-function search_local_tangent_graph(circles,agent_radius,pos,nominal_goal)
-end
-
 @with_kw mutable struct TangentBugPolicy
     mode                = :MOVE_TOWARD_GOAL
     vmax                = 1.0
@@ -646,16 +645,21 @@ function circle_avoidance_policy(circles,agent_radius,pos,nominal_goal;
     end
 end
 
+inflate_circle(circ::C,r::Float64) = typeof(circ)(HG.get_center(circ),HG.get_radius(circ)+r)
+
 function active_staging_circles(env,exclude_ids=Set())
+    buffer = env.staging_buffer # to increase radius of staging circles when necessary
     node_iter = (get_node(env.sched,id).node for id in env.active_build_steps if !(id in exclude_ids))
-    circle_iter = (node_id(n)=>HG.project_to_2d(get_cached_geom(n.staging_circle)) for n in node_iter)
+    circle_iter = (node_id(n)=>HG.project_to_2d(
+        inflate_circ(get_cached_geom(n.staging_circle), get(buffer,node_id(n),0.0)
+        )) for n in node_iter)
 end
 
 """
     get_goal_transform(node)
 """
 function get_goal_transform(node,env)
-    @unpack sched, scene_tree, dt = env
+    @unpack sched, scene_tree, agent_policies, dt = env
     goal = global_transform(goal_config(node))
     # TODO modify goal if it would lead to entry into an out-of-bounds, region, etc.
     if avoid_staging_areas()
@@ -668,7 +672,15 @@ function get_goal_transform(node,env)
             push!(excluded_ids, node_id(parent_build_step))
         end
         circles = active_staging_circles(env,excluded_ids)
-        goal_pt = circle_avoidance_policy(circles,r,pos,HG.project_to_2d(goal.translation))
+        policy = get!(agent_policies, node_id(agent), 
+            TangentBugPolicy(
+                dt = dt,
+                vmax = get_rvo_max_speed(agent),
+                agent_radius = r,
+            )
+        )
+        goal_pt = tangent_bug_policy!(policy,circles,pos,HG.project_to_2d(goal.translation))
+        # goal_pt = circle_avoidance_policy(circles,r,pos,HG.project_to_2d(goal.translation))
         goal = CT.Translation(goal_pt...,0.0) ∘ CT.LinearMap(goal.linear)
     end
     # If highways
@@ -692,13 +704,8 @@ function get_cmd(node::Union{TransportUnitGo,RobotGo},env)
         v_max = get_rvo_max_speed(agent)
         ω_max = default_rotational_loading_speed()
         twist = optimal_twist(tf_error,v_max,ω_max,dt)
-        # if avoid_staging_areas()
-        #     twist = avoid_active_staging_areas(node,twist,env)
-        # end
         max_speed = get_rvo_max_speed(agent)
     end
-    # slack = min(1000.0,minimum(get_slack(sched,node)))
-    # rvo_set_agent_alpha!(agent,slack)
     if isa(node,TransportUnitGo)
         set_rvo_priority!(env,node)
     end
