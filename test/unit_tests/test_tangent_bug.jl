@@ -84,3 +84,37 @@ for time_step in 1:800
     # sleep(dt)
 end
 setanimation!(vis,anim.anim)
+
+
+# # Test circle_avoidance_policy
+# circles = [
+#     LazySets.Ball2(SVector(0.0,0.0),1.0),
+#     # LazySets.Ball2(SVector(1.0,-3.0),1.0),
+#     LazySets.Ball2(SVector(0.0,4.0),2.0),
+#     ]
+# goal = [0.0,8.0]
+# pos =  [0.0,-6.0]
+# agent_radius = HG.default_robot_radius()
+# dt = 0.025
+# vmax = 1.0
+# delete!(vis)
+# setobject!(vis[:robot],default_robot_geom(),MeshLambertMaterial(color=RGB(0.1,0.1,0.1)))
+# settransform!(vis[:robot],CT.Translation(pos...,0.0))
+# setobject!(vis[:goal],default_robot_geom(),MeshLambertMaterial(color=RGBA(0.0,1.0,0.0,0.2)))
+# settransform!(vis[:goal],CT.Translation(goal...,0.0))
+# for (i,c) in enumerate(circles)
+#     setobject!(vis[:circles][string(i)],convert(GeometryBasics.Sphere,HG.project_to_3d(c)),
+#      MeshLambertMaterial(color=RGBA(1.0,0.0,0.0,0.1)))
+# end
+# for t in 1:1000
+#     goal_pt = ConstructionBots.circle_avoidance_policy(circles,agent_radius,pos,goal;buffer=0.5)
+#     vel = normalize(goal_pt - pos) * min(vmax,norm(goal_pt - pos)/dt)
+#     if any(isnan,vel)
+#         vel = [0.0,0.0]
+#         break
+#     end
+#     pos = pos .+ vel*dt
+#     # update visualizer
+#     settransform!(vis[:robot],CT.Translation(pos...,0.0))
+#     sleep(dt)
+# end

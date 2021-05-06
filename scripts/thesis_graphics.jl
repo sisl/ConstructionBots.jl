@@ -23,6 +23,7 @@ const MESHCAT_GRID_DIMS = ((-10.0,10.0),(-10.0,10.0))
 using Plots
 using Random
 
+using TOML
 using Logging
 global_logger(ConsoleLogger(stderr, Logging.Info))
 # global_logger(ConsoleLogger(stderr, Logging.Debug))
@@ -38,8 +39,9 @@ reset_all_id_counters!()
 reset_all_invalid_id_counters!()
 Random.seed!(0);
 
+PRE_EXECUTION_START_TIME = time()
+
 # factor by which to scale LDraw model (because MeshCat bounds are hard to adjust)
-# MODEL_SCALE         = 0.01
 # MODEL_SCALE         = 0.01
 # NUM_ROBOTS          = 12
 
@@ -53,22 +55,37 @@ Random.seed!(0);
 # model_name = "stack1.ldr"
 # model_name = "big_stack.ldr"
 # model_name = "triple_stack.mpd"
-# model_name = "quad_nested.mpd"
 
-model_name = "StarDestroyer.mpd"
-MODEL_SCALE         = 0.004
-NUM_ROBOTS          = 100
-ROBOT_SCALE         = MODEL_SCALE * 0.7
+# model_name = "quad_nested.mpd"
+# MODEL_SCALE         = 0.003
+# NUM_ROBOTS          = 50
+# ROBOT_SCALE         = MODEL_SCALE
+
+model_name = "ATTEWalker.mpd"
+MODEL_SCALE         = 0.003
+NUM_ROBOTS          = 36
+ROBOT_SCALE         = MODEL_SCALE
+
+# model_name = "StarDestroyer.mpd"
+# MODEL_SCALE         = 0.004
+# NUM_ROBOTS          = 100
+# ROBOT_SCALE         = MODEL_SCALE * 0.7
 
 # model_name = "tractor.mpd"
 # MODEL_SCALE         = 0.01
 # ROBOT_SCALE         = MODEL_SCALE * 0.7
 # NUM_ROBOTS          = 12
 
+# model_name = "colored_8x8.ldr"
+# MODEL_SCALE         = 0.01
+# ROBOT_SCALE         = MODEL_SCALE * 0.9
+# NUM_ROBOTS          = 25
+
 # model_name = "small_quad_nested.mpd"
-filename = joinpath(dirname(pathof(LDrawParser)),"..","assets",model_name)
 # NUM_ROBOTS          = 40
 # MODEL_SCALE         = 0.01
+
+filename = joinpath(dirname(pathof(LDrawParser)),"..","assets",model_name)
 
 base_graphics_path = "/scratch/Repositories/Sandbox/thesis_graphics/LEGO"
 graphics_path = joinpath(base_graphics_path,model_name)
@@ -266,7 +283,7 @@ end
 MAX_OBJECT_TRANSPORT_UNIT_RADIUS = ConstructionBots.get_max_object_transport_unit_radius(scene_tree)
 staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched;
     # buffer_radius = 3*HG.default_robot_radius(),
-    buffer_radius=2*MAX_OBJECT_TRANSPORT_UNIT_RADIUS,
+    buffer_radius=1.5*MAX_OBJECT_TRANSPORT_UNIT_RADIUS,
     build_step_buffer_radius=HG.default_robot_radius()/2,
     # build_step_buffer_radius=0.0,
     # buffer_radius = 0.0
@@ -369,7 +386,8 @@ MAX_CARGO_HEIGHT = maximum(map(n->get_base_geom(n,HyperrectangleKey()).radius[3]
 vtxs = ConstructionBots.construct_vtx_array(;
     origin=SVector(0.0,0.0,MAX_CARGO_HEIGHT),
     obstacles=collect(values(staging_circles)),
-    ranges=(-10:10,-10:10,0:8),
+    ranges=(-13:13,-13:13,0:1),
+    # ranges=(-10:10,-10:10,0:1),
     )
 NUM_OBJECTS = length(filter(n->matches_template(ObjectNode,n),get_nodes(scene_tree)))
 object_vtxs = draw_random_uniform(vtxs,NUM_OBJECTS)
@@ -484,18 +502,28 @@ validate_schedule_transform_tree(ConstructionBots.convert_from_operating_schedul
     ;post_staging=true)
 update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
 @assert validate(tg_sched)
+POST_ASSIGNMENT_MAKESPAN = TaskGraphs.makespan(tg_sched)
 # display_graph(tg_sched,scale=3,enforce_visited=true) |> PDF("/home/kylebrown/Desktop/sched.pdf")
 # sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,200)
 # display_graph(sched2,scale=3,enforce_visited=true,aspect_stretch=(0.9,0.9))
 
 # Try assigning robots to "home" locations so they don't sit around in each others' way
 go_nodes = [n for n in get_nodes(tg_sched) if matches_template(RobotGo,n) && is_terminal_node(tg_sched,n)]
-home_vtxs = draw_random_uniform(vtxs,length(go_nodes))
+home_vtx_candidates = ConstructionBots.construct_vtx_array(;
+    origin=SVector(0.0,0.0,MAX_CARGO_HEIGHT),
+    obstacles=collect(values(staging_circles)),
+    ranges=(-12:4*ROBOT_RADIUS:12,-12:4*ROBOT_RADIUS:12,0:0),
+    )
+# home_vtxs = draw_random_uniform(vtxs,length(go_nodes))
+home_vtxs = draw_random_uniform(home_vtx_candidates,length(go_nodes))
 for (vtx,n) in zip(home_vtxs,go_nodes)
     HG.set_desired_global_transform!(goal_config(n),
         CT.Translation(vtx[1],vtx[2],0.0) ∘ identity_linear_map()
     )
 end
+
+# compile pre execution statistics
+PRE_EXECUTION_TIME = time() - PRE_EXECUTION_START_TIME
 
 ## Visualize staging plans to debug the rotational shuffling 
 # vis_triads, vis_arrows, bounding_vis = visualize_staging_plan(vis,sched,scene_tree)
@@ -605,8 +633,12 @@ animate_preprocessing_steps!(
         anim=anim,
         interp_steps=40,
     )
+atframe(anim,current_frame(anim)) do
+    set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
+    update_visualizer!(scene_tree,vis_nodes)
+end
 setanimation!(vis,anim.anim)
-render(vis)
+# render(vis)
 # open(joinpath(graphics_path,"animate_preprocessing.html"),"w") do io
 #     write(io,static_html(vis))
 # end
@@ -627,69 +659,76 @@ env = PlannerEnv(
 active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
 ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 
+for n in get_nodes(scene_tree)
+    if matches_template(Union{RobotNode,TransportUnitNode},n)
+        env.agent_policies[node_id(n)] = TangentBugPolicy(
+            dt = env.dt,
+            vmax = ConstructionBots.get_rvo_max_speed(n),
+            agent_radius = HG.get_radius(get_base_geom(n,HypersphereKey())),
+        )
+    end
+end
+
 update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,staging_nodes;
     anim=anim,
     )
 
-
 # Turn off RVO to see if the project can be completed if we don't worry about collision
-# set_use_rvo!(false)
+set_use_rvo!(false)
 # set_avoid_staging_areas!(false)
-set_use_rvo!(true)
+# set_use_rvo!(true)
 set_avoid_staging_areas!(true)
 
-ConstructionBots.simulate!(env,update_visualizer_function,max_time_steps=5000)
+EXECUTION_START_TIME = time()
+status, TIME_STEPS = ConstructionBots.simulate!(env,update_visualizer_function,max_time_steps=5000)
+if status == true
+    EXECUTION_TIME = time() -  EXECUTION_START_TIME
+else
+    EXECUTION_TIME = Inf
+end
+
+# record statistics
+STATS = Dict()
+STATS[:numobjects]          = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(ObjectNode,n)])
+STATS[:numassemblies]       = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(AssemblyNode,n)])
+STATS[:numrobots]           = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(RobotNode,n)])
+STATS[:PreExecutionRuntime] = PRE_EXECUTION_TIME
+STATS[:OptimisticMakespan]  = POST_ASSIGNMENT_MAKESPAN
+STATS[:ExecutionRuntime]    = EXECUTION_TIME
+STATS[:Makespan]            = TIME_STEPS*env.dt
+if use_rvo()
+    prefix = "with_rvo"
+else
+    prefix = "without_rvo"
+end
+if isa(milp_model,AbstractGreedyAssignment)
+    prefix = string("greedy_",prefix)
+else
+    prefix = string("optimal_",prefix)
+end
+mkpath(joinpath(graphics_path,prefix))
+open(joinpath(graphics_path,prefix,"stats.toml"),"w") do io
+    TOML.print(io,STATS)
+end
+
 setanimation!(vis,anim.anim)
-open(joinpath(graphics_path,"construction_simulation.html"),"w") do io
+open(joinpath(graphics_path,prefix,"construction_simulation.html"),"w") do io
     write(io,static_html(vis))
 end
-render(vis)
+# render(vis)
 
 # animate camera path
 rotate_camera!(vis,anim);
 setanimation!(vis,anim.anim)
-open(joinpath(graphics_path,"construction_simulation_rotating.html"),"w") do io
-    write(io,static_html(vis))
-end
-
+# open(joinpath(graphics_path,"construction_simulation_rotating.html"),"w") do io
+#     write(io,static_html(vis))
+# end
 
 
 # using Blink
 # w = Blink.Window(async=false)
 # loadfile(w,joinpath(graphics_path,"construction_simulation.html"))
 
-# Test circle_avoidance_policy
-circles = [
-    LazySets.Ball2(SVector(0.0,0.0),1.0),
-    # LazySets.Ball2(SVector(1.0,-3.0),1.0),
-    LazySets.Ball2(SVector(0.0,4.0),2.0),
-    ]
-goal = [0.0,8.0]
-pos =  [0.0,-6.0]
-agent_radius = HG.default_robot_radius()
-dt = 0.025
-vmax = 1.0
-delete!(vis)
-setobject!(vis[:robot],default_robot_geom(),MeshLambertMaterial(color=RGB(0.1,0.1,0.1)))
-settransform!(vis[:robot],CT.Translation(pos...,0.0))
-setobject!(vis[:goal],default_robot_geom(),MeshLambertMaterial(color=RGBA(0.0,1.0,0.0,0.2)))
-settransform!(vis[:goal],CT.Translation(goal...,0.0))
-for (i,c) in enumerate(circles)
-    setobject!(vis[:circles][string(i)],convert(GeometryBasics.Sphere,HG.project_to_3d(c)),
-     MeshLambertMaterial(color=RGBA(1.0,0.0,0.0,0.1)))
-end
-for t in 1:1000
-    goal_pt = ConstructionBots.circle_avoidance_policy(circles,agent_radius,pos,goal;buffer=0.5)
-    vel = normalize(goal_pt - pos) * min(vmax,norm(goal_pt - pos)/dt)
-    if any(isnan,vel)
-        vel = [0.0,0.0]
-        break
-    end
-    pos = pos .+ vel*dt
-    # update visualizer
-    settransform!(vis[:robot],CT.Translation(pos...,0.0))
-    sleep(dt)
-end
 
 
 

@@ -28,6 +28,62 @@ function set_staging_buffer_radius!(val)
     global STAGING_BUFFER_RADIUS = val
 end
 
+export
+    Twist,
+    optimal_twist,
+    integrate_twist
+
+"""
+    Twist
+"""
+struct Twist
+    vel::SVector{3,Float64}
+    ω::SVector{3,Float64}
+end
+Base.zero(::Type{Twist}) = Twist(SVector(0.0,0.0,0.0),SVector(0.0,0.0,0.0))
+
+"""
+    optimal_twist(tf_error,v_max,ω_max)
+
+Given a pose error `tf_error`, compute the maximum magnitude `Twist` that 
+satisfies the bounds on linear and angular velocity and does not overshoot the
+goal pose.
+    tf_error = inv(state) ∘ goal # transform error from state to goal 
+    i.e., state ∘ tf_error == goal
+"""
+function optimal_twist(tf_error,v_max,ω_max,dt,ϵ_x=1e-4,ϵ_θ=1e-4)
+    # translation error
+    dx = tf_error.translation
+    if norm(dx) <= ϵ_x
+        vel = SVector(0.0,0.0,0.0)
+    else
+        vel = normalize(dx) * min(v_max, norm(dx)/dt)
+    end
+    vel = any(isnan,vel) ? SVector(0.0,0.0,0.0) : vel
+    # rotation error
+    r = RotationVec(tf_error.linear) # rotation vector
+    θ = SVector(r.sx,r.sy,r.sz) # convert r to svector
+    if norm(θ) <= ϵ_θ
+        ω = SVector(0.0,0.0,0.0)
+    else
+        ω = normalize(θ) * min(ω_max, norm(θ)/dt)
+    end
+    ω = any(isnan,ω) ? SVector(0.0,0.0,0.0) : ω
+    Twist(vel,ω)
+end
+
+"""
+    apply_twist!(tf,twist,dt)
+
+Integrate `twist::Twist` for `dt` seconds to obtain a rigid transform.
+"""
+function integrate_twist(twist,dt)
+    Δx = twist.vel*dt # translation increment
+    ΔR = exp(cross_product_operator(twist.ω)*dt)
+    Δ = CT.Translation(Δx) ∘ CT.LinearMap(ΔR)
+    return Δ
+end
+
 """
     PlannerEnv
 
@@ -44,6 +100,8 @@ Contains the Environment state and definition.
     agent_policies::Dict        = Dict()
     staging_buffers::Dict{AbstractID,Float64} = Dict{AbstractID,Float64}() # dynamic buffer for staging areas
 end
+
+node_is_active(env,node) = get_vtx(env.sched,node_id(node)) in env.cache.active_set
 
 function get_active_build_steps(env::PlannerEnv)
     @unpack sched, scene_tree, cache, dt = env
@@ -83,7 +141,9 @@ function simulate!(env,update_visualizer_function;
     @unpack sched, scene_tree, cache, dt = env
     t0 = 0.0
     time_stamp = t0
+    iters = 0
     for k in 1:max_time_steps
+        iters = k
         if mod(k,100) == 0
             @info " ******************* BEGINNING TIME STEP $k *******************"
         end
@@ -97,7 +157,7 @@ function simulate!(env,update_visualizer_function;
             break
         end
     end
-    return env
+    return project_complete(env), iters
 end
 
 
@@ -160,10 +220,12 @@ function set_rvo_priority!(env,node)
         staging_circle = staging_circles[node_id(parent_assembly)]
         pos = HG.project_to_2d(global_transform(entity(node)).translation)
         if get_vtx(sched,build_step_node) in cache.active_set 
+            # WHY THIS BREAKDOWN?
             if pos in staging_circle
                 alpha = 0.0
             else
-                alpha = 0.5
+                # alpha = 0.5
+                alpha = 0.0
             end
         else
             alpha = 1.0
@@ -171,7 +233,7 @@ function set_rvo_priority!(env,node)
     elseif matches_template(RobotGo,node)
         parent_build_step = get_parent_build_step(sched,node)
         if !(parent_build_step === nothing) && get_vtx(sched,parent_build_step) in cache.active_set 
-            alpha = 0.5
+            alpha = 0.1
         else
             alpha = 1.0
         end
@@ -271,11 +333,20 @@ end
 
 function project_complete(env::PlannerEnv)
     @unpack sched, cache = env
-    if isempty(cache.active_set)
-        @assert nv(sched) == length(cache.closed_set)
-        return true
+    # done = true
+    for n in get_nodes(sched)
+        if matches_template(ProjectComplete,n)
+            if !(get_vtx(sched,n) in cache.closed_set)
+                return false
+            end
+        end
     end
-    return false
+    return true
+    # if isempty(cache.active_set)
+    #     @assert nv(sched) == length(cache.closed_set)
+    #     return true
+    # end
+    # return false
 end
 
 # CRCBS.is_goal
@@ -382,180 +453,9 @@ function avoid_active_staging_areas(node::Union{TransportUnitGo,RobotGo},twist,e
     Twist(SVector(vel..., 0.0), twist.ω)
 end
 
-@with_kw mutable struct TangentBugPolicy
-    mode                = :MOVE_TOWARD_GOAL
-    vmax                = 1.0
-    dt                  = 0.05 
-    proximity_tolerance = 1e-2
-    agent_radius        = 0.5
-    planning_radius     = 2*agent_radius
-    detour_horizon      = 2*planning_radius
-    buffer              = staging_buffer_radius()
-end
+function query_policy_for_goal! end
 
-"""
-    first_intersection_pt(circle,p1,p2)
-
-Return closest point of intersection of `circle` with line from `p1` to `p2`
-"""
-function first_intersection_pt(circle,p1,p2)
-    c = HG.get_center(circle)
-    r = HG.get_radius(circle)
-    pt = HG.project_point_to_line(c,p1,p2)
-    b = norm(pt-c)
-    if b > r
-        return nothing
-    end
-    a = sqrt(r^2 - b^2)
-    vec = pt-p1
-    return p1 + normalize(vec) * (norm(vec)-a)
-end
-
-"""
-    get_closest_interfering_circle(policy,circles,pos,nominal_goal)
-
-Returns the id and bloated (by policy.agent_radius+buffer) circle closest to pos
-"""
-function get_closest_interfering_circle(policy,circles,pos,nominal_goal)
-    @unpack planning_radius, detour_horizon, proximity_tolerance, buffer, 
-        agent_radius, vmax, dt = policy
-    dmin = Inf
-    id = nothing
-    circ = nothing
-    pt = nominal_goal
-    for (circ_id,c) in circles
-        x = HG.get_center(c)
-        r = HG.get_radius(c)
-        bloated_circle = Ball2(x,r+agent_radius+buffer)
-        # if !(pt === nothing)
-        # end
-        if HG.circle_intersects_line(bloated_circle,pos,nominal_goal)
-            # d = norm(x - pos) - (r + agent_radius) #- norm(x - pos) # penetration
-            d = norm(x - pos) - HG.get_radius(bloated_circle) #- norm(x - pos) # penetration
-            if d < dmin
-                # penetration < 0 => pos is in circle
-                dmin = d
-                id = circ_id
-                circ = bloated_circle
-                pt = first_intersection_pt(bloated_circle,pos,nominal_goal)
-            end
-        end
-    end
-    return id, circ, pt
-end
-
-function set_policy_mode!(policy,circ,pos,nominal_goal)
-    @unpack planning_radius, detour_horizon, proximity_tolerance, buffer, 
-        agent_radius, vmax, dt = policy
-    dmin = Inf
-    c = nothing
-    r = nothing
-    if !(circ === nothing)
-        c = HG.get_center(circ)
-        r = HG.get_radius(circ)
-        dmin = norm(c - pos) - r
-    end
-
-    mode = policy.mode
-    if circ === nothing
-        mode = :MOVE_TOWARD_GOAL
-    else
-        if norm(nominal_goal - c) < r 
-            # nominal_goal is in circle
-            mode = :WAIT_OUTSIDE
-        elseif dmin + proximity_tolerance >= 0 
-            # not currently in a circle, but on a course for intersection
-            # if norm(nominal_goal - pos) + 30*proximity_tolerance < norm(nominal_goal - c)
-            if norm(nominal_goal - pos) + agent_radius/2 < norm(nominal_goal - c)
-                # Just keep going toward goal (on the clear side)--this statement should never be reached
-                mode = :MOVE_TOWARD_GOAL
-            elseif dmin < detour_horizon
-                # detour
-                if dmin < 2*proximity_tolerance
-                    # right at circle---just turn right to skim
-                    mode = :MOVE_ALONG_CIRCLE
-                else
-                    # Pick a tangent point to shoot for
-                    mode = :MOVE_TANGENT
-                end
-            else
-                mode = :MOVE_TOWARD_GOAL
-            end
-        else
-            # INSIDE CIRCLE
-            mode = :EXIT_CIRCLE
-        end
-    end
-    policy.mode = mode
-end
-
-function tangent_bug_policy!(policy,circles,pos,nominal_goal)
-    @unpack planning_radius, detour_horizon, proximity_tolerance, buffer, 
-        agent_radius, vmax, dt = policy
-    
-    c = nothing
-    r = nothing
-    id = nothing
-    dmin = Inf
-    id, circ, waypoint = get_closest_interfering_circle(policy,circles,pos,nominal_goal)
-    if !(circ === nothing)
-        c = HG.get_center(circ)
-        r = HG.get_radius(circ)
-        dmin = norm(c - pos) - r
-    end
-    # select operating mode
-    mode = set_policy_mode!(policy,circ,pos,nominal_goal)
-
-    # Select waypoint
-    goal = nominal_goal
-    if mode == :WAIT_OUTSIDE 
-        if norm(nominal_goal - c) > 1e-3
-            goal = c + normalize(nominal_goal - c)*r
-        else
-            goal = c + normalize(pos - c)*r
-        end
-    elseif mode == :MOVE_TOWARD_GOAL
-        goal = nominal_goal
-    elseif mode == :MOVE_ALONG_CIRCLE
-        dvec = normalize(pos - c) * (r + proximity_tolerance)
-        # compute sector to traverse
-        dr = vmax * dt
-        dθ = 2*sin(0.5*dr / r)
-        goal = c + [cos(dθ) -sin(dθ); sin(dθ) cos(dθ)] * dvec
-    elseif mode == :MOVE_TANGENT
-        vec = c - pos # vector from pos to circle center
-        ψ = asin(r/norm(vec)) # yaw angle of right tangent line
-        dθ = π/2 - ψ # CCW angular offset to tangent point 
-        dvec = normalize(pos - c) * r
-        goal = c + [cos(dθ) -sin(dθ); sin(dθ) cos(dθ)] * dvec
-        # if goal causes intersection with another circle, choose waypoint instead
-        new_id, _, _ = get_closest_interfering_circle(policy,circles,pos,goal)
-        if !(new_id === nothing || new_id == id)
-            policy.mode = :MOVE_TOWARD_GOAL
-            goal = waypoint
-        end
-    elseif mode == :EXIT_CIRCLE
-        vec = pos - c
-        if norm(vec) < 1e-3
-            goal = nominal_goal
-        else
-            goal = c + (r + 2*proximity_tolerance) * normalize(vec)
-        end
-    else
-        throw(ErrorException("Unknown controller mode $mode"))
-    end
-
-    # @show mode, dmin
-
-    # if !(mode == :MOVE_TOWARD_GOAL)
-    #     nominal_pt = pos + normalize(nominal_goal - pos) * min(planning_radius,norm(nominal_goal - pos))
-    #     f = g->HG.circle_intersection_with_line(circ,pos,g)
-    #     if f(nominal_pt) > f(goal)
-    #         goal = nominal_goal
-    #     end
-    # end
-    return goal
-end
+include("tangent_bug.jl")
 
 """
     circle_avoidance_policy()
@@ -656,11 +556,36 @@ function active_staging_circles(env,exclude_ids=Set())
         )) for n in node_iter)
 end
 
+function inflate_staging_circle_buffers!(env,policy,agent,circle_ids;
+        threshold=0.2,
+        delta = 0.1*default_robot_radius(),
+        delta_max = 4*default_robot_radius(),
+    )
+    @unpack staging_buffers, dt = env
+    # desird change in position
+    desired_dx     = dt * HG.project_to_2d(policy.cmd.vel)
+    prev_pos       = HG.project_to_2d(policy.config.translation)
+    pos            = HG.project_to_2d(global_transform(agent).translation)
+    # true change in position
+    dx             = pos - prev_pos 
+    if norm(dx) < threshold * norm(desired_dx)
+        # increase buffer
+        for id in circle_ids
+            buffer = get(staging_buffers,id,0.0) + delta
+            if buffer < delta_max - delta
+                buffer = min(buffer,delta_max)
+                staging_buffers[id] = buffer
+                @info "increasing radius buffer of $(summary(id)) to $(buffer) because $(summary(node_id(agent))) is stuck"
+            end
+        end
+    end
+end
+
 """
     get_goal_transform(node)
 """
 function get_goal_transform(node,env)
-    @unpack sched, scene_tree, agent_policies, dt = env
+    @unpack sched, scene_tree, agent_policies, cache, dt = env
     goal = global_transform(goal_config(node))
     # TODO modify goal if it would lead to entry into an out-of-bounds, region, etc.
     if avoid_staging_areas()
@@ -670,18 +595,19 @@ function get_goal_transform(node,env)
         parent_build_step = get_parent_build_step(sched,node)
         excluded_ids = Set{AbstractID}()
         if !(parent_build_step === nothing)
+        # if !(parent_build_step === nothing) && node_is_active(env,parent_build_step)
             push!(excluded_ids, node_id(parent_build_step))
         end
+        # get circle obstacles, potentially inflated 
         circles = active_staging_circles(env,excluded_ids)
-        policy = get!(agent_policies, node_id(agent), 
-            TangentBugPolicy(
-                dt = dt,
-                vmax = get_rvo_max_speed(agent),
-                agent_radius = r,
-            )
-        )
-        goal_pt = tangent_bug_policy!(policy,circles,pos,HG.project_to_2d(goal.translation))
-        # goal_pt = circle_avoidance_policy(circles,r,pos,HG.project_to_2d(goal.translation))
+        policy = agent_policies[node_id(agent)] 
+        # INFLATE CIRCLES IF NECESSARY
+        if policy.mode == :MOVE_TOWARD_GOAL
+            inflate_staging_circle_buffers!(env,policy,agent,excluded_ids)
+        end
+        # update policy and get goal
+        policy.config = global_transform(agent)
+        goal_pt = query_policy_for_goal!(policy,circles,pos,HG.project_to_2d(goal.translation))
         goal = CT.Translation(goal_pt...,0.0) ∘ CT.LinearMap(goal.linear)
     end
     # If highways
@@ -788,61 +714,4 @@ function apply_cmd!(node::Union{TransportUnitGo,RobotGo},twist,env)
         tform = integrate_twist(twist,dt)
         set_local_transform!(agent, local_transform(agent) ∘ tform)
     end
-end
-
-
-export
-    Twist,
-    optimal_twist,
-    integrate_twist
-
-"""
-    Twist
-"""
-struct Twist
-    vel::SVector{3,Float64}
-    ω::SVector{3,Float64}
-end
-Base.zero(::Type{Twist}) = Twist(SVector(0.0,0.0,0.0),SVector(0.0,0.0,0.0))
-
-"""
-    optimal_twist(tf_error,v_max,ω_max)
-
-Given a pose error `tf_error`, compute the maximum magnitude `Twist` that 
-satisfies the bounds on linear and angular velocity and does not overshoot the
-goal pose.
-    tf_error = inv(state) ∘ goal # transform error from state to goal 
-    i.e., state ∘ tf_error == goal
-"""
-function optimal_twist(tf_error,v_max,ω_max,dt,ϵ_x=1e-4,ϵ_θ=1e-4)
-    # translation error
-    dx = tf_error.translation
-    if norm(dx) <= ϵ_x
-        vel = SVector(0.0,0.0,0.0)
-    else
-        vel = normalize(dx) * min(v_max, norm(dx)/dt)
-    end
-    vel = any(isnan,vel) ? SVector(0.0,0.0,0.0) : vel
-    # rotation error
-    r = RotationVec(tf_error.linear) # rotation vector
-    θ = SVector(r.sx,r.sy,r.sz) # convert r to svector
-    if norm(θ) <= ϵ_θ
-        ω = SVector(0.0,0.0,0.0)
-    else
-        ω = normalize(θ) * min(ω_max, norm(θ)/dt)
-    end
-    ω = any(isnan,ω) ? SVector(0.0,0.0,0.0) : ω
-    Twist(vel,ω)
-end
-
-"""
-    apply_twist!(tf,twist,dt)
-
-Integrate `twist::Twist` for `dt` seconds to obtain a rigid transform.
-"""
-function integrate_twist(twist,dt)
-    Δx = twist.vel*dt # translation increment
-    ΔR = exp(cross_product_operator(twist.ω)*dt)
-    Δ = CT.Translation(Δx) ∘ CT.LinearMap(ΔR)
-    return Δ
 end
