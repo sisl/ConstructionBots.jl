@@ -232,30 +232,51 @@ function run_lego_demo(;
         return nothing
     end
 
-    vis_nodes = Dict()
-    staging_nodes = Dict()
-    base_geom_nodes = Dict()
+    factory_vis = FactoryVisualizer(vis=vis)
+    # vis_nodes = Dict()
+    # staging_nodes = Dict()
+    # base_geom_nodes = Dict()
     if VISUALIZER
         ## Visualize assembly
         delete!(vis)
-        vis_nodes, base_geom_nodes = populate_visualizer!(scene_tree,vis;
+        factory_vis = populate_visualizer!(scene_tree,vis;
             color_map=color_map,
             color=RGB(0.3,0.3,0.3),
             # wireframe=true,
             material_type=MeshLambertMaterial)
-        sphere_nodes = show_geometry_layer!(scene_tree,vis_nodes,HypersphereKey())
-        rect_nodes = show_geometry_layer!(scene_tree,vis_nodes,HyperrectangleKey();
-            color=RGBA{Float32}(1, 0, 0, 0.3),
-        )
-        staging_nodes = render_staging_areas!(vis,scene_tree,sched,staging_circles;
+        add_indicator_nodes!(factory_vis)
+        factory_vis.staging_nodes = render_staging_areas!(vis,scene_tree,sched,staging_circles;
             dz=0.01,color=RGBA(0.4,0.0,0.4,0.5))
-        setvisible!(base_geom_nodes,true)
-        setvisible!(sphere_nodes,true)
-        setvisible!(rect_nodes,true)
-        setvisible!(staging_nodes,true)
-        setvisible!(sphere_nodes,false)
-        setvisible!(rect_nodes,false)
-        setvisible!(staging_nodes,false)
+        for (k,color) in [
+                (HypersphereKey()=>RGBA(0.0,1.0,0.0,0.3)),
+                (HyperrectangleKey()=>RGBA(1.0,0.0,0.0,0.3))
+            ]
+            show_geometry_layer!(factory_vis,k;color=color)
+        end
+        for (k,nodes) in factory_vis.geom_nodes 
+            setvisible!(nodes,false)
+        end
+        setvisible!(factory_vis.geom_nodes[BaseGeomKey()],true)
+        setvisible!(factory_vis.active_flags,false)
+
+        # vis_nodes, base_geom_nodes = populate_visualizer!(scene_tree,vis;
+        #     color_map=color_map,
+        #     color=RGB(0.3,0.3,0.3),
+        #     # wireframe=true,
+        #     material_type=MeshLambertMaterial)
+        # sphere_nodes = show_geometry_layer!(scene_tree,vis_nodes,HypersphereKey())
+        # rect_nodes = show_geometry_layer!(scene_tree,vis_nodes,HyperrectangleKey();
+        #     color=RGBA{Float32}(1, 0, 0, 0.3),
+        # )
+        # staging_nodes = render_staging_areas!(vis,scene_tree,sched,staging_circles;
+        #     dz=0.01,color=RGBA(0.4,0.0,0.4,0.5))
+        # setvisible!(base_geom_nodes,true)
+        # setvisible!(sphere_nodes,true)
+        # setvisible!(rect_nodes,true)
+        # setvisible!(staging_nodes,true)
+        # setvisible!(sphere_nodes,false)
+        # setvisible!(rect_nodes,false)
+        # setvisible!(staging_nodes,false)
 
         # # restore correct configuration
         HG.jump_to_final_configuration!(scene_tree;set_edges=true)
@@ -264,25 +285,17 @@ function run_lego_demo(;
         set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
         # update_visualizer!(scene_tree,vis_nodes)
 
-        # render video!
         anim = AnimationWrapper(0)
-        # anim = nothing
         atframe(anim,current_frame(anim)) do
             HG.jump_to_final_configuration!(scene_tree;set_edges=true)
-            update_visualizer!(scene_tree,vis_nodes)
-            # setvisible!(sphere_nodes,false)
-            setvisible!(vis_nodes,true)
-            setvisible!(rect_nodes,false)
-            setvisible!(staging_nodes,false)
+            update_visualizer!(factory_vis)
+            setvisible!(factory_vis.geom_nodes[HyperrectangleKey()],false)
+            setvisible!(factory_vis.staging_nodes,false)
         end
         step_animation!(anim)
         animate_preprocessing_steps!(
-                vis,
-                vis_nodes,
-                scene_tree,
-                sched,
-                rect_nodes,
-                base_geom_nodes,
+                factory_vis,
+                sched
                 ;
                 dt_animate=0.0,
                 dt=0.0,
@@ -291,9 +304,40 @@ function run_lego_demo(;
             )
         atframe(anim,current_frame(anim)) do
             set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
-            update_visualizer!(scene_tree,vis_nodes)
+            update_visualizer!(factory_vis)
         end
         setanimation!(vis,anim.anim)
+
+        # render video!
+        # anim = AnimationWrapper(0)
+        # # anim = nothing
+        # atframe(anim,current_frame(anim)) do
+        #     HG.jump_to_final_configuration!(scene_tree;set_edges=true)
+        #     update_visualizer!(scene_tree,vis_nodes)
+        #     # setvisible!(sphere_nodes,false)
+        #     setvisible!(vis_nodes,true)
+        #     setvisible!(rect_nodes,false)
+        #     setvisible!(staging_nodes,false)
+        # end
+        # step_animation!(anim)
+        # animate_preprocessing_steps!(
+        #         vis,
+        #         vis_nodes,
+        #         scene_tree,
+        #         sched,
+        #         rect_nodes,
+        #         base_geom_nodes,
+        #         ;
+        #         dt_animate=0.0,
+        #         dt=0.0,
+        #         anim=anim,
+        #         interp_steps=40,
+        #     )
+        # atframe(anim,current_frame(anim)) do
+        #     set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
+        #     update_visualizer!(scene_tree,vis_nodes)
+        # end
+        # setanimation!(vis,anim.anim)
         if WRITE_RESULTS
             open(joinpath(graphics_path,"animate_preprocessing.html"),"w") do io
                 write(io,static_html(vis))
@@ -327,7 +371,8 @@ function run_lego_demo(;
         end
     end
 
-    update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,staging_nodes;
+    # update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,staging_nodes;
+    update_visualizer_function = construct_visualizer_update_function(factory_vis;
         anim=anim,
         )
 

@@ -73,7 +73,7 @@ ROBOT_SCALE         = MODEL_SCALE * 0.7
 NUM_ROBOTS          = 30
 OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 HOME_VTX_RANGE      = (-10:10,-10:10, 0:1)
-MAX_STEPS           = 5000
+MAX_STEPS           = 8000
 STAGING_BUFFER_FACTOR = 0.5
 BUILD_STEP_BUFFER_FACTOR = 0.25
 
@@ -154,7 +154,7 @@ run_lego_demo(;
         MAX_STEPS           = MAX_STEPS,
         ASSIGNMENT_MODE     = :GREEDY,
         RVO_FLAG            = false,
-        VISUALIZER          = false,
-        vis                 = nothing,
+        # VISUALIZER          = false,
+        vis                 = vis,
         WRITE_RESULTS       = false,
     );
