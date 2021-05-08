@@ -582,14 +582,17 @@ function inflate_staging_circle_buffers!(env,policy,agent,circle_ids;
 end
 
 """
-    get_goal_transform(node)
+    get_twist_cmd(node,env)
+
+Query the agent's policy to get the desired twist
 """
-function get_goal_transform(node,env)
+function get_twist_cmd(node,env)
     @unpack sched, scene_tree, agent_policies, cache, dt = env
+    agent = entity(node)
     goal = global_transform(goal_config(node))
+    twist = compute_twist_from_goal(agent,goal,dt)
     # TODO modify goal if it would lead to entry into an out-of-bounds, region, etc.
     if avoid_staging_areas()
-        agent = entity(node)
         r = HG.get_radius(get_base_geom(agent,HypersphereKey()))
         pos = HG.project_to_2d(global_transform(agent).translation)
         parent_build_step = get_parent_build_step(sched,node)
@@ -609,11 +612,17 @@ function get_goal_transform(node,env)
         policy.config = global_transform(agent)
         goal_pt = query_policy_for_goal!(policy,circles,pos,HG.project_to_2d(goal.translation))
         goal = CT.Translation(goal_pt...,0.0) ∘ CT.LinearMap(goal.linear)
+        twist = compute_twist_from_goal(agent,goal,dt)
     end
-    # If highways
-
     # If potential field (to use at goal?)
-    return goal
+    # return goal
+    return twist
+end
+function compute_twist_from_goal(agent,goal,dt)
+    tf_error = relative_transform(global_transform(agent), goal)
+    v_max = get_rvo_max_speed(agent)
+    ω_max = default_rotational_loading_speed()
+    twist = optimal_twist(tf_error,v_max,ω_max,dt)
 end
 get_cmd(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},env) = nothing
 function get_cmd(node::Union{TransportUnitGo,RobotGo},env)
@@ -626,11 +635,12 @@ function get_cmd(node::Union{TransportUnitGo,RobotGo},env)
         twist = zero(Twist)
         max_speed = 0.0
     else
-        goal = get_goal_transform(node,env)
-        tf_error = relative_transform(global_transform(agent), goal)
-        v_max = get_rvo_max_speed(agent)
-        ω_max = default_rotational_loading_speed()
-        twist = optimal_twist(tf_error,v_max,ω_max,dt)
+        twist = get_twist_cmd(node,env)
+        # goal = get_twist_cmd(node,env)
+        # tf_error = relative_transform(global_transform(agent), goal)
+        # v_max = get_rvo_max_speed(agent)
+        # ω_max = default_rotational_loading_speed()
+        # twist = optimal_twist(tf_error,v_max,ω_max,dt)
         max_speed = get_rvo_max_speed(agent)
     end
     if isa(node,TransportUnitGo)

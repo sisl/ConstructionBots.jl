@@ -204,7 +204,7 @@ function run_lego_demo(;
     home_vtx_candidates = ConstructionBots.construct_vtx_array(;
         origin=SVector(0.0,0.0,MAX_CARGO_HEIGHT),
         obstacles=collect(values(staging_circles)),
-        ranges=(-16:4*ROBOT_RADIUS:16,-16:4*ROBOT_RADIUS:16,0:0),
+        ranges=HOME_VTX_RANGE,
         )
     home_vtxs = draw_random_uniform(home_vtx_candidates,length(go_nodes))
     for (vtx,n) in zip(home_vtxs,go_nodes)

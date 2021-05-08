@@ -76,15 +76,15 @@ PRE_EXECUTION_START_TIME = time()
 # STAGING_BUFFER_FACTOR = 1.5
 # BUILD_STEP_BUFFER_FACTOR = 0.5
 
-project_name = "Saturn.mpd"
-MODEL_SCALE         = 0.001
-NUM_ROBOTS          = 100
-ROBOT_SCALE         = MODEL_SCALE*4
-MAX_STEPS           = 20000
-OBJECT_VTX_RANGE =(-36:36,-36:36,0:8)
-HOME_VTX_RANGE    = (-34:34,-34:34, 0:0)
-STAGING_BUFFER_FACTOR = 1.5
-BUILD_STEP_BUFFER_FACTOR = 0.5
+# project_name = "Saturn.mpd"
+# MODEL_SCALE         = 0.001
+# NUM_ROBOTS          = 100
+# ROBOT_SCALE         = MODEL_SCALE*4
+# MAX_STEPS           = 20000
+# OBJECT_VTX_RANGE =(-36:36,-36:36,0:8)
+# HOME_VTX_RANGE    = (-34:34,-34:34, 0:0)
+# STAGING_BUFFER_FACTOR = 1.5
+# BUILD_STEP_BUFFER_FACTOR = 0.5
 
 # project_name = "MillenniumFalcon.mpd"
 # MODEL_SCALE         = 0.001
@@ -113,11 +113,15 @@ BUILD_STEP_BUFFER_FACTOR = 0.5
 # NUM_ROBOTS          = 12
 # OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
-# project_name = "colored_8x8.ldr"
-# MODEL_SCALE         = 0.01
-# ROBOT_SCALE         = MODEL_SCALE * 0.9
-# NUM_ROBOTS          = 25
-# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
+project_name = "colored_8x8.ldr"
+MODEL_SCALE         = 0.01
+ROBOT_SCALE         = MODEL_SCALE * 0.9
+NUM_ROBOTS          = 25
+MAX_STEPS           = 2000
+OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
+HOME_VTX_RANGE      = (-10:10,-10:10, 0:1)
+STAGING_BUFFER_FACTOR = 1.5
+BUILD_STEP_BUFFER_FACTOR = 0.5
 
 # project_name = "small_quad_nested.mpd"
 # NUM_ROBOTS          = 40
@@ -541,9 +545,8 @@ tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 milp_model = ConstructionBots.GreedyOrderedAssignment(
     greedy_cost = TaskGraphs.GreedyFinalTimeCost(),
 )
-milp_model = formulate_milp(milp_model,deepcopy(tg_sched),scene_tree)
-# ConstructionBots.assign_collaborative_tasks!(milp_model)
-
+# milp_model = formulate_milp(milp_model,deepcopy(tg_sched),scene_tree)
+milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
 optimize!(milp_model)
 validate_schedule_transform_tree(ConstructionBots.convert_from_operating_schedule(typeof(sched),tg_sched)
     ;post_staging=true)
@@ -573,25 +576,26 @@ end
 
 ## Visualize assembly
 delete!(vis)
-vis_nodes, base_geom_nodes = populate_visualizer!(scene_tree,vis;
+factory_vis = populate_visualizer!(scene_tree,vis;
     color_map=color_map,
     color=RGB(0.3,0.3,0.3),
     # wireframe=true,
     material_type=MeshLambertMaterial)
-sphere_nodes = show_geometry_layer!(scene_tree,vis_nodes,HypersphereKey())
-rect_nodes = show_geometry_layer!(scene_tree,vis_nodes,HyperrectangleKey();
-    color=RGBA{Float32}(1, 0, 0, 0.3),
-)
-staging_nodes = render_staging_areas!(vis,scene_tree,sched,staging_circles;
+add_indicator_nodes!(factory_vis)
+factory_vis.staging_nodes = render_staging_areas!(vis,scene_tree,sched,staging_circles;
     dz=0.01,color=RGBA(0.4,0.0,0.4,0.5))
-setvisible!(base_geom_nodes,true)
-setvisible!(sphere_nodes,true)
-setvisible!(rect_nodes,true)
-setvisible!(staging_nodes,true)
-# setvisible!(base_geom_nodes,false)
-setvisible!(sphere_nodes,false)
-setvisible!(rect_nodes,false)
-setvisible!(staging_nodes,false)
+for (k,color) in [
+        (HypersphereKey()=>RGBA(0.0,1.0,0.0,0.3)),
+        (HyperrectangleKey()=>RGBA(1.0,0.0,0.0,0.3))
+    ]
+    show_geometry_layer!(factory_vis,k;color=color)
+end
+for (k,nodes) in factory_vis.geom_nodes 
+    setvisible!(nodes,false)
+end
+setvisible!(factory_vis.geom_nodes[BaseGeomKey()],true)
+setvisible!(factory_vis.active_flags,false)
+
 MeshCat.render(vis)
 
 let
@@ -642,10 +646,10 @@ end
 
 # restore correct configuration
 HG.jump_to_final_configuration!(scene_tree;set_edges=true)
-update_visualizer!(scene_tree,vis_nodes)
+# update_visualizer!(scene_tree,vis_nodes)
 # set staging plan and visualize
 set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
-update_visualizer!(scene_tree,vis_nodes)
+# update_visualizer!(scene_tree,factory_vis.vis_nodes)
 # Visualize construction
 # visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;dt=0.1)
 
@@ -655,18 +659,14 @@ anim = AnimationWrapper(0)
 # anim = nothing
 atframe(anim,current_frame(anim)) do
     HG.jump_to_final_configuration!(scene_tree;set_edges=true)
-    update_visualizer!(scene_tree,vis_nodes)
-    # setvisible!(sphere_nodes,false)
-    setvisible!(rect_nodes,false)
-    setvisible!(staging_nodes,false)
+    update_visualizer!(factory_vis)
+    setvisible!(factory_vis.geom_nodes[HyperrectangleKey()],false)
+    setvisible!(factory_vis.staging_nodes,false)
 end
 step_animation!(anim)
 animate_preprocessing_steps!(
-        vis,
-        vis_nodes,
-        scene_tree,
-        sched,
-        rect_nodes,
+        factory_vis,
+        sched
         ;
         dt_animate=0.0,
         dt=0.0,
@@ -675,7 +675,7 @@ animate_preprocessing_steps!(
     )
 atframe(anim,current_frame(anim)) do
     set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
-    update_visualizer!(scene_tree,vis_nodes)
+    update_visualizer!(factory_vis)
 end
 setanimation!(vis,anim.anim)
 # render(vis)
@@ -709,7 +709,8 @@ for n in get_nodes(scene_tree)
     end
 end
 
-update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,staging_nodes;
+# update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,staging_nodes;
+update_visualizer_function = construct_visualizer_update_function(factory_vis;
     anim=anim,
     )
 
@@ -719,34 +720,34 @@ set_use_rvo!(false)
 # set_use_rvo!(true)
 set_avoid_staging_areas!(true)
 
+
+# record statistics
+# if use_rvo()
+#     prefix = "with_rvo"
+# else
+#     prefix = "without_rvo"
+# end
+# if isa(milp_model,AbstractGreedyAssignment)
+#     prefix = string("greedy_",prefix)
+# else
+#     prefix = string("optimal_",prefix)
+# end
+
 status, TIME_STEPS = ConstructionBots.simulate!(env, update_visualizer_function,
     max_time_steps=MAX_STEPS,
     )
-
-# record statistics
-if use_rvo()
-    prefix = "with_rvo"
-else
-    prefix = "without_rvo"
-end
-if isa(milp_model,AbstractGreedyAssignment)
-    prefix = string("greedy_",prefix)
-else
-    prefix = string("optimal_",prefix)
-end
-
 setanimation!(vis,anim.anim)
-open(joinpath(graphics_path,prefix,"construction_simulation.html"),"w") do io
-    write(io,static_html(vis))
-end
-render(vis)
+# open(joinpath(graphics_path,prefix,"construction_simulation.html"),"w") do io
+#     write(io,static_html(vis))
+# end
+# render(vis)
 
 # animate camera path
-rotate_camera!(vis,anim);
-setanimation!(vis,anim.anim)
-open(joinpath(graphics_path,prefix,"construction_simulation_rotating.html"),"w") do io
-    write(io,static_html(vis))
-end
+# rotate_camera!(vis,anim);
+# setanimation!(vis,anim.anim)
+# open(joinpath(graphics_path,prefix,"construction_simulation_rotating.html"),"w") do io
+#     write(io,static_html(vis))
+# end
 
 
 # using Blink

@@ -481,6 +481,7 @@ function assign_collaborative_tasks!(model,
                 # assembly complete
                 @assert matches_template(AssemblyComplete,next_node)
                 push!(assemblies_completed,node_id(entity(next_node)))
+                @info "Closing Assembly $(summary(node_id(entity(next_node))))"
             end
         end
     end
