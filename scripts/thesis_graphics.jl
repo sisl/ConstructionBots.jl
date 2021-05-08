@@ -49,26 +49,26 @@ PRE_EXECUTION_START_TIME = time()
 # filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
 # NUM_ROBOTS          = 200
 # MODEL_SCALE         = 0.005
-# model_name = "simple_quad_stack.mpd"
-# model_name = "DemoStack.mpd"
-# model_name = "ATTEWalker.mpd"
-# model_name = "stack1.ldr"
-# model_name = "big_stack.ldr"
-# model_name = "triple_stack.mpd"
+# project_name = "simple_quad_stack.mpd"
+# project_name = "DemoStack.mpd"
+# project_name = "ATTEWalker.mpd"
+# project_name = "stack1.ldr"
+# project_name = "big_stack.ldr"
+# project_name = "triple_stack.mpd"
 
-# model_name = "quad_nested.mpd"
+# project_name = "quad_nested.mpd"
 # MODEL_SCALE         = 0.003
 # NUM_ROBOTS          = 50
 # ROBOT_SCALE         = MODEL_SCALE
 # OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
-# model_name = "ATTEWalker.mpd"
+# project_name = "ATTEWalker.mpd"
 # MODEL_SCALE         = 0.003
 # NUM_ROBOTS          = 36
 # ROBOT_SCALE         = MODEL_SCALE
 # OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
-# model_name = "StarDestroyer.mpd"
+# project_name = "StarDestroyer.mpd"
 # MODEL_SCALE         = 0.004
 # NUM_ROBOTS          = 100
 # ROBOT_SCALE         = MODEL_SCALE * 0.7
@@ -76,19 +76,23 @@ PRE_EXECUTION_START_TIME = time()
 # STAGING_BUFFER_FACTOR = 1.5
 # BUILD_STEP_BUFFER_FACTOR = 0.5
 
-# model_name = "21309-1-NASA_Apollo_Saturn_V.mpd"
-# MODEL_SCALE         = 0.001
-# NUM_ROBOTS          = 100
-# ROBOT_SCALE         = MODEL_SCALE
-# OBJECT_VTX_RANGE =(-28:28,-28:28,0:3),
+project_name = "Saturn.mpd"
+MODEL_SCALE         = 0.001
+NUM_ROBOTS          = 100
+ROBOT_SCALE         = MODEL_SCALE*4
+MAX_STEPS           = 20000
+OBJECT_VTX_RANGE =(-36:36,-36:36,0:8)
+HOME_VTX_RANGE    = (-34:34,-34:34, 0:0)
+STAGING_BUFFER_FACTOR = 1.5
+BUILD_STEP_BUFFER_FACTOR = 0.5
 
-# model_name = "MillenniumFalcon.mpd"
+# project_name = "MillenniumFalcon.mpd"
 # MODEL_SCALE         = 0.001
 # NUM_ROBOTS          = 200
 # ROBOT_SCALE         = MODEL_SCALE
 # OBJECT_VTX_RANGE    = (-26:26,-26:26, 0:10)
 
-# model_name = "X-wingFighter.mpd"
+# project_name = "X-wingFighter.mpd"
 # MODEL_SCALE         = 0.004
 # NUM_ROBOTS          = 100
 # ROBOT_SCALE         = MODEL_SCALE
@@ -97,33 +101,33 @@ PRE_EXECUTION_START_TIME = time()
 # STAGING_BUFFER_FACTOR = 1.5
 # BUILD_STEP_BUFFER_FACTOR = 0.5
 
-model_name = "X-wingMini.mpd"
-MODEL_SCALE         = 0.01
-ROBOT_SCALE         = MODEL_SCALE * 0.7
-NUM_ROBOTS          = 30
-OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
+# project_name = "X-wingMini.mpd"
+# MODEL_SCALE         = 0.01
+# ROBOT_SCALE         = MODEL_SCALE * 0.7
+# NUM_ROBOTS          = 30
+# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
-# model_name = "tractor.mpd"
+# project_name = "tractor.mpd"
 # MODEL_SCALE         = 0.01
 # ROBOT_SCALE         = MODEL_SCALE * 0.7
 # NUM_ROBOTS          = 12
 # OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
-# model_name = "colored_8x8.ldr"
+# project_name = "colored_8x8.ldr"
 # MODEL_SCALE         = 0.01
 # ROBOT_SCALE         = MODEL_SCALE * 0.9
 # NUM_ROBOTS          = 25
 # OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
-# model_name = "small_quad_nested.mpd"
+# project_name = "small_quad_nested.mpd"
 # NUM_ROBOTS          = 40
 # MODEL_SCALE         = 0.01
 # OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
-filename = joinpath(dirname(pathof(LDrawParser)),"..","assets",model_name)
+filename = joinpath(dirname(pathof(LDrawParser)),"..","assets",project_name)
 
 base_graphics_path = "/scratch/Repositories/Sandbox/thesis_graphics/LEGO"
-graphics_path = joinpath(base_graphics_path,model_name)
+graphics_path = joinpath(base_graphics_path,project_name)
 mkpath(graphics_path)
 
 ROBOT_HEIGHT        = 10*ROBOT_SCALE
@@ -535,11 +539,10 @@ tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 # ## Greedy Assignment with enforced build-step ordering
 milp_model = ConstructionBots.GreedyOrderedAssignment(
     greedy_cost = TaskGraphs.GreedyFinalTimeCost(),
-    # greedy_cost = TaskGraphs.GreedyPathLengthCost(),
 )
-milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
-ConstructionBots.assign_collaborative_tasks!(milp_model)
-# optimize!(milp_model)
+# milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
+milp_model = formulate_milp(milp_model,deepcopy(tg_sched),scene_tree)
+optimize!(milp_model)
 validate_schedule_transform_tree(ConstructionBots.convert_from_operating_schedule(typeof(sched),tg_sched)
     ;post_staging=true)
 update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)

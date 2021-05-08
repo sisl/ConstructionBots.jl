@@ -67,15 +67,15 @@ Random.seed!(0);
 # HOME_VTX_RANGE      = (-10:10,-10:10, 0:1)
 # MAX_STEPS           = 3000
 
-# project_name = "X-wingMini.mpd"
-# MODEL_SCALE         = 0.01
-# ROBOT_SCALE         = MODEL_SCALE * 0.7
-# NUM_ROBOTS          = 30
-# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
-# HOME_VTX_RANGE      = (-10:10,-10:10, 0:1)
-# MAX_STEPS           = 4000
-# STAGING_BUFFER_FACTOR = 0.5
-# BUILD_STEP_BUFFER_FACTOR = 0.25
+project_name = "X-wingMini.mpd"
+MODEL_SCALE         = 0.01
+ROBOT_SCALE         = MODEL_SCALE * 0.7
+NUM_ROBOTS          = 30
+OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
+HOME_VTX_RANGE      = (-10:10,-10:10, 0:1)
+MAX_STEPS           = 4000
+STAGING_BUFFER_FACTOR = 0.5
+BUILD_STEP_BUFFER_FACTOR = 0.25
 
 # project_name = "quad_nested.mpd"
 # MODEL_SCALE         = 0.004
@@ -87,15 +87,15 @@ Random.seed!(0);
 # STAGING_BUFFER_FACTOR = 1.5
 # BUILD_STEP_BUFFER_FACTOR = 0.55
 
-# project_name = "X-wingFighter.mpd"
-# MODEL_SCALE         = 0.004
-# NUM_ROBOTS          = 100
-# ROBOT_SCALE         = MODEL_SCALE
-# OBJECT_VTX_RANGE    = (-26:26,-26:26, 0:10)
-# HOME_VTX_RANGE    = (-26:26,-26:26, 0:0)
-# MAX_STEPS           = 20000
-# STAGING_BUFFER_FACTOR = 1.5
-# BUILD_STEP_BUFFER_FACTOR = 0.5
+project_name = "X-wingFighter.mpd"
+MODEL_SCALE         = 0.004
+NUM_ROBOTS          = 100
+ROBOT_SCALE         = MODEL_SCALE
+OBJECT_VTX_RANGE    = (-26:26,-26:26, 0:10)
+HOME_VTX_RANGE    = (-26:26,-26:26, 0:0)
+MAX_STEPS           = 20000
+STAGING_BUFFER_FACTOR = 1.5
+BUILD_STEP_BUFFER_FACTOR = 0.5
 
 # project_name = "StarDestroyer.mpd"
 # MODEL_SCALE         = 0.004
@@ -112,8 +112,8 @@ MODEL_SCALE         = 0.001
 NUM_ROBOTS          = 100
 ROBOT_SCALE         = MODEL_SCALE*4
 MAX_STEPS           = 20000
-OBJECT_VTX_RANGE =(-32:32,-32:32,0:5)
-HOME_VTX_RANGE    = (-34:30,-30:34, 0:0)
+OBJECT_VTX_RANGE =(-36:36,-36:36,0:8)
+HOME_VTX_RANGE    = (-34:34,-34:34, 0:0)
 STAGING_BUFFER_FACTOR = 1.5
 BUILD_STEP_BUFFER_FACTOR = 0.5
 
