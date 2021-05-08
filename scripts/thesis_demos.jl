@@ -45,23 +45,21 @@ reset_all_id_counters!()
 reset_all_invalid_id_counters!()
 Random.seed!(0);
 
-PRE_EXECUTION_START_TIME = time()
-
 ## LOAD LDRAW FILE
-# model_name = "simple_quad_stack.mpd"
-# model_name = "DemoStack.mpd"
-# model_name = "ATTEWalker.mpd"
-# model_name = "stack1.ldr"
-# model_name = "big_stack.ldr"
-# model_name = "triple_stack.mpd"
+# project_name = "simple_quad_stack.mpd"
+# project_name = "DemoStack.mpd"
+# project_name = "ATTEWalker.mpd"
+# project_name = "stack1.ldr"
+# project_name = "big_stack.ldr"
+# project_name = "triple_stack.mpd"
 
-# model_name = "ATTEWalker.mpd"
+# project_name = "ATTEWalker.mpd"
 # MODEL_SCALE         = 0.003
 # NUM_ROBOTS          = 36
 # ROBOT_SCALE         = MODEL_SCALE
 # OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
-# model_name = "tractor.mpd"
+# project_name = "tractor.mpd"
 # MODEL_SCALE         = 0.01
 # ROBOT_SCALE         = MODEL_SCALE * 0.7
 # NUM_ROBOTS          = 12
@@ -69,7 +67,7 @@ PRE_EXECUTION_START_TIME = time()
 # HOME_VTX_RANGE      = (-10:10,-10:10, 0:1)
 # MAX_STEPS           = 3000
 
-# model_name = "X-wingMini.mpd"
+# project_name = "X-wingMini.mpd"
 # MODEL_SCALE         = 0.01
 # ROBOT_SCALE         = MODEL_SCALE * 0.7
 # NUM_ROBOTS          = 30
@@ -79,7 +77,7 @@ PRE_EXECUTION_START_TIME = time()
 # STAGING_BUFFER_FACTOR = 0.5
 # BUILD_STEP_BUFFER_FACTOR = 0.25
 
-# model_name = "quad_nested.mpd"
+# project_name = "quad_nested.mpd"
 # MODEL_SCALE         = 0.004
 # NUM_ROBOTS          = 50
 # ROBOT_SCALE         = MODEL_SCALE
@@ -89,7 +87,7 @@ PRE_EXECUTION_START_TIME = time()
 # STAGING_BUFFER_FACTOR = 1.5
 # BUILD_STEP_BUFFER_FACTOR = 0.55
 
-# model_name = "X-wingFighter.mpd"
+# project_name = "X-wingFighter.mpd"
 # MODEL_SCALE         = 0.004
 # NUM_ROBOTS          = 100
 # ROBOT_SCALE         = MODEL_SCALE
@@ -99,7 +97,7 @@ PRE_EXECUTION_START_TIME = time()
 # STAGING_BUFFER_FACTOR = 1.5
 # BUILD_STEP_BUFFER_FACTOR = 0.5
 
-# model_name = "StarDestroyer.mpd"
+# project_name = "StarDestroyer.mpd"
 # MODEL_SCALE         = 0.004
 # NUM_ROBOTS          = 100
 # ROBOT_SCALE         = MODEL_SCALE * 0.7
@@ -109,17 +107,17 @@ PRE_EXECUTION_START_TIME = time()
 # STAGING_BUFFER_FACTOR = 1.5
 # BUILD_STEP_BUFFER_FACTOR = 0.5
 
-model_name = "Saturn.mpd"
+project_name = "Saturn.mpd"
 MODEL_SCALE         = 0.001
 NUM_ROBOTS          = 100
-ROBOT_SCALE         = MODEL_SCALE
+ROBOT_SCALE         = MODEL_SCALE*4
 MAX_STEPS           = 20000
-OBJECT_VTX_RANGE =(-28:28,-28:28,0:3)
-HOME_VTX_RANGE    = (-26:26,-26:26, 0:0)
+OBJECT_VTX_RANGE =(-32:32,-32:32,0:5)
+HOME_VTX_RANGE    = (-34:30,-30:34, 0:0)
 STAGING_BUFFER_FACTOR = 1.5
 BUILD_STEP_BUFFER_FACTOR = 0.5
 
-# model_name = "colored_8x8.ldr"
+# project_name = "colored_8x8.ldr"
 # MODEL_SCALE         = 0.01
 # ROBOT_SCALE         = MODEL_SCALE * 0.9
 # NUM_ROBOTS          = 25
@@ -129,7 +127,7 @@ for RVO_FLAG in [true,false]
     # for ASSIGNMENT_MODE in [:OPTIMAL,:GREEDY]
     for ASSIGNMENT_MODE in [:GREEDY]
         run_lego_demo(;
-                model_name          = model_name,
+                project_name          = project_name,
                 MODEL_SCALE         = MODEL_SCALE,
                 NUM_ROBOTS          = NUM_ROBOTS,
                 ROBOT_SCALE         = ROBOT_SCALE,
@@ -139,8 +137,24 @@ for RVO_FLAG in [true,false]
                 ASSIGNMENT_MODE     = ASSIGNMENT_MODE,
                 RVO_FLAG            = RVO_FLAG,
                 VISUALIZER          = false,
-                vis                 = nothing
+                vis                 = nothing,
                 # vis                 = vis,
             );
     end
 end
+
+
+run_lego_demo(;
+        project_name        = project_name,
+        MODEL_SCALE         = MODEL_SCALE,
+        NUM_ROBOTS          = NUM_ROBOTS,
+        ROBOT_SCALE         = ROBOT_SCALE,
+        OBJECT_VTX_RANGE    = OBJECT_VTX_RANGE,
+        HOME_VTX_RANGE      = HOME_VTX_RANGE,
+        MAX_STEPS           = MAX_STEPS,
+        ASSIGNMENT_MODE     = :GREEDY,
+        RVO_FLAG            = false,
+        VISUALIZER          = false,
+        vis                 = nothing,
+        WRITE_RESULTS       = false,
+    );

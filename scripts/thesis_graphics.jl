@@ -68,13 +68,13 @@ PRE_EXECUTION_START_TIME = time()
 # ROBOT_SCALE         = MODEL_SCALE
 # OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
-model_name = "StarDestroyer.mpd"
-MODEL_SCALE         = 0.004
-NUM_ROBOTS          = 100
-ROBOT_SCALE         = MODEL_SCALE * 0.7
-MAX_STEPS           = 20000
-STAGING_BUFFER_FACTOR = 1.5
-BUILD_STEP_BUFFER_FACTOR = 0.5
+# model_name = "StarDestroyer.mpd"
+# MODEL_SCALE         = 0.004
+# NUM_ROBOTS          = 100
+# ROBOT_SCALE         = MODEL_SCALE * 0.7
+# MAX_STEPS           = 20000
+# STAGING_BUFFER_FACTOR = 1.5
+# BUILD_STEP_BUFFER_FACTOR = 0.5
 
 # model_name = "21309-1-NASA_Apollo_Saturn_V.mpd"
 # MODEL_SCALE         = 0.001
@@ -97,11 +97,11 @@ BUILD_STEP_BUFFER_FACTOR = 0.5
 # STAGING_BUFFER_FACTOR = 1.5
 # BUILD_STEP_BUFFER_FACTOR = 0.5
 
-# model_name = "X-wingMini.mpd"
-# MODEL_SCALE         = 0.01
-# ROBOT_SCALE         = MODEL_SCALE * 0.7
-# NUM_ROBOTS          = 30
-# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
+model_name = "X-wingMini.mpd"
+MODEL_SCALE         = 0.01
+ROBOT_SCALE         = MODEL_SCALE * 0.7
+NUM_ROBOTS          = 30
+OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
 # model_name = "tractor.mpd"
 # MODEL_SCALE         = 0.01
@@ -442,7 +442,7 @@ for node in get_nodes(scene_tree)
         current = global_transform(start_config(start_node))
         rect = current(get_base_geom(node,HyperrectangleKey()))
         dh = MAX_CARGO_HEIGHT - (rect.center .- rect.radius)[3]
-        @show summary(node_id(node)), dh
+        # @show summary(node_id(node)), dh
         set_desired_global_transform_without_affecting_children!(
         # set_desired_global_transform!(
             start_config(start_node),
@@ -519,7 +519,6 @@ ConstructionBots.set_default_loading_speed!(10*HG.default_robot_radius())
 ConstructionBots.set_default_rotational_loading_speed!(10*HG.default_robot_radius())
 tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 
-ASSIGNMENT_TIME = time()
 ## Black box MILP solver
 # TaskGraphs.set_default_optimizer_attributes!(
 #     "TimeLimit"=>75,
@@ -539,13 +538,12 @@ milp_model = ConstructionBots.GreedyOrderedAssignment(
     # greedy_cost = TaskGraphs.GreedyPathLengthCost(),
 )
 milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
-optimize!(milp_model)
+ConstructionBots.assign_collaborative_tasks!(milp_model)
+# optimize!(milp_model)
 validate_schedule_transform_tree(ConstructionBots.convert_from_operating_schedule(typeof(sched),tg_sched)
     ;post_staging=true)
 update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
 @assert validate(tg_sched)
-ASSIGNMENT_TIME = time() - ASSIGNMENT_TIME
-POST_ASSIGNMENT_MAKESPAN = TaskGraphs.makespan(tg_sched)
 # display_graph(tg_sched,scale=3,enforce_visited=true) |> PDF("/home/kylebrown/Desktop/sched.pdf")
 # sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,200)
 # display_graph(sched2,scale=3,enforce_visited=true,aspect_stretch=(0.9,0.9))
@@ -567,7 +565,6 @@ for (vtx,n) in zip(home_vtxs,go_nodes)
 end
 
 # compile pre execution statistics
-PRE_EXECUTION_TIME = time() - PRE_EXECUTION_START_TIME
 
 ## Visualize assembly
 delete!(vis)
@@ -717,28 +714,11 @@ set_use_rvo!(false)
 # set_use_rvo!(true)
 set_avoid_staging_areas!(true)
 
-EXECUTION_START_TIME = time()
 status, TIME_STEPS = ConstructionBots.simulate!(env, update_visualizer_function,
     max_time_steps=MAX_STEPS,
     )
-if status == true
-    EXECUTION_TIME = time() -  EXECUTION_START_TIME
-else
-    EXECUTION_TIME = Inf
-end
 
 # record statistics
-STATS = Dict()
-STATS[:numobjects]          = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(ObjectNode,n)])
-STATS[:numassemblies]       = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(AssemblyNode,n)])
-STATS[:numrobots]           = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(RobotNode,n)])
-STATS[:AssigmentTime]       = ASSIGNMENT_TIME
-STATS[:ConfigTransportUnitsTime] = CONFIG_TRANSPORT_UNITS_TIME 
-STATS[:StagingPlanTime]     = STAGING_PLAN_TIME
-STATS[:PreExecutionRuntime] = PRE_EXECUTION_TIME
-STATS[:OptimisticMakespan]  = POST_ASSIGNMENT_MAKESPAN
-STATS[:ExecutionRuntime]    = EXECUTION_TIME
-STATS[:Makespan]            = TIME_STEPS*env.dt
 if use_rvo()
     prefix = "with_rvo"
 else
@@ -748,10 +728,6 @@ if isa(milp_model,AbstractGreedyAssignment)
     prefix = string("greedy_",prefix)
 else
     prefix = string("optimal_",prefix)
-end
-mkpath(joinpath(graphics_path,prefix))
-open(joinpath(graphics_path,prefix,"stats.toml"),"w") do io
-    TOML.print(io,STATS)
 end
 
 setanimation!(vis,anim.anim)

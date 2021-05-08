@@ -382,6 +382,134 @@ end
 #     return G
 # end
 # greedy_set_precedence_ordering(sched) = topological_sort_by_dfs(greedy_set_precedence_graph(sched))
+function construct_build_step_task_set(sched,scene_tree,step_id)
+    tasks = Set{AbstractID}()
+    n = get_node(sched,step_id)
+    for (part_id,tform) in assembly_components(n.node)
+        tu = get_node(scene_tree,TransportUnitNode(get_node(scene_tree,part_id)))
+        form_tu_node = get_node(sched,FormTransportUnit(tu))
+        push!(tasks,node_id(form_tu_node))
+    end
+    tasks
+end
+
+function assign_collaborative_tasks!(model)
+    sched       = model.schedule
+    scene_tree  = model.problem_spec
+    D = TaskGraphs.construct_schedule_distance_matrix(sched,scene_tree)
+    assembly_starts = Dict(node_id(n)=>n for n in get_nodes(sched) if matches_template(AssemblyStart,n))
+    active_build_steps = Dict()
+    for (k,n) in assembly_starts
+        open_build_step = get_first_build_step(sched,n) 
+        step_id = node_id(open_build_step)
+        # active_build_steps[node_id(open_build_step)] = Set{AbstractID}()
+        active_build_steps[step_id] = construct_build_step_task_set(sched,scene_tree,step_id)
+    end
+    # fill robots with go nodes
+    robots = Set{Int}()
+    for n in get_nodes(sched)
+        if matches_template(RobotStart,n)
+            go_vtx = first(outneighbors(sched,n))
+            @assert isempty(outneighbors(sched,go_vtx))
+            push!(robots,go_vtx)
+        end
+    end
+    robots, active_build_steps
+    # assign tasks
+
+    @info "Beginning task assignment"
+    while !isempty(active_build_steps)
+        # get best possible assignment of robots to a team task
+        best_cost       = Inf
+        build_step_id   = nothing
+        task_id         = nothing
+        best_assignments = nothing
+        for (step_id,tasks) in active_build_steps
+            for task in tasks
+                team_slots = Set(v for v in inneighbors(sched,task) if matches_template(RobotGo,get_node(sched,v)))
+                assignments = []
+                cost = 0.0
+                while !isempty(team_slots)
+                    robot, slot, c = TaskGraphs.get_best_pair(robots, team_slots,
+                        (v,v2)->TaskGraphs.get_edge_cost(model,D,v,v2))
+                    cost = max(c,cost)
+                    if cost > best_cost
+                        break
+                    end
+                    push!(assignments,robot=>slot)
+                    setdiff!(team_slots,slot) # remove slot from team_slots
+                    setdiff!(robots,robot) # remove robots from robots
+                end
+                # @info "assignment for $(summary(task)): $assignments"
+                # replace robot in robot set
+                for (robot,slot) in assignments
+                    push!(robots,robot)
+                end
+                # update best assignment
+                if cost < best_cost
+                    build_step_id = step_id
+                    task_id = task
+                    best_assignments = assignments
+                    best_cost = cost
+                    # @info "updating best assignment to $(summary(task)): $assignments"
+                end
+            end
+        end
+        # update schedule
+        @assert !(best_assignments === nothing) "no assignment found!"
+        # @info "best assignment selected $(summary(task_id)): $best_assignments"
+        for (robot,task) in best_assignments
+            add_edge!(sched,robot,task)
+            setdiff!(robots,robot) # remove robots
+        end
+        # add new robots
+        deposit_node = get_node(sched,DepositCargo(entity(get_node(sched,task_id))))
+        for v in outneighbors(sched,deposit_node) 
+            if matches_template(RobotGo,get_node(sched,v))
+                push!(robots,v)
+            end
+        end
+        # update schedule times
+        TaskGraphs.update_schedule_times!(sched)
+        # update active build step list
+        delete!(active_build_steps[build_step_id], task_id)
+        if isempty(active_build_steps[build_step_id])
+            @info "Assignment: closing build step $(summary(build_step_id))"
+            delete!(active_build_steps, build_step_id)
+            close_build_step = get_node(sched,CloseBuildStep(get_node(sched,build_step_id).node))
+            next_build_step = get_node(sched,first(outneighbors(sched,close_build_step)))
+            if matches_template(OpenBuildStep,next_build_step)
+                step_id = node_id(next_build_step)
+                active_build_steps[step_id] = construct_build_step_task_set(
+                    sched,
+                    scene_tree,
+                    step_id)
+                # @info "new build step $(summary(step_id)) with tasks $(active_build_steps[step_id])"
+            end
+        end
+    end
+    @info "Assignment Complete!"
+    model
+end
+
+function get_best_assignment!(model,sched,scene_tree,task,robot_ids,D)
+    goal_vtxs = inneighbors(sched,task)
+    robot_vtxs = [get_vtx(sched,id) for id in robot_ids]
+    c = Inf
+    robot = nothing
+    goal = nothing
+    for v2 in goal_vtxs
+        for v in robot_vtxs
+            cost = get_edge_cost(model,D,v,v2)
+            if cost < c
+                c = cost
+                robot = v
+                goal = v2
+            end
+        end
+    end
+    return robot, goal
+end
 
 """
     update_greedy_sets_ordered!(model,sched, cache, args...;kwargs...)
@@ -397,30 +525,20 @@ function update_greedy_sets_ordered!(model,sched, cache,
         C=Set{Int}(), 
         ;
         ordering_graph::DiGraph=get_graph(greedy_set_precedence_graph(sched)),
-        # frontier::Set{Int}=get_all_root_nodes(ordering_graph),
         frontier::Set{Int}=model.frontier,
+        # frontier::Set{Int}=get_all_root_nodes(ordering_graph),
         )
     explored = Set{Int}()
     ordered_frontier = Vector{Int}(collect(frontier))
-    # while !isempty(frontier)
-        # v = pop!(frontier)
     t = time()
+    # TODO ensure that we don't get stuck with a bunch of half-full team transport assignments
     while !isempty(ordered_frontier)
         v = popfirst!(ordered_frontier)
-        # if !(v in C) && issubset(inneighbors(ordering_graph,v),C)
         if issubset(inneighbors(ordering_graph,v),C)
             if indegree(sched,v) >= cache.n_required_predecessors[v]
                 push!(C,v)
-                # remove inneighbors from model.frontier
-                # push!(model.frontier,v)
-                # for vp in inneighbors(ordering_graph,v)
-                #     setdiff!(model.frontier,vp)
-                # end
-                # union!(frontier,outneighbors(ordering_graph,v))
                 for vp in outneighbors(ordering_graph,v)
-                    # if !(vp in explored)
-                        push!(ordered_frontier,vp)
-                    # end
+                    push!(ordered_frontier,vp)
                 end
             else
                 push!(Ai,v)
@@ -439,6 +557,78 @@ function update_greedy_sets_ordered!(model,sched, cache,
     @info "update took $(time()-t) seconds"
     @info "|Ai| = $(length(Ai)), |Ao| = $(length(Ao)), |C| = $(length(C)), nv(sched) = $(nv(sched))"
     return Ai, Ao, C
+end
+
+"""
+    select_next_edges(model::GreedyOrderedAssignment,D,Ao,Ai)
+
+Fill collaborative tasks all at once.
+"""
+function TaskGraphs.select_next_edges(model::GreedyOrderedAssignment,D,Ao,Ai)
+    sched = model.schedule
+    best_edges = TaskGraphs.select_next_edges(
+        TaskGraphs.edge_selection_model(model),model,D,Ao,Ai)
+    edge_list = deepcopy(best_edges)
+    while isempty(best_edges)
+        # check if collaborative task. If so, fill up immediately
+        (a,b) = pop!(best_edges)
+        setdiff!(Ao,a)
+        setdiff!(Ai,b)
+        dst = get_node(sched,b)
+        for n in node_iterator(sched,outneighbors(sched,dst))
+            if matches_template(FormTransportUnit,n)
+                team_size = length(robot_team(entity(n)))
+                if team_size > 1
+                    # is collaborative
+                    if team_size > length(Ao) 
+                        # not enough robots available to make this assignment right now
+                        # put `a` back and get a new assignment
+                        push!(Ao,a)
+                        best_edges = TaskGraphs.select_next_edges(
+                            TaskGraphs.edge_selection_model(model),model,D,Ao,Ai)
+                    end
+                    # fill up remainder of team member assignments immediately
+                    @info "filling assignments for $(summary(node_id(n))) with team size $(length(robot_team(entity(n)))). |Ao| = $(length(Ao))"
+                    edge_list = fill_assignments_greedy!(
+                        inneighbors(sched,n), model, sched, D, Ai, Ao)
+                    @info "completed collaborative transport assignments for $(summary(node_id(n))): $(edge_list)"
+                    best_edges = vcat(best_edges,edge_list)
+                end
+            end
+        end
+    end
+    best_edges
+end
+
+"""
+    fill_assignments_greedy!(vtxs,model,sched,D,Ai,Ao)
+
+Greedily fill all assignments for the vertices in `vtxs`
+"""
+function fill_assignments_greedy!(vtxs,model,sched,D,Ai,Ao)
+    edge_list = []
+    for v2 in vtxs
+        if v2 in Ai
+            c = Inf
+            a = -1
+            for v in sort(collect(Ao))
+                cost = TaskGraphs.get_edge_cost(model,D,v,v2)
+                if cost < c
+                    c = cost
+                    a = v
+                end
+            end
+            if has_vertex(sched,a)
+                push!(edge_list,(a,v2))
+                setdiff!(Ai,v2)
+                setdiff!(Ao,a)
+            else
+                @warn "Failed to fill up transport unit" Ai Ao v2
+                throw(ErrorException("GreedyAssignment is stuck"))
+            end
+        end
+    end
+    edge_list
 end
 
 function TaskGraphs.update_greedy_sets!(model::GreedyOrderedAssignment,sched,cache,Ai=Set{Int}(),Ao=Set{Int}(),C=Set{Int}();

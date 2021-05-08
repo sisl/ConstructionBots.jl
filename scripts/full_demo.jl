@@ -1,10 +1,10 @@
 """
     run_lego_demo(;kwargs...)
 
-Run the entire lego demo for model `model_name`.
+Run the entire lego demo for model `project_name`.
 """
 function run_lego_demo(;
-        model_name = "X-wingFighter.mpd",
+        project_name = "X-wingFighter.mpd",
         MODEL_SCALE         = 0.004,
         NUM_ROBOTS          = 100,
         ROBOT_SCALE         = MODEL_SCALE,
@@ -16,17 +16,18 @@ function run_lego_demo(;
         STAGING_BUFFER_FACTOR = 1.5,
         BUILD_STEP_BUFFER_FACTOR = 0.5,
         base_graphics_path = "/scratch/Repositories/Sandbox/thesis_graphics/LEGO",
-        graphics_path = joinpath(base_graphics_path,model_name),
+        graphics_path = joinpath(base_graphics_path,project_name),
         ASSIGNMENT_MODE     = :GREEDY,
         VISUALIZER          = true,
         vis                 = VISUALIZER ? MeshCat.Visualizer() : nothing,
         anim                = VISUALIZER ? AnimationWrapper(0) : nothing,
         RVO_FLAG            = true,
         OVERWRITE_RESULTS   = false,
+        WRITE_RESULTS       = true,
         QUIT_AFTER_OPTIMAL  = true,
     )
     mkpath(graphics_path)
-    filename = joinpath(dirname(pathof(LDrawParser)),"..","assets",model_name)
+    filename = joinpath(dirname(pathof(LDrawParser)),"..","assets",project_name)
 
     if RVO_FLAG == true
         prefix = "with_rvo"
@@ -40,7 +41,7 @@ function run_lego_demo(;
     end
     mkpath(joinpath(graphics_path,prefix))
     stats_path = joinpath(graphics_path,prefix,"stats.toml")
-    if isfile(stats_path) && !OVERWRITE_RESULTS
+    if isfile(stats_path) && WRITE_RESULTS && !OVERWRITE_RESULTS
         @warn "Terminating because results are already compiled at $(stats_path)"
         return nothing
     end
@@ -128,8 +129,10 @@ function run_lego_demo(;
     STATS[:numrobots]           = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(RobotNode,n)])
     STATS[:ConfigTransportUnitsTime] = CONFIG_TRANSPORT_UNITS_TIME 
     STATS[:StagingPlanTime]     = STAGING_PLAN_TIME
-    open(joinpath(graphics_path,prefix,"stats.toml"),"w") do io
-        TOML.print(io,STATS)
+    if WRITE_RESULTS
+        open(joinpath(graphics_path,prefix,"stats.toml"),"w") do io
+            TOML.print(io,STATS)
+        end
     end
 
 
@@ -153,7 +156,7 @@ function run_lego_demo(;
             current = global_transform(start_config(start_node))
             rect = current(get_base_geom(node,HyperrectangleKey()))
             dh = MAX_CARGO_HEIGHT - (rect.center .- rect.radius)[3]
-            @show summary(node_id(node)), dh
+            # @show summary(node_id(node)), dh
             set_desired_global_transform_without_affecting_children!(
                 start_config(start_node),
                 CT.Translation(current.translation[1:2]...,dh) ∘ CT.LinearMap(current.linear)
@@ -220,8 +223,10 @@ function run_lego_demo(;
     STATS[:AssigmentTime]       = ASSIGNMENT_TIME
     STATS[:PreExecutionRuntime] = PRE_EXECUTION_TIME
     STATS[:OptimisticMakespan]  = POST_ASSIGNMENT_MAKESPAN
-    open(joinpath(graphics_path,prefix,"stats.toml"),"w") do io
-        TOML.print(io,STATS)
+    if WRITE_RESULTS
+        open(joinpath(graphics_path,prefix,"stats.toml"),"w") do io
+            TOML.print(io,STATS)
+        end
     end
     if ASSIGNMENT_MODE == :OPTIMAL && QUIT_AFTER_OPTIMAL
         return nothing
@@ -289,8 +294,10 @@ function run_lego_demo(;
             update_visualizer!(scene_tree,vis_nodes)
         end
         setanimation!(vis,anim.anim)
-        open(joinpath(graphics_path,"animate_preprocessing.html"),"w") do io
-            write(io,static_html(vis))
+        if WRITE_RESULTS
+            open(joinpath(graphics_path,"animate_preprocessing.html"),"w") do io
+                write(io,static_html(vis))
+            end
         end
     end
 
@@ -341,14 +348,18 @@ function run_lego_demo(;
     # Add results
     STATS[:ExecutionRuntime]    = EXECUTION_TIME
     STATS[:Makespan]            = TIME_STEPS*env.dt
-    open(joinpath(graphics_path,prefix,"stats.toml"),"w") do io
-        TOML.print(io,STATS)
+    if WRITE_RESULTS
+        open(joinpath(graphics_path,prefix,"stats.toml"),"w") do io
+            TOML.print(io,STATS)
+        end
     end
 
     if VISUALIZER
         setanimation!(vis,anim.anim)
-        open(joinpath(graphics_path,prefix,"construction_simulation.html"),"w") do io
-            write(io,static_html(vis))
+        if WRITE_RESULTS
+            open(joinpath(graphics_path,prefix,"construction_simulation.html"),"w") do io
+                write(io,static_html(vis))
+            end
         end
         render(vis)
 
