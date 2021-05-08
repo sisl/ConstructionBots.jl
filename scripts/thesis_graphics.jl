@@ -709,7 +709,6 @@ for n in get_nodes(scene_tree)
     end
 end
 
-# update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,staging_nodes;
 update_visualizer_function = construct_visualizer_update_function(factory_vis;
     anim=anim,
     )

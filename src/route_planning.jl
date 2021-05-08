@@ -95,7 +95,7 @@ Contains the Environment state and definition.
     cache::PlanningCache        = initialize_planning_cache(sched)
     staging_circles::Dict{AbstractID,Ball2} = Dict{AbstractID,Ball2}()
     active_build_steps::Set{AbstractID} = Set{AbstractID}()
-    # visibility_graph            = nothing
+    # active_assemblies::Set{AbstractID} = Set{AbstractID}() # taken care of by active build step
     dt::Float64                 = rvo_default_time_step()
     agent_policies::Dict        = Dict()
     staging_buffers::Dict{AbstractID,Float64} = Dict{AbstractID,Float64}() # dynamic buffer for staging areas
@@ -103,11 +103,11 @@ end
 
 node_is_active(env,node) = get_vtx(env.sched,node_id(node)) in env.cache.active_set
 
-function get_active_build_steps(env::PlannerEnv)
-    @unpack sched, scene_tree, cache, dt = env
-    Base.Iterators.filter(n->matches_template(OpenBuildStep,n),
-        (get_node(sched,v) for v in cache.active_set))
-end
+# function get_active_build_steps(env::PlannerEnv)
+#     @unpack sched, scene_tree, cache, dt = env
+#     Base.Iterators.filter(n->matches_template(OpenBuildStep,n),
+#         (get_node(sched,v) for v in cache.active_set))
+# end
 
 
 """ 
@@ -409,49 +409,49 @@ function CRCBS.is_goal(node::LiftIntoPlace,env)
     return is_within_capture_distance(state,goal)
 end
 
-function avoid_active_staging_areas(node::Union{TransportUnitGo,RobotGo},twist,env,ϵ=1e-3)
-    @unpack sched, scene_tree, dt = env
-    agent = entity(node)
-    r = HG.get_radius(get_base_geom(agent,HypersphereKey()))
-    pos = HG.project_to_2d(global_transform(agent).translation)
-    goal = HG.project_to_2d(global_transform(goal_config(node)).translation)
-    parent_build_step = get_parent_build_step(sched,node)
-    dmin = Inf
-    id = nothing
-    circ = nothing
-    for build_step_id in env.active_build_steps
-        build_step_id == node_id(parent_build_step) ? continue : nothing
-        build_step = get_node(sched,build_step_id).node
-        circle = HG.project_to_2d(get_cached_geom(build_step.staging_circle))
-        bloated_circle = Ball2(HG.get_center(circle),HG.get_radius(circle)+r)
-        if HG.circle_intersects_line(bloated_circle,pos,goal)
-            d = HG.get_radius(bloated_circle) - norm(HG.get_center(bloated_circle) - pos) # penetration
-            if d < 0 && d < dmin
-                # in circle
-                dmin = d
-                id = build_step_id
-                circ = bloated_circle
-            end
-        end
-    end
-    # If on the "exiting" end of circle, just leave,
-    if id === nothing ||  norm(goal - pos) + ϵ < norm(goal - HG.get_center(circ))
-        return twist
-    end
-    dvec = pos-HG.get_center(circ)
-    # return a vector tangent CCW to the circle
-    if norm(dvec) < HG.get_radius(circ) + ϵ
-        # start position is on or in circ
-        vec = SVector(-dvec[2],dvec[1])
-    else
-        # start position is not on or in circ
-        pt_left, pt_right = HG.get_tangent_pts_on_circle(circ,pos)
-        vec = pt_right-pos
-    end
-    vel = norm(twist.vel) * normalize(vec)
-    @info "$(summary(node_id(agent))) avoiding $id with vel = $vel"
-    Twist(SVector(vel..., 0.0), twist.ω)
-end
+# function avoid_active_staging_areas(node::Union{TransportUnitGo,RobotGo},twist,env,ϵ=1e-3)
+#     @unpack sched, scene_tree, dt = env
+#     agent = entity(node)
+#     r = HG.get_radius(get_base_geom(agent,HypersphereKey()))
+#     pos = HG.project_to_2d(global_transform(agent).translation)
+#     goal = HG.project_to_2d(global_transform(goal_config(node)).translation)
+#     parent_build_step = get_parent_build_step(sched,node)
+#     dmin = Inf
+#     id = nothing
+#     circ = nothing
+#     for build_step_id in env.active_build_steps
+#         build_step_id == node_id(parent_build_step) ? continue : nothing
+#         build_step = get_node(sched,build_step_id).node
+#         circle = HG.project_to_2d(get_cached_geom(build_step.staging_circle))
+#         bloated_circle = Ball2(HG.get_center(circle),HG.get_radius(circle)+r)
+#         if HG.circle_intersects_line(bloated_circle,pos,goal)
+#             d = HG.get_radius(bloated_circle) - norm(HG.get_center(bloated_circle) - pos) # penetration
+#             if d < 0 && d < dmin
+#                 # in circle
+#                 dmin = d
+#                 id = build_step_id
+#                 circ = bloated_circle
+#             end
+#         end
+#     end
+#     # If on the "exiting" end of circle, just leave,
+#     if id === nothing ||  norm(goal - pos) + ϵ < norm(goal - HG.get_center(circ))
+#         return twist
+#     end
+#     dvec = pos-HG.get_center(circ)
+#     # return a vector tangent CCW to the circle
+#     if norm(dvec) < HG.get_radius(circ) + ϵ
+#         # start position is on or in circ
+#         vec = SVector(-dvec[2],dvec[1])
+#     else
+#         # start position is not on or in circ
+#         pt_left, pt_right = HG.get_tangent_pts_on_circle(circ,pos)
+#         vec = pt_right-pos
+#     end
+#     vel = norm(twist.vel) * normalize(vec)
+#     @info "$(summary(node_id(agent))) avoiding $id with vel = $vel"
+#     Twist(SVector(vel..., 0.0), twist.ω)
+# end
 
 function query_policy_for_goal! end
 
@@ -598,8 +598,10 @@ function get_twist_cmd(node,env)
         parent_build_step = get_parent_build_step(sched,node)
         excluded_ids = Set{AbstractID}()
         if !(parent_build_step === nothing)
-        # if !(parent_build_step === nothing) && node_is_active(env,parent_build_step)
-            push!(excluded_ids, node_id(parent_build_step))
+            build_step_vtx = get_vtx(sched,parent_build_step)
+            # if build_step_vtx in env.active_build_steps
+                push!(excluded_ids, node_id(parent_build_step))
+            # end
         end
         # get circle obstacles, potentially inflated 
         circles = active_staging_circles(env,excluded_ids)

@@ -258,33 +258,12 @@ function run_lego_demo(;
         end
         setvisible!(factory_vis.geom_nodes[BaseGeomKey()],true)
         setvisible!(factory_vis.active_flags,false)
-
-        # vis_nodes, base_geom_nodes = populate_visualizer!(scene_tree,vis;
-        #     color_map=color_map,
-        #     color=RGB(0.3,0.3,0.3),
-        #     # wireframe=true,
-        #     material_type=MeshLambertMaterial)
-        # sphere_nodes = show_geometry_layer!(scene_tree,vis_nodes,HypersphereKey())
-        # rect_nodes = show_geometry_layer!(scene_tree,vis_nodes,HyperrectangleKey();
-        #     color=RGBA{Float32}(1, 0, 0, 0.3),
-        # )
-        # staging_nodes = render_staging_areas!(vis,scene_tree,sched,staging_circles;
-        #     dz=0.01,color=RGBA(0.4,0.0,0.4,0.5))
-        # setvisible!(base_geom_nodes,true)
-        # setvisible!(sphere_nodes,true)
-        # setvisible!(rect_nodes,true)
-        # setvisible!(staging_nodes,true)
-        # setvisible!(sphere_nodes,false)
-        # setvisible!(rect_nodes,false)
-        # setvisible!(staging_nodes,false)
-
         # # restore correct configuration
         HG.jump_to_final_configuration!(scene_tree;set_edges=true)
-        # update_visualizer!(scene_tree,vis_nodes)
         # # set staging plan and visualize
         set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
-        # update_visualizer!(scene_tree,vis_nodes)
 
+        # render video!
         anim = AnimationWrapper(0)
         atframe(anim,current_frame(anim)) do
             HG.jump_to_final_configuration!(scene_tree;set_edges=true)
@@ -308,36 +287,6 @@ function run_lego_demo(;
         end
         setanimation!(vis,anim.anim)
 
-        # render video!
-        # anim = AnimationWrapper(0)
-        # # anim = nothing
-        # atframe(anim,current_frame(anim)) do
-        #     HG.jump_to_final_configuration!(scene_tree;set_edges=true)
-        #     update_visualizer!(scene_tree,vis_nodes)
-        #     # setvisible!(sphere_nodes,false)
-        #     setvisible!(vis_nodes,true)
-        #     setvisible!(rect_nodes,false)
-        #     setvisible!(staging_nodes,false)
-        # end
-        # step_animation!(anim)
-        # animate_preprocessing_steps!(
-        #         vis,
-        #         vis_nodes,
-        #         scene_tree,
-        #         sched,
-        #         rect_nodes,
-        #         base_geom_nodes,
-        #         ;
-        #         dt_animate=0.0,
-        #         dt=0.0,
-        #         anim=anim,
-        #         interp_steps=40,
-        #     )
-        # atframe(anim,current_frame(anim)) do
-        #     set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
-        #     update_visualizer!(scene_tree,vis_nodes)
-        # end
-        # setanimation!(vis,anim.anim)
         if WRITE_RESULTS
             open(joinpath(graphics_path,"animate_preprocessing.html"),"w") do io
                 write(io,static_html(vis))
@@ -371,7 +320,6 @@ function run_lego_demo(;
         end
     end
 
-    # update_visualizer_function = construct_visualizer_update_function(vis,vis_nodes,staging_nodes;
     update_visualizer_function = construct_visualizer_update_function(factory_vis;
         anim=anim,
         )

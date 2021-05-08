@@ -937,6 +937,14 @@ function visualizer_update_function!(factory_vis,env,newly_updated=Set{Int}();
             node = get_node(env.sched,v)
             if matches_template(EntityGo,node)
                 agent = entity(node)
+                if matches_template(Union{RobotNode,TransportUnitID},agent)
+                    build_step = ConstructionBots.get_parent_build_step(env.sched,node)
+                    if !(build_step === nothing) && node_id(build_step) in env.active_build_steps
+                        setvisible!(factory_vis.active_flags[node_id(agent)],true)
+                    else
+                        setvisible!(factory_vis.active_flags[node_id(agent)],false)
+                    end
+                end
             elseif matches_template(Union{FormTransportUnit,DepositCargo},node)
                 agent = get_node(env.scene_tree,cargo_id(entity(node)))
             else
@@ -949,6 +957,15 @@ function visualizer_update_function!(factory_vis,env,newly_updated=Set{Int}();
                 end
             end
         end
+        # show active flags
+        # for agent in agents
+        #     build_step = ConstructionBots.get_parent_build_step(env.sched,agent)
+        #     if node_id(build_step) in env.active_build_steps
+        #         setvisible!(factory_vis.active_flags[node_id(agent)],true)
+        #     else
+        #         setvisible!(factory_vis.active_flags[node_id(agent)],false)
+        #     end
+        # end
         # update_visualizer!(env.scene_tree,vis_nodes,agents)
         update_visualizer!(factory_vis,agents)
         render(vis)
