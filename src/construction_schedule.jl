@@ -699,6 +699,7 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
             if isempty(part_ids) 
                 continue
             end
+            @info "Selecting staging location for $(summary(node_id(assembly)))"
             # start_node = get_node(sched,AssemblyComplete(assembly))
             # staging_radii
             @assert haskey(staging_circles,node_id(assembly))
@@ -708,10 +709,11 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
             parts = (get_node(scene_tree,part_id) for part_id in part_ids)
             # radii = [staging_circles[id].radius for id in part_ids]
             radii = [staging_circles[id].radius + buffer_radius/2 for id in part_ids]
-            θ_des = Vector{Float64}()
+            # θ_des = Vector{Float64}()
             θ_star = nothing
             # repeat to ensure correct alignment
             while staging_radius - ring_radius > 1e-6
+                θ_des = Vector{Float64}()
                 ring_radius = staging_radius
                 for (part_id,part) in zip(part_ids,parts)
                     # retrieve staging config from LiftIntoPlace node
@@ -757,7 +759,8 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                 vcat(tformed_geoms,staging_circles[node_id(assembly)]),
                 Ball2{Float64,SVector{2,Float64}}
                 )
-            @assert new_ball.radius > old_ball.radius+norm(new_ball.center .- old_ball.center)
+            # @assert new_ball.radius > old_ball.radius+norm(new_ball.center .- old_ball.center)
+            @assert new_ball.radius + 1e-5 > old_ball.radius+norm(new_ball.center .- old_ball.center) "$(summary(node_id(assembly))) old ball $(old_ball), new_ball $(new_ball)"
             staging_circles[node_id(assembly)] = new_ball
             # add directly as staging circle of AssemblyComplete node
             assembly_complete.inner_staging_circle.base_geom  = HG.project_to_3d(old_ball)
@@ -906,7 +909,7 @@ function solve_ring_placement_problem(θ_des,r,R,rmin=0.0;
     θ_des = map(wrap_to_pi, θ_des)
 
     n = length(θ_des)
-    @assert length(r) == n
+    @assert length(r) == n "length(r) != n for n=$n, r = $r"
     # sort θ (the unsorted vector will be returned at the end)
     idxs = sortperm(θ_des)
     # reverse_idxs = collect(1:n)[idxs]

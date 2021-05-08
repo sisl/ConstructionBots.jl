@@ -744,6 +744,7 @@ function animate_preprocessing_steps!(
         scene_tree,
         sched,
         rect_nodes,
+        base_geom_nodes,
         ;
         dt_animate=0.0,
         anim=nothing,
@@ -861,6 +862,10 @@ function construct_visualizer_update_function(vis,vis_nodes,staging_nodes;
         render_stages=true,
         anim=nothing,
     )
+    if vis === nothing
+        f(env,s=Set{Int}()) = step_animation!(anim)
+        return f
+    end
     update_visualizer_function(env,newly_updated=Set{Int}()) = begin
         atframe(anim,current_frame(anim)) do
             agents = Set{SceneNode}()

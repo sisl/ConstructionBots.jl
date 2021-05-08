@@ -60,30 +60,65 @@ PRE_EXECUTION_START_TIME = time()
 # MODEL_SCALE         = 0.003
 # NUM_ROBOTS          = 50
 # ROBOT_SCALE         = MODEL_SCALE
+# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
-model_name = "ATTEWalker.mpd"
-MODEL_SCALE         = 0.003
-NUM_ROBOTS          = 36
-ROBOT_SCALE         = MODEL_SCALE
+# model_name = "ATTEWalker.mpd"
+# MODEL_SCALE         = 0.003
+# NUM_ROBOTS          = 36
+# ROBOT_SCALE         = MODEL_SCALE
+# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
-# model_name = "StarDestroyer.mpd"
+model_name = "StarDestroyer.mpd"
+MODEL_SCALE         = 0.004
+NUM_ROBOTS          = 100
+ROBOT_SCALE         = MODEL_SCALE * 0.7
+MAX_STEPS           = 20000
+STAGING_BUFFER_FACTOR = 1.5
+BUILD_STEP_BUFFER_FACTOR = 0.5
+
+# model_name = "21309-1-NASA_Apollo_Saturn_V.mpd"
+# MODEL_SCALE         = 0.001
+# NUM_ROBOTS          = 100
+# ROBOT_SCALE         = MODEL_SCALE
+# OBJECT_VTX_RANGE =(-28:28,-28:28,0:3),
+
+# model_name = "MillenniumFalcon.mpd"
+# MODEL_SCALE         = 0.001
+# NUM_ROBOTS          = 200
+# ROBOT_SCALE         = MODEL_SCALE
+# OBJECT_VTX_RANGE    = (-26:26,-26:26, 0:10)
+
+# model_name = "X-wingFighter.mpd"
 # MODEL_SCALE         = 0.004
 # NUM_ROBOTS          = 100
+# ROBOT_SCALE         = MODEL_SCALE
+# OBJECT_VTX_RANGE    = (-26:26,-26:26, 0:10)
+# MAX_STEPS           = 8000
+# STAGING_BUFFER_FACTOR = 1.5
+# BUILD_STEP_BUFFER_FACTOR = 0.5
+
+# model_name = "X-wingMini.mpd"
+# MODEL_SCALE         = 0.01
 # ROBOT_SCALE         = MODEL_SCALE * 0.7
+# NUM_ROBOTS          = 30
+# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
 # model_name = "tractor.mpd"
 # MODEL_SCALE         = 0.01
 # ROBOT_SCALE         = MODEL_SCALE * 0.7
 # NUM_ROBOTS          = 12
+# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
 # model_name = "colored_8x8.ldr"
 # MODEL_SCALE         = 0.01
 # ROBOT_SCALE         = MODEL_SCALE * 0.9
 # NUM_ROBOTS          = 25
+# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
 # model_name = "small_quad_nested.mpd"
 # NUM_ROBOTS          = 40
 # MODEL_SCALE         = 0.01
+# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
 filename = joinpath(dirname(pathof(LDrawParser)),"..","assets",model_name)
 
@@ -147,11 +182,15 @@ assembly_tree = ConstructionBots.construct_assembly_tree(model,model_spec,id_map
 scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
 print(scene_tree,v->"$(summary(node_id(v))) : $(get(id_map,node_id(v),nothing))","\t")
 # Define TransportUnit configurations
+START_GEOM_APPROX = time()
 HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
 HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
+GEOM_APPROX_TIME = time() - START_GEOM_APPROX
+CONFIG_TRANSPORT_UNITS_TIME = time()
 _, cvx_hulls = ConstructionBots.init_transport_units!(scene_tree;
     robot_radius = ROBOT_RADIUS,
     )
+CONFIG_TRANSPORT_UNITS_TIME = time() - CONFIG_TRANSPORT_UNITS_TIME
 
 # ConstructionBots.init_transport_units!(scene_tree)
 # validate SceneTree
@@ -279,15 +318,17 @@ let
     # render_node_types_and_table(sched,scene_tree;graphics_path=joinpath(graphics_path,"node_table"))
 end
 
-## Generate staging plan
+## Generata staging plan
 MAX_OBJECT_TRANSPORT_UNIT_RADIUS = ConstructionBots.get_max_object_transport_unit_radius(scene_tree)
+STAGING_PLAN_TIME = time()
 staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched;
     # buffer_radius = 3*HG.default_robot_radius(),
-    buffer_radius=1.5*MAX_OBJECT_TRANSPORT_UNIT_RADIUS,
-    build_step_buffer_radius=HG.default_robot_radius()/2,
+    buffer_radius=STAGING_BUFFER_FACTOR*MAX_OBJECT_TRANSPORT_UNIT_RADIUS,
+    build_step_buffer_radius=BUILD_STEP_BUFFER_FACTOR*HG.default_robot_radius(),
     # build_step_buffer_radius=0.0,
     # buffer_radius = 0.0
 );
+STAGING_PLAN_TIME = time() - STAGING_PLAN_TIME
 # plot staging plan
 let
     # FR.set_render_param!(:Color,:Fill,:StagingCircle,nothing)
@@ -386,8 +427,7 @@ MAX_CARGO_HEIGHT = maximum(map(n->get_base_geom(n,HyperrectangleKey()).radius[3]
 vtxs = ConstructionBots.construct_vtx_array(;
     origin=SVector(0.0,0.0,MAX_CARGO_HEIGHT),
     obstacles=collect(values(staging_circles)),
-    ranges=(-13:13,-13:13,0:1),
-    # ranges=(-10:10,-10:10,0:1),
+    ranges=OBJECT_VTX_RANGE,
     )
 NUM_OBJECTS = length(filter(n->matches_template(ObjectNode,n),get_nodes(scene_tree)))
 object_vtxs = draw_random_uniform(vtxs,NUM_OBJECTS)
@@ -478,6 +518,8 @@ end
 ConstructionBots.set_default_loading_speed!(10*HG.default_robot_radius())
 ConstructionBots.set_default_rotational_loading_speed!(10*HG.default_robot_radius())
 tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
+
+ASSIGNMENT_TIME = time()
 ## Black box MILP solver
 # TaskGraphs.set_default_optimizer_attributes!(
 #     "TimeLimit"=>75,
@@ -502,6 +544,7 @@ validate_schedule_transform_tree(ConstructionBots.convert_from_operating_schedul
     ;post_staging=true)
 update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
 @assert validate(tg_sched)
+ASSIGNMENT_TIME = time() - ASSIGNMENT_TIME
 POST_ASSIGNMENT_MAKESPAN = TaskGraphs.makespan(tg_sched)
 # display_graph(tg_sched,scale=3,enforce_visited=true) |> PDF("/home/kylebrown/Desktop/sched.pdf")
 # sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,200)
@@ -512,7 +555,8 @@ go_nodes = [n for n in get_nodes(tg_sched) if matches_template(RobotGo,n) && is_
 home_vtx_candidates = ConstructionBots.construct_vtx_array(;
     origin=SVector(0.0,0.0,MAX_CARGO_HEIGHT),
     obstacles=collect(values(staging_circles)),
-    ranges=(-12:4*ROBOT_RADIUS:12,-12:4*ROBOT_RADIUS:12,0:0),
+    # ranges=(-12:4*ROBOT_RADIUS:12,-12:4*ROBOT_RADIUS:12,0:0),
+    ranges=(-16:4*ROBOT_RADIUS:16,-16:4*ROBOT_RADIUS:16,0:0),
     )
 # home_vtxs = draw_random_uniform(vtxs,length(go_nodes))
 home_vtxs = draw_random_uniform(home_vtx_candidates,length(go_nodes))
@@ -524,12 +568,6 @@ end
 
 # compile pre execution statistics
 PRE_EXECUTION_TIME = time() - PRE_EXECUTION_START_TIME
-
-## Visualize staging plans to debug the rotational shuffling 
-# vis_triads, vis_arrows, bounding_vis = visualize_staging_plan(vis,sched,scene_tree)
-# delete!(vis_arrows)
-# delete!(vis_triads)
-# delete!(bounding_vis)
 
 ## Visualize assembly
 delete!(vis)
@@ -680,7 +718,9 @@ set_use_rvo!(false)
 set_avoid_staging_areas!(true)
 
 EXECUTION_START_TIME = time()
-status, TIME_STEPS = ConstructionBots.simulate!(env,update_visualizer_function,max_time_steps=5000)
+status, TIME_STEPS = ConstructionBots.simulate!(env, update_visualizer_function,
+    max_time_steps=MAX_STEPS,
+    )
 if status == true
     EXECUTION_TIME = time() -  EXECUTION_START_TIME
 else
@@ -692,6 +732,9 @@ STATS = Dict()
 STATS[:numobjects]          = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(ObjectNode,n)])
 STATS[:numassemblies]       = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(AssemblyNode,n)])
 STATS[:numrobots]           = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(RobotNode,n)])
+STATS[:AssigmentTime]       = ASSIGNMENT_TIME
+STATS[:ConfigTransportUnitsTime] = CONFIG_TRANSPORT_UNITS_TIME 
+STATS[:StagingPlanTime]     = STAGING_PLAN_TIME
 STATS[:PreExecutionRuntime] = PRE_EXECUTION_TIME
 STATS[:OptimisticMakespan]  = POST_ASSIGNMENT_MAKESPAN
 STATS[:ExecutionRuntime]    = EXECUTION_TIME
@@ -715,21 +758,19 @@ setanimation!(vis,anim.anim)
 open(joinpath(graphics_path,prefix,"construction_simulation.html"),"w") do io
     write(io,static_html(vis))
 end
-# render(vis)
+render(vis)
 
 # animate camera path
 rotate_camera!(vis,anim);
 setanimation!(vis,anim.anim)
-# open(joinpath(graphics_path,"construction_simulation_rotating.html"),"w") do io
-#     write(io,static_html(vis))
-# end
+open(joinpath(graphics_path,prefix,"construction_simulation_rotating.html"),"w") do io
+    write(io,static_html(vis))
+end
 
 
 # using Blink
 # w = Blink.Window(async=false)
 # loadfile(w,joinpath(graphics_path,"construction_simulation.html"))
-
-
 
 
 # VISUALIZE ROBOT PLACEMENT AROUND PARTS
