@@ -537,11 +537,13 @@ tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 #     optimize!(milp_model)
 # end
 # ## Greedy Assignment with enforced build-step ordering
+# D = TaskGraphs.construct_schedule_distance_matrix(tg_sched,scene_tree)
 milp_model = ConstructionBots.GreedyOrderedAssignment(
     greedy_cost = TaskGraphs.GreedyFinalTimeCost(),
 )
-# milp_model = formulate_milp(milp_model,tg_sched,scene_tree)
 milp_model = formulate_milp(milp_model,deepcopy(tg_sched),scene_tree)
+# ConstructionBots.assign_collaborative_tasks!(milp_model)
+
 optimize!(milp_model)
 validate_schedule_transform_tree(ConstructionBots.convert_from_operating_schedule(typeof(sched),tg_sched)
     ;post_staging=true)

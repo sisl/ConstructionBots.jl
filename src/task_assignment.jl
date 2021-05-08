@@ -316,15 +316,22 @@ function build_step_dependency_graph(sched,scene_tree)
     for n in get_nodes(sched)
         v = get_vtx(sched,n)
         if matches_template(CloseBuildStep,n)
+            close_step_vtx = v
             open_step_vtx = get_vtx(sched,OpenBuildStep(n.node))
-            add_edge!(dependency_graph,open_step_vtx,v) # open -> close
+            add_edge!(dependency_graph,open_step_vtx,close_step_vtx) # open -> close
             next_vtx = first(outneighbors(sched,n))
-            add_edge!(dependency_graph,v,next_vtx) # close -> next vtx (OpenBuildStep or AssemblyComplete)
+            add_edge!(dependency_graph,close_step_vtx,next_vtx) # close -> next vtx (OpenBuildStep or AssemblyComplete)
             for (part_id,tform) in assembly_components(n.node)
+                part = get_node(scene_tree,part_id)
                 if matches_template(AssemblyID,part_id)
-                    completion_vtx = get_vtx(sched,AssemblyComplete(get_node(scene_tree,part_id)))
-                    add_edge!(dependency_graph,completion_vtx,open_step_vtx)
+                    start_vtx = get_vtx(sched,AssemblyComplete(part))
+                else
+                    start_vtx = get_vtx(sched,ObjectStart(part))
                 end
+                transport_vtx = get_vtx(sched,FormTransportUnit(TransportUnitNode(part)))
+                add_edge!(dependency_graph, start_vtx, transport_vtx)
+                add_edge!(dependency_graph, open_step_vtx, transport_vtx)
+                add_edge!(dependency_graph, transport_vtx, close_step_vtx)
             end
         end
     end
@@ -336,11 +343,14 @@ end
 
 Assign collaborative tasks in a greedy manner.
 """
-function assign_collaborative_tasks!(model)
+function assign_collaborative_tasks!(model,
+        # D = TaskGraphs.construct_schedule_distance_matrix(model.schedule,model.problem_spec)
+    )
     sched       = model.schedule
     scene_tree  = model.problem_spec
-    D = TaskGraphs.construct_schedule_distance_matrix(sched,scene_tree)
+    # D = TaskGraphs.construct_schedule_distance_matrix(sched,scene_tree)
     assembly_starts = Dict(node_id(n)=>n for n in get_nodes(sched) if matches_template(AssemblyStart,n))
+    assemblies_completed = Set{AbstractID}()
     active_build_steps = Dict()
     for (k,n) in assembly_starts
         open_build_step = get_first_build_step(sched,n) 
@@ -365,7 +375,16 @@ function assign_collaborative_tasks!(model)
     @info "Beginning task assignment"
     # initialize dependency graph to track and prevent cycles
     dependency_graph = build_step_dependency_graph(sched,scene_tree)
-    cost_func = (v,v2)->TaskGraphs.get_edge_cost(model,D,v,v2)
+    # cost_func = (v,v2)->TaskGraphs.get_edge_cost(model,D,v,v2)
+    distance_dict = Dict{Tuple{Int,Int},Float64}()
+    cost_func = (v,v2)->begin
+        if !haskey(distance_dict,(v,v2))
+            new_node = align_with_successor(get_node(sched,v).node,get_node(sched,v2).node)
+            distance_dict[(v,v2)] = generate_path_spec(sched,scene_tree,new_node).min_duration
+        end
+        return distance_dict[(v,v2)]
+        # TaskGraphs.get_edge_cost(model,D,v,v2)
+    end
     while !isempty(active_build_steps)
         # get best possible assignment of robots to a team task
         best_cost       = Inf
@@ -376,10 +395,16 @@ function assign_collaborative_tasks!(model)
             step_vtx = get_vtx(sched,step_id)
             # filter out robots that would cause a cycle
             # filt_func = (v,v2)->!GraphUtils.has_path(dependency_graph,step_vtx,v)
-            filt_func = (v,v2)->!GraphUtils.has_path(sched,step_vtx,v)
+            # filt_func = (v,v2)->!GraphUtils.has_path(sched,step_vtx,v)
             for task in tasks
+                task_node = get_node(sched,task)
+                cargo = get_node(scene_tree,cargo_id(entity(task_node)))
+                if matches_template(AssemblyNode,cargo) && !(node_id(cargo) in assemblies_completed)
+                    continue
+                end
                 team_slots = Set(v for v in inneighbors(sched,task) if matches_template(RobotGo,get_node(sched,v)))
                 assignments = []
+                filt_func = (v,v2)->!GraphUtils.has_path(dependency_graph,get_vtx(sched,task),v)
                 cost = 0.0
                 while !isempty(team_slots)
                     robot, slot, c = TaskGraphs.get_best_pair(robots, team_slots,
@@ -416,22 +441,23 @@ function assign_collaborative_tasks!(model)
         # @info "best assignment selected $(summary(task_id)): $best_assignments"
         team_task_vtx = get_vtx(sched,task_id)
         open_step_vtx = get_vtx(sched,build_step_id)
+        close_step_vtx = get_vtx(sched,CloseBuildStep(get_node(sched,build_step_id).node))
         for (robot,task) in best_assignments
             add_edge!(sched,robot,task)
-            # add RobotNode -> Task and OpenBuildStep -> Task edges to dependency graph.
-            add_edge!(dependency_graph,robot,team_task_vtx)
-            add_edge!(dependency_graph,open_step_vtx,team_task_vtx)
+            # add RobotNode -> TeamTask and OpenBuildStep -> TeamTask edges to dependency graph.
+            add_edge!(dependency_graph, robot,          team_task_vtx)
+            add_edge!(dependency_graph, open_step_vtx,  team_task_vtx)
+            add_edge!(dependency_graph, team_task_vtx,  close_step_vtx)
             setdiff!(robots,robot) # remove robots
         end
         # add new robots
         deposit_node = get_node(sched,DepositCargo(entity(get_node(sched,task_id))))
         for v in outneighbors(sched,deposit_node) 
             if matches_template(RobotGo,get_node(sched,v))
-                push!(robots,v)
-                # # add OpenBuildStep -> RobotNode edge to dependency graph
-                # add_edge!(dependency_graph,get_vtx(sched,build_step_id),v)
-                # add Task -> RobotNode edge to dependency graph
-                add_edge!(dependency_graph,team_task_vtx,v)
+                robot = v
+                push!(robots,robot)
+                # add TeamTask -> RobotNode edge to dependency graph
+                add_edge!(dependency_graph, team_task_vtx,  robot)
             end
         end
         # update schedule times
@@ -443,14 +469,18 @@ function assign_collaborative_tasks!(model)
             @info "Assignment: closing build step $(summary(build_step_id)). $(BUILD_STEPS_CLOSED)/$(NUM_BUILD_STEPS) complete. "
             delete!(active_build_steps, build_step_id)
             close_build_step = get_node(sched,CloseBuildStep(get_node(sched,build_step_id).node))
-            next_build_step = get_node(sched,first(outneighbors(sched,close_build_step)))
-            if matches_template(OpenBuildStep,next_build_step)
-                step_id = node_id(next_build_step)
+            next_node = get_node(sched,first(outneighbors(sched,close_build_step)))
+            if matches_template(OpenBuildStep,next_node)
+                step_id = node_id(next_node)
                 active_build_steps[step_id] = construct_build_step_task_set(
                     sched,
                     scene_tree,
                     step_id)
                 # @info "new build step $(summary(step_id)) with tasks $(active_build_steps[step_id])"
+            else
+                # assembly complete
+                @assert matches_template(AssemblyComplete,next_node)
+                push!(assemblies_completed,node_id(entity(next_node)))
             end
         end
     end
