@@ -716,9 +716,9 @@ update_visualizer_function = construct_visualizer_update_function(factory_vis;
     )
 
 # Turn off RVO to see if the project can be completed if we don't worry about collision
-set_use_rvo!(false)
+# set_use_rvo!(false)
 # set_avoid_staging_areas!(false)
-# set_use_rvo!(true)
+set_use_rvo!(true)
 set_avoid_staging_areas!(true)
 
 

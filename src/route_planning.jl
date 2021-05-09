@@ -599,13 +599,10 @@ function get_twist_cmd(node,env)
     if avoid_staging_areas()
         r = HG.get_radius(get_base_geom(agent,HypersphereKey()))
         pos = HG.project_to_2d(global_transform(agent).translation)
-        parent_build_step = get_parent_build_step(sched,node)
         excluded_ids = Set{AbstractID}()
-        if !(parent_build_step === nothing)
-            build_step_vtx = get_vtx(sched,parent_build_step)
-            # if build_step_vtx in env.active_build_steps
-                push!(excluded_ids, node_id(parent_build_step))
-            # end
+        if parent_build_step_is_active(node,env)
+            parent_build_step = get_parent_build_step(sched,node)
+            push!(excluded_ids, node_id(parent_build_step))
         end
         # get circle obstacles, potentially inflated 
         circles = active_staging_circles(env,excluded_ids)

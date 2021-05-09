@@ -117,7 +117,7 @@ end
 
 function add_indicator_nodes!(factory_vis;
         cylinder_depth=0.0025,
-        cylinder_radius_pad=0.1,
+        cylinder_radius_pad=0.02,
         active_color=RGB(0.0,1.0,0.0),
         kwargs...
         )
