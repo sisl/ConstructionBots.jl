@@ -460,6 +460,7 @@ end
 function query_policy_for_goal! end
 
 include("tangent_bug.jl")
+include("potential_fields.jl")
 
 """
     circle_avoidance_policy()
@@ -585,6 +586,12 @@ function inflate_staging_circle_buffers!(env,policy,agent,circle_ids;
     end
 end
 
+@with_kw mutable struct VelocityController
+    nominal_policy = nothing # TangentBugPolicy
+    dispersion_policy = nothing # potential field
+    # RVO policy
+end
+
 """
     get_twist_cmd(node,env)
 
@@ -594,11 +601,11 @@ function get_twist_cmd(node,env)
     @unpack sched, scene_tree, agent_policies, cache, dt = env
     agent = entity(node)
     goal = global_transform(goal_config(node))
-    twist = compute_twist_from_goal(agent,goal,dt)
-    # TODO modify goal if it would lead to entry into an out-of-bounds, region, etc.
-    if avoid_staging_areas()
-        r = HG.get_radius(get_base_geom(agent,HypersphereKey()))
+    ############ TangentBugPolicy #############
+    policy = agent_policies[node_id(agent)].nominal_policy
+    if !(policy === nothing)
         pos = HG.project_to_2d(global_transform(agent).translation)
+        r = HG.get_radius(get_base_geom(agent,HypersphereKey()))
         excluded_ids = Set{AbstractID}()
         if parent_build_step_is_active(node,env)
             parent_build_step = get_parent_build_step(sched,node)
@@ -606,7 +613,6 @@ function get_twist_cmd(node,env)
         end
         # get circle obstacles, potentially inflated 
         circles = active_staging_circles(env,excluded_ids)
-        policy = agent_policies[node_id(agent)] 
         # INFLATE CIRCLES IF NECESSARY
         if policy.mode == :MOVE_TOWARD_GOAL
             inflate_staging_circle_buffers!(env,policy,agent,excluded_ids)
@@ -614,13 +620,37 @@ function get_twist_cmd(node,env)
         # update policy and get goal
         policy.config = global_transform(agent)
         goal_pt = query_policy_for_goal!(policy,circles,pos,HG.project_to_2d(goal.translation))
-        goal = CT.Translation(goal_pt...,0.0) ∘ CT.LinearMap(goal.linear)
+        new_goal = CT.Translation(goal_pt...,0.0) ∘ CT.LinearMap(goal.linear)
+        twist = compute_twist_from_goal(agent,new_goal,dt) # nominal twist
+    else
         twist = compute_twist_from_goal(agent,goal,dt)
     end
+    ############ Potential Field Policy #############
+    policy = agent_policies[node_id(agent)].dispersion_policy
+    if !(policy === nothing || parent_build_step_is_active(node,env))
+        # iterate over nearby agents
+        nominal_twist = twist
+        pos = HG.project_to_2d(global_transform(agent).translation)
+        va = nominal_twist.vel[1:2]
+        target_pos = pos .+ va * dt
+        # commanded velocity from current position
+        vb = compute_velocity_command!(policy,pos)
+        # commanded velocity from current position
+        vc = compute_velocity_command!(policy,target_pos)
+        # blend the three velocities
+        a = b = c = 1.0
+        v = (a*va+b*vb+c*vc) / (a+b+c)
+        # compute goal
+        goal_pt = pos + v*dt
+        goal = CT.Translation(goal_pt...,0.0) ∘ CT.LinearMap(goal.linear)
+        twist = compute_twist_from_goal(agent,goal,dt) # nominal twist
+    end
     # If potential field (to use at goal?)
+        # apply repulsive potentials
     # return goal
     return twist
 end
+
 function compute_twist_from_goal(agent,goal,dt)
     tf_error = relative_transform(global_transform(agent), goal)
     v_max = get_rvo_max_speed(agent)

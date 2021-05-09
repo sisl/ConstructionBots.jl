@@ -1,17 +1,13 @@
 using LinearAlgebra
-using Colors
-using GeometryBasics
 using ForwardDiff
 using Parameters
 using GraphUtils
-
 
 abstract type Potential end
 potential(v::Vector,x) = sum(potential(p,x) for p in v)
 potential_gradient(v,x) = ForwardDiff.gradient(x->potential(v,x),x)
 potential_gradient(v::Vector,x) = sum(potential_gradient(p,x) for p in v)
 (p::Potential)(x) = potential(p,x)
-
 
 """
     ConePotential <: Potential
@@ -129,6 +125,71 @@ function potential_gradient(p::RotationalPotential,x)
         return dz
     end
 end
+
+mutable struct PairwisePotential
+    f
+    scale
+end
+(p::PairwisePotential)(x1,x2,r1,r2) = p.f(x1,x2,r1,r2)
+
+@with_kw mutable struct PotentialFieldController
+    env                     = nothing
+    agent                   = nothing
+    node                    = nothing
+    agent_radius            = 1.0
+    vmax                    = 1.0
+    interaction_radius      = 20*ROBOT_RADIUS
+    # potentials between all pairs of robots
+    pairwise_potentials     = (x,xp,r,rp)->0.0
+    # environment potentials (may depend on other agent's states)
+    static_potentials       = (x,r)->0.0
+end
+# pairwise_potential_field(policy)
+function static_potential_gradient(c::PotentialFieldController,pos)
+    ForwardDiff.gradient(x->c.static_potentials(x,c.agent_radius),pos)
+end
+function pairwise_potential_gradient(c::PotentialFieldController,pos,other_pos,other_radius)
+    ForwardDiff.gradient(x->c.pairwise_potentials(x,c.agent_radius,other_pos,other_radius),pos)
+end
+
+function clip_velocity(vel,vmax)
+    if norm(vel) > vmax
+        v = vmax*normalize(vel)
+    else
+        v = vel
+    end
+    return v
+end
+
+function repulsion_potential(x,r,x2,r2;
+        dr = 1.0,
+    )
+    dx = x .- x2
+    R = r + r2
+    # cone
+    f1 = max(0.0,R+dr - norm(dx))
+    # barrier
+    f2 = (norm(dx) < R+dr)*1/(norm(dx)-R)
+    return f1+f2
+end
+
+function compute_velocity_command!(policy::PotentialFieldController,pos)
+    @unpack scene_tree, sched = policy.env
+    agent = policy.agent
+    dp = static_potential_gradient(policy,pos)
+    for other_agent in rvo_active_agents(scene_tree)
+        if !(agent === other_agent) 
+            other_pos = HG.project_to_2d(global_transform(other_agent).translation)
+            other_rad = HG.get_radius(get_base_geom(other_agent,HypersphereKey()))
+            if norm(pos - other_pos) <= policy.interaction_radius
+                dp = dp .+ pairwise_potential_gradient(policy,pos,other_pos,other_rad)
+            end
+        end
+    end
+    vel = clip_velocity(-1.0 * dp, policy.vmax)
+    return vel
+end
+
 
 @with_kw mutable struct PotentialController
     x           = nothing # state

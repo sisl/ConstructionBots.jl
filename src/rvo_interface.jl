@@ -31,6 +31,8 @@ function rvo_reset_agent_map!()
     global RVO_ID_GLOBAL_MAP = RVOAgentMap()
 end
 
+rvo_active_agents(scene_tree) = (get_node(scene_tree,node_id(n)) for n in get_nodes(rvo_global_id_map()))
+
 global RVO_PYTHON_MODULE = nothing
 function rvo_python_module()
 	RVO_PYTHON_MODULE

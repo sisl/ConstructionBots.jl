@@ -680,7 +680,7 @@ atframe(anim,current_frame(anim)) do
     update_visualizer!(factory_vis)
 end
 setanimation!(vis,anim.anim)
-# render(vis)
+# MeshCat.render(vis)
 # open(joinpath(graphics_path,"animate_preprocessing.html"),"w") do io
 #     write(io,static_html(vis))
 # end
@@ -701,12 +701,44 @@ env = PlannerEnv(
 active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
 ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 
+
+# instantiate agent policies
+# potential field
+# agent <-> agent: cone + barrier
+# cone(x1,x2,r1,r2,scale,height) = 
+
+# agent = get_node(scene_tree,RobotID(1))
+# policy = ConstructionBots.PotentialFieldController(
+#     env = env,
+#     agent=agent,
+#     agent_radius = ROBOT_RADIUS,
+#     vmax = ConstructionBots.get_rvo_max_speed(agent),
+# )
+static_potential_function = (x,r)->0.0
+pairwise_potential_function = (x,r,x2,r2)->ConstructionBots.repulsion_potential(x,r,x2,r2;
+    dr=2*HG.default_robot_radius())
+
+ConstructionBots.compute_velocity_command!(policy,
+    global_transform(agent).translation[1:2])
+
 for n in get_nodes(scene_tree)
     if matches_template(Union{RobotNode,TransportUnitNode},n)
-        env.agent_policies[node_id(n)] = TangentBugPolicy(
-            dt = env.dt,
-            vmax = ConstructionBots.get_rvo_max_speed(n),
-            agent_radius = HG.get_radius(get_base_geom(n,HypersphereKey())),
+        agent_radius = HG.get_radius(get_base_geom(n,HypersphereKey()))
+        vmax = ConstructionBots.get_rvo_max_speed(n)
+        env.agent_policies[node_id(n)] = ConstructionBots.VelocityController(
+            nominal_policy = TangentBugPolicy(
+                dt = env.dt,
+                vmax = vmax,
+                agent_radius = agent_radius,
+            ),
+            dispersion_policy = ConstructionBots.PotentialFieldController(
+                env = env,
+                agent = n,
+                agent_radius = agent_radius,
+                vmax = vmax,
+                static_potentials=static_potential_function,
+                pairwise_potentials=pairwise_potential_function,
+            )
         )
     end
 end
@@ -719,7 +751,7 @@ update_visualizer_function = construct_visualizer_update_function(factory_vis;
 # set_use_rvo!(false)
 # set_avoid_staging_areas!(false)
 set_use_rvo!(true)
-set_avoid_staging_areas!(true)
+# set_avoid_staging_areas!(true)
 
 
 # record statistics
