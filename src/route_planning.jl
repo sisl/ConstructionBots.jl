@@ -103,6 +103,10 @@ end
 
 node_is_active(env,node) = get_vtx(env.sched,node_id(node)) in env.cache.active_set
 
+function parent_build_step_is_active(node,env)
+    build_step = get_parent_build_step(env.sched,node)
+    !(build_step === nothing) && node_id(build_step) in env.active_build_steps
+end
 # function get_active_build_steps(env::PlannerEnv)
 #     @unpack sched, scene_tree, cache, dt = env
 #     Base.Iterators.filter(n->matches_template(OpenBuildStep,n),

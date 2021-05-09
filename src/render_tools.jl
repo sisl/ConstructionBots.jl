@@ -913,12 +913,12 @@ function visualizer_update_function!(factory_vis,env,newly_updated=Set{Int}();
         return nothing
     end
     atframe(anim,current_frame(anim)) do
-        agents = Set{SceneNode}()
+        scene_nodes = Set{SceneNode}()
         for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
             agent = get_node(env.scene_tree, id)
-            push!(agents, agent)
+            push!(scene_nodes, agent)
             for vp in collect_descendants(env.scene_tree,agent)
-                push!(agents,get_node(env.scene_tree,vp))
+                push!(scene_nodes,get_node(env.scene_tree,vp))
             end
         end
         if render_stages
@@ -933,41 +933,33 @@ function visualizer_update_function!(factory_vis,env,newly_updated=Set{Int}();
         for id in env.active_build_steps
             setvisible!(staging_nodes[id],true)
         end
+
+        setvisible!(factory_vis.active_flags,false)
         for v in union(env.cache.active_set,newly_updated)
             node = get_node(env.sched,v)
             if matches_template(EntityGo,node)
                 agent = entity(node)
-                if matches_template(Union{RobotNode,TransportUnitID},agent)
-                    build_step = ConstructionBots.get_parent_build_step(env.sched,node)
-                    if !(build_step === nothing) && node_id(build_step) in env.active_build_steps
-                        setvisible!(factory_vis.active_flags[node_id(agent)],true)
-                    else
-                        setvisible!(factory_vis.active_flags[node_id(agent)],false)
-                    end
-                end
+                object = agent
             elseif matches_template(Union{FormTransportUnit,DepositCargo},node)
-                agent = get_node(env.scene_tree,cargo_id(entity(node)))
+                agent = entity(node)
+                object = get_node(env.scene_tree,cargo_id(entity(node)))
             else
                 agent = nothing
+                object = nothing
             end
-            if !(agent === nothing) && !(agent in agents)
-                push!(agents,agent)
-                for vp in collect_descendants(env.scene_tree,agent)
-                    push!(agents,get_node(env.scene_tree,vp))
+            if matches_template(Union{RobotNode,TransportUnitNode},agent)
+                if ConstructionBots.parent_build_step_is_active(node,env)
+                    setvisible!(factory_vis.active_flags[node_id(agent)],true)
+                end
+            end
+            if !(object === nothing) && !(object in scene_nodes)
+                push!(scene_nodes,object)
+                for vp in collect_descendants(env.scene_tree,object)
+                    push!(scene_nodes,get_node(env.scene_tree,vp))
                 end
             end
         end
-        # show active flags
-        # for agent in agents
-        #     build_step = ConstructionBots.get_parent_build_step(env.sched,agent)
-        #     if node_id(build_step) in env.active_build_steps
-        #         setvisible!(factory_vis.active_flags[node_id(agent)],true)
-        #     else
-        #         setvisible!(factory_vis.active_flags[node_id(agent)],false)
-        #     end
-        # end
-        # update_visualizer!(env.scene_tree,vis_nodes,agents)
-        update_visualizer!(factory_vis,agents)
+        update_visualizer!(factory_vis,scene_nodes)
         render(vis)
     end
     step_animation!(anim)

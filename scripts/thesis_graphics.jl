@@ -26,6 +26,7 @@ using Random
 using TOML
 using Logging
 global_logger(ConsoleLogger(stderr, Logging.Info))
+# global_logger(ConsoleLogger(stderr, Logging.Warn))
 # global_logger(ConsoleLogger(stderr, Logging.Debug))
 
 Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
@@ -662,6 +663,7 @@ atframe(anim,current_frame(anim)) do
     update_visualizer!(factory_vis)
     setvisible!(factory_vis.geom_nodes[HyperrectangleKey()],false)
     setvisible!(factory_vis.staging_nodes,false)
+    setvisible!(factory_vis.active_flags,false)
 end
 step_animation!(anim)
 animate_preprocessing_steps!(

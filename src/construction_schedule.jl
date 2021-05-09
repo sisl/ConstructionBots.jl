@@ -1082,7 +1082,7 @@ end
 get_parent_build_step(sched,n::Union{FormTransportUnit,TransportUnitGo}) = get_parent_build_step(sched,get_node(sched,DepositCargo(entity(n))))
 function get_parent_build_step(sched,n::RobotGo)
     if outdegree(sched,n) > 0
-        return get_parent_build_step(sched,outneighbors(sched,n)[1])
+        return get_parent_build_step(sched,first(outneighbors(sched,n)))
     end
     return nothing
 end
