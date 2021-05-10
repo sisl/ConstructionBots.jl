@@ -653,7 +653,10 @@ function get_twist_cmd(node,env)
         # commanded velocity from current position
         vc = compute_velocity_command!(policy,target_pos)
         # blend the three velocities
-        a = b = c = 1.0
+        # a = b = c = 1.0
+        a = 1.0
+        b = 2.0
+        c = 0.0
         v = (a*va+b*vb+c*vc) / (a+b+c)
         # compute goal
         goal_pt = pos + v*dt

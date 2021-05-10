@@ -120,8 +120,8 @@ MODEL_SCALE         = 0.01
 ROBOT_SCALE         = MODEL_SCALE * 0.9
 NUM_ROBOTS          = 25
 MAX_STEPS           = 2000
-OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
-HOME_VTX_RANGE      = (-10:10,-10:10, 0:1)
+OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
+HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
 STAGING_BUFFER_FACTOR = 1.5
 BUILD_STEP_BUFFER_FACTOR = 0.5
 
@@ -754,22 +754,23 @@ update_visualizer_function = construct_visualizer_update_function(factory_vis;
 set_use_rvo!(true)
 
 # record statistics
-# if use_rvo()
-#     prefix = "with_rvo"
-# else
-#     prefix = "without_rvo"
-# end
-# if isa(milp_model,AbstractGreedyAssignment)
-#     prefix = string("greedy_",prefix)
-# else
-#     prefix = string("optimal_",prefix)
-# end
+if use_rvo()
+    prefix = "with_rvo"
+else
+    prefix = "without_rvo"
+end
+if isa(milp_model,AbstractGreedyAssignment)
+    prefix = string("greedy_",prefix)
+else
+    prefix = string("optimal_",prefix)
+end
 
 
 status, TIME_STEPS = ConstructionBots.simulate!(env, update_visualizer_function,
     max_time_steps=MAX_STEPS,
     )
 setanimation!(vis,anim.anim)
+mkpath(joinpath(graphics_path,prefix))
 open(joinpath(graphics_path,prefix,"construction_simulation.html"),"w") do io
     write(io,static_html(vis))
 end
