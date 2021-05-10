@@ -125,6 +125,56 @@ function cargo_ready_for_pickup(n::RobotGo,env)
 end
 cargo_ready_for_pickup(n::ScheduleNode,env) = cargo_ready_for_pickup(n.node,env)
 
+"""
+    set_rvo_priority!(env,node)
+
+Low alpha means higher priority
+"""
+function set_rvo_priority!(env,node)
+    @unpack sched, scene_tree, cache, staging_circles = env
+    if matches_template(Union{FormTransportUnit,DepositCargo},node)
+        alpha = 0.0
+    # elseif matches_template(TransportUnitGo,node)
+    elseif parent_build_step_is_active(node,env)
+            # build_step_node = get_parent_build_step(sched,node)
+            # build_step = build_step_node.node
+            # parent_assembly = build_step.assembly
+            # staging_circle = staging_circles[node_id(parent_assembly)]
+            # pos = HG.project_to_2d(global_transform(entity(node)).translation)
+            # # if get_vtx(sched,build_step_node) in cache.active_set 
+            # # WHY THIS BREAKDOWN?
+            # if pos in staging_circle
+            #     alpha = 0.0
+            # else
+            #     # alpha = 0.5
+            #     alpha = 0.0
+            # end
+        if cargo_ready_for_pickup(node,env)
+            if matches_template(TransportUnitGo,node)
+                alpha = 0.0
+            else
+                alpha = 0.1
+            end
+        else
+            alpha = 0.5
+        end
+    else
+        alpha = 1.0
+    end
+    # elseif matches_template(RobotGo,node)
+    #     # parent_build_step = get_parent_build_step(sched,node)
+    #     # if !(parent_build_step === nothing) && get_vtx(sched,parent_build_step) in cache.active_set 
+    #     if parent_build_step_is_active(node,env)
+    #         alpha = 0.1
+    #     else
+    #         alpha = 1.0
+    #     end
+    # else
+    #     alpha = 1.0
+    # end
+    rvo_set_agent_alpha!(node,alpha)
+end
+
 
 """ 
     LOADING_SPEED
@@ -176,7 +226,6 @@ function simulate!(env,update_visualizer_function;
     return project_complete(env), iters
 end
 
-
 """
     update_position_from_sim!(agent)
 
@@ -220,44 +269,6 @@ function step_environment!(env::PlannerEnv,sim=rvo_global_sim())
     return env
 end
 
-"""
-    set_rvo_priority!(env,node)
-
-Low alpha means higher priority
-"""
-function set_rvo_priority!(env,node)
-    @unpack sched, scene_tree, cache, staging_circles = env
-    if matches_template(Union{FormTransportUnit,DepositCargo},node)
-        alpha = 0.0
-    elseif matches_template(TransportUnitGo,node)
-        build_step_node = get_parent_build_step(sched,node)
-        build_step = build_step_node.node
-        parent_assembly = build_step.assembly
-        staging_circle = staging_circles[node_id(parent_assembly)]
-        pos = HG.project_to_2d(global_transform(entity(node)).translation)
-        if get_vtx(sched,build_step_node) in cache.active_set 
-            # WHY THIS BREAKDOWN?
-            if pos in staging_circle
-                alpha = 0.0
-            else
-                # alpha = 0.5
-                alpha = 0.0
-            end
-        else
-            alpha = 1.0
-        end
-    elseif matches_template(RobotGo,node)
-        parent_build_step = get_parent_build_step(sched,node)
-        if !(parent_build_step === nothing) && get_vtx(sched,parent_build_step) in cache.active_set 
-            alpha = 0.1
-        else
-            alpha = 1.0
-        end
-    else
-        alpha = 1.0
-    end
-    rvo_set_agent_alpha!(node,alpha)
-end
 
 function update_rvo_sim!(env::PlannerEnv)
     @unpack sched, scene_tree, cache = env
