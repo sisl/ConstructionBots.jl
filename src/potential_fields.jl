@@ -132,6 +132,24 @@ mutable struct PairwisePotential
 end
 (p::PairwisePotential)(x1,x2,r1,r2) = p.f(x1,x2,r1,r2)
 
+"""
+    repulsion_potential(x,r,x2,r2;
+
+Combines a cone potential and a 1/||x|| barrier potential for pairwise 
+repulsion.
+"""
+function repulsion_potential(x,r,x2,r2;
+        dr = 2*HG.default_robot_radius(),
+    )
+    dx = x .- x2
+    R = r + r2
+    # cone
+    f1 = max(0.0,R+dr - norm(dx))
+    # barrier
+    f2 = (norm(dx) < R+dr)*1/(norm(dx)-R)
+    return f1+f2
+end
+
 @with_kw mutable struct PotentialFieldController
     env                     = nothing
     agent                   = nothing
@@ -140,7 +158,7 @@ end
     vmax                    = 1.0
     interaction_radius      = 20*ROBOT_RADIUS
     # potentials between all pairs of robots
-    pairwise_potentials     = (x,xp,r,rp)->0.0
+    pairwise_potentials     = (x,r,xp,rp)->repulsion_potential(x,r,xp,rp)
     # environment potentials (may depend on other agent's states)
     static_potentials       = (x,r)->0.0
 end
@@ -149,7 +167,14 @@ function static_potential_gradient(c::PotentialFieldController,pos)
     ForwardDiff.gradient(x->c.static_potentials(x,c.agent_radius),pos)
 end
 function pairwise_potential_gradient(c::PotentialFieldController,pos,other_pos,other_radius)
-    ForwardDiff.gradient(x->c.pairwise_potentials(x,c.agent_radius,other_pos,other_radius),pos)
+    ForwardDiff.gradient(
+        x->c.pairwise_potentials(
+            x,
+            c.agent_radius,
+            other_pos,
+            other_radius,
+            ),
+        pos)
 end
 
 function clip_velocity(vel,vmax)
@@ -159,18 +184,6 @@ function clip_velocity(vel,vmax)
         v = vel
     end
     return v
-end
-
-function repulsion_potential(x,r,x2,r2;
-        dr = 1.0,
-    )
-    dx = x .- x2
-    R = r + r2
-    # cone
-    f1 = max(0.0,R+dr - norm(dx))
-    # barrier
-    f2 = (norm(dx) < R+dr)*1/(norm(dx)-R)
-    return f1+f2
 end
 
 function compute_velocity_command!(policy::PotentialFieldController,pos)

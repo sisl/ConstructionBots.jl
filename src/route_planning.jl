@@ -614,9 +614,9 @@ function get_twist_cmd(node,env)
         # get circle obstacles, potentially inflated 
         circles = active_staging_circles(env,excluded_ids)
         # INFLATE CIRCLES IF NECESSARY
-        if policy.mode == :MOVE_TOWARD_GOAL
-            inflate_staging_circle_buffers!(env,policy,agent,excluded_ids)
-        end
+        # if policy.mode == :MOVE_TOWARD_GOAL
+        #     inflate_staging_circle_buffers!(env,policy,agent,excluded_ids)
+        # end
         # update policy and get goal
         policy.config = global_transform(agent)
         goal_pt = query_policy_for_goal!(policy,circles,pos,HG.project_to_2d(goal.translation))

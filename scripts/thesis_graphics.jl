@@ -93,14 +93,15 @@ PRE_EXECUTION_START_TIME = time()
 # ROBOT_SCALE         = MODEL_SCALE
 # OBJECT_VTX_RANGE    = (-26:26,-26:26, 0:10)
 
-# project_name = "X-wingFighter.mpd"
-# MODEL_SCALE         = 0.004
-# NUM_ROBOTS          = 100
-# ROBOT_SCALE         = MODEL_SCALE
-# OBJECT_VTX_RANGE    = (-26:26,-26:26, 0:10)
-# MAX_STEPS           = 8000
-# STAGING_BUFFER_FACTOR = 1.5
-# BUILD_STEP_BUFFER_FACTOR = 0.5
+project_name = "X-wingFighter.mpd"
+MODEL_SCALE         = 0.004
+NUM_ROBOTS          = 100
+ROBOT_SCALE         = MODEL_SCALE
+OBJECT_VTX_RANGE    = (-14:0.5:14,-14:0.5:14, 0:0)
+HOME_VTX_RANGE    = (-22:22,-22:22, 0:0)
+MAX_STEPS           = 8000
+STAGING_BUFFER_FACTOR = 2.2
+BUILD_STEP_BUFFER_FACTOR = 0.5
 
 # project_name = "X-wingMini.mpd"
 # MODEL_SCALE         = 0.01
@@ -114,15 +115,15 @@ PRE_EXECUTION_START_TIME = time()
 # NUM_ROBOTS          = 12
 # OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
-project_name = "colored_8x8.ldr"
-MODEL_SCALE         = 0.01
-ROBOT_SCALE         = MODEL_SCALE * 0.9
-NUM_ROBOTS          = 25
-MAX_STEPS           = 2000
-OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
-HOME_VTX_RANGE      = (-10:10,-10:10, 0:1)
-STAGING_BUFFER_FACTOR = 1.5
-BUILD_STEP_BUFFER_FACTOR = 0.5
+# project_name = "colored_8x8.ldr"
+# MODEL_SCALE         = 0.01
+# ROBOT_SCALE         = MODEL_SCALE * 0.9
+# NUM_ROBOTS          = 25
+# MAX_STEPS           = 2000
+# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
+# HOME_VTX_RANGE      = (-10:10,-10:10, 0:1)
+# STAGING_BUFFER_FACTOR = 1.5
+# BUILD_STEP_BUFFER_FACTOR = 0.5
 
 # project_name = "small_quad_nested.mpd"
 # NUM_ROBOTS          = 40
@@ -257,11 +258,15 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 @assert validate_schedule_transform_tree(sched)
 # display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
 
-## Construct Partial Schedule
-HG.jump_to_final_configuration!(scene_tree;set_edges=true)
-sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
-# Check if schedule graph and embedded transform tree are valid
-@assert validate_schedule_transform_tree(sched)
+if project_name == "X-wingFighter.mpd"
+    ac = get_node(sched,first(inneighbors(sched,ProjectComplete(1))))
+    tform = global_transform(goal_config(ac))
+    set_desired_global_transform!(
+        goal_config(ac),
+        CT.Translation(0.0,16.0,0.0) ∘ global_transform(goal_config(ac)),
+        )
+end
+
 let
     # sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,25;
     #     frontier=[get_vtx(sched,ProjectComplete(1))],
@@ -327,7 +332,7 @@ let
     # render_node_types_and_table(sched,scene_tree;graphics_path=joinpath(graphics_path,"node_table"))
 end
 
-## Generata staging plan
+## Generate staging plan
 MAX_OBJECT_TRANSPORT_UNIT_RADIUS = ConstructionBots.get_max_object_transport_unit_radius(scene_tree)
 STAGING_PLAN_TIME = time()
 staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree,sched;
@@ -435,7 +440,8 @@ MAX_CARGO_HEIGHT = maximum(map(n->get_base_geom(n,HyperrectangleKey()).radius[3]
     filter(n->matches_template(TransportUnitNode,n),get_nodes(scene_tree))))
 vtxs = ConstructionBots.construct_vtx_array(;
     origin=SVector(0.0,0.0,MAX_CARGO_HEIGHT),
-    obstacles=collect(values(staging_circles)),
+    # obstacles=collect(values(staging_circles)),
+    obstacles=[HG.project_to_2d(get_cached_geom(node_val(n).outer_staging_circle)) for n in get_nodes(sched) if matches_template(AssemblyComplete,n)],
     ranges=OBJECT_VTX_RANGE,
     )
 NUM_OBJECTS = length(filter(n->matches_template(ObjectNode,n),get_nodes(scene_tree)))
@@ -583,8 +589,7 @@ factory_vis = populate_visualizer!(scene_tree,vis;
     # wireframe=true,
     material_type=MeshLambertMaterial)
 add_indicator_nodes!(factory_vis)
-factory_vis.staging_nodes = render_staging_areas!(vis,scene_tree,sched,staging_circles;
-    dz=0.01,color=RGBA(0.4,0.0,0.4,0.5))
+factory_vis.staging_nodes = render_staging_areas!(vis,scene_tree,sched,staging_circles;color=RGBA(0.4,0.0,0.4,0.5))
 for (k,color) in [
         (HypersphereKey()=>RGBA(0.0,1.0,0.0,0.3)),
         (HyperrectangleKey()=>RGBA(1.0,0.0,0.0,0.3))
@@ -647,7 +652,7 @@ end
 
 # restore correct configuration
 HG.jump_to_final_configuration!(scene_tree;set_edges=true)
-# update_visualizer!(scene_tree,vis_nodes)
+update_visualizer!(factory_vis)
 # set staging plan and visualize
 set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
 # update_visualizer!(scene_tree,factory_vis.vis_nodes)
@@ -718,9 +723,6 @@ static_potential_function = (x,r)->0.0
 pairwise_potential_function = (x,r,x2,r2)->ConstructionBots.repulsion_potential(x,r,x2,r2;
     dr=2*HG.default_robot_radius())
 
-ConstructionBots.compute_velocity_command!(policy,
-    global_transform(agent).translation[1:2])
-
 for n in get_nodes(scene_tree)
     if matches_template(Union{RobotNode,TransportUnitNode},n)
         agent_radius = HG.get_radius(get_base_geom(n,HypersphereKey()))
@@ -749,10 +751,7 @@ update_visualizer_function = construct_visualizer_update_function(factory_vis;
 
 # Turn off RVO to see if the project can be completed if we don't worry about collision
 # set_use_rvo!(false)
-# set_avoid_staging_areas!(false)
 set_use_rvo!(true)
-# set_avoid_staging_areas!(true)
-
 
 # record statistics
 # if use_rvo()
@@ -766,14 +765,15 @@ set_use_rvo!(true)
 #     prefix = string("optimal_",prefix)
 # end
 
+
 status, TIME_STEPS = ConstructionBots.simulate!(env, update_visualizer_function,
     max_time_steps=MAX_STEPS,
     )
 setanimation!(vis,anim.anim)
-# open(joinpath(graphics_path,prefix,"construction_simulation.html"),"w") do io
-#     write(io,static_html(vis))
-# end
-# render(vis)
+open(joinpath(graphics_path,prefix,"construction_simulation.html"),"w") do io
+    write(io,static_html(vis))
+end
+MeshCat.render(vis)
 
 # animate camera path
 # rotate_camera!(vis,anim);
