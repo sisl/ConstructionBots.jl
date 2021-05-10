@@ -102,16 +102,28 @@ Contains the Environment state and definition.
 end
 
 node_is_active(env,node) = get_vtx(env.sched,node_id(node)) in env.cache.active_set
+node_is_closed(env,node) = get_vtx(env.sched,node_id(node)) in env.cache.closed_set
 
 function parent_build_step_is_active(node,env)
     build_step = get_parent_build_step(env.sched,node)
     !(build_step === nothing) && node_id(build_step) in env.active_build_steps
 end
-# function get_active_build_steps(env::PlannerEnv)
-#     @unpack sched, scene_tree, cache, dt = env
-#     Base.Iterators.filter(n->matches_template(OpenBuildStep,n),
-#         (get_node(sched,v) for v in cache.active_set))
-# end
+function cargo_ready_for_pickup(n::Union{FormTransportUnit,TransportUnitGo,DepositCargo},env)
+    @unpack sched, scene_tree, cache = env
+    cargo = get_node(scene_tree,cargo_id(entity(n)))
+    if matches_template(ObjectNode,cargo)
+        return true
+    else
+        return node_is_closed(env,AssemblyComplete(cargo))
+    end
+end
+function cargo_ready_for_pickup(n::RobotGo,env)
+    if outdegree(env.sched,n) < 1
+        return false
+    end
+    cargo_ready_for_pickup(get_node(env.sched,first(outneighbors(env.sched,n))),env)
+end
+cargo_ready_for_pickup(n::ScheduleNode,env) = cargo_ready_for_pickup(n.node,env)
 
 
 """ 
@@ -627,7 +639,10 @@ function get_twist_cmd(node,env)
     end
     ############ Potential Field Policy #############
     policy = agent_policies[node_id(agent)].dispersion_policy
-    if !(policy === nothing || parent_build_step_is_active(node,env))
+    # For RobotGo node, ensure that parent assembly is "pickup-able"
+    ready_for_pickup = cargo_ready_for_pickup(node,env)
+    build_step_active = parent_build_step_is_active(node,env)
+    if !(policy === nothing || (build_step_active && ready_for_pickup))
         # iterate over nearby agents
         nominal_twist = twist
         pos = HG.project_to_2d(global_transform(agent).translation)

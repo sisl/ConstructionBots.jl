@@ -1092,6 +1092,7 @@ get_first_build_step(sched,n::AssemblyStart) = get_node(sched,first(outneighbors
 get_first_build_step(sched,n::ScheduleNode) = get_first_build_step(sched,n.node)
 get_first_build_step(sched,n::CustomNode) = get_first_build_step(sched,node_val(n))
 
+
 """
     set_scene_tree_to_initial_condition!(scene_tree,sched)
 
