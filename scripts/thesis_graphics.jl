@@ -93,15 +93,15 @@ PRE_EXECUTION_START_TIME = time()
 # ROBOT_SCALE         = MODEL_SCALE
 # OBJECT_VTX_RANGE    = (-26:26,-26:26, 0:10)
 
-# project_name = "X-wingFighter.mpd"
-# MODEL_SCALE         = 0.004
-# NUM_ROBOTS          = 100
-# ROBOT_SCALE         = MODEL_SCALE
-# OBJECT_VTX_RANGE    = (-14:0.5:14,-14:0.5:14, 0:0)
-# HOME_VTX_RANGE    = (-22:22,-22:22, 0:0)
-# MAX_STEPS           = 8000
-# STAGING_BUFFER_FACTOR = 2.2
-# BUILD_STEP_BUFFER_FACTOR = 0.5
+project_name = "X-wingFighter.mpd"
+MODEL_SCALE         = 0.0035
+NUM_ROBOTS          = 100
+ROBOT_SCALE         = MODEL_SCALE
+OBJECT_VTX_RANGE    = (-14:0.5:14,-14:0.5:14, 0:0)
+HOME_VTX_RANGE    = (-22:22,-22:22, 0:0)
+MAX_STEPS           = 8000
+STAGING_BUFFER_FACTOR = 2.2
+BUILD_STEP_BUFFER_FACTOR = 0.5
 
 # project_name = "X-wingMini.mpd"
 # MODEL_SCALE         = 0.01
@@ -115,15 +115,15 @@ PRE_EXECUTION_START_TIME = time()
 # NUM_ROBOTS          = 12
 # OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
-project_name = "colored_8x8.ldr"
-MODEL_SCALE         = 0.01
-ROBOT_SCALE         = MODEL_SCALE * 0.9
-NUM_ROBOTS          = 25
-MAX_STEPS           = 2000
-OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
-HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
-STAGING_BUFFER_FACTOR = 1.5
-BUILD_STEP_BUFFER_FACTOR = 0.5
+# project_name = "colored_8x8.ldr"
+# MODEL_SCALE         = 0.01
+# ROBOT_SCALE         = MODEL_SCALE * 0.9
+# NUM_ROBOTS          = 25
+# MAX_STEPS           = 2000
+# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
+# HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
+# STAGING_BUFFER_FACTOR = 1.5
+# BUILD_STEP_BUFFER_FACTOR = 1.5
 
 # project_name = "small_quad_nested.mpd"
 # NUM_ROBOTS          = 40
@@ -258,14 +258,14 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 @assert validate_schedule_transform_tree(sched)
 # display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
 
-if project_name == "X-wingFighter.mpd"
-    ac = get_node(sched,first(inneighbors(sched,ProjectComplete(1))))
-    tform = global_transform(goal_config(ac))
-    set_desired_global_transform!(
-        goal_config(ac),
-        CT.Translation(0.0,16.0,0.0) ∘ global_transform(goal_config(ac)),
-        )
-end
+# if project_name == "X-wingFighter.mpd"
+#     ac = get_node(sched,first(inneighbors(sched,ProjectComplete(1))))
+#     tform = global_transform(goal_config(ac))
+#     set_desired_global_transform!(
+#         goal_config(ac),
+#         CT.Translation(-12.0,6.0,0.0) ∘ global_transform(goal_config(ac)),
+#         )
+# end
 
 let
     # sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,25;
@@ -567,9 +567,12 @@ update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
 go_nodes = [n for n in get_nodes(tg_sched) if matches_template(RobotGo,n) && is_terminal_node(tg_sched,n)]
 home_vtx_candidates = ConstructionBots.construct_vtx_array(;
     origin=SVector(0.0,0.0,MAX_CARGO_HEIGHT),
-    obstacles=collect(values(staging_circles)),
+    # obstacles=collect(values(staging_circles)),
+    # obstacles=[circle_obs],
+    obstacles=[HG.project_to_2d(get_cached_geom(node_val(n).outer_staging_circle)) for n in get_nodes(sched) if matches_template(AssemblyComplete,n)],
     # ranges=(-12:4*ROBOT_RADIUS:12,-12:4*ROBOT_RADIUS:12,0:0),
-    ranges=(-16:4*ROBOT_RADIUS:16,-16:4*ROBOT_RADIUS:16,0:0),
+    # ranges=(-16:4*ROBOT_RADIUS:16,-16:4*ROBOT_RADIUS:16,0:0),
+    HOME_VTX_RANGE
     )
 # home_vtxs = draw_random_uniform(vtxs,length(go_nodes))
 home_vtxs = draw_random_uniform(home_vtx_candidates,length(go_nodes))
@@ -579,7 +582,14 @@ for (vtx,n) in zip(home_vtxs,go_nodes)
     )
 end
 
-# compile pre execution statistics
+if project_name == "X-wingFighter.mpd"
+    ac = get_node(sched,first(inneighbors(sched,ProjectComplete(1))))
+    tform = global_transform(goal_config(ac))
+    set_desired_global_transform!(
+        goal_config(ac),
+        CT.Translation(-2.0,8.0,global_transform(goal_config(ac)).translation[end]),
+        )
+end
 
 ## Visualize assembly
 delete!(vis)
@@ -655,7 +665,7 @@ HG.jump_to_final_configuration!(scene_tree;set_edges=true)
 update_visualizer!(factory_vis)
 # set staging plan and visualize
 set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
-# update_visualizer!(scene_tree,factory_vis.vis_nodes)
+update_visualizer!(factory_vis)
 # Visualize construction
 # visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;dt=0.1)
 
@@ -696,6 +706,8 @@ setanimation!(vis,anim.anim)
 ConstructionBots.set_rvo_default_time_step!(1/40.0)
 ConstructionBots.set_rvo_default_neighbor_distance!(16*HG.default_robot_radius()) # 4
 ConstructionBots.set_rvo_default_min_neighbor_distance!(10*HG.default_robot_radius()) # 3
+# ConstructionBots.set_rvo_default_neighbor_distance!(8*HG.default_robot_radius()) # 4
+# ConstructionBots.set_rvo_default_min_neighbor_distance!(4*HG.default_robot_radius()) # 3
 ConstructionBots.rvo_set_new_sim!(ConstructionBots.rvo_new_sim(;horizon=2.0))
 ConstructionBots.set_staging_buffer_radius!(HG.default_robot_radius())
 env = PlannerEnv(
@@ -721,7 +733,7 @@ ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 # )
 static_potential_function = (x,r)->0.0
 pairwise_potential_function = (x,r,x2,r2)->ConstructionBots.repulsion_potential(x,r,x2,r2;
-    dr=2*HG.default_robot_radius())
+    dr=2.5*HG.default_robot_radius())
 
 for n in get_nodes(scene_tree)
     if matches_template(Union{RobotNode,TransportUnitNode},n)

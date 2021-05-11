@@ -661,21 +661,21 @@ function get_twist_cmd(node,env)
         target_pos = pos .+ va * dt
         # commanded velocity from current position
         vb = compute_velocity_command!(policy,pos)
+        # vb = -1.0 * compute_potential_gradient!(policy,pos)
         # commanded velocity from current position
         vc = compute_velocity_command!(policy,target_pos)
+        # vc = -1.0 * compute_potential_gradient!(policy,target_pos)
         # blend the three velocities
-        # a = b = c = 1.0
         a = 1.0
-        b = 2.0
+        b = 1.0
         c = 0.0
         v = (a*va+b*vb+c*vc) / (a+b+c)
+        vel = clip_velocity(v,policy.vmax)
         # compute goal
-        goal_pt = pos + v*dt
+        goal_pt = pos + vel*dt
         goal = CT.Translation(goal_pt...,0.0) ∘ CT.LinearMap(goal.linear)
         twist = compute_twist_from_goal(agent,goal,dt) # nominal twist
     end
-    # If potential field (to use at goal?)
-        # apply repulsive potentials
     # return goal
     return twist
 end

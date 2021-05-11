@@ -140,11 +140,15 @@ repulsion.
 """
 function repulsion_potential(x,r,x2,r2;
         dr = 2*HG.default_robot_radius(),
+        fillet_radius=0.5*default_robot_radius(),
     )
     dx = x .- x2
     R = r + r2
-    # cone
+    # # # cone
     f1 = max(0.0,R+dr - norm(dx))
+    # # filleted cone
+    # cone = max(0.0,R+dr - norm(dx))
+    # f1 = ((R+dr+fillet_radius)/(R+dr)) * cone^2 / (cone + fillet_radius)
     # barrier
     f2 = (norm(dx) < R+dr)*1/(norm(dx)-R)
     return f1+f2
@@ -186,19 +190,40 @@ function clip_velocity(vel,vmax)
     return v
 end
 
-function compute_velocity_command!(policy::PotentialFieldController,pos)
+function pairwise_potential_scale(policy::PotentialFieldController,α1,α2)
+    if α1 < α2
+        return 0.0 # precedence--no push
+    elseif α1 == 0
+        return α2 / (α1 + min(α2,0.05))
+    else
+        return α2 / α1
+    end
+end
+
+function compute_potential_gradient!(policy::PotentialFieldController,pos)
     @unpack scene_tree, sched = policy.env
     agent = policy.agent
     dp = static_potential_gradient(policy,pos)
+    α1 = rvo_get_agent_alpha(agent)
     for other_agent in rvo_active_agents(scene_tree)
-        if !(agent === other_agent) 
+        if !(agent === other_agent)
+            α2 = rvo_get_agent_alpha(other_agent)
+            if α1 < α2 # can't be pushed by other agent
+                continue
+            end
+            scale = pairwise_potential_scale(policy,α1,α2)
+            # scale = 1.0
             other_pos = HG.project_to_2d(global_transform(other_agent).translation)
             other_rad = HG.get_radius(get_base_geom(other_agent,HypersphereKey()))
             if norm(pos - other_pos) <= policy.interaction_radius
-                dp = dp .+ pairwise_potential_gradient(policy,pos,other_pos,other_rad)
+                dp = dp .+ scale*pairwise_potential_gradient(policy,pos,other_pos,other_rad)
             end
         end
     end
+    return dp
+end
+function compute_velocity_command!(policy::PotentialFieldController,pos)
+    dp = compute_potential_gradient!(policy::PotentialFieldController,pos)
     vel = clip_velocity(-1.0 * dp, policy.vmax)
     return vel
 end

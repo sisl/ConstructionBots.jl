@@ -204,6 +204,10 @@ function rvo_set_agent_alpha!(node,alpha=0.5)
     idx = rvo_get_agent_idx(node)
     rvo_global_sim().setAgentAlpha(idx,alpha)
 end
+function rvo_get_agent_alpha(node)
+    idx = rvo_get_agent_idx(node)
+    rvo_global_sim().getAgentAlpha(idx)
+end
 
 for T in (
     :RobotStart,
