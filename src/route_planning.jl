@@ -685,6 +685,8 @@ function get_twist_cmd(node,env)
         goal_pt = pos + vel*dt
         goal = CT.Translation(goal_pt...,0.0) ∘ CT.LinearMap(goal.linear)
         twist = compute_twist_from_goal(agent,goal,dt) # nominal twist
+    else
+        policy.dist_to_nearest_active_agent = 0.0
     end
     # return goal
     return twist

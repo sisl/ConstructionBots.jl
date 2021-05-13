@@ -97,25 +97,25 @@ Random.seed!(0);
 # NUM_ROBOTS          = 30
 # OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
-project_name = "tractor.mpd"
-MODEL_SCALE         = 0.008
-ROBOT_SCALE         = MODEL_SCALE * 0.7
-NUM_ROBOTS          = 12
-MAX_STEPS           = 4000
-OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
-HOME_VTX_RANGE      = (-10:10, -10:10, 0:1)
-STAGING_BUFFER_FACTOR = 1.5
-BUILD_STEP_BUFFER_FACTOR = 1.5
-
-# project_name = "colored_8x8.ldr"
-# MODEL_SCALE         = 0.01
-# ROBOT_SCALE         = MODEL_SCALE * 0.9
-# NUM_ROBOTS          = 25
-# MAX_STEPS           = 2000
-# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
-# HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
+# project_name = "tractor.mpd"
+# MODEL_SCALE         = 0.008
+# ROBOT_SCALE         = MODEL_SCALE * 0.7
+# NUM_ROBOTS          = 12
+# MAX_STEPS           = 4000
+# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
+# HOME_VTX_RANGE      = (-10:10, -10:10, 0:1)
 # STAGING_BUFFER_FACTOR = 1.5
 # BUILD_STEP_BUFFER_FACTOR = 1.5
+
+project_name = "colored_8x8.ldr"
+MODEL_SCALE         = 0.01
+ROBOT_SCALE         = MODEL_SCALE * 0.9
+NUM_ROBOTS          = 25
+MAX_STEPS           = 2500
+OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
+HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
+STAGING_BUFFER_FACTOR = 1.5
+BUILD_STEP_BUFFER_FACTOR = 1.5
 
 # project_name = "small_quad_nested.mpd"
 # NUM_ROBOTS          = 40
