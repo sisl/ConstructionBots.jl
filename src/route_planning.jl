@@ -390,7 +390,8 @@ end
 
 If next node is FormTransportUnit, ensure that everybody else is in position.
 """
-function CRCBS.is_goal(node::RobotGo,env)
+# function CRCBS.is_goal(node::RobotGo,env)
+function CRCBS.is_goal(node::Union{RobotGo,TransportUnitGo},env)
     @unpack sched, scene_tree, cache = env
     agent = entity(node)
     state = global_transform(agent)
@@ -399,10 +400,13 @@ function CRCBS.is_goal(node::RobotGo,env)
         return false
     end
     if is_terminal_node(sched,node)
-        return true
+        # Does this need to be modified?
+        # return true
+        return false 
     end
     next_node = get_node(sched,outneighbors(sched,node)[1])
     # Cannot reach goal until next_node is ready to become active
+    # Should take care of requiring the parent build step to be active
     for v in inneighbors(sched,next_node)
         if !((v in cache.active_set) || (v in cache.closed_set))
             return false
