@@ -382,7 +382,8 @@ function assign_collaborative_tasks!(model,
             new_node = align_with_successor(get_node(sched,v).node,get_node(sched,v2).node)
             distance_dict[(v,v2)] = generate_path_spec(sched,scene_tree,new_node).min_duration
         end
-        return distance_dict[(v,v2)]
+        return get_tF(sched,v) + distance_dict[(v,v2)]
+        # return distance_dict[(v,v2)]
         # TaskGraphs.get_edge_cost(model,D,v,v2)
     end
     while !isempty(active_build_steps)
