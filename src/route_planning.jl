@@ -298,7 +298,7 @@ function TaskGraphs.update_planning_cache!(env::PlannerEnv,time_stamp::Float64)
                 @info "node $(summary(node_id(node))) finished."
                 TaskGraphs.update_planning_cache!(nothing,sched,cache,v,time_stamp)
                 # @info "active nodes $([get_vtx_id(sched,v) for v in cache.active_set])"
-                @assert !(v in cache.active_set)
+                @assert !(v in cache.active_set) && (v in cache.closed_set)
                 push!(newly_updated,v)
                 done = false
                 updated = true
