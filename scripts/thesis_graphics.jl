@@ -40,22 +40,10 @@ reset_all_id_counters!()
 reset_all_invalid_id_counters!()
 Random.seed!(0);
 
-PRE_EXECUTION_START_TIME = time()
-
 # factor by which to scale LDraw model (because MeshCat bounds are hard to adjust)
 # MODEL_SCALE         = 0.01
-# NUM_ROBOTS          = 12
 
 ## LOAD LDRAW FILE
-# filename = joinpath(dirname(pathof(LDrawParser)),"..","assets","Millennium Falcon.mpd")
-# NUM_ROBOTS          = 200
-# MODEL_SCALE         = 0.005
-# project_name = "simple_quad_stack.mpd"
-# project_name = "DemoStack.mpd"
-# project_name = "ATTEWalker.mpd"
-# project_name = "stack1.ldr"
-# project_name = "big_stack.ldr"
-# project_name = "triple_stack.mpd"
 
 # project_name = "quad_nested.mpd"
 # MODEL_SCALE         = 0.003
@@ -93,15 +81,15 @@ PRE_EXECUTION_START_TIME = time()
 # ROBOT_SCALE         = MODEL_SCALE
 # OBJECT_VTX_RANGE    = (-26:26,-26:26, 0:10)
 
-project_name = "X-wingFighter.mpd"
-MODEL_SCALE         = 0.0035
-NUM_ROBOTS          = 100
-ROBOT_SCALE         = MODEL_SCALE
-OBJECT_VTX_RANGE    = (-14:0.5:14,-14:0.5:14, 0:0)
-HOME_VTX_RANGE    = (-22:22,-22:22, 0:0)
-MAX_STEPS           = 8000
-STAGING_BUFFER_FACTOR = 2.2
-BUILD_STEP_BUFFER_FACTOR = 0.5
+# project_name = "X-wingFighter.mpd"
+# MODEL_SCALE         = 0.0035
+# NUM_ROBOTS          = 100
+# ROBOT_SCALE         = MODEL_SCALE
+# OBJECT_VTX_RANGE    = (-14:0.5:14,-14:0.5:14, 0:0)
+# HOME_VTX_RANGE    = (-22:22,-22:22, 0:0)
+# MAX_STEPS           = 8000
+# STAGING_BUFFER_FACTOR = 2.2
+# BUILD_STEP_BUFFER_FACTOR = 0.5
 
 # project_name = "X-wingMini.mpd"
 # MODEL_SCALE         = 0.01
@@ -109,11 +97,15 @@ BUILD_STEP_BUFFER_FACTOR = 0.5
 # NUM_ROBOTS          = 30
 # OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
-# project_name = "tractor.mpd"
-# MODEL_SCALE         = 0.01
-# ROBOT_SCALE         = MODEL_SCALE * 0.7
-# NUM_ROBOTS          = 12
-# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
+project_name = "tractor.mpd"
+MODEL_SCALE         = 0.008
+ROBOT_SCALE         = MODEL_SCALE * 0.7
+NUM_ROBOTS          = 12
+MAX_STEPS           = 3400
+OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
+HOME_VTX_RANGE      = (-10:10, -10:10, 0:1)
+STAGING_BUFFER_FACTOR = 1.5
+BUILD_STEP_BUFFER_FACTOR = 1.5
 
 # project_name = "colored_8x8.ldr"
 # MODEL_SCALE         = 0.01
@@ -192,15 +184,11 @@ assembly_tree = ConstructionBots.construct_assembly_tree(model,model_spec,id_map
 scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
 print(scene_tree,v->"$(summary(node_id(v))) : $(get(id_map,node_id(v),nothing))","\t")
 # Define TransportUnit configurations
-START_GEOM_APPROX = time()
 HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
 HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
-GEOM_APPROX_TIME = time() - START_GEOM_APPROX
-CONFIG_TRANSPORT_UNITS_TIME = time()
 _, cvx_hulls = ConstructionBots.init_transport_units!(scene_tree;
     robot_radius = ROBOT_RADIUS,
     )
-CONFIG_TRANSPORT_UNITS_TIME = time() - CONFIG_TRANSPORT_UNITS_TIME
 
 # ConstructionBots.init_transport_units!(scene_tree)
 # validate SceneTree
@@ -570,9 +558,7 @@ home_vtx_candidates = ConstructionBots.construct_vtx_array(;
     # obstacles=collect(values(staging_circles)),
     # obstacles=[circle_obs],
     obstacles=[HG.project_to_2d(get_cached_geom(node_val(n).outer_staging_circle)) for n in get_nodes(sched) if matches_template(AssemblyComplete,n)],
-    # ranges=(-12:4*ROBOT_RADIUS:12,-12:4*ROBOT_RADIUS:12,0:0),
-    # ranges=(-16:4*ROBOT_RADIUS:16,-16:4*ROBOT_RADIUS:16,0:0),
-    HOME_VTX_RANGE
+    ranges=HOME_VTX_RANGE
     )
 # home_vtxs = draw_random_uniform(vtxs,length(go_nodes))
 home_vtxs = draw_random_uniform(home_vtx_candidates,length(go_nodes))
@@ -782,11 +768,44 @@ status, TIME_STEPS = ConstructionBots.simulate!(env, update_visualizer_function,
     max_time_steps=MAX_STEPS,
     )
 setanimation!(vis,anim.anim)
-mkpath(joinpath(graphics_path,prefix))
-open(joinpath(graphics_path,prefix,"construction_simulation.html"),"w") do io
-    write(io,static_html(vis))
-end
+# mkpath(joinpath(graphics_path,prefix))
+# open(joinpath(graphics_path,prefix,"construction_simulation.html"),"w") do io
+#     write(io,static_html(vis))
+# end
 MeshCat.render(vis)
+
+let
+
+    for v in env.cache.active_set
+        node = get_node(env.sched,v).node
+        agent = entity(node)
+        goal = global_transform(goal_config(node))
+        current = global_transform(entity(node))
+        dist = norm(relative_transform(goal,current).translation)
+        ready_for_pickup    = ConstructionBots.cargo_ready_for_pickup(node,env)
+        build_step_active   = ConstructionBots.parent_build_step_is_active(node,env)
+        cmd = get_cmd(node,env)
+        idx = ConstructionBots.rvo_get_agent_idx(node)
+        max_vel = ConstructionBots.rvo_global_sim().getAgentMaxSpeed(idx-1)
+        other_max_vel = ConstructionBots.get_rvo_max_speed(entity(node))
+        alpha = ConstructionBots.rvo_get_agent_alpha(agent)
+        # @assert abs(max_vel - other_max_vel) < 1e-4
+        # max_vel = ConstructionBots.rvo_
+        @show summary(node_id(node)), summary(node_id(entity(node)))
+        @show alpha
+        @show max_vel, other_max_vel
+        @show cmd.vel, is_goal(node,env), dist
+        @show ready_for_pickup, build_step_active
+        # update non-rvo nodes
+        # apply_cmd!(node,cmd,env)
+    end
+end
+setobject!(vis["agent_flag"],HyperSphere(Point(0.0,0.0,0.0),2*HG.default_robot_radius()),MeshLambertMaterial(color=RGBA(1.0,0.0,1.0,0.5)))
+active_nodes = Base.Iterators.cycle(map(v->get_node(env.sched,v),collect(env.cache.active_set)))
+i = 1
+node, i = iterate(active_nodes,i)
+@info "$(summary(node_id(node))) ---  $(summary(node_id(entity(node))))"
+settransform!(vis["agent_flag"],global_transform(entity(node)))
 
 # animate camera path
 # rotate_camera!(vis,anim);

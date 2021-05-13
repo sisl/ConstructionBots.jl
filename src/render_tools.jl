@@ -949,7 +949,9 @@ function visualizer_update_function!(factory_vis,env,newly_updated=Set{Int}();
             end
             if matches_template(Union{RobotNode,TransportUnitNode},agent)
                 if ConstructionBots.parent_build_step_is_active(node,env)
-                    setvisible!(factory_vis.active_flags[node_id(agent)],true)
+                    if ConstructionBots.cargo_ready_for_pickup(node,env)
+                        setvisible!(factory_vis.active_flags[node_id(agent)],true)
+                    end
                 end
             end
             if !(object === nothing) && !(object in scene_nodes)

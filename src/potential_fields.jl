@@ -140,7 +140,7 @@ repulsion.
 """
 function repulsion_potential(x,r,x2,r2;
         dr = 2*HG.default_robot_radius(),
-        fillet_radius=0.5*default_robot_radius(),
+        # fillet_radius=0.5*default_robot_radius(),
     )
     dx = x .- x2
     R = r + r2
@@ -150,7 +150,8 @@ function repulsion_potential(x,r,x2,r2;
     # cone = max(0.0,R+dr - norm(dx))
     # f1 = ((R+dr+fillet_radius)/(R+dr)) * cone^2 / (cone + fillet_radius)
     # barrier
-    f2 = (norm(dx) < R+dr)*1/(norm(dx)-R)
+    f2 = 0
+    f2 = max(0,1/(norm(dx)-R) - 1/(dr))
     return f1+f2
 end
 
@@ -200,6 +201,21 @@ function pairwise_potential_scale(policy::PotentialFieldController,α1,α2)
     end
 end
 
+"""
+    pairwise_potential_width(policy::PotentialFieldController,α1,α2)
+
+How much extra width to add to pairwise potential. 
+"""
+function pairwise_potential_width(policy::PotentialFieldController,α1,α2)
+    if α1 < α2
+        return 0.0 # no push
+    elseif α1 == 0
+        return HG.default_robot_radius()
+    else
+        return 0.5*default_robot_radius()
+    end
+end
+
 function compute_potential_gradient!(policy::PotentialFieldController,pos)
     @unpack scene_tree, sched = policy.env
     agent = policy.agent
@@ -211,12 +227,17 @@ function compute_potential_gradient!(policy::PotentialFieldController,pos)
             if α1 < α2 # can't be pushed by other agent
                 continue
             end
-            scale = pairwise_potential_scale(policy,α1,α2)
-            # scale = 1.0
+            # scale = pairwise_potential_scale(policy,α1,α2)
+            scale = 1.0
             other_pos = HG.project_to_2d(global_transform(other_agent).translation)
             other_rad = HG.get_radius(get_base_geom(other_agent,HypersphereKey()))
             if norm(pos - other_pos) <= policy.interaction_radius
-                dp = dp .+ scale*pairwise_potential_gradient(policy,pos,other_pos,other_rad)
+                dp = dp .+ scale*pairwise_potential_gradient(
+                    policy,
+                    pos,
+                    other_pos,
+                    other_rad, # + dilate based on priority?
+                    )
             end
         end
     end

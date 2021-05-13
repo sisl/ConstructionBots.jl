@@ -645,6 +645,7 @@ function get_twist_cmd(node,env)
         goal_pt = query_policy_for_goal!(policy,circles,pos,HG.project_to_2d(goal.translation))
         new_goal = CT.Translation(goal_pt...,0.0) ∘ CT.LinearMap(goal.linear)
         twist = compute_twist_from_goal(agent,new_goal,dt) # nominal twist
+        # @info "nominal vel: $(twist.vel)"
     else
         twist = compute_twist_from_goal(agent,goal,dt)
     end
@@ -669,7 +670,8 @@ function get_twist_cmd(node,env)
         a = 1.0
         b = 1.0
         c = 0.0
-        v = (a*va+b*vb+c*vc) / (a+b+c)
+        # v = (a*va+b*vb+c*vc) / (a+b+c)
+        v = (a*va+b*vb+c*vc)
         vel = clip_velocity(v,policy.vmax)
         # compute goal
         goal_pt = pos + vel*dt
