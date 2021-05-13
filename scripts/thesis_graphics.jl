@@ -101,7 +101,7 @@ project_name = "tractor.mpd"
 MODEL_SCALE         = 0.008
 ROBOT_SCALE         = MODEL_SCALE * 0.7
 NUM_ROBOTS          = 12
-MAX_STEPS           = 3400
+MAX_STEPS           = 4000
 OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 HOME_VTX_RANGE      = (-10:10, -10:10, 0:1)
 STAGING_BUFFER_FACTOR = 1.5
@@ -719,7 +719,7 @@ ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 # )
 static_potential_function = (x,r)->0.0
 pairwise_potential_function = (x,r,x2,r2)->ConstructionBots.repulsion_potential(x,r,x2,r2;
-    dr=1.5*HG.default_robot_radius())
+    dr=2.5*HG.default_robot_radius())
 
 for n in get_nodes(scene_tree)
     if matches_template(Union{RobotNode,TransportUnitNode},n)
