@@ -91,11 +91,15 @@ Random.seed!(0);
 # STAGING_BUFFER_FACTOR = 2.2
 # BUILD_STEP_BUFFER_FACTOR = 0.5
 
-# project_name = "X-wingMini.mpd"
-# MODEL_SCALE         = 0.01
-# ROBOT_SCALE         = MODEL_SCALE * 0.7
-# NUM_ROBOTS          = 30
-# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
+project_name = "X-wingMini.mpd"
+MODEL_SCALE         = 0.007
+ROBOT_SCALE         = MODEL_SCALE * 0.7
+NUM_ROBOTS          = 30
+OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
+HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
+MAX_STEPS           = 8000
+STAGING_BUFFER_FACTOR = 1.5
+BUILD_STEP_BUFFER_FACTOR = 1.5
 
 # project_name = "tractor.mpd"
 # MODEL_SCALE         = 0.008
@@ -107,15 +111,15 @@ Random.seed!(0);
 # STAGING_BUFFER_FACTOR = 1.5
 # BUILD_STEP_BUFFER_FACTOR = 1.5
 
-project_name = "colored_8x8.ldr"
-MODEL_SCALE         = 0.01
-ROBOT_SCALE         = MODEL_SCALE * 0.9
-NUM_ROBOTS          = 25
-MAX_STEPS           = 2500
-OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
-HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
-STAGING_BUFFER_FACTOR = 1.5
-BUILD_STEP_BUFFER_FACTOR = 1.5
+# project_name = "colored_8x8.ldr"
+# MODEL_SCALE         = 0.01
+# ROBOT_SCALE         = MODEL_SCALE * 0.9
+# NUM_ROBOTS          = 25
+# MAX_STEPS           = 2500
+# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
+# HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
+# STAGING_BUFFER_FACTOR = 1.5
+# BUILD_STEP_BUFFER_FACTOR = 1.5
 
 # project_name = "small_quad_nested.mpd"
 # NUM_ROBOTS          = 40
@@ -246,14 +250,6 @@ sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_m
 @assert validate_schedule_transform_tree(sched)
 # display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
 
-# if project_name == "X-wingFighter.mpd"
-#     ac = get_node(sched,first(inneighbors(sched,ProjectComplete(1))))
-#     tform = global_transform(goal_config(ac))
-#     set_desired_global_transform!(
-#         goal_config(ac),
-#         CT.Translation(-12.0,6.0,0.0) ∘ global_transform(goal_config(ac)),
-#         )
-# end
 
 let
     # sched2 = ConstructionBots.extract_small_sched_for_plotting(sched,25;
@@ -418,6 +414,23 @@ let
     # end
 end
 
+if project_name == "X-wingFighter.mpd" || project_name == "X-wingMini.mpd"
+    # ac = get_node(sched,first(inneighbors(sched,ProjectComplete(1))))
+    # tform = global_transform(goal_config(ac))
+    # set_desired_global_transform!(
+    #     goal_config(ac),
+    #     CT.Translation(-12.0,6.0,0.0) ∘ global_transform(goal_config(ac)),
+    #     )
+    ac = get_node(sched,first(inneighbors(sched,ProjectComplete(1))))
+    circ_center = HG.get_center(get_cached_geom(node_val(ac).outer_staging_circle))
+    @assert has_parent(goal_config(ac),goal_config(ac))
+    tform = relative_transform(
+        CT.Translation(circ_center...),
+        global_transform(goal_config(ac)),
+        )
+    set_local_transform!(goal_config(ac),tform)
+end
+
 # construct highway
 # Revise.includet("/home/kylebrown/.julia/dev/ConstructionBots/src/highway.jl")
 
@@ -568,14 +581,23 @@ for (vtx,n) in zip(home_vtxs,go_nodes)
     )
 end
 
-if project_name == "X-wingFighter.mpd"
-    ac = get_node(sched,first(inneighbors(sched,ProjectComplete(1))))
-    tform = global_transform(goal_config(ac))
-    set_desired_global_transform!(
-        goal_config(ac),
-        CT.Translation(-2.0,8.0,global_transform(goal_config(ac)).translation[end]),
-        )
-end
+# if project_name == "X-wingFighter.mpd"
+#     ac = get_node(sched,first(inneighbors(sched,ProjectComplete(1))))
+#     tform = global_transform(goal_config(ac))
+#     set_desired_global_transform!(
+#         goal_config(ac),
+#         CT.Translation(-2.0,8.0,global_transform(goal_config(ac)).translation[end]),
+#         )
+# elseif project_name == "X-wingMini.mpd"
+#     ac = get_node(sched,first(inneighbors(sched,ProjectComplete(1))))
+#     circ_center = HG.get_center(get_cached_geom(node_val(ac).outer_staging_circle))
+#     @assert has_parent(goal_config(ac),goal_config(ac))
+#     tform = relative_transform(
+#         CT.Translation(circ_center...),
+#         global_transform(goal_config(ac)),
+#         )
+#     set_local_transform!(goal_config(ac),tform)
+# end
 
 ## Visualize assembly
 delete!(vis)
@@ -794,41 +816,16 @@ setanimation!(vis,anim.anim)
 # end
 MeshCat.render(vis)
 
-let
-
-    for v in env.cache.active_set
-        node = get_node(env.sched,v).node
-        agent = entity(node)
-        goal = global_transform(goal_config(node))
-        current = global_transform(entity(node))
-        dist = norm(relative_transform(goal,current).translation)
-        ready_for_pickup    = ConstructionBots.cargo_ready_for_pickup(node,env)
-        build_step_active   = ConstructionBots.parent_build_step_is_active(node,env)
-        cmd = get_cmd(node,env)
-        idx = ConstructionBots.rvo_get_agent_idx(node)
-        max_vel = ConstructionBots.rvo_global_sim().getAgentMaxSpeed(idx-1)
-        other_max_vel = ConstructionBots.get_rvo_max_speed(entity(node))
-        alpha = ConstructionBots.rvo_get_agent_alpha(agent)
-        # @assert abs(max_vel - other_max_vel) < 1e-4
-        # max_vel = ConstructionBots.rvo_
-        @show summary(node_id(node)), summary(node_id(entity(node)))
-        @show alpha
-        @show max_vel, other_max_vel
-        @show cmd.vel, is_goal(node,env), dist
-        @show ready_for_pickup, build_step_active
-        # update non-rvo nodes
-        # apply_cmd!(node,cmd,env)
-    end
-end
-setobject!(vis["agent_flag"],HyperSphere(Point(0.0,0.0,0.0),2*HG.default_robot_radius()),MeshLambertMaterial(color=RGBA(1.0,0.0,1.0,0.5)))
-active_nodes = Base.Iterators.cycle(map(v->get_node(env.sched,v),collect(env.cache.active_set)))
-i = 1
-node, i = iterate(active_nodes,i)
-@info "$(summary(node_id(node))) ---  $(summary(node_id(entity(node))))"
-settransform!(vis["agent_flag"],global_transform(entity(node)))
+# setobject!(vis["agent_flag"],HyperSphere(Point(0.0,0.0,0.0),2*HG.default_robot_radius()),MeshLambertMaterial(color=RGBA(1.0,0.0,1.0,0.5)))
+# active_nodes = Base.Iterators.cycle(map(v->get_node(env.sched,v),collect(env.cache.active_set)))
+# i = 1
+# node, i = iterate(active_nodes,i)
+# @info "$(summary(node_id(node))) ---  $(summary(node_id(entity(node))))"
+# settransform!(vis["agent_flag"],global_transform(entity(node)))
 
 # animate camera path
-# rotate_camera!(vis,anim);
+rotate_camera!(vis,anim);
+# rotate_camera!(vis,anim;radial_decay_factor=2e-6,θ_start=π/2,origin=[0.0,0.0,0.0]);
 # setanimation!(vis,anim.anim)
 # open(joinpath(graphics_path,prefix,"construction_simulation_rotating.html"),"w") do io
 #     write(io,static_html(vis))

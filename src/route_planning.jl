@@ -211,7 +211,7 @@ function simulate!(env,update_visualizer_function;
     for k in 1:max_time_steps
         iters = k
         if mod(k,100) == 0
-            @info " ******************* BEGINNING TIME STEP $k *******************"
+            @info " ******************* BEGINNING TIME STEP $k: $(length(cache.closed_set))/$(nv(sched)) nodes closed *******************"
         end
         step_environment!(env)
         newly_updated = TaskGraphs.update_planning_cache!(env,0.0)
@@ -669,11 +669,11 @@ function get_twist_cmd(node,env)
         va = nominal_twist.vel[1:2]
         target_pos = pos .+ va * dt
         # commanded velocity from current position
-        vb = compute_velocity_command!(policy,pos)
-        # vb = -1.0 * compute_potential_gradient!(policy,pos)
+        # vb = compute_velocity_command!(policy,pos)
+        vb = -1.0 * compute_potential_gradient!(policy,pos)
         # commanded velocity from current position
-        vc = compute_velocity_command!(policy,target_pos)
-        # vc = -1.0 * compute_potential_gradient!(policy,target_pos)
+        # vc = compute_velocity_command!(policy,target_pos)
+        vc = -1.0 * compute_potential_gradient!(policy,target_pos)
         # blend the three velocities
         a = 1.0
         b = 1.0
