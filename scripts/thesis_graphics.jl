@@ -81,25 +81,25 @@ Random.seed!(0);
 # ROBOT_SCALE         = MODEL_SCALE
 # OBJECT_VTX_RANGE    = (-26:26,-26:26, 0:10)
 
-# project_name = "X-wingFighter.mpd"
-# MODEL_SCALE         = 0.0035
-# NUM_ROBOTS          = 100
-# ROBOT_SCALE         = MODEL_SCALE
-# OBJECT_VTX_RANGE    = (-14:0.5:14,-14:0.5:14, 0:0)
-# HOME_VTX_RANGE    = (-22:22,-22:22, 0:0)
-# MAX_STEPS           = 8000
-# STAGING_BUFFER_FACTOR = 2.2
-# BUILD_STEP_BUFFER_FACTOR = 0.5
-
-project_name = "X-wingMini.mpd"
-MODEL_SCALE         = 0.007
-ROBOT_SCALE         = MODEL_SCALE * 0.7
-NUM_ROBOTS          = 30
-OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
-HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
+project_name = "X-wingFighter.mpd"
+MODEL_SCALE         = 0.0035
+NUM_ROBOTS          = 100
+ROBOT_SCALE         = MODEL_SCALE
+OBJECT_VTX_RANGE    = (-14:0.5:14,-14:0.5:14, 0:0)
+HOME_VTX_RANGE    = (-22:22,-22:22, 0:0)
 MAX_STEPS           = 8000
-STAGING_BUFFER_FACTOR = 1.5
-BUILD_STEP_BUFFER_FACTOR = 1.5
+STAGING_BUFFER_FACTOR = 2.2
+BUILD_STEP_BUFFER_FACTOR = 0.5
+
+# project_name = "X-wingMini.mpd"
+# MODEL_SCALE         = 0.007
+# ROBOT_SCALE         = MODEL_SCALE * 0.7
+# NUM_ROBOTS          = 30
+# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
+# HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
+# MAX_STEPS           = 8000
+# STAGING_BUFFER_FACTOR = 1.5
+# BUILD_STEP_BUFFER_FACTOR = 1.5
 
 # project_name = "tractor.mpd"
 # MODEL_SCALE         = 0.008
@@ -816,15 +816,17 @@ setanimation!(vis,anim.anim)
 # end
 MeshCat.render(vis)
 
-# setobject!(vis["agent_flag"],HyperSphere(Point(0.0,0.0,0.0),2*HG.default_robot_radius()),MeshLambertMaterial(color=RGBA(1.0,0.0,1.0,0.5)))
+setobject!(vis["agent_flag"],HyperSphere(Point(0.0,0.0,0.0),2*HG.default_robot_radius()),MeshLambertMaterial(color=RGBA(1.0,0.0,1.0,0.5)))
 # active_nodes = Base.Iterators.cycle(map(v->get_node(env.sched,v),collect(env.cache.active_set)))
-# i = 1
-# node, i = iterate(active_nodes,i)
-# @info "$(summary(node_id(node))) ---  $(summary(node_id(entity(node))))"
-# settransform!(vis["agent_flag"],global_transform(entity(node)))
+active_nodes = Base.Iterators.cycle([n for n in get_nodes(env.sched) if get_vtx(env.sched,n) in env.cache.active_set && matches_template(Union{RobotGo,TransportUnitGo},n) && ConstructionBots.parent_build_step_is_active(n,env) && ConstructionBots.cargo_ready_for_pickup(n,env)])
+i = 1
+node, i = iterate(active_nodes,i)
+@info "$(summary(node_id(node))) ---  $(summary(node_id(entity(node))))"
+settransform!(vis["agent_flag"],global_transform(entity(node)))
 
 # animate camera path
 rotate_camera!(vis,anim);
+# rotate_camera!(vis,anim,θ_start=3π/4);
 # rotate_camera!(vis,anim;radial_decay_factor=2e-6,θ_start=π/2,origin=[0.0,0.0,0.0]);
 # setanimation!(vis,anim.anim)
 # open(joinpath(graphics_path,prefix,"construction_simulation_rotating.html"),"w") do io
