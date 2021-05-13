@@ -718,11 +718,15 @@ ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 #     vmax = ConstructionBots.get_rvo_max_speed(agent),
 # )
 static_potential_function = (x,r)->0.0
-pairwise_potential_function = (x,r,x2,r2)->ConstructionBots.repulsion_potential(x,r,x2,r2;
-    dr=2.5*HG.default_robot_radius())
+pairwise_potential_function = ConstructionBots.repulsion_potential
+# pairwise_potential_function = (x,r,x2,r2)->ConstructionBots.repulsion_potential(x,r,x2,r2;
+#     dr=2.5*HG.default_robot_radius())
 
-for n in get_nodes(scene_tree)
-    if matches_template(Union{RobotNode,TransportUnitNode},n)
+for node in get_nodes(env.sched)
+    if matches_template(Union{RobotStart,FormTransportUnit},node)
+        n = entity(node)
+# for n in get_nodes(scene_tree)
+#     if matches_template(Union{RobotNode,TransportUnitNode},n)
         agent_radius = HG.get_radius(get_base_geom(n,HypersphereKey()))
         vmax = ConstructionBots.get_rvo_max_speed(n)
         env.agent_policies[node_id(n)] = ConstructionBots.VelocityController(
@@ -734,14 +738,30 @@ for n in get_nodes(scene_tree)
             dispersion_policy = ConstructionBots.PotentialFieldController(
                 env = env,
                 agent = n,
+                node = node,
                 agent_radius = agent_radius,
                 vmax = vmax,
+                max_buffer_radius=2.5*HG.default_robot_radius(),
                 static_potentials=static_potential_function,
                 pairwise_potentials=pairwise_potential_function,
             )
         )
     end
 end
+# for n in get_nodes(scene_tree)
+#     if matches_template(Union{RobotNode,TransportUnitNode},n)
+#         policy = env.agent_policies[node_id(n)].dispersion_policy
+#         @show summary(node_id(policy.node))
+#         @show policy.dist_to_nearest_active_agent
+#         ConstructionBots.update_dist_to_nearest_active_agent!(policy)
+#         @show policy.dist_to_nearest_active_agent
+#         @show policy.buffer_radius
+#         ConstructionBots.update_buffer_radius!(policy)
+#         @show policy.buffer_radius
+#         # pos = HG.project_to_2d(global_transform(n).translation)
+#         # ConstructionBots.compute_velocity_command!(policy,pos)
+#     end
+# end
 
 update_visualizer_function = construct_visualizer_update_function(factory_vis;
     anim=anim,

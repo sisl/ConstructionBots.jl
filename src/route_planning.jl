@@ -117,7 +117,7 @@ function cargo_ready_for_pickup(n::Union{FormTransportUnit,TransportUnitGo,Depos
         return node_is_closed(env,AssemblyComplete(cargo))
     end
 end
-function cargo_ready_for_pickup(n::RobotGo,env)
+function cargo_ready_for_pickup(n::Union{RobotStart,RobotGo},env)
     if outdegree(env.sched,n) < 1
         return false
     end
@@ -659,7 +659,11 @@ function get_twist_cmd(node,env)
     ready_for_pickup = cargo_ready_for_pickup(node,env)
     build_step_active = parent_build_step_is_active(node,env)
     if !(policy === nothing || (build_step_active && ready_for_pickup))
-        # iterate over nearby agents
+        # update policy
+        policy.node = node
+        update_dist_to_nearest_active_agent!(policy)
+        update_buffer_radius!(policy)
+        # compute target position
         nominal_twist = twist
         pos = HG.project_to_2d(global_transform(agent).translation)
         va = nominal_twist.vel[1:2]

@@ -171,31 +171,49 @@ end
     static_potentials               = (x,r)->0.0
 end
 function dist_to_nearest_active_agent(policy::PotentialFieldController)
-    @unpack scene_tree, sched = policy.env
+    env = policy.env
+    @unpack scene_tree, sched, cache = env
     agent = policy.agent
     pos = HG.project_to_2d(global_transform(agent).translation)
     shortest_dist = Inf
     id = nothing
-    for other_agent in rvo_active_agents(scene_tree)
-        if !(agent === other_agent)
-            other_pos = HG.project_to_2d(global_transform(other_agent).translation)
-            other_rad = HG.get_radius(get_base_geom(other_agent,HypersphereKey()))
-            dist = norm(pos - other_pos) - (other_rad + policy.agent_radius)
-            if dist < shortest_dist
-                shortest_dist = min(dist,shortest_dist)
-                id = node_id(other_agent)
+    for (other_id,other_p) in env.agent_policies
+        other_policy=other_p.dispersion_policy
+        if !(other_policy === policy)
+            other_node = other_policy.node
+            if (parent_build_step_is_active(other_node,env) && cargo_ready_for_pickup(other_node,env))
+                other_agent = other_policy.agent
+                other_rad = other_policy.agent_radius
+                other_pos = HG.project_to_2d(global_transform(other_agent).translation)
+                # other_rad = HG.get_radius(get_base_geom(other_agent,HypersphereKey()))
+                dist = norm(pos - other_pos) - (other_rad + policy.agent_radius)
+                if dist < shortest_dist
+                    shortest_dist = min(dist,shortest_dist)
+                    id = node_id(other_agent)
+                end
             end
+    # for other_agent in rvo_active_agents(scene_tree)
+        # if !(agent === other_agent)
+        #     other_policy = policy.env.agent_policies[node_id(other_agent)].dispersion_policy
+        #     other_rad = other_policy.agent_radius
+        #     other_pos = HG.project_to_2d(global_transform(other_agent).translation)
+        #     # other_rad = HG.get_radius(get_base_geom(other_agent,HypersphereKey()))
+        #     dist = norm(pos - other_pos) - (other_rad + policy.agent_radius)
+        #     if dist < shortest_dist
+        #         shortest_dist = min(dist,shortest_dist)
+        #         id = node_id(other_agent)
+        #     end
         end
     end
     return id, shortest_dist
 end
-function update_dist_to_nearest_agent!(policy::PotentialFieldController)
+function update_dist_to_nearest_active_agent!(policy::PotentialFieldController)
     id, dist = dist_to_nearest_active_agent(policy)
     policy.dist_to_nearest_active_agent = dist
 end
 function update_buffer_radius!(
         policy::PotentialFieldController,
-        r=min(policy.max_buffer_radius, default_robot_radius()/policy.dist_to_nearest_active_agent),
+        r=min(policy.max_buffer_radius, HG.default_robot_radius()/policy.dist_to_nearest_active_agent),
     )
     policy.buffer_radius = r
 end
@@ -203,13 +221,15 @@ end
 function static_potential_gradient(c::PotentialFieldController,pos)
     ForwardDiff.gradient(x->c.static_potentials(x,c.agent_radius),pos)
 end
-function pairwise_potential_gradient(c::PotentialFieldController,pos,other_pos,other_radius)
+function pairwise_potential_gradient(c::PotentialFieldController,pos,other_pos,other_radius;dr=1.0)
     ForwardDiff.gradient(
         x->c.pairwise_potentials(
             x,
             c.agent_radius,
             other_pos,
             other_radius,
+            ;
+            dr=dr
             ),
         pos)
 end
@@ -244,7 +264,7 @@ function pairwise_potential_width(policy::PotentialFieldController,α1,α2)
     elseif α1 == 0
         return HG.default_robot_radius()
     else
-        return 0.5*default_robot_radius()
+        return 0.5*HG.default_robot_radius()
     end
 end
 
@@ -259,18 +279,18 @@ function compute_potential_gradient!(policy::PotentialFieldController,pos)
             if α1 < α2 # can't be pushed by other agent
                 continue
             end
-            other_policy = env.agent_policies[node_id(other_agent)].dispersion_policy
+            other_policy = policy.env.agent_policies[node_id(other_agent)].dispersion_policy
+            other_rad = other_policy.agent_radius
+            # other_rad = HG.get_radius(get_base_geom(other_agent,HypersphereKey()))
             # scale = pairwise_potential_scale(policy,α1,α2)
             scale = 1.0
             other_pos = HG.project_to_2d(global_transform(other_agent).translation)
-            # other_rad = HG.get_radius(get_base_geom(other_agent,HypersphereKey()))
-            other_rad = other_policy.agent_radius
             if norm(pos - other_pos) <= policy.interaction_radius
                 dp = dp .+ scale*pairwise_potential_gradient(
                     policy,
                     pos,
                     other_pos,
-                    other_rad, # + dilate based on priority?
+                    other_rad; # + dilate based on priority?
                     dr = other_policy.buffer_radius,
                     )
             end
