@@ -818,7 +818,12 @@ MeshCat.render(vis)
 
 setobject!(vis["agent_flag"],HyperSphere(Point(0.0,0.0,0.0),2*HG.default_robot_radius()),MeshLambertMaterial(color=RGBA(1.0,0.0,1.0,0.5)))
 # active_nodes = Base.Iterators.cycle(map(v->get_node(env.sched,v),collect(env.cache.active_set)))
-active_nodes = Base.Iterators.cycle([n for n in get_nodes(env.sched) if get_vtx(env.sched,n) in env.cache.active_set && matches_template(Union{RobotGo,TransportUnitGo},n) && ConstructionBots.parent_build_step_is_active(n,env) && ConstructionBots.cargo_ready_for_pickup(n,env)])
+active_nodes = Base.Iterators.cycle([
+    n for n in get_nodes(env.sched) if get_vtx(env.sched,n) in env.cache.active_set 
+        && matches_template(Union{RobotGo,TransportUnitGo},n) 
+        && ConstructionBots.parent_build_step_is_active(n,env) 
+        && ConstructionBots.cargo_ready_for_pickup(n,env)
+        ])
 i = 1
 node, i = iterate(active_nodes,i)
 @info "$(summary(node_id(node))) ---  $(summary(node_id(entity(node))))"
