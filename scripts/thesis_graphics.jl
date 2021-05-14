@@ -49,7 +49,11 @@ Random.seed!(0);
 # MODEL_SCALE         = 0.003
 # NUM_ROBOTS          = 50
 # ROBOT_SCALE         = MODEL_SCALE
-# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
+# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
+# HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
+# MAX_STEPS           = 8000
+# STAGING_BUFFER_FACTOR = 1.5
+# BUILD_STEP_BUFFER_FACTOR = 1.5
 
 # project_name = "ATTEWalker.mpd"
 # MODEL_SCALE         = 0.003
@@ -82,7 +86,8 @@ Random.seed!(0);
 # OBJECT_VTX_RANGE    = (-26:26,-26:26, 0:10)
 
 # project_name = "X-wingFighter.mpd"
-# MODEL_SCALE         = 0.0035
+# # MODEL_SCALE         = 0.0035
+# MODEL_SCALE         = 0.0028
 # NUM_ROBOTS          = 100
 # ROBOT_SCALE         = MODEL_SCALE
 # OBJECT_VTX_RANGE    = (-14:0.5:14,-14:0.5:14, 0:0)
@@ -91,15 +96,15 @@ Random.seed!(0);
 # STAGING_BUFFER_FACTOR = 2.2
 # BUILD_STEP_BUFFER_FACTOR = 0.5
 
-project_name = "X-wingMini.mpd"
-MODEL_SCALE         = 0.007
-ROBOT_SCALE         = MODEL_SCALE * 0.7
-NUM_ROBOTS          = 30
-OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
-HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
-MAX_STEPS           = 8000
-STAGING_BUFFER_FACTOR = 1.5
-BUILD_STEP_BUFFER_FACTOR = 1.5
+# project_name = "X-wingMini.mpd"
+# MODEL_SCALE         = 0.007
+# ROBOT_SCALE         = MODEL_SCALE * 0.7
+# NUM_ROBOTS          = 30
+# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
+# HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
+# MAX_STEPS           = 8000
+# STAGING_BUFFER_FACTOR = 1.5
+# BUILD_STEP_BUFFER_FACTOR = 1.5
 
 # project_name = "tractor.mpd"
 # MODEL_SCALE         = 0.008
@@ -111,15 +116,15 @@ BUILD_STEP_BUFFER_FACTOR = 1.5
 # STAGING_BUFFER_FACTOR = 1.5
 # BUILD_STEP_BUFFER_FACTOR = 1.5
 
-# project_name = "colored_8x8.ldr"
-# MODEL_SCALE         = 0.01
-# ROBOT_SCALE         = MODEL_SCALE * 0.9
-# NUM_ROBOTS          = 25
-# MAX_STEPS           = 2500
-# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
-# HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
-# STAGING_BUFFER_FACTOR = 1.5
-# BUILD_STEP_BUFFER_FACTOR = 1.5
+project_name = "colored_8x8.ldr"
+MODEL_SCALE         = 0.01
+ROBOT_SCALE         = MODEL_SCALE * 0.9
+NUM_ROBOTS          = 25
+MAX_STEPS           = 2500
+OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
+HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
+STAGING_BUFFER_FACTOR = 1.5
+BUILD_STEP_BUFFER_FACTOR = 1.5
 
 # project_name = "small_quad_nested.mpd"
 # NUM_ROBOTS          = 40
@@ -811,42 +816,48 @@ status, TIME_STEPS = ConstructionBots.simulate!(env, update_visualizer_function,
     max_time_steps=MAX_STEPS,
     )
 setanimation!(vis,anim.anim)
+mkpath(joinpath(graphics_path,prefix))
+# open(joinpath(graphics_path,prefix,"dispersed_construction_simulation.html"),"w") do io
+#     write(io,static_html(vis))
+# end
 # mkpath(joinpath(graphics_path,prefix))
 # open(joinpath(graphics_path,prefix,"construction_simulation.html"),"w") do io
 #     write(io,static_html(vis))
 # end
 MeshCat.render(vis)
 
-setobject!(vis["agent_flag"],HyperSphere(Point(0.0,0.0,0.0),2*HG.default_robot_radius()),MeshLambertMaterial(color=RGBA(1.0,0.0,1.0,0.5)))
-# active_nodes = Base.Iterators.cycle(map(v->get_node(env.sched,v),collect(env.cache.active_set)))
-active_nodes = Base.Iterators.cycle([
-    n for n in get_nodes(env.sched) if get_vtx(env.sched,n) in env.cache.active_set 
-        && matches_template(Union{RobotGo,TransportUnitGo},n) 
-        && ConstructionBots.parent_build_step_is_active(n,env) 
-        && ConstructionBots.cargo_ready_for_pickup(n,env)
-        ])
-i = 1
-node, i = iterate(active_nodes,i)
-agent = entity(node)
-@info "$(summary(node_id(node))) ---  $(summary(node_id(entity(node))))"
-@info "max_speed: $(ConstructionBots.rvo_global_sim().getAgentMaxSpeed(ConstructionBots.rvo_get_agent_idx(agent)))"
-@info "preferred vel: $(ConstructionBots.rvo_global_sim().getAgentPrefVelocity(ConstructionBots.rvo_get_agent_idx(agent)))"
-@info "vel: $(ConstructionBots.rvo_get_agent_velocity(agent))"
-settransform!(vis["agent_flag"],global_transform(entity(node)))
+# setobject!(vis["agent_flag"],HyperSphere(Point(0.0,0.0,0.0),2*HG.default_robot_radius()),MeshLambertMaterial(color=RGBA(1.0,0.0,1.0,0.5)))
+# # active_nodes = Base.Iterators.cycle(map(v->get_node(env.sched,v),collect(env.cache.active_set)))
+# active_nodes = Base.Iterators.cycle([
+#     n for n in get_nodes(env.sched) if get_vtx(env.sched,n) in env.cache.active_set 
+#         && matches_template(Union{RobotGo,TransportUnitGo},n) 
+#         && ConstructionBots.parent_build_step_is_active(n,env) 
+#         && ConstructionBots.cargo_ready_for_pickup(n,env)
+#         ])
+# i = 1
+# node, i = iterate(active_nodes,i)
+# agent = entity(node)
+# @info "$(summary(node_id(node))) ---  $(summary(node_id(entity(node))))"
+# @info "max_speed: $(ConstructionBots.rvo_global_sim().getAgentMaxSpeed(ConstructionBots.rvo_get_agent_idx(agent)))"
+# @info "preferred vel: $(ConstructionBots.rvo_global_sim().getAgentPrefVelocity(ConstructionBots.rvo_get_agent_idx(agent)))"
+# @info "vel: $(ConstructionBots.rvo_get_agent_velocity(agent))"
+# settransform!(vis["agent_flag"],global_transform(entity(node)))
 
-f = get_node(env.sched,first(outneighbors(env.sched,first(outneighbors(env.sched,node)))))
-tu = entity(f)
-robot_team(tu)[node_id(agent)]
-relative_transform(agent,tu)
+# f = get_node(env.sched,first(outneighbors(env.sched,first(outneighbors(env.sched,node)))))
+# tu = entity(f)
+# robot_team(tu)[node_id(agent)]
+# relative_transform(agent,tu)
 
 # animate camera path
-rotate_camera!(vis,anim);
+# rotate_camera!(vis,anim);
+rotate_camera!(vis,anim;rc=6.0,θ_start=π/4);
 # rotate_camera!(vis,anim,θ_start=3π/4);
 # rotate_camera!(vis,anim;radial_decay_factor=2e-6,θ_start=π/2,origin=[0.0,0.0,0.0]);
-# setanimation!(vis,anim.anim)
+setanimation!(vis,anim.anim)
 # open(joinpath(graphics_path,prefix,"construction_simulation_rotating.html"),"w") do io
-#     write(io,static_html(vis))
-# end
+open(joinpath(graphics_path,prefix,"dispersed_construction_simulation_rotating.html"),"w") do io
+    write(io,static_html(vis))
+end
 
 
 # using Blink

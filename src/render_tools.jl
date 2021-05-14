@@ -935,6 +935,7 @@ function visualizer_update_function!(factory_vis,env,newly_updated=Set{Int}();
         end
 
         setvisible!(factory_vis.active_flags,false)
+        # setvisible!(factory_vis.geom_nodes[HypersphereKey()],false)
         for v in union(env.cache.active_set,newly_updated)
             node = get_node(env.sched,v)
             if matches_template(EntityGo,node)
@@ -953,6 +954,11 @@ function visualizer_update_function!(factory_vis,env,newly_updated=Set{Int}();
                         setvisible!(factory_vis.active_flags[node_id(agent)],true)
                     end
                 end
+                # # set sphere visible
+                # if !(v in newly_updated)
+                #     setvisible!(factory_vis.geom_nodes[HypersphereKey()][node_id(agent)],true)
+                #     # inflate and visualize spheres as potential fields
+                # end
             end
             if !(object === nothing) && !(object in scene_nodes)
                 push!(scene_nodes,object)
@@ -961,6 +967,20 @@ function visualizer_update_function!(factory_vis,env,newly_updated=Set{Int}();
                 end
             end
         end
+        # for n in get_nodes(scene_tree)
+        #     if matches_template(Union{RobotNode,TransportUnitNode},n) && haskey(env.agent_policies,node_id(n))
+        #         agent = n
+        #         policy = env.agent_policies[node_id(agent)].dispersion_policy
+        #         r = HG.get_radius(get_base_geom(agent,HypersphereKey()))
+        #         b = policy.buffer_radius
+        #         f = (b+r)/r
+        #         @assert f <= 10
+        #         settransform!(factory_vis.geom_nodes[HypersphereKey()][node_id(agent)],
+        #             CT.LinearMap(f.*one(SMatrix{3,3,Float64})) ∘ CT.Translation(0.0,0.0,0.0)
+        #             # CT.Translation(tform.translation...) ∘ CT.LinearMap(f.*tform.linear)
+        #         )
+        #     end
+        # end
         update_visualizer!(factory_vis,scene_nodes)
         render(vis)
     end

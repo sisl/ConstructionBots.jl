@@ -734,6 +734,27 @@ end
 end
 
 """
+    active_build_step_countdown(step,env)
+
+Measures how many build steps a step is away from becoming active.
+"""
+function active_build_step_countdown(step,env)
+    @unpack sched = env
+    open_step = get_node(sched,OpenBuildStep(step)).node
+    k = 0
+    while !(node_id(open_step) in env.active_build_steps)
+        k += 1
+        close_step = get_node(sched,first(inneighbors(sched,open_step))).node
+        if matches_template(CloseBuildStep,close_step)
+            open_step = get_node(sched,OpenBuildStep(close_step)).node
+        else
+            break
+        end
+    end
+    return k
+end
+
+"""
     get_twist_cmd(node,env)
 
 Query the agent's policy to get the desired twist
@@ -766,6 +787,21 @@ function get_twist_cmd(node,env)
         # @info "nominal vel: $(twist.vel)"
     else
         twist = compute_twist_from_goal(agent,goal,dt)
+    end
+    ############ Hacky Traffic Thinning #############
+    # set nominal velocity to zero if close to goal (HACK)
+    parent_step = get_parent_build_step(sched,node)
+    if !(parent_step === nothing)
+        countdown = active_build_step_countdown(parent_step.node,env)
+        dist_to_goal = norm(goal.translation .- global_transform(agent).translation)
+        if dist_to_goal < 20*default_robot_radius()
+            # So the agent doesn't crowd its destination
+            if matches_template(TransportUnitGo,node) && countdown >= 1
+                twist = Twist(0.0*twist.vel,twist.ω)
+            elseif matches_template(RobotGo,node) && countdown >= 3
+                twist = Twist(0.0*twist.vel,twist.ω)
+            end
+        end
     end
     ############ Potential Field Policy #############
     policy = agent_policies[node_id(agent)].dispersion_policy
