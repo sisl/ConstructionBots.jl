@@ -192,17 +192,6 @@ function dist_to_nearest_active_agent(policy::PotentialFieldController)
                     id = node_id(other_agent)
                 end
             end
-    # for other_agent in rvo_active_agents(scene_tree)
-        # if !(agent === other_agent)
-        #     other_policy = policy.env.agent_policies[node_id(other_agent)].dispersion_policy
-        #     other_rad = other_policy.agent_radius
-        #     other_pos = HG.project_to_2d(global_transform(other_agent).translation)
-        #     # other_rad = HG.get_radius(get_base_geom(other_agent,HypersphereKey()))
-        #     dist = norm(pos - other_pos) - (other_rad + policy.agent_radius)
-        #     if dist < shortest_dist
-        #         shortest_dist = min(dist,shortest_dist)
-        #         id = node_id(other_agent)
-        #     end
         end
     end
     return id, shortest_dist

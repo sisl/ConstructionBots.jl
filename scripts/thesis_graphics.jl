@@ -191,7 +191,8 @@ print(scene_tree,v->"$(summary(node_id(v))) : $(get(id_map,node_id(v),nothing))"
 HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
 HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
 _, cvx_hulls = ConstructionBots.init_transport_units!(scene_tree;
-    robot_radius = ROBOT_RADIUS,
+    # robot_radius = ROBOT_RADIUS,
+    robot_radius = HG.get_radius(overapproximate(default_robot_geom(),Ball2{Float64,SVector{3,Float64}}))
     )
 
 # ConstructionBots.init_transport_units!(scene_tree)
@@ -826,8 +827,16 @@ active_nodes = Base.Iterators.cycle([
         ])
 i = 1
 node, i = iterate(active_nodes,i)
+agent = entity(node)
 @info "$(summary(node_id(node))) ---  $(summary(node_id(entity(node))))"
+@info "max_speed: $(ConstructionBots.rvo_global_sim().getAgentMaxSpeed(ConstructionBots.rvo_get_agent_idx(agent)))"
+@info "preferred vel: $(ConstructionBots.rvo_global_sim().getAgentPrefVelocity(ConstructionBots.rvo_get_agent_idx(agent)))"
 settransform!(vis["agent_flag"],global_transform(entity(node)))
+
+f = get_node(env.sched,first(outneighbors(env.sched,first(outneighbors(env.sched,node)))))
+tu = entity(f)
+robot_team(tu)[node_id(agent)]
+relative_transform(agent,tu)
 
 # animate camera path
 rotate_camera!(vis,anim);

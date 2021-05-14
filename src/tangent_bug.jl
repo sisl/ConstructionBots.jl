@@ -48,11 +48,8 @@ function get_closest_interfering_circle(policy,circles,pos,nominal_goal)
         x = HG.get_center(c)
         r = HG.get_radius(c)
         bloated_circle = Ball2(x,r+agent_radius+buffer)
-        # if !(pt === nothing)
-        # end
         if HG.circle_intersects_line(bloated_circle,pos,nominal_goal)
-            # d = norm(x - pos) - (r + agent_radius) #- norm(x - pos) # penetration
-            d = norm(x - pos) - HG.get_radius(bloated_circle) #- norm(x - pos) # penetration
+            d = norm(x - pos) - HG.get_radius(bloated_circle) # penetration
             if d < dmin
                 # penetration < 0 => pos is in circle
                 dmin = d
