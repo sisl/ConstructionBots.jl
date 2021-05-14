@@ -262,8 +262,11 @@ function step_environment!(env::PlannerEnv,sim=rvo_global_sim())
             # @info "Updating position from rvo"
             tform = update_position_from_sim!(get_node(scene_tree,id))
         end
+    end
+    # swap transport unit positions if necessary
+    swap_first_paralyzed_transport_unit!(env::PlannerEnv)
+    for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
         # Set velocities to zero for any agents that are no longer "active"
-        # TODO set preferred velocity to "disperse" velocity
         rvo_set_agent_pref_velocity!(id,(0.0,0.0))
     end
     return env
@@ -483,6 +486,116 @@ end
 #     @info "$(summary(node_id(agent))) avoiding $id with vel = $vel"
 #     Twist(SVector(vel..., 0.0), twist.ω)
 # end
+
+function swap_first_paralyzed_transport_unit!(env::PlannerEnv)
+    @unpack sched, scene_tree, cache = env
+    for v in cache.active_set
+        n = get_node(sched,v)
+        if matches_template(RobotGo,n) && outdegree(sched,n) >= 1
+            next_node = get_node(sched,first(outneighbors(sched,n)))
+            while outdegree(sched,next_node) >= 1 && matches_template(RobotGo,next_node)
+                next_node = get_node(sched,first(outneighbors(sched,next_node)))
+            end
+            if matches_template(FormTransportUnit,next_node)
+                # is robot stuck?
+                agent = entity(n)
+                transport_unit = entity(next_node)
+                if has_parent(agent,transport_unit) || is_within_capture_distance(transport_unit,agent)
+                    continue
+                end
+                circ = get_cached_geom(transport_unit,HypersphereKey())
+                ctr = HG.get_center(circ)[1:2]
+                rad = HG.get_radius(circ)
+                vel = rvo_get_agent_pref_velocity(agent)
+                pos = global_transform(agent).translation[1:2]
+                agent_radius = HG.get_radius(get_cached_geom(agent,HypersphereKey()))
+                if norm(pos .- ctr) < agent_radius + rad # within circle
+                    if norm([vel...]) < 1e-6 # stuck
+                        # @info "Swapping agent $(summary(node_id(agent))) with $(summary(node_id(agent)))"
+                        swap_carrying_positions!(
+                            next_node.node,
+                            n.node,
+                            env)
+                    end
+                end
+            end
+        end
+    end
+end
+
+"""
+    find_best_swap_candidate(node::FormTransportUnit,agent_node::RobotGo,env)
+
+For agent 
+"""
+function find_best_swap_candidate(node::FormTransportUnit,agent_node::RobotGo,env)
+    @unpack sched, scene_tree = env
+    transport_unit = entity(node)
+    agent = entity(agent_node)
+    goal = global_transform(goal_config(agent_node))
+    state = global_transform(agent)
+    if is_within_capture_distance(transport_unit,agent)
+        # no need to swap
+        return nothing
+    end
+    # find best swap
+    closest_id = nothing
+    dist = Inf # norm(goal.translation .- state.translation)
+    agent_dist = norm(goal.translation .- state.translation)
+    for (id,tform) in robot_team(transport_unit)
+        if !(id == node_id(agent))
+            other_agent = get_node(scene_tree,id)
+            other_state = global_transform(other_agent)
+            if is_within_capture_distance(transport_unit,other_agent)
+                d1 = norm(goal.translation .- other_state.translation)
+                if d1 > agent_dist
+                    continue
+                end
+                d2 = norm(state.translation .- other_state.translation)
+                d = d1+d2
+                if d < dist
+                    dist = d
+                    closest_id = id
+                end
+            end
+        end
+    end
+    return closest_id
+end
+
+"""
+    swap_carrying_positions!(node::FormTransportUnit,agent::RobotNode,env)
+
+To be executed if `agent` is within the hypersphere but stuck.
+"""
+function swap_carrying_positions!(node::FormTransportUnit,agent_node::RobotGo,env)
+    @unpack sched, scene_tree = env
+    other_id = find_best_swap_candidate(node,agent_node,env)
+    if !(other_id === nothing)
+        @assert matches_template(RobotID,other_id)
+        agent = entity(agent_node)
+        other_agent = get_node(scene_tree,other_id)
+        swap_positions!(agent,other_agent)
+        # swap positions in rvo_sim as well
+        tmp = rvo_get_agent_position(agent)
+        rvo_set_agent_position!(agent,rvo_get_agent_position(other_agent))
+        rvo_set_agent_position!(other_agent,tmp)
+    end
+    return agent_node
+end
+
+"""
+    swap_positions!(agent1,agent2)
+
+Swap positions of two robots in simulation.
+"""
+function swap_positions!(agent1,agent2)
+    @info "Swapping agent $(summary(node_id(agent1))) with $(summary(node_id(agent2)))"
+    tmp = global_transform(agent1)
+    set_desired_global_transform!(agent1,global_transform(agent2))
+    set_desired_global_transform!(agent2,tmp)
+    return agent1, agent2
+end
 
 function query_policy_for_goal! end
 

@@ -186,6 +186,10 @@ function rvo_get_agent_position(n)
     rvo_idx = rvo_get_agent_idx(n)
     rvo_global_sim().getAgentPosition(rvo_idx)
 end
+function rvo_set_agent_position!(node,pos)
+    idx = rvo_get_agent_idx(node)
+    rvo_global_sim().setAgentPosition(idx,(pos[1],pos[2]))
+end
 
 # function rvo_remove_agent!(id,sim)
 #     agent_idx = get_node(rvo_global_id_map(),id).idx
@@ -194,6 +198,15 @@ end
 function rvo_set_agent_pref_velocity!(node,vel)
     idx = rvo_get_agent_idx(node)
     rvo_global_sim().setAgentPrefVelocity(idx,(vel[1],vel[2]))
+end
+
+function rvo_get_agent_pref_velocity(node)
+    idx = rvo_get_agent_idx(node)
+    rvo_global_sim().getAgentPrefVelocity(idx)
+end
+function rvo_get_agent_velocity(node)
+    idx = rvo_get_agent_idx(node)
+    rvo_global_sim().getAgentVelocity(idx)
 end
 
 function rvo_set_agent_max_speed!(node,speed=get_rvo_max_speed(node))

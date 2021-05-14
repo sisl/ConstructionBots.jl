@@ -831,6 +831,7 @@ agent = entity(node)
 @info "$(summary(node_id(node))) ---  $(summary(node_id(entity(node))))"
 @info "max_speed: $(ConstructionBots.rvo_global_sim().getAgentMaxSpeed(ConstructionBots.rvo_get_agent_idx(agent)))"
 @info "preferred vel: $(ConstructionBots.rvo_global_sim().getAgentPrefVelocity(ConstructionBots.rvo_get_agent_idx(agent)))"
+@info "vel: $(ConstructionBots.rvo_get_agent_velocity(agent))"
 settransform!(vis["agent_flag"],global_transform(entity(node)))
 
 f = get_node(env.sched,first(outneighbors(env.sched,first(outneighbors(env.sched,node)))))
