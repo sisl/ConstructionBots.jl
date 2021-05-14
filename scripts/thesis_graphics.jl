@@ -81,25 +81,25 @@ Random.seed!(0);
 # ROBOT_SCALE         = MODEL_SCALE
 # OBJECT_VTX_RANGE    = (-26:26,-26:26, 0:10)
 
-project_name = "X-wingFighter.mpd"
-MODEL_SCALE         = 0.0035
-NUM_ROBOTS          = 100
-ROBOT_SCALE         = MODEL_SCALE
-OBJECT_VTX_RANGE    = (-14:0.5:14,-14:0.5:14, 0:0)
-HOME_VTX_RANGE    = (-22:22,-22:22, 0:0)
-MAX_STEPS           = 8000
-STAGING_BUFFER_FACTOR = 2.2
-BUILD_STEP_BUFFER_FACTOR = 0.5
-
-# project_name = "X-wingMini.mpd"
-# MODEL_SCALE         = 0.007
-# ROBOT_SCALE         = MODEL_SCALE * 0.7
-# NUM_ROBOTS          = 30
-# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
-# HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
+# project_name = "X-wingFighter.mpd"
+# MODEL_SCALE         = 0.0035
+# NUM_ROBOTS          = 100
+# ROBOT_SCALE         = MODEL_SCALE
+# OBJECT_VTX_RANGE    = (-14:0.5:14,-14:0.5:14, 0:0)
+# HOME_VTX_RANGE    = (-22:22,-22:22, 0:0)
 # MAX_STEPS           = 8000
-# STAGING_BUFFER_FACTOR = 1.5
-# BUILD_STEP_BUFFER_FACTOR = 1.5
+# STAGING_BUFFER_FACTOR = 2.2
+# BUILD_STEP_BUFFER_FACTOR = 0.5
+
+project_name = "X-wingMini.mpd"
+MODEL_SCALE         = 0.007
+ROBOT_SCALE         = MODEL_SCALE * 0.7
+NUM_ROBOTS          = 30
+OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
+HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
+MAX_STEPS           = 8000
+STAGING_BUFFER_FACTOR = 1.5
+BUILD_STEP_BUFFER_FACTOR = 1.5
 
 # project_name = "tractor.mpd"
 # MODEL_SCALE         = 0.008

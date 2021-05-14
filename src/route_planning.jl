@@ -551,8 +551,9 @@ function find_best_swap_candidate(node::FormTransportUnit,agent_node::RobotGo,en
                 if d1 > agent_dist
                     continue
                 end
-                d2 = norm(state.translation .- other_state.translation)
-                d = d1+d2
+                d = norm(state.translation .- other_state.translation)
+                # d2 = norm(state.translation .- other_state.translation)
+                # d = d1+d2
                 if d < dist
                     dist = d
                     closest_id = id
@@ -590,7 +591,7 @@ end
 Swap positions of two robots in simulation.
 """
 function swap_positions!(agent1,agent2)
-    @info "Swapping agent $(summary(node_id(agent1))) with $(summary(node_id(agent2)))"
+    @warn "Swapping agent $(summary(node_id(agent1))) with $(summary(node_id(agent2)))"
     tmp = global_transform(agent1)
     set_desired_global_transform!(agent1,global_transform(agent2))
     set_desired_global_transform!(agent2,tmp)
