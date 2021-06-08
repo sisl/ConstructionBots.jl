@@ -17,6 +17,9 @@ ykeys = [Dict(:metric=>n) for n in [
     "numassemblies",
     "numrobots",
     "PreExecutionRuntime",
+    "ConfigTransportUnitsTime",
+    "StagingPlanTime",
+    "AssigmentTime",
     "OptimisticMakespan",
     "ExecutionRuntime",
     "Makespan",
@@ -29,6 +32,9 @@ df = DataFrame(Dict(
     "numassemblies"=>[],
     "numrobots"=>[],
     "PreExecutionRuntime"=>[],
+    "AssigmentTime"=>[],
+    "ConfigTransportUnitsTime"=>[],
+    "StagingPlanTime"=>[],
     "OptimisticMakespan"=>[],
     "ExecutionRuntime"=>[],
     "Makespan"=>[],
@@ -44,6 +50,9 @@ name_key = Dict(
     "numassemblies"=>   "Num. Assemblies",
     "numrobots"=>       "Num. Robots",
     "PreExecutionRuntime"=>"Preprocessing Time (s)",
+    "AssigmentTime"=>"Assignment Time (s)",
+    "ConfigTransportUnitsTime"=>"T.U. Config Time (s)",
+    "StagingPlanTime"=>"Staging Plan Time (s)",
     "OptimisticMakespan"=>"Predicted Makespan (s)",
     "ExecutionRuntime"=>"Execution Runtime (s)",
     "Makespan"=>"Makespan (s)",
@@ -73,16 +82,56 @@ for dict in xkeys
     end
 end
 
-tab = init_table(xkeys,[Dict(:metric=>n) for n in ["numrobots","numobjects","numassemblies"]])
+tables = Dict()
+tab = init_table(xkeys,
+    [Dict(:metric=>n) for n in [
+        "numobjects",
+        "numassemblies",
+        "numrobots",
+        ]])
 fill!(tab.data,"--")
 fill_tab_from_columns!(tab,df;xkey=:model,ykey=:metric,
         f = vals -> get(filter(v->isa(v,Real),vals),1,nothing),
     )
-
-tables = Dict()
 tables["regular"] = tab
+
+tab = init_table(xkeys,
+    [Dict(:metric=>n) for n in [
+        "ConfigTransportUnitsTime",
+        "StagingPlanTime",
+        "AssigmentTime",
+        "PreExecutionRuntime",
+        ]])
+fill!(tab.data,"--")
+fill_tab_from_columns!(tab,df;
+    xkey=:model,
+    ykey=:metric,
+    include_keys = [:greedy=>true],
+    f = vals -> begin 
+        fvals = filter(v->isa(v,Real),vals)
+        isempty(fvals) ? nothing : minimum(fvals)
+    end
+)
+tables["greedy_all"] = tab
+
 for val in (true,false)
-    tab = tables[string("greedy","_",val)] = init_table(xkeys,[Dict(:metric=>n) for n in ["PreExecutionRuntime","OptimisticMakespan"]])
+    if val == true
+    tab = tables[string("greedy","_",val)] = init_table(xkeys,
+        [Dict(:metric=>n) for n in [
+            "AssigmentTime",
+            # "PreExecutionRuntime",
+            "OptimisticMakespan",
+            ]]
+        )
+    else
+    tab = tables[string("greedy","_",val)] = init_table(xkeys,
+        [Dict(:metric=>n) for n in [
+            # "PreExecutionRuntime",
+            "AssigmentTime",
+            "OptimisticMakespan",
+            ]]
+        )
+    end
     fill_tab_from_columns!(tab,df;
         xkey=:model,
         ykey=:metric,
@@ -93,8 +142,45 @@ for val in (true,false)
         end
         )
 end
+for val in (true,)
+    tab = tables["execution"] = init_table(xkeys,
+    [Dict(:metric=>n) for n in [
+        "ExecutionRuntime",
+        "OptimisticMakespan",
+        "Makespan",
+        ]]
+        )
+    fill_tab_from_columns!(tab,df;
+        xkey=:model,
+        ykey=:metric,
+        include_keys = [:rvo=>val],
+        f = vals -> begin 
+            fvals = filter(v->isa(v,Real),vals)
+            isempty(fvals) ? nothing : minimum(fvals)
+        end
+        )
+    tab = tables["predicted_makespan"] = init_table(xkeys,
+    [Dict(:metric=>n) for n in [
+        "OptimisticMakespan",
+        ]]
+        )
+    fill_tab_from_columns!(tab,df;
+        xkey=:model,
+        ykey=:metric,
+        include_keys = [:rvo=>val],
+        f = vals -> begin 
+            fvals = filter(v->isa(v,Real),vals)
+            isempty(fvals) ? nothing : minimum(fvals)
+        end
+        )
+end
 for val in (true,false)
-    tab = tables[string("rvo","_",string(val))] = init_table(xkeys,[Dict(:metric=>n) for n in ["ExecutionRuntime","Makespan"]])
+    tab = tables[string("rvo","_",string(val))] = init_table(xkeys,
+    [Dict(:metric=>n) for n in [
+        "ExecutionRuntime",
+        "Makespan",
+        ]]
+        )
     fill_tab_from_columns!(tab,df;
         xkey=:model,
         ykey=:metric,
@@ -109,7 +195,7 @@ for tab_name in collect(keys(tables))
     tab = tables[tab_name] = transpose(tables[tab_name])
     for i in 1:size(tab,1)
         for j in 1:size(tab,2)
-            if tab.data[i,j] === nothing
+            if tab.data[i,j] === nothing || isinf(tab.data[i,j])
                 tab.data[i,j] = "--"
             end
         end

@@ -134,21 +134,7 @@ function set_rvo_priority!(env,node)
     @unpack sched, scene_tree, cache, staging_circles = env
     if matches_template(Union{FormTransportUnit,DepositCargo},node)
         alpha = 0.0
-    # elseif matches_template(TransportUnitGo,node)
     elseif parent_build_step_is_active(node,env)
-            # build_step_node = get_parent_build_step(sched,node)
-            # build_step = build_step_node.node
-            # parent_assembly = build_step.assembly
-            # staging_circle = staging_circles[node_id(parent_assembly)]
-            # pos = HG.project_to_2d(global_transform(entity(node)).translation)
-            # # if get_vtx(sched,build_step_node) in cache.active_set 
-            # # WHY THIS BREAKDOWN?
-            # if pos in staging_circle
-            #     alpha = 0.0
-            # else
-            #     # alpha = 0.5
-            #     alpha = 0.0
-            # end
         if cargo_ready_for_pickup(node,env)
             if matches_template(TransportUnitGo,node)
                 alpha = 0.0
@@ -161,17 +147,6 @@ function set_rvo_priority!(env,node)
     else
         alpha = 1.0
     end
-    # elseif matches_template(RobotGo,node)
-    #     # parent_build_step = get_parent_build_step(sched,node)
-    #     # if !(parent_build_step === nothing) && get_vtx(sched,parent_build_step) in cache.active_set 
-    #     if parent_build_step_is_active(node,env)
-    #         alpha = 0.1
-    #     else
-    #         alpha = 1.0
-    #     end
-    # else
-    #     alpha = 1.0
-    # end
     rvo_set_agent_alpha!(node,alpha)
 end
 
@@ -788,55 +763,57 @@ function get_twist_cmd(node,env)
     else
         twist = compute_twist_from_goal(agent,goal,dt)
     end
-    ############ Hacky Traffic Thinning #############
-    # set nominal velocity to zero if close to goal (HACK)
-    parent_step = get_parent_build_step(sched,node)
-    if !(parent_step === nothing)
-        countdown = active_build_step_countdown(parent_step.node,env)
-        dist_to_goal = norm(goal.translation .- global_transform(agent).translation)
-        if dist_to_goal < 20*default_robot_radius()
-            # So the agent doesn't crowd its destination
-            if matches_template(TransportUnitGo,node) && countdown >= 1
-                twist = Twist(0.0*twist.vel,twist.ω)
-            elseif matches_template(RobotGo,node) && countdown >= 3
-                twist = Twist(0.0*twist.vel,twist.ω)
+    if use_rvo()
+        ############ Hacky Traffic Thinning #############
+        # set nominal velocity to zero if close to goal (HACK)
+        parent_step = get_parent_build_step(sched,node)
+        if !(parent_step === nothing)
+            countdown = active_build_step_countdown(parent_step.node,env)
+            dist_to_goal = norm(goal.translation .- global_transform(agent).translation)
+            if dist_to_goal < 20*default_robot_radius()
+                # So the agent doesn't crowd its destination
+                if matches_template(TransportUnitGo,node) && countdown >= 1
+                    twist = Twist(0.0*twist.vel,twist.ω)
+                elseif matches_template(RobotGo,node) && countdown >= 3
+                    twist = Twist(0.0*twist.vel,twist.ω)
+                end
             end
         end
-    end
-    ############ Potential Field Policy #############
-    policy = agent_policies[node_id(agent)].dispersion_policy
-    # For RobotGo node, ensure that parent assembly is "pickup-able"
-    ready_for_pickup = cargo_ready_for_pickup(node,env)
-    build_step_active = parent_build_step_is_active(node,env)
-    if !(policy === nothing || (build_step_active && ready_for_pickup))
-        # update policy
-        policy.node = node
-        update_dist_to_nearest_active_agent!(policy)
-        update_buffer_radius!(policy)
-        # compute target position
-        nominal_twist = twist
-        pos = HG.project_to_2d(global_transform(agent).translation)
-        va = nominal_twist.vel[1:2]
-        target_pos = pos .+ va * dt
-        # commanded velocity from current position
-        # vb = compute_velocity_command!(policy,pos)
-        vb = -1.0 * compute_potential_gradient!(policy,pos)
-        # commanded velocity from current position
-        # vc = compute_velocity_command!(policy,target_pos)
-        vc = -1.0 * compute_potential_gradient!(policy,target_pos)
-        # blend the three velocities
-        a = 1.0
-        b = 1.0
-        c = 0.0
-        # v = (a*va+b*vb+c*vc) / (a+b+c)
-        v = (a*va+b*vb+c*vc)
-        vel = clip_velocity(v,policy.vmax)
-        # compute goal
-        goal_pt = pos + vel*dt
-        goal = CT.Translation(goal_pt...,0.0) ∘ CT.LinearMap(goal.linear)
-        twist = compute_twist_from_goal(agent,goal,dt) # nominal twist
-    elseif !(policy === nothing)
-        policy.dist_to_nearest_active_agent = 0.0
+        ############ Potential Field Policy #############
+        policy = agent_policies[node_id(agent)].dispersion_policy
+        # For RobotGo node, ensure that parent assembly is "pickup-able"
+        ready_for_pickup = cargo_ready_for_pickup(node,env)
+        build_step_active = parent_build_step_is_active(node,env)
+        if !(policy === nothing || (build_step_active && ready_for_pickup))
+            # update policy
+            policy.node = node
+            update_dist_to_nearest_active_agent!(policy)
+            update_buffer_radius!(policy)
+            # compute target position
+            nominal_twist = twist
+            pos = HG.project_to_2d(global_transform(agent).translation)
+            va = nominal_twist.vel[1:2]
+            target_pos = pos .+ va * dt
+            # commanded velocity from current position
+            # vb = compute_velocity_command!(policy,pos)
+            vb = -1.0 * compute_potential_gradient!(policy,pos)
+            # commanded velocity from current position
+            # vc = compute_velocity_command!(policy,target_pos)
+            vc = -1.0 * compute_potential_gradient!(policy,target_pos)
+            # blend the three velocities
+            a = 1.0
+            b = 1.0
+            c = 0.0
+            # v = (a*va+b*vb+c*vc) / (a+b+c)
+            v = (a*va+b*vb+c*vc)
+            vel = clip_velocity(v,policy.vmax)
+            # compute goal
+            goal_pt = pos + vel*dt
+            goal = CT.Translation(goal_pt...,0.0) ∘ CT.LinearMap(goal.linear)
+            twist = compute_twist_from_goal(agent,goal,dt) # nominal twist
+        elseif !(policy === nothing)
+            policy.dist_to_nearest_active_agent = 0.0
+        end
     end
     # return goal
     return twist

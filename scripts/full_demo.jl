@@ -122,6 +122,17 @@ function run_lego_demo(;
     );
     STAGING_PLAN_TIME = time() - STAGING_PLAN_TIME
 
+    if project_name == "X-wingFighter.mpd" || project_name == "X-wingMini.mpd"
+        ac = get_node(sched,first(inneighbors(sched,ProjectComplete(1))))
+        circ_center = HG.get_center(get_cached_geom(node_val(ac).outer_staging_circle))
+        @assert has_parent(goal_config(ac),goal_config(ac))
+        tform = relative_transform(
+            CT.Translation(circ_center...),
+            global_transform(goal_config(ac)),
+            )
+        set_local_transform!(goal_config(ac),tform)
+    end
+
     # record statistics
     STATS = Dict()
     STATS[:numobjects]          = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(ObjectNode,n)])
@@ -310,15 +321,43 @@ function run_lego_demo(;
     active_nodes = (get_node(tg_sched,v) for v in env.cache.active_set)
     ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 
-    for n in get_nodes(scene_tree)
-        if matches_template(Union{RobotNode,TransportUnitNode},n)
-            env.agent_policies[node_id(n)] = TangentBugPolicy(
-                dt = env.dt,
-                vmax = ConstructionBots.get_rvo_max_speed(n),
-                agent_radius = HG.get_radius(get_base_geom(n,HypersphereKey())),
+    static_potential_function = (x,r)->0.0
+    pairwise_potential_function = ConstructionBots.repulsion_potential
+
+    for node in get_nodes(env.sched)
+        if matches_template(Union{RobotStart,FormTransportUnit},node)
+            n = entity(node)
+            agent_radius = HG.get_radius(get_base_geom(n,HypersphereKey()))
+            vmax = ConstructionBots.get_rvo_max_speed(n)
+            env.agent_policies[node_id(n)] = ConstructionBots.VelocityController(
+                nominal_policy = TangentBugPolicy(
+                    dt = env.dt,
+                    vmax = vmax,
+                    agent_radius = agent_radius,
+                ),
+                dispersion_policy = ConstructionBots.PotentialFieldController(
+                    env = env,
+                    agent = n,
+                    node = node,
+                    agent_radius = agent_radius,
+                    vmax = vmax,
+                    max_buffer_radius=2.5*HG.default_robot_radius(),
+                    static_potentials=static_potential_function,
+                    pairwise_potentials=pairwise_potential_function,
+                )
             )
         end
     end
+
+    # for n in get_nodes(scene_tree)
+    #     if matches_template(Union{RobotNode,TransportUnitNode},n)
+    #         env.agent_policies[node_id(n)] = TangentBugPolicy(
+    #             dt = env.dt,
+    #             vmax = ConstructionBots.get_rvo_max_speed(n),
+    #             agent_radius = HG.get_radius(get_base_geom(n,HypersphereKey())),
+    #         )
+    #     end
+    # end
 
     update_visualizer_function = construct_visualizer_update_function(factory_vis;
         anim=anim,

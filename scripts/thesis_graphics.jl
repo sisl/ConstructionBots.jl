@@ -52,8 +52,10 @@ Random.seed!(0);
 # OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
 # HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
 # MAX_STEPS           = 8000
-# STAGING_BUFFER_FACTOR = 1.5
-# BUILD_STEP_BUFFER_FACTOR = 1.5
+# # STAGING_BUFFER_FACTOR = 1.5
+# # BUILD_STEP_BUFFER_FACTOR = 1.5
+# STAGING_BUFFER_FACTOR = 0.5
+# BUILD_STEP_BUFFER_FACTOR = 0.5
 
 # project_name = "ATTEWalker.mpd"
 # MODEL_SCALE         = 0.003
@@ -106,6 +108,16 @@ Random.seed!(0);
 # STAGING_BUFFER_FACTOR = 1.5
 # BUILD_STEP_BUFFER_FACTOR = 1.5
 
+project_name = "Alligator.mpd"
+MODEL_SCALE         = 0.008
+ROBOT_SCALE         = MODEL_SCALE * 0.7
+NUM_ROBOTS          = 12
+MAX_STEPS           = 4000
+OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
+HOME_VTX_RANGE      = (-10:10, -10:10, 0:1)
+STAGING_BUFFER_FACTOR = 1.5
+BUILD_STEP_BUFFER_FACTOR = 1.5
+
 # project_name = "tractor.mpd"
 # MODEL_SCALE         = 0.008
 # ROBOT_SCALE         = MODEL_SCALE * 0.7
@@ -116,15 +128,15 @@ Random.seed!(0);
 # STAGING_BUFFER_FACTOR = 1.5
 # BUILD_STEP_BUFFER_FACTOR = 1.5
 
-project_name = "colored_8x8.ldr"
-MODEL_SCALE         = 0.01
-ROBOT_SCALE         = MODEL_SCALE * 0.9
-NUM_ROBOTS          = 25
-MAX_STEPS           = 2500
-OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
-HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
-STAGING_BUFFER_FACTOR = 1.5
-BUILD_STEP_BUFFER_FACTOR = 1.5
+# project_name = "colored_8x8.ldr"
+# MODEL_SCALE         = 0.01
+# ROBOT_SCALE         = MODEL_SCALE * 0.9
+# NUM_ROBOTS          = 25
+# MAX_STEPS           = 2500
+# OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:0)
+# HOME_VTX_RANGE      = (-10:10,-10:10, 0:0)
+# STAGING_BUFFER_FACTOR = 1.5
+# BUILD_STEP_BUFFER_FACTOR = 1.5
 
 # project_name = "small_quad_nested.mpd"
 # NUM_ROBOTS          = 40
@@ -816,7 +828,15 @@ status, TIME_STEPS = ConstructionBots.simulate!(env, update_visualizer_function,
     max_time_steps=MAX_STEPS,
     )
 setanimation!(vis,anim.anim)
+for i in 0:current_frame(anim)
+    atframe(anim,i) do 
+        setvisible!(factory_vis.active_flags,false)
+    end
+end
 mkpath(joinpath(graphics_path,prefix))
+open(joinpath(graphics_path,prefix,"construction_simulation.html"),"w") do io
+    write(io,static_html(vis))
+end
 # open(joinpath(graphics_path,prefix,"dispersed_construction_simulation.html"),"w") do io
 #     write(io,static_html(vis))
 # end
@@ -854,8 +874,8 @@ rotate_camera!(vis,anim;rc=6.0,θ_start=π/4);
 # rotate_camera!(vis,anim,θ_start=3π/4);
 # rotate_camera!(vis,anim;radial_decay_factor=2e-6,θ_start=π/2,origin=[0.0,0.0,0.0]);
 setanimation!(vis,anim.anim)
-# open(joinpath(graphics_path,prefix,"construction_simulation_rotating.html"),"w") do io
-open(joinpath(graphics_path,prefix,"dispersed_construction_simulation_rotating.html"),"w") do io
+open(joinpath(graphics_path,prefix,"construction_simulation_rotating.html"),"w") do io
+# open(joinpath(graphics_path,prefix,"dispersed_construction_simulation_rotating.html"),"w") do io
     write(io,static_html(vis))
 end
 
@@ -864,6 +884,24 @@ end
 # w = Blink.Window(async=false)
 # loadfile(w,joinpath(graphics_path,"construction_simulation.html"))
 
+# Visualize potential fields
+
+x2 = 0.0
+r2 = 0.5
+r1 = 0.5
+R = r1+r2
+dr = 2.0
+
+f1 = x->max(0.0,R+dr - norm(x-x2))
+f2 = x->max(0,1/(norm(x-x2)-R) - 1/(dr))
+interval = (-1.5*dr-R,1.5*dr+R)
+
+plt = PGFPlots.Axis([
+    PGFPlots.Plots.Linear(f1,interval,style="draw=blue",legendentry="cone"),
+    PGFPlots.Plots.Linear(f2,interval,legendentry="barrier",style="draw=green,restrict expr to domain={(x<=-$R)||(x>=$R)}{1:+inf}"),
+    PGFPlots.Plots.Linear(x->f1(x)+f2(x),interval,legendentry="cone+barrier",style="thick,draw=red,restrict expr to domain={(x<=-$R)||(x>=$R)}{1:+inf}"),
+],ymin=0.0,ymax=6,style="axis equal,legend style={draw=black,anchor=north west,at={(1.05,0.95)}}")
+save("/scratch/Repositories/Sandbox/thesis_graphics/LEGO/potential_field_plot.tex",plt,include_preamble=false)
 
 # VISUALIZE ROBOT PLACEMENT AROUND PARTS
 

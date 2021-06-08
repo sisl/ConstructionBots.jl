@@ -146,9 +146,6 @@ function repulsion_potential(x,r,x2,r2;
     R = r + r2
     # # # cone
     f1 = max(0.0,R+dr - norm(dx))
-    # # filleted cone
-    # cone = max(0.0,R+dr - norm(dx))
-    # f1 = ((R+dr+fillet_radius)/(R+dr)) * cone^2 / (cone + fillet_radius)
     # barrier
     f2 = max(0,1/(norm(dx)-R) - 1/(dr))
     return f1+f2
