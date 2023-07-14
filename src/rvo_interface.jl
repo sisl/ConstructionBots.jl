@@ -9,7 +9,7 @@ rvo_map_num_agents(m::RVOAgentMap) = nv(m)
 function set_rvo_id_map!(m::RVOAgentMap,id::AbstractID,idx::Int)
     @assert nv(m) == idx "RVOAgentMap shows $(nv(m)) agents, but this index is $idx"
     @assert !has_vertex(m,id) "Agent with id $(id) has already been added to schedule"
-    add_node!(m,IntWrapper(idx),id) 
+    add_node!(m,IntWrapper(idx),id)
 end
 set_rvo_id_map!(m::RVOAgentMap,idx::Int,id::AbstractID) = set_rvo_id_map!(m,id,idx)
 
@@ -30,6 +30,8 @@ set_rvo_id_map!(id::AbstractID,idx::Int) = set_rvo_id_map!(rvo_global_id_map(),i
 function rvo_reset_agent_map!()
     global RVO_ID_GLOBAL_MAP = RVOAgentMap()
 end
+
+rvo_active_agents(scene_tree) = (get_node(scene_tree,node_id(n)) for n in get_nodes(rvo_global_id_map()))
 
 global RVO_PYTHON_MODULE = nothing
 function rvo_python_module()
@@ -57,7 +59,7 @@ end
 # """
 #     RVOSimWrapper
 
-# A wrapper so that can be shared even as the underlying rvo simulations are 
+# A wrapper so that can be shared even as the underlying rvo simulations are
 # constructed and deleted.
 # """
 # mutable struct RVOSimWrapper
@@ -102,8 +104,8 @@ function set_rvo_default_min_max_speed!(val)
 end
 
 """ get_rvo_max_speed(node) """
-get_rvo_max_speed(::RobotNode) = rvo_default_max_speed()          
-function get_rvo_max_speed(node)         
+get_rvo_max_speed(::RobotNode) = rvo_default_max_speed()
+function get_rvo_max_speed(node)
     rect = get_base_geom(node,HyperrectangleKey())
     vol = LazySets.volume(rect)
     # Speed limited by volume
@@ -119,10 +121,10 @@ get_rvo_radius(node) = get_base_geom(node,HypersphereKey()).radius
 global RVO_DEFAULT_TIME_STEP = 1/40.0
 function rvo_default_time_step()
     RVO_DEFAULT_TIME_STEP
-end 
+end
 function set_rvo_default_time_step!(val)
     global RVO_DEFAULT_TIME_STEP = val
-end 
+end
 
 
 global RVO_DEFAULT_NEIGHBOR_DISTANCE = 2.0
@@ -133,19 +135,19 @@ function rvo_default_neighbor_distance()
 end
 function set_rvo_default_neighbor_distance!(val)
 	global RVO_DEFAULT_NEIGHBOR_DISTANCE = val
-end  
+end
 function rvo_default_min_neighbor_distance()
 	RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE
 end
 function set_rvo_default_min_neighbor_distance!(val)
 	global RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE = val
-end 
+end
 function rvo_default_neighborhood_velocity_scale_factor()
 	RVO_DEFAULT_NEIGHBORHOOD_VELOCITY_SCALE_FACTOR
 end
 function set_rvo_default_neighborhood_velocity_scale_factor!(val)
 	global RVO_DEFAULT_NEIGHBORHOOD_VELOCITY_SCALE_FACTOR = val
-end 
+end
 
 function get_rvo_neighbor_distance(node)
     d = rvo_default_neighbor_distance()
@@ -158,7 +160,7 @@ function rvo_add_agent!(agent::Union{RobotNode,TransportUnitNode},sim)
     rad             = get_rvo_radius(agent)
     max_speed       = get_rvo_max_speed(agent)
     neighbor_dist   = get_rvo_neighbor_distance(agent)
-    pt = HG.project_to_2d(global_transform(agent).translation)
+    pt = HierarchicalGeometry.project_to_2d(global_transform(agent).translation)
     agent_idx = sim.addAgent((pt[1],pt[2]))
     set_rvo_id_map!(node_id(agent),agent_idx)
     sim.setAgentNeighborDist(agent_idx, neighbor_dist)
@@ -184,6 +186,10 @@ function rvo_get_agent_position(n)
     rvo_idx = rvo_get_agent_idx(n)
     rvo_global_sim().getAgentPosition(rvo_idx)
 end
+function rvo_set_agent_position!(node,pos)
+    idx = rvo_get_agent_idx(node)
+    rvo_global_sim().setAgentPosition(idx,(pos[1],pos[2]))
+end
 
 # function rvo_remove_agent!(id,sim)
 #     agent_idx = get_node(rvo_global_id_map(),id).idx
@@ -194,6 +200,15 @@ function rvo_set_agent_pref_velocity!(node,vel)
     rvo_global_sim().setAgentPrefVelocity(idx,(vel[1],vel[2]))
 end
 
+function rvo_get_agent_pref_velocity(node)
+    idx = rvo_get_agent_idx(node)
+    rvo_global_sim().getAgentPrefVelocity(idx)
+end
+function rvo_get_agent_velocity(node)
+    idx = rvo_get_agent_idx(node)
+    rvo_global_sim().getAgentVelocity(idx)
+end
+
 function rvo_set_agent_max_speed!(node,speed=get_rvo_max_speed(node))
     idx = rvo_get_agent_idx(node)
     rvo_global_sim().setAgentMaxSpeed(idx,speed)
@@ -201,6 +216,10 @@ end
 function rvo_set_agent_alpha!(node,alpha=0.5)
     idx = rvo_get_agent_idx(node)
     rvo_global_sim().setAgentAlpha(idx,alpha)
+end
+function rvo_get_agent_alpha(node)
+    idx = rvo_get_agent_idx(node)
+    rvo_global_sim().getAgentAlpha(idx)
 end
 
 for T in (

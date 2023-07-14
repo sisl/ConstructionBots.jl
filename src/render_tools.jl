@@ -1,14 +1,13 @@
 using MeshCat
 using Plots
-using LightGraphs, GraphUtils
+using Graphs, GraphUtils
 using GeometryBasics
 using LDrawParser
 using HierarchicalGeometry
 using Colors
 using FactoryRendering
 using Printf
-
-const FR = FactoryRendering
+using Parameters
 
 import Cairo #, Fontconfig
 using GraphPlottingBFS
@@ -36,7 +35,7 @@ node ids to colors. Should only be applicable to models (not assemblies).
 """
 function construct_color_map(model_spec,id_map)
     color_map = Dict{Union{String,AbstractID},AlphaColor}()
-    ldraw_color_dict = LDrawParser.get_color_dict() 
+    ldraw_color_dict = LDrawParser.get_color_dict()
     for n in get_nodes(model_spec)
         if isa(node_val(n),SubFileRef)
             color_key = node_val(n).color
@@ -50,6 +49,15 @@ function construct_color_map(model_spec,id_map)
         end
     end
     return color_map
+end
+
+@with_kw mutable struct FactoryVisualizer
+    vis             = nothing
+    scene_tree      = SceneTree()
+    vis_nodes       = Dict{AbstractID,Any}() # Dict from AbstractID -> vis[string(id)]
+    geom_nodes      = Dict{HierarchicalGeometry.GeometryKey,Dict{AbstractID,Any}}() # Dict containing the overapproximation layers (HypersphereKey,etc.)
+    active_flags    = Dict{AbstractID,Any}() # contains vis nodes for flagging agents as active or not
+    staging_nodes   = Dict{AbstractID,Any}()
 end
 
 """
@@ -69,12 +77,6 @@ function populate_visualizer!(scene_tree,vis;
     for v in topological_sort_by_dfs(scene_tree)
         node = get_node(scene_tree,v)
         id = node_id(node)
-        # if is_root_node(scene_tree,v)
-        #     vis_nodes[id] = vis_root[string(id)]
-        # else
-        #     p = get_vtx_id(scene_tree,get_parent(scene_tree,v))
-        #     vis_nodes[id] = vis_nodes[p][string(id)]
-        # end
         vis_nodes[id] = vis_root[string(id)]
         vis_node = vis_nodes[id]
         geom_vis_node = vis_node["base_geom"]
@@ -102,19 +104,53 @@ function populate_visualizer!(scene_tree,vis;
         # settransform!(vis_node,local_transform(node))
         settransform!(vis_node,global_transform(node))
     end
-    vis_nodes, base_geom_nodes
+    factory_vis = FactoryVisualizer(
+        vis=vis,
+        scene_tree=scene_tree,
+        vis_nodes=vis_nodes
+        )
+    factory_vis.geom_nodes[BaseGeomKey()] = base_geom_nodes
+    factory_vis
+end
+
+function add_indicator_nodes!(factory_vis;
+        cylinder_depth=0.0025,
+        cylinder_radius_pad=0.02,
+        active_color=RGB(0.0,1.0,0.0),
+        kwargs...
+        )
+    @unpack vis, vis_nodes, scene_tree = factory_vis
+    active_flags = Dict{AbstractID,Any}()
+    for n in get_nodes(scene_tree)
+        if matches_template(Union{TransportUnitNode,RobotNode},n)
+            vis_node = vis_nodes[node_id(n)]
+            geom = get_base_geom(n,HypersphereKey())
+            cylinder = GeometryBasics.Cylinder(
+                Point(HierarchicalGeometry.get_center(geom)...),
+                Point((HierarchicalGeometry.get_center(geom) .- [0.0,0.0,cylinder_depth])...),
+                HierarchicalGeometry.get_radius(geom)+cylinder_radius_pad,
+            )
+            setobject!(vis_node["active"],
+                cylinder,
+                MeshLambertMaterial(color=active_color,kwargs...))
+            active_flags[node_id(n)] = vis_node["active"]
+        end
+    end
+    factory_vis.active_flags = active_flags
+    factory_vis
 end
 
 convert_to_renderable(geom) = geom
 convert_to_renderable(geom::Ball2) = GeometryBasics.Sphere(geom)
 convert_to_renderable(geom::Hyperrectangle) = GeometryBasics.HyperRectangle(geom)
-convert_to_renderable(geom::HG.BufferedPolygonPrism) = GeometryBasics.Mesh(coordinates(geom),faces(geom))
+convert_to_renderable(geom::HierarchicalGeometry.BufferedPolygonPrism) = GeometryBasics.Mesh(coordinates(geom),faces(geom))
 
-function show_geometry_layer!(scene_tree,vis_nodes,key=HypersphereKey();
+function show_geometry_layer!(factory_vis,key=HypersphereKey();
         color=RGBA{Float32}(0, 1, 0, 0.3),
         wireframe=true,
         material=MeshLambertMaterial(color=color,wireframe=wireframe),
     )
+    @unpack vis_nodes, scene_tree = factory_vis
     geom_nodes = Dict{AbstractID,Any}()
     for (id,vis_node) in vis_nodes
         node = get_node(scene_tree,id)
@@ -123,7 +159,8 @@ function show_geometry_layer!(scene_tree,vis_nodes,key=HypersphereKey();
         setobject!(vis_node[node_name],convert_to_renderable(geom),material)
         geom_nodes[id] = vis_node[node_name]
     end
-    geom_nodes
+    factory_vis.geom_nodes[key] = geom_nodes
+    factory_vis
 end
 
 """
@@ -145,11 +182,11 @@ function rotate_camera!(vis,anim;
     for k in k_start:k_final
         rc -= k*radial_decay_factor # spiral
         # Y-coord is up for camera
-        camera_tform = CT.Translation(rc*cos(θ),hc,-rc*sin(θ)) 
+        camera_tform = CoordinateTransformations.Translation(rc*cos(θ),hc,-rc*sin(θ))
         θ = wrap_to_pi(θ+dθ)
         atframe(anim,k) do
             setprop!(vis["/Cameras/default/rotated/<object>"],"position",camera_tform.translation)
-            settransform!(vis["/Cameras/default"],CT.Translation(origin...))
+            settransform!(vis["/Cameras/default"],CoordinateTransformations.Translation(origin...))
         end
     end
     anim
@@ -167,7 +204,7 @@ function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="st
     for (id,geom) in staging_circles
         node = get_node(scene_tree,id)
         sphere = Ball2([geom.center..., 0.0],geom.radius)
-        ctr = Point(HG.project_to_2d(sphere.center)..., 0.0)
+        ctr = Point(HierarchicalGeometry.project_to_2d(sphere.center)..., 0.0)
         cylinder = Cylinder(ctr, Point((ctr.-[0.0,0.0,0.01])...),sphere.radius)
         setobject!(staging_vis[string(id)],
             cylinder,
@@ -175,24 +212,23 @@ function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="st
             )
         staging_nodes[id] = staging_vis[string(id)]
         cargo = get_node(scene_tree,id)
-        if isa(cargo,AssemblyNode) 
+        if isa(cargo,AssemblyNode)
             cargo_node = get_node(sched,AssemblyComplete(cargo))
         else
             cargo_node = get_node!(sched,ObjectStart(cargo,TransformNode()))
         end
-        t = HG.project_to_3d(HG.project_to_2d(global_transform(start_config(cargo_node)).translation))
-        tform = CT.Translation(t) ∘ identity_linear_map()
+        t = HierarchicalGeometry.project_to_3d(HierarchicalGeometry.project_to_2d(global_transform(start_config(cargo_node)).translation))
+        tform = CoordinateTransformations.Translation(t) ∘ identity_linear_map()
         settransform!(staging_nodes[id],tform)
         # settransform!(staging_nodes[id],global_transform(start_config(cargo_node)))
     end
     zval=-dz
     for n in node_iterator(sched, topological_sort_by_dfs(sched))
-    # for n in get_nodes(sched)
         if matches_template(OpenBuildStep,n)
             id = node_id(n)
             sphere = get_cached_geom(node_val(n).staging_circle)
-            # ctr = Point(HG.project_to_2d(sphere.center)..., 0.0)
-            ctr = Point(HG.project_to_2d(sphere.center)..., zval)
+            # ctr = Point(HierarchicalGeometry.project_to_2d(sphere.center)..., 0.0)
+            ctr = Point(HierarchicalGeometry.project_to_2d(sphere.center)..., zval)
             zval -= dz
             cylinder = Cylinder(ctr, Point((ctr.-[0.0,0.0,0.01])...),sphere.radius)
             setobject!(staging_vis[string(id)],
@@ -201,8 +237,8 @@ function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="st
                 material,
                 )
             staging_nodes[id] = staging_vis[string(id)]
-            # t = HG.project_to_3d(HG.project_to_2d(global_transform(start_config(cargo_node)).translation))
-            # tform = CT.Translation(t) ∘ identity_linear_map()
+            # t = HierarchicalGeometry.project_to_3d(HierarchicalGeometry.project_to_2d(global_transform(start_config(cargo_node)).translation))
+            # tform = CoordinateTransformations.Translation(t) ∘ identity_linear_map()
             # settransform!(staging_nodes[id],tform)
         end
     end
@@ -282,10 +318,10 @@ function animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,nodes=get_
     objects=false,
     anim=nothing,
     )
-    # HG.jump_to_final_configuration!(scene_tree;set_edges=true)
+    # HierarchicalGeometry.jump_to_final_configuration!(scene_tree;set_edges=true)
     graph = deepcopy(get_graph(scene_tree))
     # initialize goal sequences for each ObjectNode and AssemblyNode
-    goals = Dict{AbstractID,Vector{CT.AffineMap}}()
+    goals = Dict{AbstractID,Vector{CoordinateTransformations.AffineMap}}()
     goal_idxs = Dict{AbstractID,Int}()
     interp_idxs = Dict{AbstractID,Int}()
     for node in nodes
@@ -300,7 +336,7 @@ function animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,nodes=get_
             continue
         end
         lift_node = get_node(sched,LiftIntoPlace(node))
-        goal_list = goals[node_id(node)] = Vector{CT.AffineMap}()
+        goal_list = goals[node_id(node)] = Vector{CoordinateTransformations.AffineMap}()
         goal_idxs[node_id(node)] = 1
         interp_idxs[node_id(node)] = interp_steps
         # push!(goal_list, global_transform(start_config(lift_node)))
@@ -338,12 +374,12 @@ function animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,nodes=get_
                 isteps = interp_idxs[node_id(node)]
                 # @show summary(node_id(node)), goal_idxs[node_id(node)], goal, isteps
                 @assert isteps > 0
-                tform = HG.interpolate_transforms(global_transform(node),goal,1.0/isteps)
+                tform = HierarchicalGeometry.interpolate_transforms(global_transform(node),goal,1.0/isteps)
                 interp_idxs[node_id(node)] -= 1
             else
                 tform = global_transform(node) ∘ integrate_twist(twist,dt)
             end
-            HG.set_desired_global_transform!(HG.get_transform_node(node), tform)
+            HierarchicalGeometry.set_desired_global_transform!(HierarchicalGeometry.get_transform_node(node), tform)
         end
         to_update = collect_descendants(graph,active_set,true)
         animate_update_visualizer!(scene_tree,vis_nodes,[get_node(scene_tree,v) for v in to_update];anim=anim)
@@ -391,19 +427,19 @@ function plot_staging_plan_2d(sched,scene_tree;
         nominal_width=10cm,
         _fontsize=20pt,
         _show_final_stages=true,
-        _final_stage_stroke_color=FR.get_render_param(:Color,:Stroke,:StagingCircle,:Final,default="red"),
-        _final_stage_bg_color=FR.get_render_param(:Color,:Fill,:StagingCircle,:Final,default=RGBA(1.0,0.0,0.0,0.5)),
-        _stage_label_color=FR.get_render_param(:Color,:Label,:StagingCircle,:Final,default="black"),
+        _final_stage_stroke_color=FactoryRendering.get_render_param(:Color,:Stroke,:StagingCircle,:Final,default="red"),
+        _final_stage_bg_color=FactoryRendering.get_render_param(:Color,:Fill,:StagingCircle,:Final,default=RGBA(1.0,0.0,0.0,0.5)),
+        _stage_label_color=FactoryRendering.get_render_param(:Color,:Label,:StagingCircle,:Final,default="black"),
         _show_intermediate_stages=false,
-        _stage_stroke_color=FR.get_render_param(:Color,:Stroke,:StagingCircle,default="yellow"),
-        _stage_bg_color=FR.get_render_param(:Color,:Fill,:StagingCircle,default=RGBA(1.0,1.0,0.0,0.5)),
+        _stage_stroke_color=FactoryRendering.get_render_param(:Color,:Stroke,:StagingCircle,default="yellow"),
+        _stage_bg_color=FactoryRendering.get_render_param(:Color,:Fill,:StagingCircle,default=RGBA(1.0,1.0,0.0,0.5)),
         _show_bounding_circs=false,
-        _bounding_stroke_color=FR.get_render_param(:Color,:Stroke,:BoundingCircle,default="blue"),
-        _bounding_bg_color=FR.get_render_param(:Color,:Fill,:BoundingCircle,default=RGBA(0.0,0.0,1.0,0.5)),
+        _bounding_stroke_color=FactoryRendering.get_render_param(:Color,:Stroke,:BoundingCircle,default="blue"),
+        _bounding_bg_color=FactoryRendering.get_render_param(:Color,:Fill,:BoundingCircle,default=RGBA(0.0,0.0,1.0,0.5)),
         _show_dropoffs=false,
-        _dropoff_stroke_color=FR.get_render_param(:Color,:Stroke,:DropoffCircle,default="green"),
-        _dropoff_bg_color=FR.get_render_param(:Color,:Fill,:DropoffCircle,default=RGBA(0.0,1.0,0.0,0.5)),
-        _dropoff_label_color=FR.get_render_param(:Color,:Label,:DropoffCircle,default="black"),
+        _dropoff_stroke_color=FactoryRendering.get_render_param(:Color,:Stroke,:DropoffCircle,default="green"),
+        _dropoff_bg_color=FactoryRendering.get_render_param(:Color,:Fill,:DropoffCircle,default=RGBA(0.0,1.0,0.0,0.5)),
+        _dropoff_label_color=FactoryRendering.get_render_param(:Color,:Label,:DropoffCircle,default="black"),
         _assembly_dropoffs_only=false,
         _show_base_geom=true,
         base_geom_layer=plot_assemblies(sched,scene_tree),
@@ -501,12 +537,12 @@ function render_transport_unit_2d(scene_tree,tu,cvx_hull=[];
     line_thickness=0.0025,
     hull_color=RGB(0.0,1.0,0.0),
     config_pt_radius=2*hull_thickness,
-    config_pt_color=FR.get_render_param(:Color,:Object),
-    robot_color=FR.get_render_param(:Color,:Robot,default=RGB(0.0,0.0,1.0)),
+    config_pt_color=FactoryRendering.get_render_param(:Color,:Object),
+    robot_color=FactoryRendering.get_render_param(:Color,:Robot,default=RGB(0.0,0.0,1.0)),
     geom_fill_color=RGBA(0.9,0.9,0.9,0.3),
     geom_stroke_color=RGBA(0.0,0.0,0.0,1.0),
-    robot_radius = FR.get_render_param(:Radius,:Robot,default=ROBOT_RADIUS),
-    rect2d = HG.project_to_2d(get_base_geom(tu,HyperrectangleKey())),
+    robot_radius = FactoryRendering.get_render_param(:Radius,:Robot,default=ROBOT_RADIUS),
+    rect2d = HierarchicalGeometry.project_to_2d(get_base_geom(tu,HyperrectangleKey())),
     xpad=(0,0),
     ypad=(0,0),
     bg_color=nothing,
@@ -514,7 +550,7 @@ function render_transport_unit_2d(scene_tree,tu,cvx_hull=[];
     )
     if length(robot_team(tu)) == 1 && overlay_for_single_robot
         robot_overlay = (context(),
-            [Compose.circle(HG.project_to_2d(tform.translation)...,ROBOT_RADIUS) for (id,tform) in robot_team(tu)]...,
+            [Compose.circle(HierarchicalGeometry.project_to_2d(tform.translation)...,ROBOT_RADIUS) for (id,tform) in robot_team(tu)]...,
             Compose.fill(RGBA(robot_color,0.8)),
         )
     else
@@ -537,12 +573,12 @@ function render_transport_unit_2d(scene_tree,tu,cvx_hull=[];
             Compose.fill(nothing),
             ),
             (context(),
-                [Compose.circle(HG.project_to_2d(tform.translation)...,config_pt_radius*max(h,w)) for (id,tform) in robot_team(tu)]...,
+                [Compose.circle(HierarchicalGeometry.project_to_2d(tform.translation)...,config_pt_radius*max(h,w)) for (id,tform) in robot_team(tu)]...,
                 Compose.fill(config_pt_color),
             ),
         ),
         (context(),
-            [Compose.circle(HG.project_to_2d(tform.translation)...,robot_radius) for (id,tform) in robot_team(tu)]...,
+            [Compose.circle(HierarchicalGeometry.project_to_2d(tform.translation)...,robot_radius) for (id,tform) in robot_team(tu)]...,
             Compose.fill(robot_color),
         ),
         (context(),Compose.rectangle(),Compose.fill(bg_color))
@@ -676,7 +712,7 @@ function render_node_types_and_table(
                     while isa(type_key,Union)
                         push!(pred_list,name_func(type_key.a))
                         type_key = type_key.b
-                    end 
+                    end
                     push!(pred_list,name_func(type_key))
                     push!(pred_strings,string(join(pred_list," / ")," \$\\times\$ $v"))
                 else
@@ -739,11 +775,13 @@ end
 Step through the different phases of preprocessing
 """
 function animate_preprocessing_steps!(
-        vis,
-        vis_nodes,
-        scene_tree,
-        sched,
-        rect_nodes,
+        factory_vis,sched,
+        # vis,
+        # vis_nodes,
+        # scene_tree,
+        # sched,
+        # rect_nodes,
+        # base_geom_nodes,
         ;
         dt_animate=0.0,
         anim=nothing,
@@ -751,9 +789,12 @@ function animate_preprocessing_steps!(
         interp_steps=40,
         kwargs...,
     )
+    @unpack vis, vis_nodes, scene_tree, geom_nodes = factory_vis
+    base_geom_nodes = geom_nodes[BaseGeomKey()]
+    rect_nodes = geom_nodes[HyperrectangleKey()]
 
     atframe(anim,current_frame(anim)) do
-        # Hide robots 
+        # Hide robots
         for n in get_nodes(scene_tree)
             if isa(n,Union{TransportUnitNode,RobotNode})
                 setvisible!(vis_nodes[node_id(n)],false)
@@ -761,7 +802,7 @@ function animate_preprocessing_steps!(
         end
         setvisible!(base_geom_nodes,true)
         setvisible!(rect_nodes,false)
-        HG.jump_to_final_configuration!(scene_tree;set_edges=true)
+        HierarchicalGeometry.jump_to_final_configuration!(scene_tree;set_edges=true)
         update_visualizer!(scene_tree,vis_nodes)
     end
     step_animation!(anim)
@@ -782,9 +823,9 @@ function animate_preprocessing_steps!(
         filter(n->isa(n,AssemblyNode),get_nodes(scene_tree))
         ;
         anim=anim,
-        interp=true, 
-        dt=dt, 
-        interp_steps=interp_steps, 
+        interp=true,
+        dt=dt,
+        interp_steps=interp_steps,
         kwargs...
     )
     # Animate objects moving to their starting positions
@@ -845,6 +886,9 @@ function update_visualizer!(scene_tree,vis_nodes,nodes=get_nodes(scene_tree))
     end
     return vis_nodes
 end
+function update_visualizer!(factory_vis::FactoryVisualizer,args...)
+    update_visualizer!(factory_vis.scene_tree,factory_vis.vis_nodes,args...)
+end
 
 function animate_update_visualizer!(args...;anim=nothing,step=1)
     if anim === nothing
@@ -857,61 +901,161 @@ function animate_update_visualizer!(args...;anim=nothing,step=1)
     end
 end
 
-function construct_visualizer_update_function(vis,vis_nodes,staging_nodes;
-        render_stages=true,
+function visualizer_update_function!(factory_vis,env,newly_updated=Set{Int}();
         anim=nothing,
-    )
-    update_visualizer_function(env,newly_updated=Set{Int}()) = begin
-        atframe(anim,current_frame(anim)) do
-            agents = Set{SceneNode}()
-            for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
-                agent = get_node(env.scene_tree, id)
-                push!(agents, agent)
-                for vp in collect_descendants(env.scene_tree,agent)
-                    push!(agents,get_node(env.scene_tree,vp))
-                end
+        render_stages=true,
+        )
+    @unpack vis, vis_nodes, staging_nodes = factory_vis
+    if vis === nothing
+        step_animation!(anim)
+        return nothing
+    end
+    atframe(anim,current_frame(anim)) do
+        scene_nodes = Set{SceneNode}()
+        for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
+            agent = get_node(env.scene_tree, id)
+            push!(scene_nodes, agent)
+            for vp in collect_descendants(env.scene_tree,agent)
+                push!(scene_nodes,get_node(env.scene_tree,vp))
             end
-            if render_stages
-                closed_steps = setdiff(keys(staging_nodes),env.active_build_steps)
-                for id in closed_steps
-                    setvisible!(staging_nodes[id],false)
-                end
-                for id in env.active_build_steps
-                    setvisible!(staging_nodes[id],true)
-                end
+        end
+        if render_stages
+            closed_steps = setdiff(keys(staging_nodes),env.active_build_steps)
+            for id in closed_steps
+                setvisible!(staging_nodes[id],false)
             end
             for id in env.active_build_steps
                 setvisible!(staging_nodes[id],true)
             end
-            for v in union(env.cache.active_set,newly_updated)
-                node = get_node(env.sched,v)
-                if matches_template(EntityGo,node)
-                    agent = entity(node)
-                elseif matches_template(Union{FormTransportUnit,DepositCargo},node)
-                    agent = get_node(env.scene_tree,cargo_id(entity(node)))
-                else
-                    agent = nothing
-                end
-                if !(agent === nothing) && !(agent in agents)
-                    push!(agents,agent)
-                    for vp in collect_descendants(env.scene_tree,agent)
-                        push!(agents,get_node(env.scene_tree,vp))
+        end
+        for id in env.active_build_steps
+            setvisible!(staging_nodes[id],true)
+        end
+
+        setvisible!(factory_vis.active_flags,false)
+        # setvisible!(factory_vis.geom_nodes[HypersphereKey()],false)
+        for v in union(env.cache.active_set,newly_updated)
+            node = get_node(env.sched,v)
+            if matches_template(EntityGo,node)
+                agent = entity(node)
+                object = agent
+            elseif matches_template(Union{FormTransportUnit,DepositCargo},node)
+                agent = entity(node)
+                object = get_node(env.scene_tree,cargo_id(entity(node)))
+            else
+                agent = nothing
+                object = nothing
+            end
+            if matches_template(Union{RobotNode,TransportUnitNode},agent)
+                if ConstructionBots.parent_build_step_is_active(node,env)
+                    if ConstructionBots.cargo_ready_for_pickup(node,env)
+                        setvisible!(factory_vis.active_flags[node_id(agent)],true)
                     end
                 end
+                # # set sphere visible
+                # if !(v in newly_updated)
+                #     setvisible!(factory_vis.geom_nodes[HypersphereKey()][node_id(agent)],true)
+                #     # inflate and visualize spheres as potential fields
+                # end
             end
-            update_visualizer!(env.scene_tree,vis_nodes,agents)
-            render(vis)
+            if !(object === nothing) && !(object in scene_nodes)
+                push!(scene_nodes,object)
+                for vp in collect_descendants(env.scene_tree,object)
+                    push!(scene_nodes,get_node(env.scene_tree,vp))
+                end
+            end
         end
-        step_animation!(anim)
+        # for n in get_nodes(scene_tree)
+        #     if matches_template(Union{RobotNode,TransportUnitNode},n) && haskey(env.agent_policies,node_id(n))
+        #         agent = n
+        #         policy = env.agent_policies[node_id(agent)].dispersion_policy
+        #         r = HierarchicalGeometry.get_radius(get_base_geom(agent,HypersphereKey()))
+        #         b = policy.buffer_radius
+        #         f = (b+r)/r
+        #         @assert f <= 10
+        #         settransform!(factory_vis.geom_nodes[HypersphereKey()][node_id(agent)],
+        #             CoordinateTransformations.LinearMap(f.*one(SMatrix{3,3,Float64})) ∘ CoordinateTransformations.Translation(0.0,0.0,0.0)
+        #             # CoordinateTransformations.Translation(tform.translation...) ∘ CoordinateTransformations.LinearMap(f.*tform.linear)
+        #         )
+        #     end
+        # end
+        update_visualizer!(factory_vis,scene_nodes)
+        render(vis)
     end
-    # if !(anim === nothing)
-    #     anim_function(args...) = begin
-    #         atframe(anim.anim, current_frame(anim)) do
-    #             update_visualizer_function(args)
-    #         end
-    #     end
+    step_animation!(anim)
+    return nothing
+end
+
+# function construct_visualizer_update_function(vis,vis_nodes,staging_nodes;
+function construct_visualizer_update_function(factory_vis;
+        anim=nothing,
+        render_stages=true,
+    )
+    _update_func(env,newly_updated=Set{Int}()) = visualizer_update_function!(
+        factory_vis,
+        env,
+        newly_updated;
+        anim=anim,
+        render_stages
+        )
+    return _update_func
+    # @unpack vis, vis_nodes, staging_nodes = factory_vis
+    # if vis === nothing
+    #     f(env,s=Set{Int}()) = step_animation!(anim)
+    #     return f
     # end
-    return update_visualizer_function
+    # update_visualizer_function(env,newly_updated=Set{Int}()) = begin
+    #     atframe(anim,current_frame(anim)) do
+    #         agents = Set{SceneNode}()
+    #         for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
+    #             agent = get_node(env.scene_tree, id)
+    #             push!(agents, agent)
+    #             for vp in collect_descendants(env.scene_tree,agent)
+    #                 push!(agents,get_node(env.scene_tree,vp))
+    #             end
+    #         end
+    #         if render_stages
+    #             closed_steps = setdiff(keys(staging_nodes),env.active_build_steps)
+    #             for id in closed_steps
+    #                 setvisible!(staging_nodes[id],false)
+    #             end
+    #             for id in env.active_build_steps
+    #                 setvisible!(staging_nodes[id],true)
+    #             end
+    #         end
+    #         for id in env.active_build_steps
+    #             setvisible!(staging_nodes[id],true)
+    #         end
+    #         for v in union(env.cache.active_set,newly_updated)
+    #             node = get_node(env.sched,v)
+    #             if matches_template(EntityGo,node)
+    #                 agent = entity(node)
+    #             elseif matches_template(Union{FormTransportUnit,DepositCargo},node)
+    #                 agent = get_node(env.scene_tree,cargo_id(entity(node)))
+    #             else
+    #                 agent = nothing
+    #             end
+    #             if !(agent === nothing) && !(agent in agents)
+    #                 push!(agents,agent)
+    #                 for vp in collect_descendants(env.scene_tree,agent)
+    #                     push!(agents,get_node(env.scene_tree,vp))
+    #                 end
+    #             end
+    #         end
+    #         # update_visualizer!(env.scene_tree,vis_nodes,agents)
+    #         update_visualizer!(factory_vis,agents)
+    #         render(vis)
+    #     end
+    #     step_animation!(anim)
+    # end
+    # # if !(anim === nothing)
+    # #     anim_function(args...) = begin
+    # #         atframe(anim.anim, current_frame(anim)) do
+    # #             update_visualizer_function(args)
+    # #         end
+    # #     end
+    # # end
+    # return update_visualizer_function
 end
 
 function call_update!(scene_tree,vis_nodes,nodes,dt)
@@ -1025,7 +1169,7 @@ function render_model_spec_with_pictures(model_spec;
     end
 
     _color_func = (v,c)->haskey(labels,get_vtx_id(plt_spec,v)) ? c : nothing
-    
+
     plt = display_graph(plt_spec,(x,y),
         draw_node_function=(G,v)->Compose.compose(
             Compose.context(),
@@ -1140,6 +1284,6 @@ GraphPlottingBFS._node_color(::ConstructionBots.TransportUnitGo)    = LIME_GREEN
 GraphPlottingBFS._node_color(::ConstructionBots.DepositCargo)       = LIME_GREEN
 GraphPlottingBFS._node_color(::ConstructionBots.LiftIntoPlace)      = BRIGHT_BLUE
 
-function GraphPlottingBFS.draw_node(g::AbstractCustomNGraph,v,args...;kwargs...) 
+function GraphPlottingBFS.draw_node(g::AbstractCustomNGraph,v,args...;kwargs...)
     GraphPlottingBFS.draw_node(get_node(g,v),args...;kwargs...)
 end

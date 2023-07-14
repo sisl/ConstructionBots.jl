@@ -1,22 +1,26 @@
 module ConstructionBots
+
 using Parameters
 using StaticArrays
 using CoordinateTransformations
-# using GeometryBasics
 using Rotations
-using LightGraphs
+using Graphs
 using GraphUtils
+using GeometryBasics
 using LDrawParser
 using HierarchicalGeometry
 using JuMP
 using ECOS
 using MathOptInterface
 using LinearAlgebra
+using ForwardDiff
 using SpatialIndexing
 
-# using CRCBS
 using TaskGraphs
 using Logging
+
+import LibSpatialIndex
+
 
 ################################################################################
 ############################ Constructing Model Tree ###########################
@@ -137,8 +141,8 @@ function add_build_step!(model_graph,build_step::BuildingStep,preceding_step=-1)
         add_edge!(model_graph,input,node)
         add_edge!(model_graph,preceding_step,input)
     end
-    # if is_root_node(model_graph,node) 
-    if has_vertex(model_graph,preceding_step) && is_terminal_node(model_graph,preceding_step) 
+    # if is_root_node(model_graph,node)
+    if has_vertex(model_graph,preceding_step) && is_terminal_node(model_graph,preceding_step)
         add_edge!(model_graph,preceding_step,node) # Do I want this or not?
     end
     node
@@ -227,7 +231,7 @@ function construct_model_spec(model)
     end
     copy_submodel_trees!(spec,model)
     update_build_step_parents!(spec)
-    return spec 
+    return spec
 end
 
 
@@ -249,7 +253,7 @@ function extract_single_model(spec::S,
             continue
         end
         # for v2 in inneighbors(spec,id)
-            
+
         #     if !has_vertex(new_spec,)
         # end
     # for edge in edges(reverse(bfs_tree(spec,root;dir=:in)))
@@ -375,9 +379,9 @@ end
 """
     get_referenced_component(model_spec,scene_tree,id_map,node)
 
-A hacky utility for retrieving the component added to an assembly by 
-node::CustomNode{SubFileRef,...}. Currently necessary because some 
-SubFileRef nodes reference an object (id_map[object_id] <=> id_map[ref_id]), 
+A hacky utility for retrieving the component added to an assembly by
+node::CustomNode{SubFileRef,...}. Currently necessary because some
+SubFileRef nodes reference an object (id_map[object_id] <=> id_map[ref_id]),
 whereas other SubFileRef nodes reference the assembly encoded by their direct parent.
 """
 function get_referenced_component(model_spec,id_map,node)
@@ -396,7 +400,7 @@ end
     get_build_step_components(model_spec,id_map,step)
 
 Given step::CustomNode{BuildingStep,...}, return the set of AbstractIDs pointing
-to all of the components to be added to the parent assembly at that building 
+to all of the components to be added to the parent assembly at that building
 step.
 """
 function get_build_step_components(model_spec,id_map,step)
@@ -415,7 +419,7 @@ end
 """
     construct_assembly_tree(model::MPDModel,spec::MPDModelGraph,
 
-Construct an assembly_tree::NTree{SceneNode,AbstractID}, a precursor to 
+Construct an assembly_tree::NTree{SceneNode,AbstractID}, a precursor to
 SceneTree.
 """
 function construct_assembly_tree(model::MPDModel,spec::MPDModelGraph,
@@ -443,7 +447,7 @@ function construct_assembly_tree(model::MPDModel,spec::MPDModelGraph,
         elseif isa(val,SubFileRef)
             if has_model(model,val.file)
                 continue # Don't add assembly here
-            else has_part(model,val.file) 
+            else has_part(model,val.file)
                 # Adding an object only
                 @info "SUB FILE PART: $(node_id(node))"
                 p = get_part(model,val.file)
@@ -499,7 +503,7 @@ Construct a `SpatialIndexing.RTree` for efficiently finding neighbors of an
 """
 function construct_spatial_index(scene_tree,frontier=get_all_root_nodes(scene_tree))
     rtree = RTree{Float64, 3}(Int, AbstractID, leaf_capacity = 10, branch_capacity = 10)
-    HG.jump_to_final_configuration!(scene_tree)
+    HierarchicalGeometry.jump_to_final_configuration!(scene_tree)
     bounding_rects = Dict{AbstractID,SpatialIndexing.Rect}()
     for v in GraphUtils.BFSIterator(scene_tree,frontier)
         node = get_node(scene_tree,v)
@@ -528,7 +532,7 @@ end
 """
     get_candidate_mating_parts(rtree,id)
 
-Return the set of ids whose bounding rectangles overlap with 
+Return the set of ids whose bounding rectangles overlap with
 """
 function get_candidate_mating_parts(rtree,bounding_rects,id)
     rect = bounding_rects[id]
@@ -542,7 +546,7 @@ end
 """
     identify_closest_surfaces(geom,neighbor_geom,ϵ=1e-4)
 
-Find the geometry elements (line, triangle, quadrilateral) of `geom` and 
+Find the geometry elements (line, triangle, quadrilateral) of `geom` and
 `neighbor_geom` that are within a distance `ϵ` of each other.
 It is assumed that `geom` and `neighbor_geom` are both `Vector{GeometryBasics.Ngon}`
 """
@@ -564,8 +568,8 @@ end
 Find the optimal separating hyperplane between two point sets
 """
 function compute_separating_hyperplane(ptsA,ptsB,dim=3)
-    model = JuMP.Model(HG.default_optimizer())
-    set_optimizer_attributes(model,HG.default_optimizer_attributes()...)
+    model = JuMP.Model(HierarchicalGeometry.default_optimizer())
+    set_optimizer_attributes(model,HierarchicalGeometry.default_optimizer_attributes()...)
     @variable(model,x[1:dim])
     @constraint(model, [1.0;x] in SecondOrderCone())
     @variable(model, a >= 0)
@@ -588,7 +592,7 @@ end
 """
     compute_mating_vector(geom,neighbor_geom,element_pairs)
 
-Given a subset of 
+Given a subset of
 """
 function compute_mating_vector(geom,neighbor_geom,element_pairs)
 end

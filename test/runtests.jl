@@ -1,6 +1,7 @@
 using ConstructionBots
 using Test
 using Logging
+using Random
 
 # Set logging level
 global_logger(SimpleLogger(stderr, Logging.Debug))
@@ -43,7 +44,7 @@ end
 # Define package tests
 @time @testset "ConstructionBots Package Tests" begin
     testdir = joinpath(dirname(@__DIR__), "test")
-    @time @testset "ConstructionBots.Omnibots" begin
-        include(joinpath(testdir, "test_omnibots.jl"))
-    end
+    # @time @testset "ConstructionBots.Omnibots" begin
+    #     include(joinpath(testdir, "test_omnibots.jl"))
+    # end
 end

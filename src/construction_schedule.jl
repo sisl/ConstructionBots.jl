@@ -1,4 +1,4 @@
-export  
+export
     start_config,
     goal_config,
     cargo_start_config,
@@ -51,7 +51,7 @@ goal_config(n::EntityConfigPredicate)    = n.config
 
 struct RobotStart <: EntityConfigPredicate{RobotNode}
     entity::RobotNode
-    config::TransformNode 
+    config::TransformNode
 end
 struct ObjectStart <: EntityConfigPredicate{ObjectNode}
     entity::ObjectNode
@@ -60,8 +60,8 @@ end
 struct AssemblyComplete <: EntityConfigPredicate{AssemblyNode}
     entity::AssemblyNode
     config::TransformNode
-    inner_staging_circle::GeomNode # inner staging circle 
-    outer_staging_circle::GeomNode # outer staging circle 
+    inner_staging_circle::GeomNode # inner staging circle
+    outer_staging_circle::GeomNode # outer staging circle
 end
 function AssemblyComplete(n::SceneNode,t::TransformNode)
     inner_staging_circle = GeomNode(Ball2(zeros(SVector{3,Float64}),0.0))
@@ -112,10 +112,10 @@ end
 """
     abstract type BuildPhasePredicate <: ConstructionPredicate
 
-References a building phase. Interface: 
-- `get_assembly(::BuildPhasePredicate)` => ::AssemblyNode - the assembly to be 
+References a building phase. Interface:
+- `get_assembly(::BuildPhasePredicate)` => ::AssemblyNode - the assembly to be
 modified by this build phase
-- `assembly_components(::BuildPhasePredicate)` => TransformDict{Union{ObjectID,AssemblyID}} 
+- `assembly_components(::BuildPhasePredicate)` => TransformDict{Union{ObjectID,AssemblyID}}
 - the components to be added to the assembly during this phase
 """
 abstract type BuildPhasePredicate <: ConstructionPredicate end
@@ -149,7 +149,7 @@ function extract_building_phase(n,tree::SceneTree,model_spec,id_map)
     #         parts[child_id] = child_transform(assembly,child_id)
     #     end
     # end
-    return assembly, parts 
+    return assembly, parts
 end
 
 # struct BuildPhase
@@ -168,21 +168,21 @@ Fields:
 the assembly during this phase
 """
 struct OpenBuildStep <: BuildPhasePredicate
-    assembly::AssemblyNode 
+    assembly::AssemblyNode
     components::TransformDict{Union{AssemblyID,ObjectID}}
     staging_circle::GeomNode # staging circle - surrounds the staging area--requires tf relative to assembly
     bounding_circle::GeomNode # bounding circle - surrounds the current assembly--requires tf relative to assembly
     id::Int # id of this build step
 end
 struct CloseBuildStep <: BuildPhasePredicate
-    assembly::AssemblyNode 
+    assembly::AssemblyNode
     components::TransformDict{Union{AssemblyID,ObjectID}}
     staging_circle::GeomNode
     bounding_circle::GeomNode
     id::Int # id of this build step
 end
 for T in (:OpenBuildStep,:CloseBuildStep)
-    @eval begin 
+    @eval begin
         $T(a::AssemblyNode,c::Dict,g1::GeomNode,g2::GeomNode) = $T(a,c,g1,g2,get_id(get_unique_id(TemplatedID{$T})))
         $T(a::AssemblyNode,c::Dict) = $T(a,c,
             GeomNode(Ball2(zeros(SVector{3,Float64}),0.0)),
@@ -199,27 +199,27 @@ GraphUtils.node_id(n::T) where {T<:BuildPhasePredicate} = TemplatedID{T}(n.id)
 """
     FormTransportUnit <: ConstructionPredicate
 
-TransportUnit must remain motionless as the cargo moves from its start 
+TransportUnit must remain motionless as the cargo moves from its start
 configuration to its `FormTransportUnit.cargo_goal_config` configuration.
 """
 struct FormTransportUnit <: ConstructionPredicate
     entity::TransportUnitNode
     config::TransformNode
-    cargo_start_config::TransformNode 
+    cargo_start_config::TransformNode
     cargo_goal_config::TransformNode # offset from config by child_transform(entity,cargo_id(entity))
 end
 
 """
     DepositCargo <: ConstructionPredicate
 
-TransportUnit must remain motionless as the cargo moves from its transport 
+TransportUnit must remain motionless as the cargo moves from its transport
 configuration to its `LiftIntoPlace.start_config` configuration.
 """
 struct DepositCargo <: ConstructionPredicate
     entity::TransportUnitNode
     config::TransformNode
     cargo_start_config::TransformNode # offset from config by child_transform(entity,cargo_id(entity))
-    cargo_goal_config::TransformNode 
+    cargo_goal_config::TransformNode
 end
 start_config(n::Union{DepositCargo,FormTransportUnit})          = n.config
 goal_config(n::Union{DepositCargo,FormTransportUnit})           = n.config
@@ -264,7 +264,7 @@ HierarchicalGeometry.robot_team(n::ConstructionPredicate) = robot_team(entity(n)
 cargo_node_type(n::TransportUnitNode) = cargo_type(n) == AssemblyNode ? AssemblyComplete : ObjectStart
 cargo_node_type(n::ConstructionPredicate) = cargo_node_type(entity(n))
 
-struct ProjectComplete <: ConstructionPredicate 
+struct ProjectComplete <: ConstructionPredicate
     project_id::Int
     config::TransformNode
 end
@@ -328,7 +328,7 @@ for T in (
     :LiftIntoPlace,
 )
     @eval begin
-        function GraphUtils.node_id(n::$T) 
+        function GraphUtils.node_id(n::$T)
             TemplatedID{Tuple{$T,typeof(node_id(entity(n)))}}(get_id(node_id(entity(n))))
         end
     end
@@ -372,7 +372,7 @@ export construct_partial_construction_schedule
 """
     populate_schedule_build_step!(sched,cb,step_node,model_spec,scene_tree,id_map)
 
-Creates an OpenBuildStep ... CloseBuildStep structure and adds an edge 
+Creates an OpenBuildStep ... CloseBuildStep structure and adds an edge
 CloseBuildStep => parent.
 Args:
 - sched - the schedule
@@ -395,8 +395,8 @@ function populate_schedule_build_step!(sched,parent::AssemblyComplete,cb,step_no
         set_parent!(goal_config(l),start_config(parent))
         set_local_transform!(goal_config(l),child_transform(entity(parent),node_id(cargo)))
         # ensure that LiftIntoPlace starts in the carry configuration
-        HG.set_desired_global_transform!(start_config(l),
-            CT.Translation(global_transform(start_config(l)).translation) 
+        HierarchicalGeometry.set_desired_global_transform!(start_config(l),
+            CoordinateTransformations.Translation(global_transform(start_config(l)).translation)
             )
         @info "Staging config: setting GOAL config of $(node_id(l)) to $(goal_config(l))"
         add_edge!(sched,l,cb) # LiftIntoPlace => CloseBuildStep
@@ -422,7 +422,7 @@ function populate_schedule_build_step!(sched,parent::AssemblyComplete,cb,step_no
         if connect_to_sub_assemblies
             set_parent!(goal_config(node_val(cargo_node)), start_config(parent))
         end
-        add_edge!(sched,cargo_node,f) # ObjectStart/AssemblyComplete => FormTransportUnit 
+        add_edge!(sched,cargo_node,f) # ObjectStart/AssemblyComplete => FormTransportUnit
         set_parent!(cargo_deployed_config(f),start_config(cargo_node))
     end
     return ob
@@ -510,7 +510,7 @@ end
 
 Checks if sched and its embedded transform tree are valid.
 - The graph itself should be valid
-- All chains AssemblyComplete ... LiftIntoPlace -> DepositCargo should be 
+- All chains AssemblyComplete ... LiftIntoPlace -> DepositCargo should be
     connected in the embedded transform tree
 
 """
@@ -537,13 +537,13 @@ function validate_schedule_transform_tree(sched;post_staging=false)
                             @assert GraphUtils.has_child(
                                 goal_config(assembly_complete),goal_config(lift_node))
                             if post_staging
-                                # Show that goal_config(LiftIntoPlace) matches the 
+                                # Show that goal_config(LiftIntoPlace) matches the
                                 # goal config of cargo relative to assembly
                                 @assert transformations_approx_equiv(
                                     local_transform(goal_config(lift_node)),
                                     child_transform(assembly,node_id(entity(lift_node)))
                                 )
-                                # Show that start_config(LiftIntoPlace) matches 
+                                # Show that start_config(LiftIntoPlace) matches
                                 # cargo_deployed_config(DepositCargo)
                                 @assert transformations_approx_equiv(
                                     global_transform(start_config(lift_node)),
@@ -611,18 +611,18 @@ end
 """
     generate_staging_plan(scene_tree,params)
 
-Given a `SceneTree` representing the final configuration of an assembly, 
+Given a `SceneTree` representing the final configuration of an assembly,
 construct a plan for the start config, staging config, and final config of
-each subassembly and individual object. The idea is to ensure that no node of 
+each subassembly and individual object. The idea is to ensure that no node of
 the "plan" graph overlaps with any other. Requires circular bounding geometry
-for each component of the assembly. 
+for each component of the assembly.
     Start at terminal assembly
     work downward through building steps
-    For each building step, arrange the incoming parts to balance these 
-    objectives: 
+    For each building step, arrange the incoming parts to balance these
+    objectives:
     - minimize "LiftIntoPlace" distance
-    - maximize distance between components to be placed. 
-    It may be necessary to not completely isolate build steps (i.e., two 
+    - maximize distance between components to be placed.
+    It may be necessary to not completely isolate build steps (i.e., two
     consecutive build steps may overlap in the arrival times of subcomponents).
 """
 function generate_staging_plan!(scene_tree,sched;
@@ -634,12 +634,12 @@ function generate_staging_plan!(scene_tree,sched;
             HypersphereKey();ϵ=0.0)
     end
     # For each build step, determine the radius of the largest transform unit
-    # that may be active before the build step closes. This radius will be used 
+    # that may be active before the build step closes. This radius will be used
     # to inform the size of the buffer zones between staging areas
 
     # store growing bounding circle of each assembly
-    bounding_circles = Dict{AbstractID,Ball2}() 
-    staging_circles = Dict{AbstractID,Ball2}() 
+    bounding_circles = Dict{AbstractID,Ball2}()
+    staging_circles = Dict{AbstractID,Ball2}()
     for node in node_iterator(sched,topological_sort_by_dfs(sched))
         if matches_template(AssemblyStart,node)
         elseif matches_template(OpenBuildStep,node)
@@ -661,9 +661,9 @@ function generate_staging_plan!(scene_tree,sched;
         buffer_radius=buffer_radius,
     )
     # TODO store a TransformNode in ProjectComplete() (or in the schedule itself,
-    # once there is a dedicated ConstructionSchedule type) so that an entire 
+    # once there is a dedicated ConstructionSchedule type) so that an entire
     # schedule can be moved anywhere. All would-be root TransormNodes will have
-    # this root node as their parent, regardless of the edge structure of the 
+    # this root node as their parent, regardless of the edge structure of the
     # schedule graph
     return staging_circles, bounding_circles
 end
@@ -672,10 +672,10 @@ end
     select_assembly_start_configs!(sched,scene_tree,staging_radii;
         buffer_radius=0.0)
 
-Select the start configs (i.e., the build location) for each assembly. The 
-location is selected by minimizing distance to the assembly's staging location 
-while ensuring that no child's staging area overlaps with its parent's staging 
-area. Uses the same ring optimization approach as for selectig staging 
+Select the start configs (i.e., the build location) for each assembly. The
+location is selected by minimizing distance to the assembly's staging location
+while ensuring that no child's staging area overlaps with its parent's staging
+area. Uses the same ring optimization approach as for selectig staging
 locations.
 """
 function select_assembly_start_configs!(sched,scene_tree,staging_circles;
@@ -693,12 +693,13 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
         node = entity(start_node)
         if matches_template(AssemblyNode,node)
             # Apply ring solver with child assemblies (not objects)
-            assembly = node 
+            assembly = node
             part_ids = sort(filter(k->isa(k,AssemblyID),
                 collect(keys(assembly_components(node)))))
-            if isempty(part_ids) 
+            if isempty(part_ids)
                 continue
             end
+            @info "Selecting staging location for $(summary(node_id(assembly)))"
             # start_node = get_node(sched,AssemblyComplete(assembly))
             # staging_radii
             @assert haskey(staging_circles,node_id(assembly))
@@ -708,10 +709,11 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
             parts = (get_node(scene_tree,part_id) for part_id in part_ids)
             # radii = [staging_circles[id].radius for id in part_ids]
             radii = [staging_circles[id].radius + buffer_radius/2 for id in part_ids]
-            θ_des = Vector{Float64}()
+            # θ_des = Vector{Float64}()
             θ_star = nothing
             # repeat to ensure correct alignment
             while staging_radius - ring_radius > 1e-6
+                θ_des = Vector{Float64}()
                 ring_radius = staging_radius
                 for (part_id,part) in zip(part_ids,parts)
                     # retrieve staging config from LiftIntoPlace node
@@ -721,12 +723,12 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                     tr = relative_transform(
                         global_transform(goal_config(start_node)),
                         global_transform(start_config(lift_node))).translation
-                    tform = CT.Translation(tr...)
+                    tform = CoordinateTransformations.Translation(tr...)
                     geom = staging_circles[part_id]
                     # the vector from the circle center to the goal location
-                    d_ = HG.project_to_2d(tform.translation) - staging_circle.center
+                    d_ = HierarchicalGeometry.project_to_2d(tform.translation) - staging_circle.center
                     # scale d_ to the appropriate radius, then shift tip vector from part center to geom.center
-                    d = (d_ / norm(d_)) * ring_radius + geom.center 
+                    d = (d_ / norm(d_)) * ring_radius + geom.center
                     push!(θ_des, atan(d[2],d[1]))
                 end
                 # optimize placement and increase staging_radius if necessary
@@ -748,20 +750,21 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                 tform = t ∘ identity_linear_map() # AffineMap transform
                 # set transform of start node
                 # @info "Starting config: setting START config of $(node_id(start_node)) to $(tform)"
-                HG.set_local_transform_in_global_frame!(start_config(part_start_node),tform)
+                HierarchicalGeometry.set_local_transform_in_global_frame!(start_config(part_start_node),tform)
                 tform2D = CoordinateTransformations.Translation(t.translation[1:2]...)
-                push!(tformed_geoms,tform2D(geom)) 
+                push!(tformed_geoms,tform2D(geom))
             end
             old_ball = staging_circles[node_id(assembly)]
             new_ball = overapproximate(
                 vcat(tformed_geoms,staging_circles[node_id(assembly)]),
                 Ball2{Float64,SVector{2,Float64}}
                 )
-            @assert new_ball.radius > old_ball.radius+norm(new_ball.center .- old_ball.center)
+            # @assert new_ball.radius > old_ball.radius+norm(new_ball.center .- old_ball.center)
+            @assert new_ball.radius + 1e-5 > old_ball.radius+norm(new_ball.center .- old_ball.center) "$(summary(node_id(assembly))) old ball $(old_ball), new_ball $(new_ball)"
             staging_circles[node_id(assembly)] = new_ball
             # add directly as staging circle of AssemblyComplete node
-            assembly_complete.inner_staging_circle.base_geom  = HG.project_to_3d(old_ball)
-            assembly_complete.outer_staging_circle.base_geom  = HG.project_to_3d(new_ball)
+            assembly_complete.inner_staging_circle.base_geom  = HierarchicalGeometry.project_to_3d(old_ball)
+            assembly_complete.outer_staging_circle.base_geom  = HierarchicalGeometry.project_to_3d(new_ball)
             @info "Updating staging_circle for $(summary(node_id(assembly))) to $(staging_circles[node_id(assembly)])"
         end
     end
@@ -772,9 +775,9 @@ end
     process_schedule_build_step!(node,sched,scene_tree,bounding_circles,staging_circles)
 
 Select the staging configuration for all subcomponents to be added to `assembly`
-during `build_step`, where `build_step::OpenBuildStep = node_val(node)`, and 
+during `build_step`, where `build_step::OpenBuildStep = node_val(node)`, and
 `assembly = build_step.assembly.`
-Also updates `bounding_radii[node_id(assembly)]` to reflect the increasing size 
+Also updates `bounding_radii[node_id(assembly)]` to reflect the increasing size
 of assembly as more parts are added to it.
 Updates:
 - `staging_circles`
@@ -803,7 +806,7 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
     for (part_id,part,tform) in zip(part_ids,parts,tforms)
         tu = get_node(scene_tree,TransportUnitNode(part))
         tu_tform = tform ∘ inv(child_transform(tu,part_id))
-        tu_geom = HG.project_to_2d(tu_tform(get_base_geom(tu,HypersphereKey())))
+        tu_geom = HierarchicalGeometry.project_to_2d(tu_tform(get_base_geom(tu,HypersphereKey())))
         d = tu_geom.center - bounding_circle.center
         r = tu_geom.radius
         push!(geoms,tu_geom)
@@ -820,7 +823,7 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
         bounding_circles[node_id(assembly)] = new_bounding_circle # for assembly
         bounding_circles[node_id(node)]     = new_bounding_circle # for build step
         # incorporate new bounding circle into OpenBuildStep
-        open_build_step.bounding_circle.base_geom = HG.project_to_3d(new_bounding_circle)
+        open_build_step.bounding_circle.base_geom = HierarchicalGeometry.project_to_3d(new_bounding_circle)
     end
     if length(geoms) == 1 && bounding_circle.radius < 1e-6
         @info "Only 1 component to place at first build step--no need for ring optimization - $(summary(part_ids[1]))"
@@ -848,7 +851,7 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
         if length(geoms) == 1 && assembly_radius < 1e-6
             @info "Only 1 component to place at first build step--R = 0"
             R = 0.0
-            HG.set_local_transform_in_global_frame!(start_config(lift_node),t)
+            HierarchicalGeometry.set_local_transform_in_global_frame!(start_config(lift_node),t)
         else
             R = assembly_radius + r
             ### Use set_local_transform_in_global_frame!
@@ -858,14 +861,14 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
                 0.0)
             # @show t
             # set start config of lift node - have to add the ∘ inv(tform) because lift_node's goal_config() is already at tform
-            tr = CT.Translation(tform.translation[1:2]..., 0.0)
-            HG.set_local_transform_in_global_frame!(start_config(lift_node),t ∘ inv(tr))
+            tr = CoordinateTransformations.Translation(tform.translation[1:2]..., 0.0)
+            HierarchicalGeometry.set_local_transform_in_global_frame!(start_config(lift_node),t ∘ inv(tr))
         end
         # Store transformed geometry
-        geom = HG.project_to_2d(t(get_base_geom(tu,HypersphereKey())))
+        geom = HierarchicalGeometry.project_to_2d(t(get_base_geom(tu,HypersphereKey())))
         push!(tformed_geoms,geom)
     end
-    # Compute next staging circle by overapproximating current bounding circle and new geometry 
+    # Compute next staging circle by overapproximating current bounding circle and new geometry
     if haskey(staging_circles,node_id(assembly))
         # carry over existing staging circle geometry
         push!(tformed_geoms,staging_circles[node_id(assembly)])
@@ -879,8 +882,8 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
     staging_circles[node_id(assembly)] = new_ball
     # incorporate new bounding circle into OpenBuildStep
     @info "Updating staging_circle for $(summary(node_id(assembly))) to $(staging_circles[node_id(assembly)]) based on $(summary(node_id(node)))"
-    open_build_step.bounding_circle.base_geom = HG.project_to_3d(bounding_circles[node_id(node)])
-    open_build_step.staging_circle.base_geom  = HG.project_to_3d(staging_circles[node_id(assembly)])
+    open_build_step.bounding_circle.base_geom = HierarchicalGeometry.project_to_3d(bounding_circles[node_id(node)])
+    open_build_step.staging_circle.base_geom  = HierarchicalGeometry.project_to_3d(staging_circles[node_id(assembly)])
 
     sched
 end
@@ -891,8 +894,8 @@ end
 Formulate and solve a JuMP Model that encodes a ring optimization problem:
     Min_θ sum((θ .- θ_des).^2)
     s.t.  no overlapping of circles placed along ring
-If there are too many circles, the problem will be infeasible. Either allow R 
-to increase as a variable, or use a search to optimize R while repeating the 
+If there are too many circles, the problem will be infeasible. Either allow R
+to increase as a variable, or use a search to optimize R while repeating the
 optimization.
 return θ_star
 """
@@ -900,13 +903,13 @@ function solve_ring_placement_problem(θ_des,r,R,rmin=0.0;
         ϵ = 1e-1, # buffer for increasing R when necessary
         weights = ones(length(θ_des)),
     )
-    model = Model(HG.default_optimizer())
-    set_optimizer_attributes(model,HG.default_optimizer_attributes()...)
+    model = Model(HierarchicalGeometry.default_optimizer())
+    set_optimizer_attributes(model,HierarchicalGeometry.default_optimizer_attributes()...)
 
     θ_des = map(wrap_to_pi, θ_des)
 
     n = length(θ_des)
-    @assert length(r) == n
+    @assert length(r) == n "length(r) != n for n=$n, r = $r"
     # sort θ (the unsorted vector will be returned at the end)
     idxs = sortperm(θ_des)
     # reverse_idxs = collect(1:n)[idxs]
@@ -941,9 +944,9 @@ end
 
 """
     calibrate_transport_tasks!(sched)
-    
+
 Set the appropriate transforms for all transport tasks such that
-- FormTransportUnit moves the object from its initial condition to its 
+- FormTransportUnit moves the object from its initial condition to its
     transport-unit-relative transform: `start_config(n::FormTransportUnit)` will
     be directly below the object's start config.
 - DepositTransportUnit
@@ -988,9 +991,9 @@ function align_construction_predicates!(sched,start::Union{ObjectStart,AssemblyC
     tform = child_transform(transport_unit,node_id(cargo))
     delta_z = tform.translation[3] - global_transform(cargo_deployed_config(t)).translation[3]
     # TODO would be nice to have constrained transforms (e.g., fix to X-Y plane)
-    set_local_transform!( 
+    set_local_transform!(
         cargo_loaded_config(t),
-        CT.Translation(0.0, 0.0, delta_z) ∘ identity_linear_map()
+        CoordinateTransformations.Translation(0.0, 0.0, delta_z) ∘ identity_linear_map()
     ) # relative to cargo_deployed_config(t)
 end
 align_construction_predicates!(sched,a::CustomNode,b::CustomNode) = align_construction_predicates!(sched,node_val(a),node_val(b))
@@ -1041,7 +1044,7 @@ function transport_sequence_sanity_check(sched,cargo)
     @show global_transform(cargo_deployed_config(deposit_node))
     @show global_transform(start_config(lift_node))
     @show global_transform(goal_config(lift_node))
-    return 
+    return
 end
 
 """
@@ -1077,19 +1080,23 @@ function get_parent_build_step(sched,n::DepositCargo)
     return nothing
 end
 get_parent_build_step(sched,n::Union{FormTransportUnit,TransportUnitGo}) = get_parent_build_step(sched,get_node(sched,DepositCargo(entity(n))))
-function get_parent_build_step(sched,n::RobotGo)
+function get_parent_build_step(sched,n::Union{RobotGo,RobotStart})
     if outdegree(sched,n) > 0
-        return get_parent_build_step(sched,outneighbors(sched,n)[1])
+        return get_parent_build_step(sched,first(outneighbors(sched,n)))
     end
     return nothing
 end
 get_parent_build_step(sched,n::ScheduleNode) = get_parent_build_step(sched,n.node)
 get_parent_build_step(sched,v::Int) = get_parent_build_step(sched,get_node(sched,v))
+get_first_build_step(sched,n::AssemblyStart) = get_node(sched,first(outneighbors(sched,n)))
+get_first_build_step(sched,n::ScheduleNode) = get_first_build_step(sched,n.node)
+get_first_build_step(sched,n::CustomNode) = get_first_build_step(sched,node_val(n))
+
 
 """
     set_scene_tree_to_initial_condition!(scene_tree,sched)
 
-Once the staging plan has been computed, this function moves all entities to 
+Once the staging plan has been computed, this function moves all entities to
 their starting locations.
 """
 function set_scene_tree_to_initial_condition!(scene_tree,sched;
@@ -1097,7 +1104,7 @@ function set_scene_tree_to_initial_condition!(scene_tree,sched;
     )
     if remove_all_edges
         for e in collect(edges(scene_tree))
-            HG.force_remove_edge!(scene_tree,edge_source(e),edge_target(e))
+            HierarchicalGeometry.force_remove_edge!(scene_tree,edge_source(e),edge_target(e))
         end
     end
     for scene_node in node_iterator(scene_tree, topological_sort_by_dfs(scene_tree))
@@ -1107,14 +1114,14 @@ function set_scene_tree_to_initial_condition!(scene_tree,sched;
         else
             goal = identity_linear_map()
         end
-        HG.set_desired_global_transform!(scene_node,goal)
+        HierarchicalGeometry.set_desired_global_transform!(scene_node,goal)
     end
     # for n in get_nodes(sched)
     #     if matches_template(Union{RobotStart,ObjectStart,AssemblyStart,FormTransportUnit},n)
     #         scene_node = get_node(scene_tree,node_id(entity(n)))
     #         # @assert has_parent(scene_node,scene_node)
     #         # set_local_transform!(scene_node,global_transform(start_config(n)))
-    #         HG.set_desired_global_transform!(scene_node,global_transform(start_config(n)))
+    #         HierarchicalGeometry.set_desired_global_transform!(scene_node,global_transform(start_config(n)))
     #     end
     # end
     scene_tree
@@ -1123,7 +1130,7 @@ end
 """
     select_initial_object_grid_locations!(sched,scene_tree,vtxs)
 
-Cycle through `vtxs`, placing an object at each vertex until all objects have 
+Cycle through `vtxs`, placing an object at each vertex until all objects have
 been placed.
 """
 function select_initial_object_grid_locations!(sched,vtxs)
@@ -1142,11 +1149,11 @@ function select_initial_object_grid_locations!(sched,vtxs)
         )
     for (node,tform) in zip(nodes,Base.Iterators.cycle(tforms))
         start_node = get_node(sched,ObjectStart(node))
-        HG.set_desired_global_transform!(start_config(start_node),tform)
+        HierarchicalGeometry.set_desired_global_transform!(start_config(start_node),tform)
 
         # parent = get_parent(start_config(start_node))
         # rtf = relative_transform(global_transform(parent),tform)
-        # HG.set_local_transform_in_global_frame!(start_config(start_node),rtf)
+        # HierarchicalGeometry.set_local_transform_in_global_frame!(start_config(start_node),rtf)
 
         # set_local_transform!(start_config(start_node),tform)
     end
@@ -1160,7 +1167,7 @@ For each vtx in `vtxs`, place a robot at that location and add it to `scene_tree
 """
 function add_robots_to_scene!(scene_tree,vtxs,geoms=(default_robot_geom() for v in vtxs))
     for (vtx,geom) in zip(vtxs,Base.Iterators.cycle(geoms))
-        tform = CT.Translation(vtx[1],vtx[2],0.0) ∘ identity_linear_map()
+        tform = CoordinateTransformations.Translation(vtx[1],vtx[2],0.0) ∘ identity_linear_map()
         robot_node = add_node!(scene_tree,
             RobotNode(get_unique_id(RobotID),GeomNode(geom)))
         set_local_transform!(robot_node, tform)
@@ -1171,7 +1178,7 @@ end
 """
     set_robot_start_configs!(sched,scene_tree)
 
-For each `n::RobotNode` in `SceneTree`, add a corresponding `RobotStart` and 
+For each `n::RobotNode` in `SceneTree`, add a corresponding `RobotStart` and
 `RobotGo` node and set the start transform to `local_transform(n)`.
 """
 function set_robot_start_configs!(sched,scene_tree)
@@ -1204,8 +1211,8 @@ end
         bounds=nothing,
         )
 
-Construct a regular array of vertices over `ranges`, beginning at `origin` and 
-spaced by `spacing`, removing all vertices that fall within `obstacles` or 
+Construct a regular array of vertices over `ranges`, beginning at `origin` and
+spaced by `spacing`, removing all vertices that fall within `obstacles` or
 outside of `bounds`.
 """
 function construct_vtx_array(;
@@ -1218,7 +1225,7 @@ function construct_vtx_array(;
     pts = Vector{SVector{3,Float64}}()
     for idxs in Base.Iterators.product(ranges...)
         pt = origin + SVector(map(i->spacing[i]*idxs[i], 1:length(spacing))...)
-        pt2d = HG.project_to_2d(pt)
+        pt2d = HierarchicalGeometry.project_to_2d(pt)
         legal = true
         if !(bounds === nothing)
             for ob in bounds
@@ -1250,7 +1257,7 @@ end
 function init_transport_units!(scene_tree;
         kwargs...
     )
-    cvx_hulls = HG.compute_hierarchical_2d_convex_hulls(scene_tree)
+    cvx_hulls = HierarchicalGeometry.compute_hierarchical_2d_convex_hulls(scene_tree)
     for (id,pts) in cvx_hulls
         isempty(pts) ? continue : nothing
         cargo = get_node(scene_tree,id)
@@ -1271,24 +1278,24 @@ end
 Define the transport unit for cargo. `pts` are the eligible support points
 """
 function configure_transport_unit(cargo,pts;
-        robot_radius = HG.default_robot_radius(),
+        robot_radius = HierarchicalGeometry.default_robot_radius(),
         robot_height = default_robot_height(),
         optimize_carry_config = false,
     )
     # initialize transport node with cargo id
     base_rect = get_base_geom(cargo,HyperrectangleKey())
     zmin = base_rect.center[3] .- base_rect.radius[3]
-    cargo_tform = CT.Translation(0.0, 0.0, robot_height - zmin) ∘ identity_linear_map()
+    cargo_tform = CoordinateTransformations.Translation(0.0, 0.0, robot_height - zmin) ∘ identity_linear_map()
     transport_unit = TransportUnitNode(node_id(cargo) => cargo_tform)
     # project back to 3D and convert to SVector
-    # geom = map(SVector,map(HG.project_to_3d,pts))
+    # geom = map(SVector,map(HierarchicalGeometry.project_to_3d,pts))
     # node = get_node(scene_tree,id)
     # rect = get_base_geom(node,HyperrectangleKey())
     # height = rect.radius[3]
     # push!(geom, SVector(geom[1][1],geom[1][2],height))
-    support_pts = HG.select_support_locations(VPolygon(pts),robot_radius)
+    support_pts = HierarchicalGeometry.select_support_locations(VPolygon(pts),robot_radius)
     for pt in support_pts
-        tform = CT.Translation(pt[1],pt[2],0.0,) ∘ identity_linear_map()
+        tform = CoordinateTransformations.Translation(pt[1],pt[2],0.0,) ∘ identity_linear_map()
         add_robot!(transport_unit,tform)
     end
     transport_unit
@@ -1298,11 +1305,11 @@ end
     add_temporary_invalid_robots!(scene_tree,transport_unit;
         geom=default_robot_geom(), with_edges=false)
 
-Add invalid robots corresponding to the robots that would be part of 
+Add invalid robots corresponding to the robots that would be part of
 `transport_unit`.
 """
 function add_temporary_invalid_robots!(scene_tree,transport_unit;
-    geom=HG.default_robot_geom(),
+    geom=HierarchicalGeometry.default_robot_geom(),
     with_edges=false,
     )
     for (id,tform) in robot_team(transport_unit)
@@ -1321,7 +1328,7 @@ end
 """
     add_temporary_invalid_robots!(scene_tree;kwargs...)
 
-Call `add_temporary_invalid_robots!(scene_tree, n;kwargs...)` for all 
+Call `add_temporary_invalid_robots!(scene_tree, n;kwargs...)` for all
 `n::TransportUnitNode`.
 """
 function add_temporary_invalid_robots!(scene_tree;kwargs...)
@@ -1336,7 +1343,7 @@ end
     remove_temporary_invalid_robots!(scene_tree)
     remove_temporary_invalid_robots!(scene_tree,transport_unit)
 
-Remove all invalid robots (limited optionally to those associated with 
+Remove all invalid robots (limited optionally to those associated with
 `transport_unit::TransportUnitNode`) from scene_tree.
 """
 function remove_temporary_invalid_robots!(scene_tree,transport_unit)
