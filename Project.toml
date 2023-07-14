@@ -11,10 +11,8 @@ Compose = "a81c6b42-2e10-5240-aca2-a61377ecd94b"
 CoordinateTransformations = "150eb455-5306-5404-9cee-2592286d6298"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 ECOS = "e2685f51-7e38-5353-a97d-a921fd2c8199"
-FactoryRendering = "2c1b03b8-aebe-4ec7-8d8d-27e88d52cb0f"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
-GraphPlottingBFS = "277fd268-772f-11e9-01e2-fbbcabd1ad4a"
 GraphUtils = "5d4bc1c0-0fb7-11e9-3252-b1aa07358cab"
 Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
 Gurobi = "2e9cd046-0924-5485-92f1-d5272153d98b"
@@ -43,6 +41,9 @@ TaskGraphs = "6635cb54-791c-11e9-2805-8512ad3937f9"
 
 [compat]
 julia = "1.1"
+TaskGraphs = "0.2"
+HierarchicalGeometry = "0.1.1"
+LDrawParser = "0.1.1"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

@@ -7,17 +7,17 @@ using Rotations
 using Graphs
 using GraphUtils
 using GeometryBasics
-using LDrawParser
-using HierarchicalGeometry
 using JuMP
 using ECOS
 using MathOptInterface
 using LinearAlgebra
 using ForwardDiff
 using SpatialIndexing
-
-using TaskGraphs
 using Logging
+
+using LDrawParser
+using HierarchicalGeometry
+using TaskGraphs
 
 import LibSpatialIndex
 

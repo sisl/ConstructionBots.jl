@@ -31,8 +31,8 @@ using Revise
 global_logger(ConsoleLogger(stderr, Logging.Info))
 # global_logger(ConsoleLogger(stderr, Logging.Debug))
 
-include(joinpath(pathof(TaskGraphs),"..","helpers","render_tools.jl"))
 include("../src/render_tools.jl")
+include(joinpath(pathof(TaskGraphs),"..","helpers","render_tools.jl"))
 include("full_demo.jl")
 
 
