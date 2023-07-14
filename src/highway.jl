@@ -1,11 +1,3 @@
-import LibSpatialIndex
-using LinearAlgebra
-using GeometryBasics
-using StaticArrays
-using LightGraphs, GraphUtils
-using Parameters
-using Test
-
 """
     Frenet
 
@@ -27,7 +19,7 @@ struct Arc
     a::Float64
     b::Float64
 end
-arclength(a::Arc)   = a.radius*(a.b-a.a) 
+arclength(a::Arc)   = a.radius*(a.b-a.a)
 start_pt(a::Arc)    = Point2((a.center + a.radius * [cos(a.a),sin(a.a)])...)
 end_pt(a::Arc)      = Point2((a.center + a.radius * [cos(a.b),sin(a.b)])...)
 pt_from_absolute_angle(a::Arc,θ,r=a.radius) = a.center + r * Point2(cos(θ),sin(θ))
@@ -45,7 +37,7 @@ start_pt(a::GeometryBasics.Line)         = a.points[1]
 end_pt(a::GeometryBasics.Line)           = a.points[2]
 direction_vec(a::GeometryBasics.Line) = normalize(end_pt(a) - start_pt(a))
 pt_from_arc_length(a::GeometryBasics.Line,s) = start_pt(a) + (end_pt(a) - start_pt(a))*s/arclength(a)
-function pt_from_frenet(a::GeometryBasics.Line,coords::Frenet) 
+function pt_from_frenet(a::GeometryBasics.Line,coords::Frenet)
     pt_from_arc_length(a,coords.s) + coords.e * [0.0 -1.0; 1.0 0.0] * direction_vec(a)
 end
 
@@ -85,7 +77,7 @@ proj_pt_to_refline(a::GeometryBasics.Line,args...) = proj_pt_to_line(a,args...)
 """
     move_along(coords::Frenet,s_dot,e_dot,dt)
 
-Return next Frenet coordinates from moving at constant velocity in Frenet frame 
+Return next Frenet coordinates from moving at constant velocity in Frenet frame
 for `dt` seconds.
 """
 function move_along(coords::Frenet,s_dot,e_dot,dt)
@@ -131,7 +123,7 @@ mutable struct HighwayAgentState
     lane_states ::Dict{LaneID,LaneState} # May have multiple simultaneous lane associations, but only one target lane
     on_highway  ::Bool
     plan        ::Vector{LaneID} # where is agent trying to go overall?
-    target      ::LaneID # where is agent trying to go currently? 
+    target      ::LaneID # where is agent trying to go currently?
     # fixed params
     agent_id    ::AbstractID
     max_speed   ::Float64
@@ -233,8 +225,8 @@ end
 """
     step_highway!(env,highway,states::Dict{AbstractID,Pair{LaneID,LaneState}})
 
-Q: How to update all reservations across the entire highway? 
-A: Just don't allow overlap with the previous time step, but try to update 
+Q: How to update all reservations across the entire highway?
+A: Just don't allow overlap with the previous time step, but try to update
 reservations in order of slowest-moving agents first.
 """
 function step_highway!(env,highway,states::Dict{AbstractID,HighwayAgentState})
@@ -249,9 +241,9 @@ function step_agent_along_highway!(env,highway,agent_id,state::HighwayAgentState
         return state # no change
     end
     # HIGH_LEVEL_BEHAVIORS: MOVE_ALONG, EXIT (to new lane), OFF_ROAD, PARK ?
-    # if MOVE_ALONG  
+    # if MOVE_ALONG
     # elseif EXIT -> where?
-    # 
+    #
 end
 
 """
@@ -260,37 +252,37 @@ end
 A nested highway structure.
 
 Q: How to correctly associate lanes to staging areas?
-A: zone_dict: Dict mapping AssemblyID => LaneID of the circular lane surrounding 
+A: zone_dict: Dict mapping AssemblyID => LaneID of the circular lane surrounding
 that assembly's staging area. Probably also want a dict mapping LaneID => AssemblyID
 
-Q: How to conveniently represent the nested topology of the highway, including the 
+Q: How to conveniently represent the nested topology of the highway, including the
 arc length coordinates at which lanes merge into each other?
 A: As follows:
-    child_entrances: 
+    child_entrances:
         child_circle => [s_self=>child_entrance_lane, s_self=>other_entrance_lane]
         ...
-    child_exits: 
+    child_exits:
         child_circle => [s_self=>child_exit_lane, s_self=>other_exit_lane]
         ...
-    parent_entrances: 
+    parent_entrances:
         parent_circle => [s_self=>parent_entrance_lane, s_self=>parent_entrance_lane]
         ...
-    parent_exits: 
+    parent_exits:
         parent_circle => [s_self=>parent_exit_lane, s_self=>other_exit_lane]
         ...
 
-Q: Given a robot's current position and goal position within a staging area, how 
+Q: Given a robot's current position and goal position within a staging area, how
 to plan a path through the highway?
 A: As follows:
     # 1. identify circuit lane associated with goal staging area
-    goal_lane = zone_dict[assembly_id] 
+    goal_lane = zone_dict[assembly_id]
     θ_exit = atan(goal_pt .- staging_circle.center)
     goal_s = arclength_from_absolute_angle(goal_lane.refline, θ_exit)
     # 2. extract sequence of nested goals by walking up scene_tree
     goal_sequence = [zone_dict[parent_id] in for parent_id in recurse_parents(scene_tree,assembly_id)]
     # 3. extract lane sequence from goal set
     lane_sequence = []
-    for 
+    for
 """
 mutable struct NestedHighway <: AbstractTreeNode{ID}
     # tree node fields
@@ -454,14 +446,14 @@ function construct_nested_highway(
         gkey = HypersphereKey(),
     )
     # ensure that scene_tree represents fully connected assembly
-    HG.jump_to_final_configuration!(scene_tree;set_edges=true)
+    HierarchicalGeometry.jump_to_final_configuration!(scene_tree;set_edges=true)
     # preprocessing
     dropoff_zones = Dict{AbstractID,Point2{Float64}}()
     inner_staging_zones = Dict{AbstractID,Ball2}() # inner zones in global frame
     outer_staging_zones = Dict{AbstractID,Ball2}() # outer zones in global frame
     for n in get_nodes(sched)
         if matches_template(DepositCargo,n)
-            pt = HG.project_to_2d(global_transform(goal_config(n)).translation)
+            pt = HierarchicalGeometry.project_to_2d(global_transform(goal_config(n)).translation)
             # may need to account for TransportUnitNode center...
             dropoff_zones[cargo_id(entity(n))] = Point2{Float64}(pt...)
         elseif matches_template(AssemblyComplete,n)
@@ -491,7 +483,7 @@ function construct_nested_highway(
             end
         end
     end
-    # create full circular lane around 
+    # create full circular lane around
 end
 
 # """
@@ -537,7 +529,7 @@ end
 #     # TODO curved lanes
 #     for (id,circ) in zones
 #         angles = Vector{Pair{LaneID,Float64}}()
-#         for lane_id in lane_dict[id][:incoming] 
+#         for lane_id in lane_dict[id][:incoming]
 #             lane = get_node(highway,lane_id)
 #             push!(angles,lane_id=>atan(reverse(end_pt(lane))...))
 #             # iteratively split lanes
@@ -567,7 +559,7 @@ end
 """
     tangent_line_on_circs(circ1,circ2)
 
-Return line tangent to both circles, pointing in CCW direction from circ1 to 
+Return line tangent to both circles, pointing in CCW direction from circ1 to
 circ2.
 """
 function tangent_line_on_circs(circ1,circ2)

@@ -3,14 +3,14 @@ export TangentBugPolicy
 @with_kw mutable struct TangentBugPolicy
     mode                = :MOVE_TOWARD_GOAL
     vmax                = 1.0
-    dt                  = 0.05 
+    dt                  = 0.05
     proximity_tolerance = 1e-2
     agent_radius        = 0.5
     planning_radius     = 2*agent_radius
     detour_horizon      = 2*planning_radius
     buffer              = staging_buffer_radius()
     # store config and command
-    config              = identity_linear_map() 
+    config              = identity_linear_map()
     cmd                 = Twist(SVector(0.0,0.0,0.0),SVector(0.0,0.0,0.0))
 end
 
@@ -20,9 +20,9 @@ end
 Return closest point of intersection of `circle` with line from `p1` to `p2`
 """
 function first_intersection_pt(circle,p1,p2)
-    c = HG.get_center(circle)
-    r = HG.get_radius(circle)
-    pt = HG.project_point_to_line(c,p1,p2)
+    c = HierarchicalGeometry.get_center(circle)
+    r = HierarchicalGeometry.get_radius(circle)
+    pt = HierarchicalGeometry.project_point_to_line(c,p1,p2)
     b = norm(pt-c)
     if b > r
         return nothing
@@ -38,18 +38,18 @@ end
 Returns the id and bloated (by policy.agent_radius+buffer) circle closest to pos
 """
 function get_closest_interfering_circle(policy,circles,pos,nominal_goal)
-    @unpack planning_radius, detour_horizon, proximity_tolerance, buffer, 
+    @unpack planning_radius, detour_horizon, proximity_tolerance, buffer,
         agent_radius, vmax, dt = policy
     dmin = Inf
     id = nothing
     circ = nothing
     pt = nominal_goal
     for (circ_id,c) in circles
-        x = HG.get_center(c)
-        r = HG.get_radius(c)
+        x = HierarchicalGeometry.get_center(c)
+        r = HierarchicalGeometry.get_radius(c)
         bloated_circle = Ball2(x,r+agent_radius+buffer)
-        if HG.circle_intersects_line(bloated_circle,pos,nominal_goal)
-            d = norm(x - pos) - HG.get_radius(bloated_circle) # penetration
+        if HierarchicalGeometry.circle_intersects_line(bloated_circle,pos,nominal_goal)
+            d = norm(x - pos) - HierarchicalGeometry.get_radius(bloated_circle) # penetration
             if d < dmin
                 # penetration < 0 => pos is in circle
                 dmin = d
@@ -63,14 +63,14 @@ function get_closest_interfering_circle(policy,circles,pos,nominal_goal)
 end
 
 function set_policy_mode!(policy,circ,pos,nominal_goal)
-    @unpack planning_radius, detour_horizon, proximity_tolerance, buffer, 
+    @unpack planning_radius, detour_horizon, proximity_tolerance, buffer,
         agent_radius, vmax, dt = policy
     dmin = Inf
     c = nothing
     r = nothing
     if !(circ === nothing)
-        c = HG.get_center(circ)
-        r = HG.get_radius(circ)
+        c = HierarchicalGeometry.get_center(circ)
+        r = HierarchicalGeometry.get_radius(circ)
         dmin = norm(c - pos) - r
     end
 
@@ -78,10 +78,10 @@ function set_policy_mode!(policy,circ,pos,nominal_goal)
     if circ === nothing
         mode = :MOVE_TOWARD_GOAL
     else
-        if norm(nominal_goal - c) < r 
+        if norm(nominal_goal - c) < r
             # nominal_goal is in circle
             mode = :WAIT_OUTSIDE
-        elseif dmin + proximity_tolerance >= 0 
+        elseif dmin + proximity_tolerance >= 0
             # not currently in a circle, but on a course for intersection
             # if norm(nominal_goal - pos) + 30*proximity_tolerance < norm(nominal_goal - c)
             if norm(nominal_goal - pos) + agent_radius/2 < norm(nominal_goal - c)
@@ -108,17 +108,17 @@ function set_policy_mode!(policy,circ,pos,nominal_goal)
 end
 
 function tangent_bug_policy!(policy,circles,pos,nominal_goal)
-    @unpack planning_radius, detour_horizon, proximity_tolerance, buffer, 
+    @unpack planning_radius, detour_horizon, proximity_tolerance, buffer,
         agent_radius, vmax, dt = policy
-    
+
     c = nothing
     r = nothing
     id = nothing
     dmin = Inf
     id, circ, waypoint = get_closest_interfering_circle(policy,circles,pos,nominal_goal)
     if !(circ === nothing)
-        c = HG.get_center(circ)
-        r = HG.get_radius(circ)
+        c = HierarchicalGeometry.get_center(circ)
+        r = HierarchicalGeometry.get_radius(circ)
         dmin = norm(c - pos) - r
     end
     # select operating mode
@@ -126,7 +126,7 @@ function tangent_bug_policy!(policy,circles,pos,nominal_goal)
 
     # Select waypoint
     goal = nominal_goal
-    if mode == :WAIT_OUTSIDE 
+    if mode == :WAIT_OUTSIDE
         if norm(nominal_goal - c) > 1e-3
             goal = c + normalize(nominal_goal - c)*r
         else
@@ -143,7 +143,7 @@ function tangent_bug_policy!(policy,circles,pos,nominal_goal)
     elseif mode == :MOVE_TANGENT
         vec = c - pos # vector from pos to circle center
         ψ = asin(r/norm(vec)) # yaw angle of right tangent line
-        dθ = π/2 - ψ # CCW angular offset to tangent point 
+        dθ = π/2 - ψ # CCW angular offset to tangent point
         dvec = normalize(pos - c) * r
         goal = c + [cos(dθ) -sin(dθ); sin(dθ) cos(dθ)] * dvec
         # if goal causes intersection with another circle, choose waypoint instead

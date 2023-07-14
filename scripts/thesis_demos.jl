@@ -8,7 +8,7 @@ using JuMP
 using Gurobi
 set_default_milp_optimizer!(Gurobi.Optimizer)
 
-using LightGraphs, GraphUtils
+using Graphs, GraphUtils
 using GeometryBasics, CoordinateTransformations, Rotations
 using StaticArrays
 using LinearAlgebra
@@ -25,12 +25,19 @@ using Random
 
 using TOML
 using Logging
+
+using Revise
+
 global_logger(ConsoleLogger(stderr, Logging.Info))
 # global_logger(ConsoleLogger(stderr, Logging.Debug))
 
-Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
+# Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
 Revise.includet(joinpath(pathof(TaskGraphs),"..","helpers","render_tools.jl"))
-Revise.includet(joinpath(pathof(ConstructionBots),"../..","scripts","full_demo.jl"))
+# Revise.includet(joinpath(pathof(ConstructionBots),"../..","scripts","full_demo.jl"))
+
+include("../src/render_tools.jl")
+include("full_demo.jl")
+
 
 TaskGraphs.set_default_optimizer_attributes!(
     "TimeLimit"=>100,
@@ -97,22 +104,22 @@ BUILD_STEP_BUFFER_FACTOR = 1.5
 # MODEL_SCALE         = 0.002
 # NUM_ROBOTS          = 100
 # # ROBOT_SCALE         = MODEL_SCALE * 0.7
-# ROBOT_SCALE         = MODEL_SCALE 
+# ROBOT_SCALE         = MODEL_SCALE
 # MAX_STEPS           = 40000
 # OBJECT_VTX_RANGE    = (-16:0.5:16,-16:0.5:16, 0:0)
 # HOME_VTX_RANGE    = (-24:24,-24:24, 0:0)
 # STAGING_BUFFER_FACTOR = 1.5
 # BUILD_STEP_BUFFER_FACTOR = 0.5
 
-project_name = "Saturn.mpd"
-MODEL_SCALE         = 0.001
-NUM_ROBOTS          = 100
-ROBOT_SCALE         = MODEL_SCALE*4
-MAX_STEPS           = 100000
-OBJECT_VTX_RANGE =(-36:36,-36:36,0:8)
-HOME_VTX_RANGE    = (-34:34,-34:34, 0:0)
-STAGING_BUFFER_FACTOR = 1.5
-BUILD_STEP_BUFFER_FACTOR = 1.5
+# project_name = "Saturn.mpd"
+# MODEL_SCALE         = 0.001
+# NUM_ROBOTS          = 100
+# ROBOT_SCALE         = MODEL_SCALE*4
+# MAX_STEPS           = 100000
+# OBJECT_VTX_RANGE =(-36:36,-36:36,0:8)
+# HOME_VTX_RANGE    = (-34:34,-34:34, 0:0)
+# STAGING_BUFFER_FACTOR = 1.5
+# BUILD_STEP_BUFFER_FACTOR = 1.5
 
 # project_name = "colored_8x8.ldr"
 # MODEL_SCALE         = 0.01
@@ -120,8 +127,9 @@ BUILD_STEP_BUFFER_FACTOR = 1.5
 # NUM_ROBOTS          = 25
 # OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 
-for RVO_FLAG in [true,false]
+# for RVO_FLAG in [true,false]
     # for ASSIGNMENT_MODE in [:OPTIMAL,:GREEDY]
+for RVO_FLAG in [true]
     for ASSIGNMENT_MODE in [:GREEDY]
         run_lego_demo(;
                 project_name          = project_name,
@@ -133,8 +141,7 @@ for RVO_FLAG in [true,false]
                 MAX_STEPS           = MAX_STEPS,
                 ASSIGNMENT_MODE     = ASSIGNMENT_MODE,
                 RVO_FLAG            = RVO_FLAG,
-                VISUALIZER          = false,
-                vis                 = nothing,
+                VISUALIZER          = true,
                 OVERWRITE_RESULTS   = true
                 # vis                 = vis,
             );
@@ -142,19 +149,19 @@ for RVO_FLAG in [true,false]
 end
 
 
-run_lego_demo(;
-        project_name        = project_name,
-        MODEL_SCALE         = MODEL_SCALE,
-        NUM_ROBOTS          = NUM_ROBOTS,
-        ROBOT_SCALE         = ROBOT_SCALE,
-        OBJECT_VTX_RANGE    = OBJECT_VTX_RANGE,
-        HOME_VTX_RANGE      = HOME_VTX_RANGE,
-        MAX_STEPS           = MAX_STEPS,
-        ASSIGNMENT_MODE     = :GREEDY,
-        RVO_FLAG            = true,
-        # RVO_FLAG            = false,
-        VISUALIZER          = false,
-        # vis                 = vis,
-        WRITE_RESULTS       = false,
-        # OVERWRITE_RESULTS   = true
-    );
+# run_lego_demo(;
+#         project_name        = project_name,
+#         MODEL_SCALE         = MODEL_SCALE,
+#         NUM_ROBOTS          = NUM_ROBOTS,
+#         ROBOT_SCALE         = ROBOT_SCALE,
+#         OBJECT_VTX_RANGE    = OBJECT_VTX_RANGE,
+#         HOME_VTX_RANGE      = HOME_VTX_RANGE,
+#         MAX_STEPS           = MAX_STEPS,
+#         ASSIGNMENT_MODE     = :GREEDY,
+#         RVO_FLAG            = true,
+#         # RVO_FLAG            = false,
+#         VISUALIZER          = false,
+#         # vis                 = vis,
+#         WRITE_RESULTS       = false,
+#         # OVERWRITE_RESULTS   = true
+#     );

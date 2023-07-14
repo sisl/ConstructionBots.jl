@@ -8,7 +8,7 @@ using JuMP
 using Gurobi
 set_default_milp_optimizer!(Gurobi.Optimizer)
 
-using LightGraphs, GraphUtils
+using Graphs, GraphUtils
 using GeometryBasics, CoordinateTransformations, Rotations
 using StaticArrays
 using LinearAlgebra
@@ -77,8 +77,8 @@ assembly_tree = ConstructionBots.construct_assembly_tree(model,model_spec,id_map
 scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
 print(scene_tree,v->"$(summary(node_id(v))) : $(get(id_map,node_id(v),nothing))","\t")
 # Define TransportUnit configurations
-HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
-HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
+HierarchicalGeometry.compute_approximate_geometries!(scene_tree,HypersphereKey())
+HierarchicalGeometry.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
 ConstructionBots.init_transport_units!(scene_tree;robot_radius = 2*ROBOT_RADIUS)
 # validate SceneTree
 root = get_node(scene_tree,collect(get_all_root_nodes(scene_tree))[1])
@@ -97,17 +97,17 @@ ConstructionBots.add_robots_to_scene!(scene_tree,robot_vtxs,[default_robot_geom(
 # Add temporary dummy robots ############################
 ConstructionBots.add_temporary_invalid_robots!(scene_tree;with_edges=true)
 display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
-HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
+HierarchicalGeometry.compute_approximate_geometries!(scene_tree,HypersphereKey())
 # remove_geometry!(scene_tree,HypersphereKey())
 @assert all(map(node->has_vertex(node.geom_hierarchy,HypersphereKey()), get_nodes(scene_tree)))
-HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
+HierarchicalGeometry.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
 @assert all(map(node->has_vertex(node.geom_hierarchy,HyperrectangleKey()), get_nodes(scene_tree)))
 # Remove temporary dummy robots ############################
 ConstructionBots.remove_temporary_invalid_robots!(scene_tree)
 # display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
 
 ## Construct Partial Schedule
-HG.jump_to_final_configuration!(scene_tree;set_edges=true)
+HierarchicalGeometry.jump_to_final_configuration!(scene_tree;set_edges=true)
 sched = construct_partial_construction_schedule(model,model_spec,scene_tree,id_map)
 # Check if schedule graph and embedded transform tree are valid
 @assert validate_schedule_transform_tree(sched)
@@ -131,13 +131,13 @@ ConstructionBots.select_initial_object_grid_locations!(sched,object_vtxs)
 
 # Move assemblies up so they float above the robots
 for node in get_nodes(scene_tree)
-    if matches_template(AssemblyNode,node) 
+    if matches_template(AssemblyNode,node)
         start_node = get_node(sched,AssemblyComplete(node))
         current = global_transform(start_config(start_node))
-        tform_error = CT.Translation(0.0,0.0,MAX_CARGO_HEIGHT-current.translation[3]) # difference to be made up in global frame
-        rot_mat = CT.LinearMap(global_transform(get_parent(HG.get_transform_node(node))).linear)
+        tform_error = CoordinateTransformations.Translation(0.0,0.0,MAX_CARGO_HEIGHT-current.translation[3]) # difference to be made up in global frame
+        rot_mat = CoordinateTransformations.LinearMap(global_transform(get_parent(HierarchicalGeometry.get_transform_node(node))).linear)
         tform = local_transform(start_config(start_node)) ∘ inv(rot_mat) ∘ tform_error
-        # tform = CT.Translation(0.0,0.0,MAX_CARGO_HEIGHT) ∘ local_transform(start_config(start_node))
+        # tform = CoordinateTransformations.Translation(0.0,0.0,MAX_CARGO_HEIGHT) ∘ local_transform(start_config(start_node))
         set_local_transform!(start_config(start_node),tform)
     end
 end
@@ -175,7 +175,7 @@ update_project_schedule!(nothing,milp_model,tg_sched,scene_tree)
 # sched2 = ConstructionBots.extract_small_sched_for_plotting(tg_sched,200)
 # display_graph(sched2,scale=3,enforce_visited=true,aspect_stretch=(0.9,0.9))
 
-## Visualize staging plans to debug the rotational shuffling 
+## Visualize staging plans to debug the rotational shuffling
 # vis_triads, vis_arrows, bounding_vis = visualize_staging_plan(vis,sched,scene_tree)
 # delete!(vis_arrows)
 # delete!(vis_triads)
@@ -203,7 +203,7 @@ setvisible!(staging_nodes,false)
 
 
 # restore correct configuration
-HG.jump_to_final_configuration!(scene_tree;set_edges=true)
+HierarchicalGeometry.jump_to_final_configuration!(scene_tree;set_edges=true)
 update_visualizer!(scene_tree,vis_nodes)
 # set staging plan and visualize
 set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)

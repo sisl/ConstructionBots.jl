@@ -91,7 +91,7 @@ TaskGraphs.align_with_predecessor(node::RobotGo,pred::T) where {T<:Union{EntityC
 ALIGNMENT_CHECK_TOLERANCE = 1e-3
 
 function get_matching_child_id(node::FormTransportUnit,pred::RobotGo)
-    t_rel = HG.relative_transform(
+    t_rel = HierarchicalGeometry.relative_transform(
         global_transform(goal_config(node)),
         global_transform(goal_config(pred))
         )
@@ -106,7 +106,7 @@ function get_matching_child_id(node::FormTransportUnit,pred::RobotGo)
 end
 
 function get_matching_child_id(node::DepositCargo,succ::RobotGo)
-    t_rel = HG.relative_transform(
+    t_rel = HierarchicalGeometry.relative_transform(
         global_transform(goal_config(node)),
         global_transform(start_config(succ))
         )
@@ -124,11 +124,11 @@ function TaskGraphs.align_with_predecessor(node::FormTransportUnit,pred::RobotGo
     matching_id = get_matching_child_id(node,pred)
     if !(matching_id === nothing)
         transport_unit = entity(node)
-        HG.swap_robot_id!(transport_unit,matching_id,node_id(entity(pred)))
+        HierarchicalGeometry.swap_robot_id!(transport_unit,matching_id,node_id(entity(pred)))
     end
 	node
 end
-function TaskGraphs.align_with_predecessor(sched::OperatingSchedule,node::RobotGo,pred::DepositCargo) 
+function TaskGraphs.align_with_predecessor(sched::OperatingSchedule,node::RobotGo,pred::DepositCargo)
     matching_id = get_matching_child_id(pred,node)
     if !(matching_id === nothing)
         if valid_id(matching_id)
@@ -161,14 +161,14 @@ function add_dummy_robot_go_nodes!(sched)
         if matches_template(FormTransportUnit,node)
             transport_unit = entity(node)
             for (id,tform) in robot_team(transport_unit)
-                robot_go = build_and_link_dummy_robot!(node,id,tform) 
+                robot_go = build_and_link_dummy_robot!(node,id,tform)
                 add_node!(sched, robot_go)
                 @assert add_edge!(sched,robot_go,node)
             end
         elseif matches_template(DepositCargo,node)
             transport_unit = entity(node)
             for (id,tform) in robot_team(transport_unit)
-                robot_go = build_and_link_dummy_robot!(node,id,tform) 
+                robot_go = build_and_link_dummy_robot!(node,id,tform)
                 # add_node!(sched, robot_go)
                 add_node!(sched, robot_go)
                 @assert add_edge!(sched,node,robot_go)
@@ -180,13 +180,13 @@ end
 function compute_backward_depth(sched)
     forward_depth = zeros(Int,nv(sched))
     for v in topological_sort_by_dfs(sched)
-        forward_depth[v] = maximum([0, 
+        forward_depth[v] = maximum([0,
             map(vp->forward_depth[vp]+1,inneighbors(sched,v))...])
     end
     backward_depth = deepcopy(forward_depth)
     for v in reverse(topological_sort_by_dfs(sched))
         backward_depth[v] = maximum(
-            [backward_depth[v], 
+            [backward_depth[v],
             map(vp->backward_depth[vp]-1,outneighbors(sched,v))...
             ])
     end
@@ -211,7 +211,7 @@ end
 #     construct_build_step_graph(sched)
 
 # Returns a graph with the same nodes as sched, but with edges modified to enforce
-# precedence (for assignment) between the tasks associated with each build phase. 
+# precedence (for assignment) between the tasks associated with each build phase.
 # """
 # function construct_build_step_graph(sched)
 #     build_step_graph = CustomNDiGraph{GraphUtils._node_type(sched),GraphUtils._id_type(sched)}()
@@ -353,7 +353,7 @@ function assign_collaborative_tasks!(model,
     assemblies_completed = Set{AbstractID}()
     active_build_steps = Dict()
     for (k,n) in assembly_starts
-        open_build_step = get_first_build_step(sched,n) 
+        open_build_step = get_first_build_step(sched,n)
         step_id = node_id(open_build_step)
         active_build_steps[step_id] = construct_build_step_task_set(sched,scene_tree,step_id)
     end
@@ -453,7 +453,7 @@ function assign_collaborative_tasks!(model,
         end
         # add new robots
         deposit_node = get_node(sched,DepositCargo(entity(get_node(sched,task_id))))
-        for v in outneighbors(sched,deposit_node) 
+        for v in outneighbors(sched,deposit_node)
             if matches_template(RobotGo,get_node(sched,v))
                 robot = v
                 push!(robots,robot)
