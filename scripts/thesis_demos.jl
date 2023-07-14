@@ -31,10 +31,7 @@ using Revise
 global_logger(ConsoleLogger(stderr, Logging.Info))
 # global_logger(ConsoleLogger(stderr, Logging.Debug))
 
-# Revise.includet(joinpath(pathof(ConstructionBots),"..","render_tools.jl"))
-Revise.includet(joinpath(pathof(TaskGraphs),"..","helpers","render_tools.jl"))
-# Revise.includet(joinpath(pathof(ConstructionBots),"../..","scripts","full_demo.jl"))
-
+include(joinpath(pathof(TaskGraphs),"..","helpers","render_tools.jl"))
 include("../src/render_tools.jl")
 include("full_demo.jl")
 
@@ -141,7 +138,7 @@ for RVO_FLAG in [true]
                 MAX_STEPS           = MAX_STEPS,
                 ASSIGNMENT_MODE     = ASSIGNMENT_MODE,
                 RVO_FLAG            = RVO_FLAG,
-                VISUALIZER          = true,
+                VISUALIZER          = false,
                 OVERWRITE_RESULTS   = true
                 # vis                 = vis,
             );
