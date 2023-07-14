@@ -47,7 +47,6 @@ TaskGraphs.set_default_optimizer_attributes!(
 # Start MeshCat viewer
 reset_all_id_counters!()
 reset_all_invalid_id_counters!()
-Random.seed!(0);
 
 ## LOAD LDRAW FILE
 
@@ -66,6 +65,7 @@ OBJECT_VTX_RANGE    = (-10:10,-10:10, 0:1)
 HOME_VTX_RANGE      = (-10:10, -10:10, 0:1)
 STAGING_BUFFER_FACTOR = 1.5
 BUILD_STEP_BUFFER_FACTOR = 1.5
+seed                = 1
 
 # project_name = "X-wingMini.mpd"
 # MODEL_SCALE         = 0.007
@@ -129,7 +129,7 @@ BUILD_STEP_BUFFER_FACTOR = 1.5
 for RVO_FLAG in [true]
     for ASSIGNMENT_MODE in [:GREEDY]
         run_lego_demo(;
-                project_name          = project_name,
+                project_name        = project_name,
                 MODEL_SCALE         = MODEL_SCALE,
                 NUM_ROBOTS          = NUM_ROBOTS,
                 ROBOT_SCALE         = ROBOT_SCALE,
@@ -139,26 +139,8 @@ for RVO_FLAG in [true]
                 ASSIGNMENT_MODE     = ASSIGNMENT_MODE,
                 RVO_FLAG            = RVO_FLAG,
                 VISUALIZER          = false,
-                OVERWRITE_RESULTS   = true
-                # vis                 = vis,
+                OVERWRITE_RESULTS   = true,
+                seed                = seed
             );
     end
 end
-
-
-# run_lego_demo(;
-#         project_name        = project_name,
-#         MODEL_SCALE         = MODEL_SCALE,
-#         NUM_ROBOTS          = NUM_ROBOTS,
-#         ROBOT_SCALE         = ROBOT_SCALE,
-#         OBJECT_VTX_RANGE    = OBJECT_VTX_RANGE,
-#         HOME_VTX_RANGE      = HOME_VTX_RANGE,
-#         MAX_STEPS           = MAX_STEPS,
-#         ASSIGNMENT_MODE     = :GREEDY,
-#         RVO_FLAG            = true,
-#         # RVO_FLAG            = false,
-#         VISUALIZER          = false,
-#         # vis                 = vis,
-#         WRITE_RESULTS       = false,
-#         # OVERWRITE_RESULTS   = true
-#     );

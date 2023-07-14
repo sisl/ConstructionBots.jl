@@ -25,6 +25,7 @@ function run_lego_demo(;
         OVERWRITE_RESULTS   = false,
         WRITE_RESULTS       = true,
         QUIT_AFTER_OPTIMAL  = true,
+        seed                = 1
     )
     mkpath(graphics_path)
     filename = joinpath(dirname(pathof(LDrawParser)),"..","assets",project_name)
@@ -52,7 +53,7 @@ function run_lego_demo(;
 
     reset_all_id_counters!()
     reset_all_invalid_id_counters!()
-    Random.seed!(0);
+    Random.seed!(seed)
 
     set_default_robot_geom!(
         Cylinder(Point(0.0,0.0,0.0), Point(0.0,0.0,ROBOT_HEIGHT), ROBOT_RADIUS)
