@@ -175,14 +175,14 @@ function set_default_rotational_loading_speed!(val)
     global ROTATIONAL_LOADING_SPEED = val
 end
 
-function simulate!(env,update_visualizer_function;
+function simulate!(
+    env,
+    update_visualizer_function;
     max_time_steps=2000,
-    dt_vis = env.dt,
-    )
-    @unpack sched, scene_tree, cache, dt = env
-    t0 = 0.0
-    time_stamp = t0
+)
+    @unpack sched, cache = env
     iters = 0
+    step_history = Vector{Tuple{Int, typeof(env), Set{Int}}}(undef, max_time_steps)
     for k in 1:max_time_steps
         iters = k
         if mod(k,100) == 0
@@ -190,15 +190,15 @@ function simulate!(env,update_visualizer_function;
         end
         step_environment!(env)
         newly_updated = TaskGraphs.update_planning_cache!(env,0.0)
-        update_visualizer_function(env,newly_updated)
-        sleep(dt_vis)
-        time_stamp = t0+k*dt
+        step_history[k] = (k, deepcopy(env), newly_updated)
+        update_visualizer_function(env, newly_updated)
         if project_complete(env)
             println("PROJECT COMPLETE!")
             break
         end
     end
-    return project_complete(env), iters
+    resize!(step_history, iters)
+    return project_complete(env), iters, step_history
 end
 
 """
@@ -222,13 +222,13 @@ end
 
 Step forward one time step.
 """
-function step_environment!(env::PlannerEnv,sim=rvo_global_sim())
+function step_environment!(env::PlannerEnv, sim=rvo_global_sim())
     @unpack sched, scene_tree, cache, dt = env
     for v in cache.active_set
-        node = get_node(sched,v).node
-        cmd = get_cmd(node,env)
+        node = get_node(sched, v).node
+        cmd = get_cmd(node, env)
         # update non-rvo nodes
-        apply_cmd!(node,cmd,env)
+        apply_cmd!(node, cmd, env)
     end
     # Step RVO
     sim.doStep()
@@ -338,7 +338,6 @@ end
 
 function project_complete(env::PlannerEnv)
     @unpack sched, cache = env
-    # done = true
     for n in get_nodes(sched)
         if matches_template(ProjectComplete,n)
             if !(get_vtx(sched,n) in cache.closed_set)
@@ -347,11 +346,6 @@ function project_complete(env::PlannerEnv)
         end
     end
     return true
-    # if isempty(cache.active_set)
-    #     @assert nv(sched) == length(cache.closed_set)
-    #     return true
-    # end
-    # return false
 end
 
 # CRCBS.is_goal

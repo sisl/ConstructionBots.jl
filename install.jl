@@ -13,3 +13,11 @@ Pkg.add(packages)
 
 include("deps/GraphPlottingBFS.jl")
 include("deps/FactoryRendering.jl")
+
+Pkg.instantiate()
+Pkg.build()
+Pkg.precompile()
+
+# TODO: Check for RVO2 python access. If not, can we automate the build process here?
+# using PyCall
+# rvo = pyimport("rvo2")
