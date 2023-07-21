@@ -18,14 +18,13 @@ function run_lego_demo(;
     base_graphics_path                  =joinpath(dirname(pathof(ConstructionBots)), "..", "graphics"),
     graphics_path                       =joinpath(base_graphics_path, project_name),
     ASSIGNMENT_MODE                     =:GREEDY,
-    visualize_processing                =true,
-    visualize_animation                 =false,
+    visualize_processing                =false,
+    visualize_animation_at_end          =false,
     save_animation                      =true,
     save_animation_along_the_way        =false,
     anim_steps                          =false,
     anim_active_areas                   =false,
     anim_interval                       =100,
-    visualizer                          =(visualize_processing || visualize_animation) ? MeshCat.Visualizer() : nothing,
     RVO_FLAG                            =true,
     OVERWRITE_RESULTS                   =false,
     WRITE_RESULTS                       =true,
@@ -33,17 +32,22 @@ function run_lego_demo(;
     seed                                =1
 )
 
-    @assert !(visualize_animation && visualize_processing) "Cannot visualize both processing and watch animation. Choose one or the other."
-    if save_animation_along_the_way || save_animation
-        if !visualize_animation
-            @warn "save_animation_along_the_way or save_animation is true, but visualize_animation is false. Will not save the animation."
-            save_animation_along_the_way = false
-            save_animation = false
-        end
+    process_animation_tasks = save_animation || save_animation_along_the_way || visualize_animation_at_end
+    @assert !(process_animation_tasks && visualize_processing) "Cannot visualize processing while processing animation tasks."
+
+    if save_animation_along_the_way
+        save_animation = true
+    end
+
+    visualizer = nothing
+    if process_animation_tasks || visualize_processing
+        visualizer = MeshCat.Visualizer()
     end
 
     mkpath(graphics_path)
     filename = joinpath(dirname(pathof(LDrawParser)), "..", "assets", project_name)
+
+    @assert ispath(filename) "File $(filename) does not exist."
 
     if RVO_FLAG == true
         prefix = "with_rvo"
@@ -63,7 +67,7 @@ function run_lego_demo(;
     end
 
     anim_path = joinpath(graphics_path, prefix, "construction_simulation.html")
-    anim_prog_path = joinpath(graphics_path, prefix, "construction_simulation_progress.html")
+    anim_prog_path = joinpath(graphics_path, prefix, "construction_simulation_")
 
     reset_all_id_counters!()
     reset_all_invalid_id_counters!()
@@ -210,6 +214,7 @@ function run_lego_demo(;
     print("done!\n")
 
     # Task Assignments
+    print("Assigning robots...")
     ConstructionBots.add_dummy_robot_go_nodes!(sched)
     @assert validate_schedule_transform_tree(sched; post_staging=true)
 
@@ -240,6 +245,7 @@ function run_lego_demo(;
     @assert validate(tg_sched)
     ASSIGNMENT_TIME = time() - ASSIGNMENT_TIME
     POST_ASSIGNMENT_MAKESPAN = TaskGraphs.makespan(tg_sched)
+    print("done!\n")
 
     # Try assigning robots to "home" locations so they don't sit around in each others' way
     go_nodes = [n for n in get_nodes(tg_sched) if matches_template(RobotGo, n) && is_terminal_node(tg_sched, n)]
@@ -275,7 +281,7 @@ function run_lego_demo(;
     end
 
 
-    if visualize_processing || visualize_animation
+    if !isnothing(visualizer)
         if visualize_processing
             println("Visualizer started at $(visualizer.core.host):$(visualizer.core.port)")
             open(visualizer)
@@ -284,7 +290,7 @@ function run_lego_demo(;
     end
 
     factory_vis = FactoryVisualizer(vis=visualizer)
-    if visualize_processing || visualize_animation
+    if !isnothing(visualizer)
         # Visualize assembly
         factory_vis = populate_visualizer!(scene_tree, visualizer;
             color_map=color_map,
@@ -355,7 +361,7 @@ function run_lego_demo(;
 
 
     anim = nothing
-    if visualize_animation
+    if process_animation_tasks
         print("Animating preprocessing step...")
         anim = AnimationWrapper(0)
         atframe(anim, current_frame(anim)) do
@@ -381,7 +387,7 @@ function run_lego_demo(;
         print("done\n")
 
         if save_animation_along_the_way
-            save_animation!(visualizer, anim_prog_path)
+            save_animation!(visualizer, "$(anim_prog_path)preprocessing.html")
         end
 
     end
@@ -396,12 +402,12 @@ function run_lego_demo(;
         factory_vis,
         max_time_steps=MAX_STEPS,
         visualize_processing=visualize_processing,
-        visualize_animation=visualize_animation,
+        process_animation_tasks=process_animation_tasks,
         anim=anim,
         anim_steps=anim_steps,
         anim_active_areas=anim_active_areas,
         anim_interval=anim_interval,
-        save_anim_prog_path=save_animation_along_the_way ? nothing : anim_prog_path
+        save_anim_prog_path=save_animation_along_the_way ? anim_prog_path : nothing
     )
 
     if status == true
@@ -420,10 +426,12 @@ function run_lego_demo(;
         end
     end
 
-    if visualize_animation
-        open(visualizer)
+    if process_animation_tasks
         if save_animation
             save_animation!(visualizer, anim_path)
+        end
+        if visualize_animation_at_end
+            open(visualizer)
         end
     end
     return env, STATS
@@ -441,7 +449,7 @@ function simulate!(
     factory_vis;
     max_time_steps=2000,
     visualize_processing=false,
-    visualize_animation=false,
+    process_animation_tasks=false,
     anim=nothing,
     anim_interval=100,
     anim_steps=false,
@@ -457,8 +465,16 @@ function simulate!(
     step_1_closed = length(cache.closed_set)
 
     prog = nothing
+    total_nodes = nv(sched)
+    generate_showvalues(it, nc) = () -> [(:step_num,it), (:n_closed,nc), (:n_total,total_nodes)]
     if global_logger().min_level == Logging.LogLevel(2)
-        prog = ProgressMeter.Progress(nv(sched) - step_1_closed; desc="Simulating...", barlen=50, showspeed=true)
+        prog = ProgressMeter.Progress(
+            nv(sched) - step_1_closed;
+            desc="Simulating...",
+            barlen=50,
+            showspeed=true,
+            dt=1.0
+        )
     end
 
     update_steps = []
@@ -492,7 +508,7 @@ function simulate!(
                     update_visualizer!(factory_vis.vis_nodes, scene_nodes)
                     sleep(0.2) # Without this, we get a socket connection error
                 end
-                if visualize_animation
+                if process_animation_tasks
                     push!(update_steps,
                         (iters,
                         deepcopy(factory_vis.vis_nodes),
@@ -507,7 +523,7 @@ function simulate!(
 
         project_complete_bool = ConstructionBots.project_complete(env)
 
-        if visualize_animation && (length(update_steps) >= anim_interval || project_complete_bool)
+        if process_animation_tasks && (length(update_steps) >= anim_interval || project_complete_bool)
             for step_k in update_steps
                 k_k = step_k[1]
                 vis_nodes_k = step_k[2]
@@ -537,8 +553,8 @@ function simulate!(
             end
             setanimation!(factory_vis.vis, anim.anim, play=false)
             update_steps = []
-            if !isnothing(save_anim_prog_path)
-                save_animation!(factory_vis.vis, save_anim_prog_path)
+            if !isnothing(save_anim_prog_path) && !project_complete_bool
+                save_animation!(factory_vis.vis, "$(save_anim_prog_path)$(iters).html")
             end
         end
 
@@ -548,7 +564,10 @@ function simulate!(
             break
         end
         if !isnothing(prog)
-            ProgressMeter.update!(prog, length(cache.closed_set) - step_1_closed)
+            nc = length(cache.closed_set)
+            ProgressMeter.update!(prog, nc - step_1_closed;
+                showvalues=generate_showvalues(iters, nc)
+            )
         end
     end
     return project_complete(env), iters
