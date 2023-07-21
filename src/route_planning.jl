@@ -3,7 +3,10 @@ export
     step_environment!,
     get_cmd,
     apply_cmd!,
-    project_complete
+    project_complete,
+    close_node!,
+    preprocess_env!,
+    update_planning_cache!
 
 
 export
@@ -175,31 +178,38 @@ function set_default_rotational_loading_speed!(val)
     global ROTATIONAL_LOADING_SPEED = val
 end
 
-function simulate!(
-    env,
-    update_visualizer_function;
-    max_time_steps=2000,
-)
-    @unpack sched, cache = env
-    iters = 0
-    step_history = Vector{Tuple{Int, typeof(env), Set{Int}}}(undef, max_time_steps)
-    for k in 1:max_time_steps
-        iters = k
-        if mod(k,100) == 0
-            @info " ******************* BEGINNING TIME STEP $k: $(length(cache.closed_set))/$(nv(sched)) nodes closed *******************"
-        end
-        step_environment!(env)
-        newly_updated = TaskGraphs.update_planning_cache!(env,0.0)
-        step_history[k] = (k, deepcopy(env), newly_updated)
-        update_visualizer_function(env, newly_updated)
-        if project_complete(env)
-            println("PROJECT COMPLETE!")
-            break
-        end
-    end
-    resize!(step_history, iters)
-    return project_complete(env), iters, step_history
-end
+# function simulate!(
+#     env,
+#     factory_vis,
+#     scene_node_update_func,
+#     visualizer_update_func;
+#     max_time_steps=2000,
+# )
+#     @unpack sched, cache = env
+#     iters = 0
+#     for k in 1:max_time_steps
+#         iters = k
+#         if mod(k,100) == 0
+#             @info " ******************* BEGINNING TIME STEP $k: $(length(cache.closed_set))/$(nv(sched)) nodes closed *******************"
+#         end
+#         step_environment!(env)
+#         newly_updated = TaskGraphs.update_planning_cache!(env, 0.0)
+
+#         scene_nodes = nothing
+#         if !isnothing(factory_vis.vis)
+#             scene_nodes = scene_node_update_func(factory_vis, env, newly_updated)
+#             if !isnothing(factory_vis.vis)
+#                 visualizer_update_func(factory_vis.vis_nodes, scene_nodes)
+#             end
+#         end
+
+#         if project_complete(env)
+#             println("PROJECT COMPLETE!")
+#             break
+#         end
+#     end
+#     return project_complete(env), iters
+# end
 
 """
     update_position_from_sim!(agent)
@@ -223,10 +233,21 @@ end
 Step forward one time step.
 """
 function step_environment!(env::PlannerEnv, sim=rvo_global_sim())
-    @unpack sched, scene_tree, cache, dt = env
+    @unpack sched, scene_tree, cache = env
+    env_before_step = deepcopy(env)
     for v in cache.active_set
+        # println("Active set, v: $v")
+
         node = get_node(sched, v).node
+        # println("\tnode_type: $(typeof(node))")
+
+        # println("\t **** cargo ****")
+        # println("\t cargo ready: $(cargo_ready_for_pickup(node, env))")
+        # println("\t **** cargo ****")
+
         cmd = get_cmd(node, env)
+        # println("\tcmd: $cmd")
+
         # update non-rvo nodes
         apply_cmd!(node, cmd, env)
     end
@@ -238,8 +259,10 @@ function step_environment!(env::PlannerEnv, sim=rvo_global_sim())
             tform = update_position_from_sim!(get_node(scene_tree,id))
         end
     end
+
     # swap transport unit positions if necessary
-    swap_first_paralyzed_transport_unit!(env::PlannerEnv)
+    swap_first_paralyzed_transport_unit!(env::PlannerEnv, env_before_step::PlannerEnv)
+
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
         # Set velocities to zero for any agents that are no longer "active"
         rvo_set_agent_pref_velocity!(id,(0.0,0.0))
@@ -262,7 +285,8 @@ function update_rvo_sim!(env::PlannerEnv)
     end
 end
 
-function TaskGraphs.update_planning_cache!(env::PlannerEnv,time_stamp::Float64)
+function update_planning_cache!(env::PlannerEnv, time_stamp::Float64)
+# function TaskGraphs.update_planning_cache!(env::PlannerEnv, time_stamp::Float64)
     @unpack sched, cache = env
     # Skip over nodes that are already planned or just don't need planning
     updated = false
@@ -270,14 +294,16 @@ function TaskGraphs.update_planning_cache!(env::PlannerEnv,time_stamp::Float64)
     while true
         done = true
         for v in collect(cache.active_set)
-            node = get_node(sched,v)
-            if CRCBS.is_goal(node,env)
-                close_node!(node,env)
+            # println("Node v: $v")
+            node = get_node(sched, v)
+            # println("\t node_type: $(typeof(node))")
+            if CRCBS.is_goal(node, env)
+                close_node!(node, env)
                 @info "node $(summary(node_id(node))) finished."
-                TaskGraphs.update_planning_cache!(nothing,sched,cache,v,time_stamp)
+                TaskGraphs.update_planning_cache!(nothing, sched, cache, v, time_stamp)
                 # @info "active nodes $([get_vtx_id(sched,v) for v in cache.active_set])"
                 @assert !(v in cache.active_set) && (v in cache.closed_set)
-                push!(newly_updated,v)
+                push!(newly_updated, v)
                 done = false
                 updated = true
             end
@@ -349,9 +375,9 @@ function project_complete(env::PlannerEnv)
 end
 
 # CRCBS.is_goal
-CRCBS.is_goal(n::ScheduleNode,env::PlannerEnv) = is_goal(n.node,env)
-CRCBS.is_goal(node::ConstructionPredicate,env) = true
-function CRCBS.is_goal(node::EntityGo,env)
+CRCBS.is_goal(n::ScheduleNode,env::PlannerEnv) = is_goal(n.node, env)
+CRCBS.is_goal(node::ConstructionPredicate, env) = true
+function CRCBS.is_goal(node::EntityGo, env)
     agent = entity(node)
     state = global_transform(agent)
     goal = global_transform(goal_config(node))
@@ -362,12 +388,17 @@ end
 
 If next node is FormTransportUnit, ensure that everybody else is in position.
 """
-# function CRCBS.is_goal(node::RobotGo,env)
 function CRCBS.is_goal(node::Union{RobotGo,TransportUnitGo},env)
     @unpack sched, scene_tree, cache = env
     agent = entity(node)
     state = global_transform(agent)
     goal = global_transform(goal_config(node))
+
+    # println("\t Goal T : $(goal.translation)")
+    # println("\t State T: $(state.translation)")
+    # println("\t Goal L : $(goal.linear)")
+    # println("\t State L: $(state.linear)")
+
     if !is_within_capture_distance(state,goal)
         return false
     end
@@ -405,11 +436,21 @@ function CRCBS.is_goal(node::Union{FormTransportUnit,DepositCargo},env)
     return is_within_capture_distance(state,goal)
 end
 function CRCBS.is_goal(node::LiftIntoPlace,env)
+
+    # println("\t *** We mde it to LiftIntoPlace is_goal")
+
     @unpack sched, scene_tree, cache, dt = env
     cargo = entity(node)
     state = global_transform(cargo)
     goal = global_transform(goal_config(node))
-    return is_within_capture_distance(state,goal)
+
+    # println("\t Goal T : $(goal.translation)")
+    # println("\t State T: $(state.translation)")
+    # println("\t Goal L : $(goal.linear)")
+    # println("\t State L: $(state.linear)")
+    # println("\t Within capture dist: $(is_within_capture_distance(state,goal))")
+
+    return is_within_capture_distance(state, goal)
 end
 
 # function avoid_active_staging_areas(node::Union{TransportUnitGo,RobotGo},twist,env,ϵ=1e-3)
@@ -455,6 +496,53 @@ end
 #     @info "$(summary(node_id(agent))) avoiding $id with vel = $vel"
 #     Twist(SVector(vel..., 0.0), twist.ω)
 # end
+
+function swap_first_paralyzed_transport_unit!(env::PlannerEnv, env_before_step::PlannerEnv)
+    @unpack sched, scene_tree, cache, dt = env
+    for v in cache.active_set
+        n = get_node(sched,v)
+        if matches_template(RobotGo,n) && outdegree(sched,n) >= 1
+            next_node = get_node(sched,first(outneighbors(sched,n)))
+            while outdegree(sched,next_node) >= 1 && matches_template(RobotGo,next_node)
+                next_node = get_node(sched,first(outneighbors(sched,next_node)))
+            end
+            if matches_template(FormTransportUnit,next_node)
+                # is robot stuck?
+                agent = entity(n)
+                transport_unit = entity(next_node)
+                if has_parent(agent,transport_unit) || is_within_capture_distance(transport_unit,agent)
+                    continue
+                end
+                circ = get_cached_geom(transport_unit,HypersphereKey())
+                ctr = HierarchicalGeometry.get_center(circ)[1:2]
+                rad = HierarchicalGeometry.get_radius(circ)
+                vel = rvo_get_agent_pref_velocity(agent)
+                pos = global_transform(agent).translation[1:2]
+                agent_radius = HierarchicalGeometry.get_radius(get_cached_geom(agent,HypersphereKey()))
+                if norm(pos .- ctr) < agent_radius + rad # within circle
+                    if norm([vel...]) < 1e-6 # stuck
+                        # @info "Swapping agent $(summary(node_id(agent))) with $(summary(node_id(agent)))"
+                        swap_carrying_positions!(next_node.node, n.node, env)
+                    else
+
+                        if v in env_before_step.cache.active_set
+                            n_bs = get_node(env_before_step.sched, v)
+                            agent_bs = entity(n_bs)
+                            pos_bs = global_transform(agent_bs).translation
+                            vel_est = norm((pos[1:2] - pos_bs[1:2])) / dt
+                            # @info "Vel_est = $vel_est"
+                            if vel_est < 1e-2
+                                @info "Swapping agent $(summary(node_id(agent))) with $(summary(node_id(transport_unit)))"
+                                swap_carrying_positions!(next_node.node, n.node, env)
+                            end
+                        end
+
+                    end
+                end
+            end
+        end
+    end
+end
 
 function swap_first_paralyzed_transport_unit!(env::PlannerEnv)
     @unpack sched, scene_tree, cache = env
@@ -663,7 +751,7 @@ end
 inflate_circle(circ::Ball2,r::Float64) = Ball2(HierarchicalGeometry.get_center(circ),HierarchicalGeometry.get_radius(circ)+r)
 # inflate_circle(circ::GeometryBasics.HyperSphere,r::Float64) = GeometryBasics.HyperSphere(HierarchicalGeometry.get_center(circ),HierarchicalGeometry.get_radius(circ)+r)
 
-function active_staging_circles(env,exclude_ids=Set())
+function active_staging_circles(env, exclude_ids=Set())
     buffer = env.staging_buffers # to increase radius of staging circles when necessary
     node_iter = (get_node(env.sched,id).node for id in env.active_build_steps if !(id in exclude_ids))
     circle_iter = (node_id(n)=>HierarchicalGeometry.project_to_2d(
@@ -738,22 +826,40 @@ function get_twist_cmd(node,env)
         pos = HierarchicalGeometry.project_to_2d(global_transform(agent).translation)
         r = HierarchicalGeometry.get_radius(get_base_geom(agent,HypersphereKey()))
         excluded_ids = Set{AbstractID}()
-        if parent_build_step_is_active(node,env)
-            parent_build_step = get_parent_build_step(sched,node)
-            push!(excluded_ids, node_id(parent_build_step))
+
+        # println("\t pos: $(pos)")
+        # println("\t goal: $(goal)")
+        # println("\t r: $(r)")
+        # println("\t parent_build_step_is_active: $(parent_build_step_is_active(node,env))")
+
+        if parent_build_step_is_active(node, env) && cargo_ready_for_pickup(node, env)
+            # parent_build_step = get_parent_build_step(sched,node)
+            # push!(excluded_ids, node_id(parent_build_step))
+            excluded_ids = Set([id for id in env.active_build_steps])
+            # println("\t excluded_ids: $(excluded_ids)")
         end
         # get circle obstacles, potentially inflated
-        circles = active_staging_circles(env,excluded_ids)
-        # INFLATE CIRCLES IF NECESSARY
-        # if policy.mode == :MOVE_TOWARD_GOAL
-        #     inflate_staging_circle_buffers!(env,policy,agent,excluded_ids)
-        # end
+        circles = active_staging_circles(env, excluded_ids)
+
         # update policy and get goal
         policy.config = global_transform(agent)
-        goal_pt = query_policy_for_goal!(policy,circles,pos,HierarchicalGeometry.project_to_2d(goal.translation))
+
+        goal_pt = query_policy_for_goal!(policy, circles, pos, HierarchicalGeometry.project_to_2d(goal.translation))
         new_goal = CoordinateTransformations.Translation(goal_pt...,0.0) ∘ CoordinateTransformations.LinearMap(goal.linear)
+
+        # println("\t new_goal: $(new_goal)")
+        tf_error = relative_transform(global_transform(agent), new_goal)
+        v_max = get_rvo_max_speed(agent)
+        ω_max = default_rotational_loading_speed()
+        twist = optimal_twist(tf_error,v_max,ω_max,dt)
+
+        # println("\t\t tf_error: $(tf_error)")
+        # println("\t\t v_max: $(v_max)")
+        # println("\t\t ω_max: $(ω_max)")
+        # println("\t\t twist: $(twist)")
+
         twist = compute_twist_from_goal(agent,new_goal,dt) # nominal twist
-        # @info "nominal vel: $(twist.vel)"
+        # println("\t nominal vel: $(twist.vel)")
     else
         twist = compute_twist_from_goal(agent,goal,dt)
     end
@@ -763,8 +869,9 @@ function get_twist_cmd(node,env)
         parent_step = get_parent_build_step(sched,node)
         if !(parent_step === nothing)
             countdown = active_build_step_countdown(parent_step.node,env)
+            # println("\t countdown: $(countdown)")
             dist_to_goal = norm(goal.translation .- global_transform(agent).translation)
-            if dist_to_goal < 20*default_robot_radius()
+            if dist_to_goal < 15*default_robot_radius()
                 # So the agent doesn't crowd its destination
                 if matches_template(TransportUnitGo,node) && countdown >= 1
                     twist = Twist(0.0*twist.vel,twist.ω)
@@ -773,6 +880,7 @@ function get_twist_cmd(node,env)
                 end
             end
         end
+        # println("\t twist at end of hack: $(twist.vel)")
         ############ Potential Field Policy #############
         policy = agent_policies[node_id(agent)].dispersion_policy
         # For RobotGo node, ensure that parent assembly is "pickup-able"
