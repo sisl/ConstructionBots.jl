@@ -19,8 +19,11 @@ function run_lego_demo(;
     graphics_path                       =joinpath(base_graphics_path, project_name),
     ASSIGNMENT_MODE                     =:GREEDY,
     visualize_processing                =true,
-    visualize_animation                 =true,
-    anim_dt_steps                       =10,
+    visualize_animation                 =false,
+    save_animation                      =true,
+    anim_steps                          =false,
+    anim_active_areas                   =false,
+    anim_interval                       =100,
     visualizer                          =(visualize_processing || visualize_animation) ? MeshCat.Visualizer() : nothing,
     RVO_FLAG                            =true,
     OVERWRITE_RESULTS                   =false,
@@ -29,13 +32,7 @@ function run_lego_demo(;
     seed                                =1
 )
 
-    if visualize_processing || visualize_animation
-        println("Visualizer started at $(visualizer.core.host):$(visualizer.core.port)")
-        if visualize_processing
-            open(visualizer)
-        end
-    end
-
+    @assert !(visualize_animation && visualize_processing) "Cannot visualize both processing and watch animation. Choose one or the other."
     mkpath(graphics_path)
     filename = joinpath(dirname(pathof(LDrawParser)), "..", "assets", project_name)
 
@@ -71,34 +68,44 @@ function run_lego_demo(;
     LDrawParser.change_coordinate_system!(model, ldraw_base_transform(), MODEL_SCALE)
 
     ## CONSTRUCT MODEL SPEC
+    print("Constructing model spec...")
     spec = ConstructionBots.construct_model_spec(model)
     model_spec = ConstructionBots.extract_single_model(spec)
     id_map = ConstructionBots.build_id_map(model, model_spec)
     color_map = construct_color_map(model_spec, id_map)
     @assert GraphUtils.validate_graph(model_spec)
+    print("done!\n")
 
     ## CONSTRUCT SceneTree
+    print("Constructing scene tree...")
     assembly_tree = ConstructionBots.construct_assembly_tree(model, model_spec, id_map)
     scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
-    print(scene_tree, v -> "$(summary(node_id(v))) : $(get(id_map,node_id(v),nothing))", "\t")
+    # @info print(scene_tree, v -> "$(summary(node_id(v))) : $(get(id_map,node_id(v),nothing))", "\t")
+    print("done!\n")
 
     # Compute Approximate Geometry
+    print("Computing approximate geometry...")
     START_GEOM_APPROX = time()
     HierarchicalGeometry.compute_approximate_geometries!(scene_tree, HypersphereKey())
     HierarchicalGeometry.compute_approximate_geometries!(scene_tree, HyperrectangleKey())
     GEOM_APPROX_TIME = time() - START_GEOM_APPROX
+    print("done!\n")
 
     # Define TransportUnit configurations
+    print("Configuring transport units...")
     CONFIG_TRANSPORT_UNITS_TIME = time()
     _, cvx_hulls = ConstructionBots.init_transport_units!(scene_tree;
         robot_radius=ROBOT_RADIUS
     )
     CONFIG_TRANSPORT_UNITS_TIME = time() - CONFIG_TRANSPORT_UNITS_TIME
+    print("done!\n")
 
     # validate SceneTree
+    print("Validating scene tree...")
     root = get_node(scene_tree, collect(get_all_root_nodes(scene_tree))[1])
     validate_tree(HierarchicalGeometry.get_transform_node(root))
     validate_embedded_tree(scene_tree, v -> HierarchicalGeometry.get_transform_node(get_node(scene_tree, v)))
+    print("done!\n")
 
     ## Add some robots to scene tree
     vtxs = ConstructionBots.construct_vtx_array(; spacing=(1.0, 1.0, 0.0), ranges=(-10:10, -10:10, 0:0))
@@ -115,11 +122,14 @@ function run_lego_demo(;
     ConstructionBots.remove_temporary_invalid_robots!(scene_tree)
 
     ## Construct Partial Schedule
+    print("Constructing partial schedule...")
     HierarchicalGeometry.jump_to_final_configuration!(scene_tree; set_edges=true)
     sched = construct_partial_construction_schedule(model, model_spec, scene_tree, id_map)
     @assert validate_schedule_transform_tree(sched)
+    print("done!\n")
 
     ## Generate staging plan
+    print("Generating staging plan...")
     MAX_OBJECT_TRANSPORT_UNIT_RADIUS = ConstructionBots.get_max_object_transport_unit_radius(scene_tree)
     STAGING_PLAN_TIME = time()
     staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree, sched;
@@ -127,6 +137,7 @@ function run_lego_demo(;
         build_step_buffer_radius=BUILD_STEP_BUFFER_FACTOR * HierarchicalGeometry.default_robot_radius()
     )
     STAGING_PLAN_TIME = time() - STAGING_PLAN_TIME
+    print("done!\n")
 
     if project_name == "X-wingFighter.mpd" || project_name == "X-wingMini.mpd"
         ac = get_node(sched, first(inneighbors(sched, ProjectComplete(1))))
@@ -154,6 +165,7 @@ function run_lego_demo(;
 
 
     # Move objects away from the staging plan
+    print("Moving objects away from staging plan...")
     MAX_CARGO_HEIGHT = maximum(map(n -> get_base_geom(n, HyperrectangleKey()).radius[3] * 2,
         filter(n -> matches_template(TransportUnitNode, n), get_nodes(scene_tree))))
     vtxs = ConstructionBots.construct_vtx_array(;
@@ -183,6 +195,7 @@ function run_lego_demo(;
     # Make sure all transforms line up
     ConstructionBots.calibrate_transport_tasks!(sched)
     @assert validate_schedule_transform_tree(sched; post_staging=true)
+    print("done!\n")
 
     # Task Assignments
     ConstructionBots.add_dummy_robot_go_nodes!(sched)
@@ -249,9 +262,15 @@ function run_lego_demo(;
         return nothing
     end
 
-    if visualize_animation || visualize_processing
+
+    if visualize_processing || visualize_animation
+        if visualize_processing
+            println("Visualizer started at $(visualizer.core.host):$(visualizer.core.port)")
+            open(visualizer)
+        end
         delete!(visualizer)
     end
+
     factory_vis = FactoryVisualizer(vis=visualizer)
     if visualize_processing || visualize_animation
         # Visualize assembly
@@ -322,40 +341,10 @@ function run_lego_demo(;
         end
     end
 
-    if visualize_animation
-        anim = AnimationWrapper(0)
-    end
-
-    update_visualizer_function = construct_visualizer_update_function(factory_vis; anim=nothing)
-
-    set_use_rvo!(RVO_FLAG)
-    set_avoid_staging_areas!(true)
-
-    EXECUTION_START_TIME = time()
-    status, TIME_STEPS, step_history = ConstructionBots.simulate!(env, update_visualizer_function,
-        max_time_steps=MAX_STEPS
-    )
-    if status == true
-        EXECUTION_TIME = time() - EXECUTION_START_TIME
-    else
-        EXECUTION_TIME = Inf
-        TIME_STEPS = Inf
-    end
-
-    # Add results
-    STATS[:ExecutionRuntime] = EXECUTION_TIME
-    STATS[:Makespan] = TIME_STEPS * env.dt
-    if WRITE_RESULTS
-        open(joinpath(graphics_path, prefix, "stats.toml"), "w") do io
-            TOML.print(io, STATS)
-        end
-    end
 
     anim = nothing
     if visualize_animation
-        println("Processing animation...")
-        print("\tAnimating preprocessing step...")
-
+        print("Animating preprocessing step...")
         anim = AnimationWrapper(0)
         atframe(anim, current_frame(anim)) do
             HierarchicalGeometry.jump_to_final_configuration!(scene_tree; set_edges=true)
@@ -376,25 +365,165 @@ function run_lego_demo(;
             set_scene_tree_to_initial_condition!(scene_tree, sched; remove_all_edges=true)
             update_visualizer!(factory_vis)
         end
-        setanimation!(visualizer, anim.anim)
+        setanimation!(visualizer, anim.anim, play=false)
         print("done\n")
+    end
 
-        p = ProgressMeter.Progress(TIME_STEPS; desc="Animating building steps...", barlen=50, showspeed=true)
-        update_visualizer_function = construct_visualizer_update_function(factory_vis; anim=anim)
-        for (k, env_k, updated_k) in step_history
-            if mod(k, anim_dt_steps) == 0 || k == TIME_STEPS
-                update_visualizer_function(env_k, updated_k)
-            end
-            next!(p)
+    set_use_rvo!(RVO_FLAG)
+    set_avoid_staging_areas!(true)
+
+    EXECUTION_START_TIME = time()
+
+    status, TIME_STEPS = simulate!(
+        env,
+        factory_vis,
+        max_time_steps=MAX_STEPS,
+        visualize_processing=visualize_processing,
+        visualize_animation=visualize_animation,
+        anim=anim,
+        anim_steps=anim_steps,
+        anim_active_areas=anim_active_areas,
+        anim_interval=anim_interval
+    )
+
+    if status == true
+        EXECUTION_TIME = time() - EXECUTION_START_TIME
+    else
+        EXECUTION_TIME = Inf
+        TIME_STEPS = Inf
+    end
+
+    # Add results
+    STATS[:ExecutionRuntime] = EXECUTION_TIME
+    STATS[:Makespan] = TIME_STEPS * env.dt
+    if WRITE_RESULTS
+        open(joinpath(graphics_path, prefix, "stats.toml"), "w") do io
+            TOML.print(io, STATS)
         end
-        finish!(p)
-        setanimation!(visualizer, anim.anim)
+    end
 
-        if WRITE_RESULTS
+    if visualize_animation
+        open(visualizer)
+        if save_animation
             open(joinpath(graphics_path, prefix, "construction_simulation.html"), "w") do io
                 write(io, static_html(visualizer))
             end
         end
     end
-    return env, visualizer, anim, STATS
+    return env, STATS
+end
+
+
+function simulate!(
+    env,
+    factory_vis;
+    max_time_steps=2000,
+    visualize_processing=false,
+    visualize_animation=false,
+    anim=nothing,
+    anim_interval=100,
+    anim_steps=false,
+    anim_active_areas=false,
+)
+    @unpack sched, cache = env
+
+    iters = 1
+    ConstructionBots.step_environment!(env)
+    newly_updated = ConstructionBots.update_planning_cache!(env, 0.0)
+
+    step_1_closed = length(cache.closed_set)
+
+    prog = nothing
+    if global_logger().min_level == Logging.LogLevel(2)
+        prog = ProgressMeter.Progress(nv(sched) - step_1_closed; desc="Simulating...", barlen=50, showspeed=true)
+    end
+
+    update_steps = []
+    starting_step = 0
+    if !isnothing(anim)
+        starting_step = current_frame(anim)
+    end
+
+    for k in 2:max_time_steps
+        iters = k
+        if mod(k, 100) == 0
+            @info " ******************* BEGINNING TIME STEP $k: $(length(cache.closed_set))/$(nv(sched)) nodes closed *******************"
+        end
+        ConstructionBots.step_environment!(env)
+        newly_updated = ConstructionBots.update_planning_cache!(env, 0.0)
+
+        if !isnothing(factory_vis.vis)
+            if !isempty(newly_updated)
+                scene_nodes, closed_steps_nodes, active_build_nodes, fac_active_flags_nodes = visualizer_update_function!(factory_vis, env, newly_updated)
+                if visualize_processing
+                    for node_i in closed_steps_nodes
+                        setvisible!(node_i, false)
+                    end
+                    for node_i in active_build_nodes
+                        setvisible!(node_i, true)
+                    end
+                    setvisible!(factory_vis.active_flags, false)
+                    for node_key in fac_active_flags_nodes
+                        setvisible!(factory_vis.active_flags[node_key], true)
+                    end
+                    update_visualizer!(factory_vis.vis_nodes, scene_nodes)
+                    sleep(0.2) # Without this, we get a socket connection error
+                end
+                if visualize_animation
+                    push!(update_steps,
+                        (iters,
+                        deepcopy(factory_vis.vis_nodes),
+                        deepcopy(scene_nodes),
+                        closed_steps_nodes,
+                        active_build_nodes,
+                        fac_active_flags_nodes)
+                    )
+                end
+            end
+        end
+
+        project_complete_bool = ConstructionBots.project_complete(env)
+
+        if visualize_animation && (length(update_steps) >= anim_interval || project_complete_bool)
+            for step_k in update_steps
+                k_k = step_k[1]
+                vis_nodes_k = step_k[2]
+                scene_nodes_k = step_k[3]
+                closed_steps_nodes_k = step_k[4]
+                active_build_nodes_k = step_k[5]
+                fac_active_flags_nodes_k = step_k[6]
+
+                set_current_frame!(anim, k_k + starting_step)
+                atframe(anim, current_frame(anim)) do
+                    if anim_steps
+                        for node_i in closed_steps_nodes_k
+                            setvisible!(node_i, false)
+                        end
+                        for node_i in active_build_nodes_k
+                            setvisible!(node_i, true)
+                        end
+                    end
+                    if anim_active_areas
+                        setvisible!(factory_vis.active_flags, false)
+                        for node_key in fac_active_flags_nodes_k
+                            setvisible!(factory_vis.active_flags[node_key], true)
+                        end
+                    end
+                    update_visualizer!(vis_nodes_k, scene_nodes_k)
+                end
+            end
+            setanimation!(factory_vis.vis, anim.anim, play=false)
+            update_steps = []
+        end
+
+        if project_complete_bool
+            ProgressMeter.finish!(prog)
+            println("PROJECT COMPLETE!")
+            break
+        end
+        if !isnothing(prog)
+            ProgressMeter.update!(prog, length(cache.closed_set) - step_1_closed)
+        end
+    end
+    return project_complete(env), iters
 end

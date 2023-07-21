@@ -110,9 +110,11 @@ function add_indicator_nodes!(factory_vis;
         if matches_template(Union{TransportUnitNode,RobotNode},n)
             vis_node = vis_nodes[node_id(n)]
             geom = get_base_geom(n,HypersphereKey())
+            mod_center_point = Vector(HierarchicalGeometry.get_center(geom))
+            mod_center_point[3] = 0.0
             cylinder = GeometryBasics.Cylinder(
-                Point(HierarchicalGeometry.get_center(geom)...),
-                Point((HierarchicalGeometry.get_center(geom) .- [0.0,0.0,cylinder_depth])...),
+                Point(mod_center_point...),
+                Point((mod_center_point .- [0.0, 0.0, cylinder_depth])...),
                 HierarchicalGeometry.get_radius(geom)+cylinder_radius_pad,
             )
             setobject!(vis_node["active"],
@@ -369,7 +371,6 @@ function animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,nodes=get_
         to_update = collect_descendants(graph,active_set,true)
         animate_update_visualizer!(scene_tree,vis_nodes,[get_node(scene_tree,v) for v in to_update];anim=anim)
         render(vis)
-        # sleep(dt)
     end
 end
 
@@ -794,7 +795,6 @@ function animate_preprocessing_steps!(
                 update_visualizer!(scene_tree,vis_nodes,[n])
             end
             step_animation!(anim)
-            sleep(dt_animate)
         end
     end
     # Show staging plan
@@ -816,7 +816,6 @@ function animate_preprocessing_steps!(
                 update_visualizer!(scene_tree,vis_nodes,[n])
             end
             step_animation!(anim)
-            sleep(dt_animate)
         end
     end
     animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,
@@ -836,7 +835,6 @@ function animate_preprocessing_steps!(
                 update_visualizer!(scene_tree,vis_nodes,[n])
             end
             step_animation!(anim)
-            sleep(dt_animate)
         end
     end
     atframe(anim,current_frame(anim)) do
@@ -858,6 +856,12 @@ end
 
 Update the MeshCat transform tree.
 """
+function update_visualizer!(vis_nodes, nodes)
+    for n in nodes
+        settransform!(vis_nodes[node_id(n)],global_transform(n))
+    end
+    return vis_nodes
+end
 function update_visualizer!(scene_tree::SceneTree, vis_nodes, nodes)
     for n in nodes
         settransform!(vis_nodes[node_id(n)],global_transform(n))
@@ -882,34 +886,15 @@ function animate_update_visualizer!(args...; anim=nothing, step=1)
     end
 end
 
-function animate_visualizer_update_function!(
-    factory_vis, env, newly_updated=Set{Int}();
-    anim=nothing, render_stages=true
-)
-    f() = visualizer_update_function!(
-            factory_vis, env, newly_updated;
-            anim=anim, render_stages=render_stages)
-    if isnothing(anim)
-        return f()
-    else
-        atframe(anim,current_frame(anim)) do
-            f()
-        end
-        step_animation!(anim)
-    end
-end
-
 function visualizer_update_function!(
     factory_vis, env, newly_updated=Set{Int}();
-    anim=nothing, render_stages=true
+    # render_stages=true
 )
     @unpack vis, vis_nodes, staging_nodes = factory_vis
-    if isnothing(vis) && isnothing(anim)
-        return nothing
-    elseif isnothing(vis) && !isnothing(anim)
-        step_animation!(anim)
-        return nothing
-    end
+
+    closed_steps_nodes = []
+    active_build_nodes = []
+    fac_active_flags_nodes = []
 
     scene_nodes = Set{SceneNode}()
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
@@ -919,22 +904,21 @@ function visualizer_update_function!(
             push!(scene_nodes,get_node(env.scene_tree,vp))
         end
     end
-    if render_stages
+    # if render_stages
         closed_steps = setdiff(keys(staging_nodes),env.active_build_steps)
         for id in closed_steps
-            setvisible!(staging_nodes[id],false)
+            push!(closed_steps_nodes, staging_nodes[id])
+            # setvisible!(staging_nodes[id],false)
         end
         for id in env.active_build_steps
-            setvisible!(staging_nodes[id],true)
+            push!(active_build_nodes, staging_nodes[id])
+            # setvisible!(staging_nodes[id],true)
         end
-    end
-    for id in env.active_build_steps
-        setvisible!(staging_nodes[id],true)
-    end
+    # end
 
-    setvisible!(factory_vis.active_flags,false)
-    # setvisible!(factory_vis.geom_nodes[HypersphereKey()],false)
-    for v in union(env.cache.active_set,newly_updated)
+    # setvisible!(factory_vis.active_flags,false)
+
+    for v in union(env.cache.active_set, newly_updated)
         node = get_node(env.sched,v)
         if matches_template(EntityGo,node)
             agent = entity(node)
@@ -949,51 +933,27 @@ function visualizer_update_function!(
         if matches_template(Union{RobotNode,TransportUnitNode},agent)
             if ConstructionBots.parent_build_step_is_active(node,env)
                 if ConstructionBots.cargo_ready_for_pickup(node,env)
-                    setvisible!(factory_vis.active_flags[node_id(agent)],true)
+                    push!(fac_active_flags_nodes, node_id(agent))
+                    # setvisible!(factory_vis.active_flags[node_id(agent)],true)
                 end
             end
-            # # set sphere visible
-            # if !(v in newly_updated)
-            #     setvisible!(factory_vis.geom_nodes[HypersphereKey()][node_id(agent)],true)
-            #     # inflate and visualize spheres as potential fields
-            # end
         end
         if !(object === nothing) && !(object in scene_nodes)
-            push!(scene_nodes,object)
-            for vp in collect_descendants(env.scene_tree,object)
-                push!(scene_nodes,get_node(env.scene_tree,vp))
+            push!(scene_nodes, object)
+            for vp in collect_descendants(env.scene_tree, object)
+                push!(scene_nodes,get_node(env.scene_tree, vp))
             end
         end
     end
-    update_visualizer!(factory_vis, scene_nodes)
-    step_animation!(anim)
-    return nothing
+    return scene_nodes, closed_steps_nodes, active_build_nodes, fac_active_flags_nodes
 end
 
-function construct_visualizer_update_function(
-    factory_vis;
-    anim=nothing,
-    render_stages=true,
-)
-    _update_func(env,newly_updated=Set{Int}()) = animate_visualizer_update_function!(
-        factory_vis,
-        env,
-        newly_updated;
-        anim=anim,
-        render_stages
-    )
-    return _update_func
-end
-
-function call_update!(scene_tree,vis_nodes,nodes,dt)
-    update_visualizer!(scene_tree,vis_nodes,nodes)
+function call_update!(scene_tree, vis_nodes, nodes, dt)
+    update_visualizer!(scene_tree, vis_nodes, nodes)
     render(vis)
-    sleep(dt)
 end
 
-function visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;
-    dt=0.2,
-    )
+function visualize_construction_plan!(scene_tree, sched, vis, vis_nodes; dt=0.2)
     for v in topological_sort_by_dfs(sched)
         update = true
         node = get_node(sched,v)
@@ -1051,9 +1011,8 @@ function visualize_construction_plan!(scene_tree,sched,vis,vis_nodes;
             # ids = map(n->string(node_id(n))=>string(global_transform(n).translation), update_nodes)
             # @info "Updating nodes" id ids
             # call_update!(scene_tree,vis_nodes,update_nodes,dt)
-            update_visualizer!(scene_tree,vis_nodes)
+            update_visualizer!(scene_tree, vis_nodes)
             render(vis)
-            sleep(dt)
         end
     end
 end
