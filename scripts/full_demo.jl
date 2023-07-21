@@ -21,6 +21,7 @@ function run_lego_demo(;
     visualize_processing                =true,
     visualize_animation                 =false,
     save_animation                      =true,
+    save_animation_along_the_way        =false,
     anim_steps                          =false,
     anim_active_areas                   =false,
     anim_interval                       =100,
@@ -33,6 +34,14 @@ function run_lego_demo(;
 )
 
     @assert !(visualize_animation && visualize_processing) "Cannot visualize both processing and watch animation. Choose one or the other."
+    if save_animation_along_the_way || save_animation
+        if !visualize_animation
+            @warn "save_animation_along_the_way or save_animation is true, but visualize_animation is false. Will not save the animation."
+            save_animation_along_the_way = false
+            save_animation = false
+        end
+    end
+
     mkpath(graphics_path)
     filename = joinpath(dirname(pathof(LDrawParser)), "..", "assets", project_name)
 
@@ -52,6 +61,9 @@ function run_lego_demo(;
         @warn "Terminating because results are already compiled at $(stats_path)"
         return nothing
     end
+
+    anim_path = joinpath(graphics_path, prefix, "construction_simulation.html")
+    anim_prog_path = joinpath(graphics_path, prefix, "construction_simulation_progress.html")
 
     reset_all_id_counters!()
     reset_all_invalid_id_counters!()
@@ -367,6 +379,11 @@ function run_lego_demo(;
         end
         setanimation!(visualizer, anim.anim, play=false)
         print("done\n")
+
+        if save_animation_along_the_way
+            save_animation!(visualizer, anim_prog_path)
+        end
+
     end
 
     set_use_rvo!(RVO_FLAG)
@@ -383,7 +400,8 @@ function run_lego_demo(;
         anim=anim,
         anim_steps=anim_steps,
         anim_active_areas=anim_active_areas,
-        anim_interval=anim_interval
+        anim_interval=anim_interval,
+        save_anim_prog_path=save_animation_along_the_way ? nothing : anim_prog_path
     )
 
     if status == true
@@ -405,14 +423,18 @@ function run_lego_demo(;
     if visualize_animation
         open(visualizer)
         if save_animation
-            open(joinpath(graphics_path, prefix, "construction_simulation.html"), "w") do io
-                write(io, static_html(visualizer))
-            end
+            save_animation!(visualizer, anim_path)
         end
     end
     return env, STATS
 end
 
+function save_animation!(visualizer, path)
+    println("Saving animation to $(path)")
+    open(path, "w") do io
+        write(io, static_html(visualizer))
+    end
+end
 
 function simulate!(
     env,
@@ -424,6 +446,7 @@ function simulate!(
     anim_interval=100,
     anim_steps=false,
     anim_active_areas=false,
+    save_anim_prog_path=nothing
 )
     @unpack sched, cache = env
 
@@ -514,6 +537,9 @@ function simulate!(
             end
             setanimation!(factory_vis.vis, anim.anim, play=false)
             update_steps = []
+            if !isnothing(save_anim_prog_path)
+                save_animation!(factory_vis.vis, save_anim_prog_path)
+            end
         end
 
         if project_complete_bool

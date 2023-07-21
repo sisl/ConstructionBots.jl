@@ -75,15 +75,15 @@ ConstructionBots.set_rvo_python_module!(rvo)
 # STAGING_BUFFER_FACTOR     = 1.5
 # BUILD_STEP_BUFFER_FACTOR  = 0.55
 
-project_name                = "tractor.mpd"
-MODEL_SCALE                 = 0.008
-ROBOT_SCALE                 = MODEL_SCALE * 0.7
-NUM_ROBOTS                  = 12
-MAX_STEPS                   = 3000
-OBJECT_VTX_RANGE            = (-10:10,-10:10, 0:1)
-HOME_VTX_RANGE              = (-10:-4, -10:-8, 0:0)
-STAGING_BUFFER_FACTOR       = 1.5
-BUILD_STEP_BUFFER_FACTOR    = 1.5
+# project_name                = "tractor.mpd"
+# MODEL_SCALE                 = 0.008
+# ROBOT_SCALE                 = MODEL_SCALE * 0.7
+# NUM_ROBOTS                  = 12
+# MAX_STEPS                   = 3000
+# OBJECT_VTX_RANGE            = (-10:10,-10:10, 0:1)
+# HOME_VTX_RANGE              = (-10:-4, -10:-8, 0:0)
+# STAGING_BUFFER_FACTOR       = 1.5
+# BUILD_STEP_BUFFER_FACTOR    = 1.5
 
 # project_name = "X-wingMini.mpd"
 # MODEL_SCALE               = 0.007
@@ -106,15 +106,15 @@ BUILD_STEP_BUFFER_FACTOR    = 1.5
 # BUILD_STEP_BUFFER_FACTOR    = 1.5
 
 
-# project_name = "X-wingFighter.mpd"
-# MODEL_SCALE               = 0.0028
-# ROBOT_SCALE               = MODEL_SCALE
-# NUM_ROBOTS                = 100
-# MAX_STEPS                 = 8000
-# OBJECT_VTX_RANGE          = (-14:0.5:14, -14:0.5:14, 0:0)
-# HOME_VTX_RANGE            = (-25:0, -25:-20, 0:0)
-# STAGING_BUFFER_FACTOR     = 2.2
-# BUILD_STEP_BUFFER_FACTOR  = 0.5
+project_name = "X-wingFighter.mpd"
+MODEL_SCALE               = 0.0028
+ROBOT_SCALE               = MODEL_SCALE
+NUM_ROBOTS                = 100
+MAX_STEPS                 = 8000
+OBJECT_VTX_RANGE          = (-14:0.5:14, -14:0.5:14, 0:0)
+HOME_VTX_RANGE            = (-25:0, -25:-20, 0:0)
+STAGING_BUFFER_FACTOR     = 2.2
+BUILD_STEP_BUFFER_FACTOR  = 0.5
 
 # project_name = "StarDestroyer.mpd"
 # MODEL_SCALE               = 0.002
@@ -139,29 +139,33 @@ BUILD_STEP_BUFFER_FACTOR    = 1.5
 
 
 
-visualize_processing        = false
-visualize_animation         = true
-anim_steps                  = false
-anim_active_areas           = false
-RVO_FLAG                    = true # false
-ASSIGNMENT_MODE             = :GREEDY # :OPTIMAL # :GREEDY
-OVERWRITE_RESULTS           = true
-seed                        = 1
+visualize_processing         = false
+visualize_animation          = true
+anim_steps                   = false
+anim_active_areas            = false
+save_animation_along_the_way = true
+save_animation_at_end        = true
+RVO_FLAG                     = true # false
+ASSIGNMENT_MODE              = :GREEDY # :OPTIMAL # :GREEDY
+OVERWRITE_RESULTS            = true
+seed                         = 1
 
 env, STATS = run_lego_demo(;
-    project_name            = project_name,
-    MODEL_SCALE             = MODEL_SCALE,
-    NUM_ROBOTS              = NUM_ROBOTS,
-    ROBOT_SCALE             = ROBOT_SCALE,
-    OBJECT_VTX_RANGE        = OBJECT_VTX_RANGE,
-    HOME_VTX_RANGE          = HOME_VTX_RANGE,
-    MAX_STEPS               = MAX_STEPS,
-    ASSIGNMENT_MODE         = ASSIGNMENT_MODE,
-    RVO_FLAG                = RVO_FLAG,
-    visualize_processing    = visualize_processing,
-    visualize_animation     = visualize_animation,
-    anim_steps              = anim_steps,
-    anim_active_areas       = anim_active_areas,
-    OVERWRITE_RESULTS       = OVERWRITE_RESULTS,
-    seed                    = seed
+    project_name                 = project_name,
+    MODEL_SCALE                  = MODEL_SCALE,
+    NUM_ROBOTS                   = NUM_ROBOTS,
+    ROBOT_SCALE                  = ROBOT_SCALE,
+    OBJECT_VTX_RANGE             = OBJECT_VTX_RANGE,
+    HOME_VTX_RANGE               = HOME_VTX_RANGE,
+    MAX_STEPS                    = MAX_STEPS,
+    ASSIGNMENT_MODE              = ASSIGNMENT_MODE,
+    RVO_FLAG                     = RVO_FLAG,
+    visualize_processing         = visualize_processing,
+    visualize_animation          = visualize_animation,
+    save_animation               = save_animation_at_end,
+    save_animation_along_the_way = save_animation_along_the_way,
+    anim_steps                   = anim_steps,
+    anim_active_areas            = anim_active_areas,
+    OVERWRITE_RESULTS            = OVERWRITE_RESULTS,
+    seed                         = seed
 );
