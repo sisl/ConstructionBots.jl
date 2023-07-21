@@ -130,7 +130,7 @@ backward_propagate(::BackwardWidth, G,v,v2,vec) = max(vec[v],vec[v2]/max(1,indeg
 forward_accumulate(::ForwardWidth,	G,v,vtxs,vec) = max(vec[v],sum([0,map(v2->vec[v2]/outdegree(G,v2),vtxs)...]))
 backward_accumulate(::BackwardWidth,G,v,vtxs,vec) = max(vec[v],sum([0,map(v2->vec[v2]/indegree(G,v2),vtxs)...]))
 
-function forward_pass!(G,feats,feat_vals=Dict(f=>map(v->initial_value(f),vertices(G)) for f in feats))
+function forward_pass!(G,feats,feat_vals=Dict(f=>map(v->initial_value(f),Graphs.vertices(G)) for f in feats))
 	for v in topological_sort_by_dfs(G)
 		for (f,vec) in feat_vals
 			vec[v] = forward_accumulate(f,G,v,inneighbors(G,v),vec)
@@ -141,7 +141,7 @@ function forward_pass!(G,feats,feat_vals=Dict(f=>map(v->initial_value(f),vertice
     end
     return feat_vals
 end
-function backward_pass!(G,feats,feat_vals=Dict(f=>map(v->initial_value(f),vertices(G)) for f in feats))
+function backward_pass!(G,feats,feat_vals=Dict(f=>map(v->initial_value(f),Graphs.vertices(G)) for f in feats))
 	for v in reverse(topological_sort_by_dfs(G))
 		for (f,vec) in feat_vals
 			vec[v] = backward_accumulate(f,G,v,outneighbors(G,v),vec)
@@ -167,7 +167,7 @@ function get_graph_layout(
     for e in edges(G)
         add_edge!(graph,e)
     end
-	end_vtxs = [v for v in vertices(graph) if outdegree(graph,v) == 0]
+	end_vtxs = [v for v in Graphs.vertices(graph) if outdegree(graph,v) == 0]
 	s = BFS_state(0,0,0)
 	for v in end_vtxs
 		s = bfs!(graph,v,s,Set{Int}(),enforce_visited)
@@ -340,7 +340,7 @@ function display_graph(graph;
         )
     edge_context(a,b) = context(a,b,1.0,1.0,units=UnitBox(0.0,0.0,1.0,1.0))
     nodes = map(
-        v->(node_context(x[v],y[v]), draw_node_function(graph,v)), vertices(graph)
+        v->(node_context(x[v],y[v]), draw_node_function(graph,v)), Graphs.vertices(graph)
     )
     lines = []
     for e in edges(graph)
@@ -483,7 +483,7 @@ function render_grid_graph(G,paths::Vector{Vector{Int}}=Vector{Vector{Int}}();
     # vertices
     x = Vector{Float64}()
     y = Vector{Float64}()
-    for v in vertices(G)
+    for v in Graphs.vertices(G)
         push!(x,get_prop(G,v,:x))
         push!(y,get_prop(G,v,:y))
     end

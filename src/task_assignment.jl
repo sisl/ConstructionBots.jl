@@ -285,7 +285,7 @@ end
 function set_leaf_vtxs!(sched::OperatingSchedule,template=ProjectComplete)
     empty!(TaskGraphs.get_terminal_vtxs(sched))
     empty!(TaskGraphs.get_root_node_weights(sched))
-    for v in vertices(sched)
+    for v in Graphs.vertices(sched)
         if is_terminal_node(sched,v) && matches_template(template,get_node(sched,v))
             push!(TaskGraphs.get_terminal_vtxs(sched),v)
             TaskGraphs.get_root_node_weights(sched)[v] = 1.0

@@ -24,7 +24,7 @@ let
 
 end
 # Rotational Potential
-let 
+let
     p = ConePotential(-1.0,2.0,Point(0.0,0.0))
     rp = RotationalPotential(p,1.0,1.0)
     x = Point(1.0,1.0)
@@ -35,7 +35,7 @@ let
 
 end
 # tent potential
-let 
+let
     p = TentPotential(-1.0,1.0,Point(0.0,0.0),Point(0.0,2.0))
     x1 = Point(0.5,0.5)
     d1 = normalize(Point(-1.0,-0.0))
@@ -47,10 +47,10 @@ let
     x2 = Point(2.0,2.0)
     dx2 = potential_gradient(p, x2)
     @test isapprox(norm(dx2),0)
-    
+
 end
 # BarrierPotential
-let 
+let
     p = ConePotential(1.0,1.0,Point(0.0,0.0))
     pb = BarrierPotential(p,1.0,0.1)
     y = potential(pb,p.x)
@@ -58,7 +58,7 @@ let
 
 end
 # superposed potentials
-let 
+let
     p = [
         ConePotential(-1.0,1.0,Point(0.0,0.0)),
         TentPotential(-1.0,1.0,Point(0.0,0.0),Point(0.0,2.0))
@@ -67,31 +67,31 @@ let
     d1 = normalize(Point(-1.0,-1.0)) + normalize(Point(-1.0,-0.0))
     dx1 = potential_gradient(p, x1)
     @test isapprox(norm(dx1 - d1), 0.0, atol=1e-10)
-    
+
 end
 
 vis = MeshCat.Visualizer()
 render(vis)
 
-# demo where all robots are trying to get into the innermost circle, but only 
+# demo where all robots are trying to get into the innermost circle, but only
 # some are allowed to enter at that time
 robots = Dict(
     1=>PotentialController(
-        x = [8.0,0.0], 
-        circ_idx = 1, 
-        goal = [0.0,0.0], 
+        x = [8.0,0.0],
+        circ_idx = 1,
+        goal = [0.0,0.0],
         radius = ROBOT_RADIUS
     ),
     2=>PotentialController(
-        x = [6.0,0.5], 
-        circ_idx = 2, 
-        goal = [0.0,0.0], 
+        x = [6.0,0.5],
+        circ_idx = 2,
+        goal = [0.0,0.0],
         radius = ROBOT_RADIUS
     ),
     3=>PotentialController(
-        x = [6.0,-0.5], 
-        circ_idx = 3, 
-        goal = [0.0,0.0], 
+        x = [6.0,-0.5],
+        circ_idx = 3,
+        goal = [0.0,0.0],
         radius = ROBOT_RADIUS
     ),
 )

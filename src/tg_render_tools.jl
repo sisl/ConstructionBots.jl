@@ -2072,7 +2072,7 @@ end
 
 function snapshot_color_func(env,t)
     sched = get_schedule(env)
-    active = Set(filter(v->get_t0(sched,v) <= t < get_tF(sched,v) + maximum(get_local_slack(sched,v)),vertices(sched)))
+    active = Set(filter(v->get_t0(sched,v) <= t < get_tF(sched,v) + maximum(get_local_slack(sched,v)),Graphs.vertices(sched)))
     for v in collect(active)
         setdiff!(active,outneighbors(get_graph(sched),v))
     end
