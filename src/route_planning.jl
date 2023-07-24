@@ -189,38 +189,26 @@ function set_default_rotational_loading_speed!(val::Float64)
     global ROTATIONAL_LOADING_SPEED = val
 end
 
-# function simulate!(
-#     env,
-#     factory_vis,
-#     scene_node_update_func,
-#     visualizer_update_func;
-#     max_time_steps=2000,
-# )
-#     @unpack sched, cache = env
-#     iters = 0
-#     for k in 1:max_time_steps
-#         iters = k
-#         if mod(k,100) == 0
-#             @info " ******************* BEGINNING TIME STEP $k: $(length(cache.closed_set))/$(nv(sched)) nodes closed *******************"
-#         end
-#         step_environment!(env)
-#         newly_updated = TaskGraphs.update_planning_cache!(env, 0.0)
-
-#         scene_nodes = nothing
-#         if !isnothing(factory_vis.vis)
-#             scene_nodes = scene_node_update_func(factory_vis, env, newly_updated)
-#             if !isnothing(factory_vis.vis)
-#                 visualizer_update_func(factory_vis.vis_nodes, scene_nodes)
-#             end
-#         end
-
-#         if project_complete(env)
-#             println("PROJECT COMPLETE!")
-#             break
-#         end
-#     end
-#     return project_complete(env), iters
-# end
+function simulate!(
+    env;
+    max_time_steps=2000,
+)
+    @unpack sched, cache = env
+    iters = 0
+    for k in 1:max_time_steps
+        iters = k
+        if mod(k,100) == 0
+            @info " ******************* BEGINNING TIME STEP $k: $(length(cache.closed_set))/$(nv(sched)) nodes closed *******************"
+        end
+        step_environment!(env)
+        update_planning_cache!(env, 0.0)
+        if project_complete(env)
+            println("PROJECT COMPLETE!")
+            break
+        end
+    end
+    return project_complete(env), iters
+end
 
 """
     update_position_from_sim!(agent)
@@ -229,7 +217,6 @@ Update agent position from RVO simulator
 """
 function update_position_from_sim!(agent)
     pt = rvo_get_agent_position(agent)
-    # @debug "update position from sim agent $(node_id(agent))" pt
     @assert has_parent(agent,agent) "agent $(node_id(agent)) should be its own parent"
     set_local_transform!(agent,CoordinateTransformations.Translation(pt[1],pt[2],0.0))
     if !isapprox(norm(global_transform(agent).translation[1:2] .- pt), 0.0; rtol=1e-6,atol=1e-6)
@@ -766,19 +753,12 @@ function get_twist_cmd(node, env::PlannerEnv)
         goal_pt = query_policy_for_goal!(policy, circles, pos, HierarchicalGeometry.project_to_2d(goal.translation))
         new_goal = CoordinateTransformations.Translation(goal_pt...,0.0) ∘ CoordinateTransformations.LinearMap(goal.linear)
 
-        # println("\t new_goal: $(new_goal)")
         tf_error = relative_transform(global_transform(agent), new_goal)
         v_max = get_rvo_max_speed(agent)
         ω_max = default_rotational_loading_speed()
         twist = optimal_twist(tf_error,v_max,ω_max,dt)
 
-        # println("\t\t tf_error: $(tf_error)")
-        # println("\t\t v_max: $(v_max)")
-        # println("\t\t ω_max: $(ω_max)")
-        # println("\t\t twist: $(twist)")
-
         twist = compute_twist_from_goal(agent,new_goal,dt) # nominal twist
-        # println("\t nominal vel: $(twist.vel)")
     else
         twist = compute_twist_from_goal(agent,goal,dt)
     end
@@ -788,7 +768,6 @@ function get_twist_cmd(node, env::PlannerEnv)
         parent_step = get_parent_build_step(sched,node)
         if !(parent_step === nothing)
             countdown = active_build_step_countdown(parent_step.node,env)
-            # println("\t countdown: $(countdown)")
             dist_to_goal = norm(goal.translation .- global_transform(agent).translation)
             if dist_to_goal < 15*default_robot_radius()
                 # So the agent doesn't crowd its destination
@@ -799,7 +778,6 @@ function get_twist_cmd(node, env::PlannerEnv)
                 end
             end
         end
-        # println("\t twist at end of hack: $(twist.vel)")
         ############ Potential Field Policy #############
         policy = agent_policies[node_id(agent)].dispersion_policy
         # For RobotGo node, ensure that parent assembly is "pickup-able"
@@ -816,17 +794,14 @@ function get_twist_cmd(node, env::PlannerEnv)
             va = nominal_twist.vel[1:2]
             target_pos = pos .+ va * dt
             # commanded velocity from current position
-            # vb = compute_velocity_command!(policy,pos)
             vb = -1.0 * compute_potential_gradient!(policy, env, pos)
             # commanded velocity from current position
-            # vc = compute_velocity_command!(policy,target_pos)
             vc = -1.0 * compute_potential_gradient!(policy, env, target_pos)
             # blend the three velocities
             a = 1.0
             b = 1.0
             c = 0.0
-            # v = (a*va+b*vb+c*vc) / (a+b+c)
-            v = (a*va+b*vb+c*vc)
+            v = (a * va + b * vb + c * vc)
             vel = clip_velocity(v,policy.vmax)
             # compute goal
             goal_pt = pos + vel*dt
