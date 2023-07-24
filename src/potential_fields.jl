@@ -147,7 +147,6 @@ function repulsion_potential(x,r,x2,r2;
 end
 
 @with_kw mutable struct PotentialFieldController
-    env                             = nothing
     agent                           = nothing
     node                            = nothing
     agent_radius                    = 1.0
@@ -162,18 +161,18 @@ end
     # environment potentials (may depend on other agent's states)
     static_potentials               = (x,r)->0.0
 end
-function dist_to_nearest_active_agent(policy::PotentialFieldController)
-    env = policy.env
+function dist_to_nearest_active_agent(policy::PotentialFieldController, env::PlannerEnv)
     @unpack scene_tree, sched, cache = env
     agent = policy.agent
     pos = HierarchicalGeometry.project_to_2d(global_transform(agent).translation)
     shortest_dist = Inf
     id = nothing
-    for (other_id,other_p) in env.agent_policies
-        other_policy=other_p.dispersion_policy
+    for (other_id, other_p) in env.agent_policies
+        other_policy = other_p.dispersion_policy
         if !(other_policy === policy)
             other_node = other_policy.node
-            if (parent_build_step_is_active(other_node,env) && cargo_ready_for_pickup(other_node,env))
+            pbs_active = parent_build_step_is_active(node_id(entity(other_node)), env)
+            if (pbs_active && cargo_ready_for_pickup(other_node,env))
                 other_agent = other_policy.agent
                 other_rad = other_policy.agent_radius
                 other_pos = HierarchicalGeometry.project_to_2d(global_transform(other_agent).translation)
@@ -188,8 +187,8 @@ function dist_to_nearest_active_agent(policy::PotentialFieldController)
     end
     return id, shortest_dist
 end
-function update_dist_to_nearest_active_agent!(policy::PotentialFieldController)
-    id, dist = dist_to_nearest_active_agent(policy)
+function update_dist_to_nearest_active_agent!(policy::PotentialFieldController, env::PlannerEnv)
+    id, dist = dist_to_nearest_active_agent(policy, env)
     policy.dist_to_nearest_active_agent = dist
 end
 function update_buffer_radius!(
@@ -249,8 +248,8 @@ function pairwise_potential_width(policy::PotentialFieldController,α1,α2)
     end
 end
 
-function compute_potential_gradient!(policy::PotentialFieldController,pos)
-    @unpack scene_tree, sched = policy.env
+function compute_potential_gradient!(policy::PotentialFieldController, env::PlannerEnv, pos)
+    @unpack scene_tree, sched = env
     agent = policy.agent
     dp = static_potential_gradient(policy,pos)
     α1 = rvo_get_agent_alpha(agent)
@@ -260,10 +259,8 @@ function compute_potential_gradient!(policy::PotentialFieldController,pos)
             if α1 < α2 # can't be pushed by other agent
                 continue
             end
-            other_policy = policy.env.agent_policies[node_id(other_agent)].dispersion_policy
+            other_policy = env.agent_policies[node_id(other_agent)].dispersion_policy
             other_rad = other_policy.agent_radius
-            # other_rad = HierarchicalGeometry.get_radius(get_base_geom(other_agent,HypersphereKey()))
-            # scale = pairwise_potential_scale(policy,α1,α2)
             scale = 1.0
             other_pos = HierarchicalGeometry.project_to_2d(global_transform(other_agent).translation)
             if norm(pos - other_pos) <= policy.interaction_radius
@@ -279,8 +276,8 @@ function compute_potential_gradient!(policy::PotentialFieldController,pos)
     end
     return dp
 end
-function compute_velocity_command!(policy::PotentialFieldController,pos)
-    dp = compute_potential_gradient!(policy::PotentialFieldController,pos)
+function compute_velocity_command!(policy::PotentialFieldController, env::PlannerEnv, pos)
+    dp = compute_potential_gradient!(policy::PotentialFieldController, env, pos)
     vel = clip_velocity(-1.0 * dp, policy.vmax)
     return vel
 end
@@ -313,7 +310,7 @@ function update_potential_controllers!(controller)
     end
     controller
 end
-function update_potential_controller!(robot,i,global_controller)
+function update_potential_controller!(robot, i, global_controller)
     # i is the robot's index
     potentials = []
     C = global_controller

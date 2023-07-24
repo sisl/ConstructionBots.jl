@@ -349,7 +349,6 @@ function run_lego_demo(;
                     agent_radius=agent_radius,
                 ),
                 dispersion_policy=ConstructionBots.PotentialFieldController(
-                    # env=env,
                     agent=n,
                     node=node,
                     agent_radius=agent_radius,
