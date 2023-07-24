@@ -209,24 +209,17 @@ function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="st
         settransform!(staging_nodes[id],tform)
         # settransform!(staging_nodes[id],global_transform(start_config(cargo_node)))
     end
-    zval=-dz
     for n in node_iterator(sched, topological_sort_by_dfs(sched))
         if matches_template(OpenBuildStep,n)
             id = node_id(n)
             sphere = get_cached_geom(node_val(n).staging_circle)
-            # ctr = Point(HierarchicalGeometry.project_to_2d(sphere.center)..., 0.0)
-            ctr = Point(HierarchicalGeometry.project_to_2d(sphere.center)..., zval)
-            zval -= dz
+            ctr = Point(HierarchicalGeometry.project_to_2d(sphere.center)..., -0.02)
             cylinder = Cylinder(ctr, Point((ctr.-[0.0,0.0,0.01])...),sphere.radius)
             setobject!(staging_vis[string(id)],
-                # convert_to_renderable(sphere),
                 cylinder,
                 material,
                 )
             staging_nodes[id] = staging_vis[string(id)]
-            # t = HierarchicalGeometry.project_to_3d(HierarchicalGeometry.project_to_2d(global_transform(start_config(cargo_node)).translation))
-            # tform = CoordinateTransformations.Translation(t) ∘ identity_linear_map()
-            # settransform!(staging_nodes[id],tform)
         end
     end
     staging_nodes

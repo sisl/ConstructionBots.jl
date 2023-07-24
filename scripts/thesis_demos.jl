@@ -30,6 +30,8 @@ using Measures
 import Cairo
 using Compose
 
+using JLD2
+
 using ProgressMeter
 
 # Set logging level
@@ -75,15 +77,25 @@ ConstructionBots.set_rvo_python_module!(rvo)
 # STAGING_BUFFER_FACTOR     = 1.5
 # BUILD_STEP_BUFFER_FACTOR  = 0.55
 
-project_name                = "tractor.mpd"
-MODEL_SCALE                 = 0.008
-ROBOT_SCALE                 = MODEL_SCALE * 0.7
-NUM_ROBOTS                  = 12
-MAX_STEPS                   = 3000
-OBJECT_VTX_RANGE            = (-10:10,-10:10, 0:1)
-HOME_VTX_RANGE              = (-10:-4, -10:-8, 0:0)
-STAGING_BUFFER_FACTOR       = 1.5
-BUILD_STEP_BUFFER_FACTOR    = 1.5
+# project_name              = "quad_nested.mpd"
+# MODEL_SCALE               = 0.004
+# NUM_ROBOTS                = 50
+# ROBOT_SCALE               = MODEL_SCALE
+# OBJECT_VTX_RANGE          = (-70:0.5:20,-70:0.5:20, 0:2)
+# MAX_STEPS                 = 3000
+# HOME_VTX_RANGE            = (-70:0,-70:0, 0:0)
+# STAGING_BUFFER_FACTOR     = 1.5
+# BUILD_STEP_BUFFER_FACTOR  = 0.55
+
+# project_name                = "tractor.mpd"
+# MODEL_SCALE                 = 0.008
+# ROBOT_SCALE                 = MODEL_SCALE * 0.7
+# NUM_ROBOTS                  = 12
+# MAX_STEPS                   = 3000
+# OBJECT_VTX_RANGE            = (-10:10,-10:10, 0:1)
+# HOME_VTX_RANGE              = (-10:-4, -10:-8, 0:0)
+# STAGING_BUFFER_FACTOR       = 1.5
+# BUILD_STEP_BUFFER_FACTOR    = 1.5
 
 # project_name = "X-wingMini.mpd"
 # MODEL_SCALE               = 0.007
@@ -126,29 +138,41 @@ BUILD_STEP_BUFFER_FACTOR    = 1.5
 # STAGING_BUFFER_FACTOR     = 1.5
 # BUILD_STEP_BUFFER_FACTOR  = 0.5
 
-
-# project_name = "Saturn.mpd"
-# MODEL_SCALE               = 0.001
-# NUM_ROBOTS                = 100
-# ROBOT_SCALE               = MODEL_SCALE*4
-# MAX_STEPS                 = 100000
-# OBJECT_VTX_RANGE          = (-36:36,-36:36,0:8)
-# HOME_VTX_RANGE            = (-34:34,-34:34, 0:0)
+# project_name                = "heavily_nested.mpd"
+# MODEL_SCALE               = 0.004
+# NUM_ROBOTS                = 50
+# ROBOT_SCALE               = MODEL_SCALE
+# OBJECT_VTX_RANGE          = (-350:0.5:35,-35:0.5:35, 0:2)
+# MAX_STEPS                 = 40000
+# HOME_VTX_RANGE            = (-60:0.5:0,-60:0.5:0, 0:0)
 # STAGING_BUFFER_FACTOR     = 1.5
-# BUILD_STEP_BUFFER_FACTOR  = 1.5
+# BUILD_STEP_BUFFER_FACTOR  = 0.55
+
+project_name = "Saturn.mpd"
+MODEL_SCALE               = 0.0015
+NUM_ROBOTS                = 100
+ROBOT_SCALE               = MODEL_SCALE
+MAX_STEPS                 = 100000
+OBJECT_VTX_RANGE          = (-30:0.5:30, -30:0.5:30, 0:1)
+HOME_VTX_RANGE            = (-50:0.5:0,-50:0, 0:0)
+STAGING_BUFFER_FACTOR     = 1.5
+BUILD_STEP_BUFFER_FACTOR  = 1.5
 
 
 
 visualize_processing         = false
-visualize_animation_at_end   = false
-save_animation_along_the_way = false
-save_animation_at_end        = true
-anim_steps                   = false
-anim_active_areas            = false
+visualize_animation_at_end   = true
+save_animation_along_the_way = true
+save_animation_at_end        = false
+anim_steps                   = true
+anim_active_areas            = true
 RVO_FLAG                     = true # false
 ASSIGNMENT_MODE              = :GREEDY # :OPTIMAL # :GREEDY
 OVERWRITE_RESULTS            = true
 seed                         = 1
+
+max_num_iters_no_progress    = 2500
+
 
 env, STATS = run_lego_demo(;
     project_name                 = project_name,
@@ -167,5 +191,6 @@ env, STATS = run_lego_demo(;
     anim_steps                   = anim_steps,
     anim_active_areas            = anim_active_areas,
     OVERWRITE_RESULTS            = OVERWRITE_RESULTS,
+    max_num_iters_no_progress    = max_num_iters_no_progress,
     seed                         = seed
 );

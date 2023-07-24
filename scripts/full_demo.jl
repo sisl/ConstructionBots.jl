@@ -29,6 +29,7 @@ function run_lego_demo(;
     OVERWRITE_RESULTS                   =false,
     WRITE_RESULTS                       =true,
     QUIT_AFTER_OPTIMAL                  =false,
+    max_num_iters_no_progress           =Inf,
     seed                                =1
 )
 
@@ -45,7 +46,8 @@ function run_lego_demo(;
     end
 
     mkpath(graphics_path)
-    filename = joinpath(dirname(pathof(LDrawParser)), "..", "assets", project_name)
+    # filename = joinpath(dirname(pathof(LDrawParser)), "..", "assets", project_name)
+    filename = joinpath("/Users/dylan/Documents/Lego/LDrawParser.jl/assets", project_name)
 
     @assert ispath(filename) "File $(filename) does not exist."
 
@@ -295,11 +297,12 @@ function run_lego_demo(;
         factory_vis = populate_visualizer!(scene_tree, visualizer;
             color_map=color_map,
             color=RGB(0.3, 0.3, 0.3),
-            material_type=MeshLambertMaterial)
+            material_type=MeshLambertMaterial
+        )
         add_indicator_nodes!(factory_vis)
         factory_vis.staging_nodes = render_staging_areas!(visualizer, scene_tree,
             sched, staging_circles;
-            dz=0.01, color=RGBA(0.4, 0.0, 0.4, 0.5))
+            dz=0.00, color=RGBA(0.4, 0.0, 0.4, 0.5))
         for (k, color) in [
             (HypersphereKey() => RGBA(0.0, 1.0, 0.0, 0.3)),
             (HyperrectangleKey() => RGBA(1.0, 0.0, 0.0, 0.3))
@@ -346,7 +349,7 @@ function run_lego_demo(;
                     agent_radius=agent_radius,
                 ),
                 dispersion_policy=ConstructionBots.PotentialFieldController(
-                    env=env,
+                    # env=env,
                     agent=n,
                     node=node,
                     agent_radius=agent_radius,
@@ -407,7 +410,8 @@ function run_lego_demo(;
         anim_steps=anim_steps,
         anim_active_areas=anim_active_areas,
         anim_interval=anim_interval,
-        save_anim_prog_path=save_animation_along_the_way ? anim_prog_path : nothing
+        save_anim_prog_path=save_animation_along_the_way ? anim_prog_path : nothing,
+        max_num_iters_no_progress=max_num_iters_no_progress
     )
 
     if status == true
@@ -454,7 +458,8 @@ function simulate!(
     anim_interval=100,
     anim_steps=false,
     anim_active_areas=false,
-    save_anim_prog_path=nothing
+    save_anim_prog_path=nothing,
+    max_num_iters_no_progress=Inf
 )
     @unpack sched, cache = env
 
@@ -483,11 +488,11 @@ function simulate!(
         starting_step = current_frame(anim)
     end
 
+    last_iter_num_closed = length(cache.closed_set)
+    num_iters_no_progress = 0
     for k in 2:max_time_steps
         iters = k
-        if mod(k, 100) == 0
-            @info " ******************* BEGINNING TIME STEP $k: $(length(cache.closed_set))/$(nv(sched)) nodes closed *******************"
-        end
+
         ConstructionBots.step_environment!(env)
         newly_updated = ConstructionBots.update_planning_cache!(env, 0.0)
 
@@ -521,9 +526,22 @@ function simulate!(
             end
         end
 
-        project_complete_bool = ConstructionBots.project_complete(env)
+        if length(cache.closed_set) == last_iter_num_closed
+            num_iters_no_progress += 1
+        else
+            num_iters_no_progress = 0
+        end
+        last_iter_num_closed = length(cache.closed_set)
 
-        if process_animation_tasks && (length(update_steps) >= anim_interval || project_complete_bool)
+        project_stop_bool = ConstructionBots.project_complete(env)
+        if num_iters_no_progress >= max_num_iters_no_progress
+            @warn "No progress for $num_iters_no_progress iterations. Terminating."
+            project_stop_bool = true
+        end
+
+
+
+        if process_animation_tasks && (length(update_steps) >= anim_interval || project_stop_bool)
             for step_k in update_steps
                 k_k = step_k[1]
                 vis_nodes_k = step_k[2]
@@ -553,14 +571,37 @@ function simulate!(
             end
             setanimation!(factory_vis.vis, anim.anim, play=false)
             update_steps = []
-            if !isnothing(save_anim_prog_path) && !project_complete_bool
+            if !isnothing(save_anim_prog_path) && !project_stop_bool
                 save_animation!(factory_vis.vis, "$(save_anim_prog_path)$(iters).html")
             end
         end
 
-        if project_complete_bool
+        if project_stop_bool
             ProgressMeter.finish!(prog)
-            println("PROJECT COMPLETE!")
+            if ConstructionBots.project_complete(env)
+                println("PROJECT COMPLETE!")
+            else
+                println("PROJECT INCOMPLETE!")
+                var_dump_path = joinpath(dirname(pathof(ConstructionBots)), "..", "variable_dump")
+                mkpath(var_dump_path)
+                var_dump_path = joinpath(var_dump_path, "var_dump_$(iters).jld2")
+                println("Dumping variables to $(var_dump_path)")
+                var_dict = Dict(
+                    "env" => env,
+                    "factory_vis" => factory_vis,
+                    "max_time_steps" => max_time_steps,
+                    "visualize_processing" => visualize_processing,
+                    "process_animation_tasks" => process_animation_tasks,
+                    "anim_interval" => anim_interval,
+                    "anim_steps" => anim_steps,
+                    "anim_active_areas" => anim_active_areas,
+                    "save_anim_prog_path" => save_anim_prog_path,
+                    "max_num_iters_no_progress" => max_num_iters_no_progress
+                )
+                print("\tSaving...")
+                JLD2.save(var_dump_path, var_dict)
+                print("done!\n")
+            end
             break
         end
         if !isnothing(prog)
