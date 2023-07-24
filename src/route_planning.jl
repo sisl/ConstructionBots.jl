@@ -100,7 +100,6 @@ Contains the Environment state and definition.
     cache::PlanningCache        = initialize_planning_cache(sched)
     staging_circles::Dict{AbstractID,Ball2} = Dict{AbstractID,Ball2}()
     active_build_steps::Set{AbstractID} = Set{AbstractID}()
-    # active_assemblies::Set{AbstractID} = Set{AbstractID}() # taken care of by active build step
     dt::Float64                 = rvo_default_time_step()
     agent_policies::Dict        = Dict()
     agent_parent_build_step_active::Dict = Dict()
@@ -135,7 +134,7 @@ function cargo_ready_for_pickup(n::Union{RobotStart,RobotGo}, env::PlannerEnv)
     if outdegree(env.sched,n) < 1
         return false
     end
-    cargo_ready_for_pickup(get_node(env.sched,first(outneighbors(env.sched,n))),env)
+    cargo_ready_for_pickup(get_node(env.sched, first(outneighbors(env.sched,n))), env)
 end
 cargo_ready_for_pickup(n::ScheduleNode, env::PlannerEnv) = cargo_ready_for_pickup(n.node,env)
 
@@ -148,7 +147,7 @@ function set_rvo_priority!(env::PlannerEnv, node)
     @unpack sched, scene_tree, cache, staging_circles = env
     if matches_template(Union{FormTransportUnit,DepositCargo},node)
         alpha = 0.0
-    elseif parent_build_step_is_active(node,env)
+    elseif parent_build_step_is_active(node, env)
         if cargo_ready_for_pickup(node,env)
             if matches_template(TransportUnitGo,node)
                 alpha = 0.0
@@ -733,16 +732,12 @@ function get_twist_cmd(node, env::PlannerEnv)
         r = HierarchicalGeometry.get_radius(get_base_geom(agent,HypersphereKey()))
         excluded_ids = Set{AbstractID}()
 
-        # println("\t pos: $(pos)")
-        # println("\t goal: $(goal)")
-        # println("\t r: $(r)")
-        # println("\t parent_build_step_is_active: $(parent_build_step_is_active(node,env))")
-
+        #? Can we use the cached version here?
         if parent_build_step_is_active(node, env) && cargo_ready_for_pickup(node, env)
+            #? Do we want to excude all areas if parent build step is active or just the parent staging area
             # parent_build_step = get_parent_build_step(sched,node)
             # push!(excluded_ids, node_id(parent_build_step))
             excluded_ids = Set([id for id in env.active_build_steps])
-            # println("\t excluded_ids: $(excluded_ids)")
         end
         # get circle obstacles, potentially inflated
         circles = active_staging_circles(env, excluded_ids)
@@ -782,6 +777,7 @@ function get_twist_cmd(node, env::PlannerEnv)
         policy = agent_policies[node_id(agent)].dispersion_policy
         # For RobotGo node, ensure that parent assembly is "pickup-able"
         ready_for_pickup = cargo_ready_for_pickup(node,env)
+        #? Can we use the cached version here?
         build_step_active = parent_build_step_is_active(node,env)
         if !(policy === nothing || (build_step_active && ready_for_pickup))
             # update policy
