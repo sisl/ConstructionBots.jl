@@ -63,7 +63,7 @@ struct AssemblyComplete <: EntityConfigPredicate{AssemblyNode}
     inner_staging_circle::GeomNode # inner staging circle
     outer_staging_circle::GeomNode # outer staging circle
 end
-function AssemblyComplete(n::SceneNode,t::TransformNode)
+function AssemblyComplete(n::SceneNode, t::TransformNode)
     inner_staging_circle = GeomNode(Ball2(zeros(SVector{3,Float64}),0.0))
     outer_staging_circle = GeomNode(Ball2(zeros(SVector{3,Float64}),0.0))
     node = AssemblyComplete(n,t,inner_staging_circle,outer_staging_circle)
@@ -657,9 +657,8 @@ function generate_staging_plan!(scene_tree,sched;
         end
     end
     # Update assembly start points so that none of the staging regions overlap
-    select_assembly_start_configs!(sched,scene_tree,staging_circles;
-        buffer_radius=buffer_radius,
-    )
+    select_assembly_start_configs_layered!(sched, scene_tree, staging_circles;
+        buffer_radius=buffer_radius,)
     # TODO store a TransformNode in ProjectComplete() (or in the schedule itself,
     # once there is a dedicated ConstructionSchedule type) so that an entire
     # schedule can be moved anywhere. All would-be root TransormNodes will have
@@ -668,8 +667,9 @@ function generate_staging_plan!(scene_tree,sched;
     return staging_circles, bounding_circles
 end
 
+
 """
-    select_assembly_start_configs!(sched,scene_tree,staging_radii;
+    select_assembly_start_configs!(sched, scene_tree, staging_radii;
         buffer_radius=0.0)
 
 Select the start configs (i.e., the build location) for each assembly. The
@@ -678,20 +678,217 @@ while ensuring that no child's staging area overlaps with its parent's staging
 area. Uses the same ring optimization approach as for selectig staging
 locations.
 """
-function select_assembly_start_configs!(sched,scene_tree,staging_circles;
+function select_assembly_start_configs_layered!(sched, scene_tree, staging_circles;
         buffer_radius=0.0,
     )
     # Update assembly start points so that none of the staging regions overlap
-    # TODO: Account for robot and transport unit size along the "highways" that
-    # surround each staging area.
-    # for node in node_iterator(scene_tree, reverse(topological_sort_by_dfs(scene_tree)))
     for start_node in node_iterator(sched, topological_sort_by_dfs(sched))
-        if !matches_template(AssemblyComplete,start_node)
+        if !matches_template(AssemblyComplete, start_node)
             continue
         end
         assembly_complete = node_val(start_node)
         node = entity(start_node)
-        if matches_template(AssemblyNode,node)
+        if matches_template(AssemblyNode, node)
+            # Apply ring solver with child assemblies (not objects)
+            assembly = node
+            part_ids = sort(filter(k->isa(k,AssemblyID),
+                collect(keys(assembly_components(node)))))
+            if isempty(part_ids)
+                continue
+            end
+
+            orig_ball = staging_circles[node_id(assembly)]
+            new_ball = nothing
+
+            @info "Selecting staging location for $(summary(node_id(assembly)))"
+
+            @assert haskey(staging_circles, node_id(assembly))
+
+
+            steps_for_parts = find_step_numbers(start_node, part_ids, sched, scene_tree)
+            steps_dict = Dict(zip(part_ids, steps_for_parts))
+            @assert length(steps_for_parts) == length(part_ids)
+
+            part_ids_left = part_ids
+
+            while !isempty(part_ids_left)
+                # We continue this process until we don't have any more parts to place. At each
+                # iteration, we determine the maximum number of components that can fit around
+                # the current staging radius. If there are parts that remain, we increase the
+                # staging radius from the previous "layer" and keep going.
+
+                staging_circle = staging_circles[node_id(assembly)]
+                staging_radius = staging_circle.radius + buffer_radius
+
+                radii_left = [staging_circles[id].radius + buffer_radius/2 for id in part_ids_left]
+                steps_left = [steps_dict[id] for id in part_ids_left]
+                unique_step_lengths = sort!(unique(steps_left))
+
+                cnt = 1
+                can_fit_steps = 0
+                while cnt <= length(unique_step_lengths)
+                    current_step_consideration = unique_step_lengths[cnt]
+                    bool_mask = steps_left .<= current_step_consideration
+                    radii_k = radii_left[bool_mask]
+
+                    # Determine if the staging radius can fit all components
+                    half_widths = asin.(radii_k ./ (radii_k .+ staging_radius))
+                    can_fit = sum(half_widths) * 2 <= 2.0 * Float64(π)
+
+                    if can_fit
+                        can_fit_steps = current_step_consideration
+                        cnt += 1
+                    else
+                        break
+                    end
+                end
+
+                part_ids_for_opt = []
+                radii_for_opt = []
+                if can_fit_steps == 0
+                    # Current staging radius cannot fit all of the components of the first step
+                    # Let's select the maximum number of components in the first step that can
+                    # fit. Selecting from the smallest radii
+                    current_step_consideration = minimum(unique_step_lengths)
+                    bool_mask = steps_left .<= current_step_consideration
+                    part_ids_at_or_before_step = part_ids_left[bool_mask]
+                    radii = radii_left[bool_mask]
+                    sorted_idxs = sortperm(radii)
+                    sorted_radii = radii[sorted_idxs]
+                    half_widths = asin.(sorted_radii ./ (sorted_radii .+ staging_radius))
+                    last_idx = findlast(cumsum(half_widths) * 2 .<= 2.0 * Float64(π))
+
+                    idxs_for_opt = sorted_idxs[1:last_idx] # With step mask
+
+                    part_ids_for_opt = part_ids_at_or_before_step[idxs_for_opt]
+                    radii_for_opt = radii[idxs_for_opt]
+
+                elseif can_fit_steps == maximum(unique_step_lengths)
+                    # Current staging radius can fit all of the assemblies
+                    part_ids_for_opt = part_ids_left
+                    radii_for_opt = radii_left
+
+                else
+                    # We can fit all components upto can_fit_step, but not all of the remaining components
+                    # We will select the maximum number of components in the next step that can fit in
+                    # addition to all of the components from the can_fit_step
+                    bool_mask = steps_left .<= can_fit_steps
+                    part_ids_for_opt = part_ids_left[bool_mask]
+                    radii_for_opt = radii_left[bool_mask]
+
+                    arc_dist_used = sum(asin.(radii_for_opt ./ (radii_for_opt .+ staging_radius)))
+
+                    part_ids_left = setdiff(part_ids_left, part_ids_for_opt)
+                    steps_left = [steps_dict[id] for id in part_ids_left]
+                    radii_left = [staging_circles[id].radius + buffer_radius/2 for id in part_ids_left]
+
+                    bool_mask = steps_left .<= unique_step_lengths[cnt]
+
+                    part_ids_at_or_before_step = part_ids_left[bool_mask]
+                    radii = radii_left[bool_mask]
+                    sorted_idxs = sortperm(radii)
+                    sorted_radii = radii[sorted_idxs]
+                    half_widths = asin.(sorted_radii ./ (sorted_radii .+ staging_radius))
+                    last_idx = findlast((arc_dist_used .+ cumsum(half_widths)) * 2 .<= 2.0 * Float64(π))
+
+                    last_idx = isnothing(last_idx) ? 0 : last_idx
+                    idxs_for_opt = sorted_idxs[1:last_idx] # With step mask
+
+                    append!(part_ids_for_opt, part_ids_at_or_before_step[idxs_for_opt])
+                    append!(radii_for_opt, radii[idxs_for_opt])
+                end
+
+                part_ids_left = setdiff(part_ids_left, part_ids_for_opt)
+                steps_left = [steps_dict[id] for id in part_ids_left]
+                radii_left = [staging_circles[id].radius + buffer_radius/2 for id in part_ids_left]
+
+                parts_for_opt = (get_node(scene_tree, part_id) for part_id in part_ids_for_opt)
+                radii_for_opt = [staging_circles[id].radius + buffer_radius/2 for id in part_ids_for_opt]
+
+                ring_radius = -1
+                θ_star = nothing
+                # repeat to ensure correct alignment
+                while staging_radius - ring_radius > 1e-6
+                    θ_des = Vector{Float64}()
+                    ring_radius = staging_radius
+                    for (part_id, part) in zip(part_ids_for_opt, parts_for_opt)
+                        # retrieve staging config from LiftIntoPlace node
+                        lift_node = get_node(sched, LiftIntoPlace(part))
+                        # give coords of the dropoff point (we want `part` to be built as close as possible to here.)
+                        # crucial: must be relative to the assembly origin
+                        tr = relative_transform(
+                            global_transform(goal_config(start_node)),
+                            global_transform(start_config(lift_node))).translation
+                        tform = CoordinateTransformations.Translation(tr...)
+                        geom = staging_circles[part_id]
+                        # the vector from the circle center to the goal location
+                        d_ = HierarchicalGeometry.project_to_2d(tform.translation) - staging_circle.center
+                        # scale d_ to the appropriate radius, then shift tip vector from part center to geom.center
+                        d = (d_ / norm(d_)) * ring_radius + geom.center
+                        push!(θ_des, atan(d[2],d[1]))
+                    end
+                    # optimize placement and increase staging_radius if necessary
+                    θ_star, staging_radius = solve_ring_placement_problem(θ_des, radii_for_opt, ring_radius)
+                end
+
+                # Compute staging config transforms (relative to parent assembly)
+                tformed_geoms = Vector{Ball2}()
+                for (i, (θ, r, part_id, part)) in enumerate(zip(θ_star, radii_for_opt, part_ids_for_opt, parts_for_opt))
+                    part_start_node = get_node(sched, AssemblyComplete(part))
+                    geom = staging_circles[part_id]
+                    R = staging_radius + r
+                    # shift by vector from geom.center to part origin
+                    t = CoordinateTransformations.Translation(
+                        R*cos(θ) + staging_circle.center[1] - geom.center[1],
+                        R*sin(θ) + staging_circle.center[2] - geom.center[2],
+                        0.0)
+                    # Get global orientation parent frame ʷRₚ
+                    tform = t ∘ identity_linear_map() # AffineMap transform
+                    # set transform of start node
+                    HierarchicalGeometry.set_local_transform_in_global_frame!(start_config(part_start_node), tform)
+                    tform2D = CoordinateTransformations.Translation(t.translation[1:2]...)
+                    push!(tformed_geoms, tform2D(geom))
+                end
+                old_ball = staging_circles[node_id(assembly)]
+                new_ball = overapproximate(
+                    vcat(tformed_geoms, staging_circles[node_id(assembly)]),
+                    Ball2{Float64,SVector{2,Float64}}
+                )
+                @assert new_ball.radius + 1e-5 > old_ball.radius+norm(new_ball.center .- old_ball.center) "$(summary(node_id(assembly))) old ball $(old_ball), new_ball $(new_ball)"
+                staging_circles[node_id(assembly)] = new_ball
+            end
+
+            # add directly as staging circle of AssemblyComplete node
+            assembly_complete.inner_staging_circle.base_geom  = HierarchicalGeometry.project_to_3d(orig_ball)
+            assembly_complete.outer_staging_circle.base_geom  = HierarchicalGeometry.project_to_3d(new_ball)
+            @info "Updating staging_circle for $(summary(node_id(assembly))) to $(staging_circles[node_id(assembly)])"
+        end
+    end
+    sched
+end
+
+
+"""
+    select_assembly_start_configs!(sched, scene_tree, staging_radii;
+        buffer_radius=0.0)
+
+Select the start configs (i.e., the build location) for each assembly. The
+location is selected by minimizing distance to the assembly's staging location
+while ensuring that no child's staging area overlaps with its parent's staging
+area. Uses the same ring optimization approach as for selectig staging
+locations.
+"""
+function select_assembly_start_configs!(sched, scene_tree, staging_circles;
+        buffer_radius=0.0,
+    )
+    # Update assembly start points so that none of the staging regions overlap
+    for start_node in node_iterator(sched, topological_sort_by_dfs(sched))
+        if !matches_template(AssemblyComplete, start_node)
+            continue
+        end
+        assembly_complete = node_val(start_node)
+        node = entity(start_node)
+        if matches_template(AssemblyNode, node)
             # Apply ring solver with child assemblies (not objects)
             assembly = node
             part_ids = sort(filter(k->isa(k,AssemblyID),
@@ -702,11 +899,11 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
             @info "Selecting staging location for $(summary(node_id(assembly)))"
             # start_node = get_node(sched,AssemblyComplete(assembly))
             # staging_radii
-            @assert haskey(staging_circles,node_id(assembly))
+            @assert haskey(staging_circles, node_id(assembly))
             staging_circle = staging_circles[node_id(assembly)]
             staging_radius = staging_circle.radius + buffer_radius
             ring_radius = -1
-            parts = (get_node(scene_tree,part_id) for part_id in part_ids)
+            parts = (get_node(scene_tree, part_id) for part_id in part_ids)
             # radii = [staging_circles[id].radius for id in part_ids]
             radii = [staging_circles[id].radius + buffer_radius/2 for id in part_ids]
             # θ_des = Vector{Float64}()
@@ -715,7 +912,7 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
             while staging_radius - ring_radius > 1e-6
                 θ_des = Vector{Float64}()
                 ring_radius = staging_radius
-                for (part_id,part) in zip(part_ids,parts)
+                for (part_id, part) in zip(part_ids, parts)
                     # retrieve staging config from LiftIntoPlace node
                     lift_node = get_node(sched,LiftIntoPlace(part))
                     # give coords of the dropoff point (we want `part` to be built as close as possible to here.)
@@ -733,12 +930,12 @@ function select_assembly_start_configs!(sched,scene_tree,staging_circles;
                 end
                 # optimize placement and increase staging_radius if necessary
                 θ_star, staging_radius = solve_ring_placement_problem(
-                    θ_des, radii, ring_radius,)
+                    θ_des, radii, ring_radius)
             end
             # Compute staging config transforms (relative to parent assembly)
             tformed_geoms = Vector{Ball2}()
-            for (i,(θ,r,part_id,part)) in enumerate(zip(θ_star,radii,part_ids,parts))
-                part_start_node = get_node(sched,AssemblyComplete(part))
+            for (i,(θ,r,part_id,part)) in enumerate(zip(θ_star, radii, part_ids, parts))
+                part_start_node = get_node(sched, AssemblyComplete(part))
                 geom = staging_circles[part_id]
                 R = staging_radius + r
                 # shift by vector from geom.center to part origin
@@ -786,12 +983,13 @@ Keyword Args:
 - build_step_buffer_radius = 0.0 - amount by which to inflate each transport unit
 when layout out the build step.
 """
-function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,staging_circles;
-        build_step_buffer_radius=0.0,
-    )
+function process_schedule_build_step!(node, sched, scene_tree, bounding_circles, staging_circles;
+        build_step_buffer_radius=0.0)
+
     open_build_step = node_val(node)
     assembly = open_build_step.assembly
-    start_node = get_node(sched,AssemblyComplete(assembly))
+    start_node = get_node(sched, AssemblyComplete(assembly))
+
     # optimize staging locations
     part_ids    = sort(collect(keys(assembly_components(open_build_step))))
     parts       = (get_node(scene_tree,part_id) for part_id in part_ids)
@@ -799,25 +997,25 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
     θ_des       = Vector{Float64}()
     radii       = Vector{Float64}()
     geoms       = Vector{Ball2}()
+
     # bounding circle at current stage
-    bounding_circle = get!(bounding_circles, node_id(assembly),
-        Ball2(zeros(SVector{2,Float64}),0.0)
-        )
-    for (part_id,part,tform) in zip(part_ids,parts,tforms)
-        tu = get_node(scene_tree,TransportUnitNode(part))
+    bounding_circle = get!(bounding_circles, node_id(assembly), Ball2(zeros(SVector{2,Float64}),0.0))
+    for (part_id, part, tform) in zip(part_ids, parts, tforms)
+        tu = get_node(scene_tree, TransportUnitNode(part))
         tu_tform = tform ∘ inv(child_transform(tu,part_id))
         tu_geom = HierarchicalGeometry.project_to_2d(tu_tform(get_base_geom(tu,HypersphereKey())))
         d = tu_geom.center - bounding_circle.center
         r = tu_geom.radius
-        push!(geoms,tu_geom)
+        push!(geoms, tu_geom)
         # Store transformed geometry for staging placement optimization
         push!(θ_des, wrap_to_pi(atan(d[2],d[1])))
         push!(radii, r + build_step_buffer_radius)
     end
+
     if !isempty(geoms)
         # Compute new bounding circle which contains the assembly at the end of this build step
         new_bounding_circle = overapproximate(
-            vcat(geoms,bounding_circle),
+            vcat(geoms, bounding_circle),
             Ball2{Float64,SVector{2,Float64}}
             )
         bounding_circles[node_id(assembly)] = new_bounding_circle # for assembly
@@ -840,9 +1038,10 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
             @info "ring placement solution $(node_id(node))" assembly_radius radii θ_des θ_star Δθ
         end
     end
+
     # Compute staging config transforms (relative to parent assembly)
     tformed_geoms = Vector{Ball2}()
-    for (i,(θ,r,part_id,part,tform)) in enumerate(zip(θ_star,radii,part_ids,parts,tforms))
+    for (i, (θ, r, part_id, part, tform)) in enumerate(zip(θ_star, radii, part_ids, parts, tforms))
         tu = get_node(scene_tree,TransportUnitNode(part))
         _child_tform = child_transform(tu,part_id).translation
         lift_node = get_node(sched,LiftIntoPlace(get_node(scene_tree,part_id)))
@@ -868,16 +1067,17 @@ function process_schedule_build_step!(node,sched,scene_tree,bounding_circles,sta
         geom = HierarchicalGeometry.project_to_2d(t(get_base_geom(tu,HypersphereKey())))
         push!(tformed_geoms,geom)
     end
+
     # Compute next staging circle by overapproximating current bounding circle and new geometry
-    if haskey(staging_circles,node_id(assembly))
+    if haskey(staging_circles, node_id(assembly))
         # carry over existing staging circle geometry
-        push!(tformed_geoms,staging_circles[node_id(assembly)])
+        push!(tformed_geoms, staging_circles[node_id(assembly)])
     end
-    old_ball = get(staging_circles,node_id(assembly),Ball2(zeros(SVector{2,Float64}),0.0))
+    old_ball = get(staging_circles, node_id(assembly), Ball2(zeros(SVector{2,Float64}),0.0))
     new_ball = overapproximate(
-        vcat(tformed_geoms,bounding_circles[node_id(assembly)]),
-        Ball2{Float64,SVector{2,Float64}}
-        )
+        vcat(tformed_geoms, bounding_circles[node_id(assembly)]),
+        Ball2{Float64, SVector{2,Float64}}
+    )
     @assert new_ball.radius + 1e-5 > old_ball.radius+norm(new_ball.center .- old_ball.center) "$(summary(node_id(assembly))) old ball $(old_ball), new_ball $(new_ball)"
     staging_circles[node_id(assembly)] = new_ball
     # incorporate new bounding circle into OpenBuildStep
@@ -899,9 +1099,9 @@ to increase as a variable, or use a search to optimize R while repeating the
 optimization.
 return θ_star
 """
-function solve_ring_placement_problem(θ_des,r,R,rmin=0.0;
+function solve_ring_placement_problem(θ_des, r, R, rmin=0.0;
         ϵ = 1e-1, # buffer for increasing R when necessary
-        weights = ones(length(θ_des)),
+        weights = ones(length(θ_des))
     )
     model = Model(HierarchicalGeometry.default_optimizer())
     set_optimizer_attributes(model,HierarchicalGeometry.default_optimizer_attributes()...)
@@ -912,16 +1112,15 @@ function solve_ring_placement_problem(θ_des,r,R,rmin=0.0;
     @assert length(r) == n "length(r) != n for n=$n, r = $r"
     # sort θ (the unsorted vector will be returned at the end)
     idxs = sortperm(θ_des)
-    # reverse_idxs = collect(1:n)[idxs]
     reverse_idxs = sortperm(idxs)
     θ_des = θ_des[idxs]
     r = r[idxs]
     # compute half widths in radians (required radial spacing between parts)
     half_widths = asin.(r ./ (r .+ R))
     # increase R and recompute half widths if ring is too small
-    while sum(half_widths)*2 >= 2.0*Float64(π)
+    while sum(half_widths) * 2 >= 2.0 * Float64(π)
         @info "R = $R is too small----sum(half_widths)*2 = $(sum(half_widths)*2)"
-        R = R*sum(half_widths)/(Float64(π)) + ϵ
+        R = R * sum(half_widths) / (Float64(π)) + ϵ
         half_widths = asin.(r ./ (r .+ R))
         @info "Increased R to $R. sum(half_widths)*2 = $(sum(half_widths)*2)"
     end
@@ -1380,4 +1579,54 @@ function select_optimal_carrying_configuration(pts::AbstractVector)
 end
 function select_optimal_carrying_configuration(n::ObjectNode)
     select_optimal_carrying_configuration(coordinates(get_base_geom(n)))
+end
+
+"""
+    find_step_numbers(start_node, part_ids, sched, scene_tree; max_depth=100)
+
+Finds the number of steps down the tree the corresponding lift nodes are from the
+start node. Returns a vector of Int where the i-th element is the steps from the start node
+that the life node corresponding to the i-th part_id is.
+"""
+function find_step_numbers(start_node, part_ids, sched, scene_tree; max_depth=1000)
+    steps_found = Vector{Int}(undef, length(part_ids))
+    found = []
+    lift_nodes_to_find = []
+    for part_id in part_ids
+        lift_node = get_node(sched, LiftIntoPlace(get_node(scene_tree, part_id)))
+        push!(lift_nodes_to_find, lift_node.id)
+    end
+    ns = [start_node]
+    cnt = 0
+    continue_looking = true
+    while continue_looking
+        cnt += 1
+        new_ns = []
+        for n in ns
+            ons = inneighbors(sched, n)
+            for ni in sched.nodes[ons]
+                for (ii, lift_node_id) in enumerate(lift_nodes_to_find)
+                    if ii in found
+                        continue
+                    end
+                    if ni.id == lift_node_id
+                        push!(found, ii)
+                        steps_found[ii] = cnt
+                    end
+                end
+                if length(found) == length(lift_nodes_to_find)
+                    continue_looking = false
+                    break
+                end
+            end
+            append!(new_ns, sched.nodes[ons])
+        end
+        ns = unique(new_ns);
+        if length(ns) < 1 || cnt > max_depth
+            continue_looking = false
+            idxs = setdiff(1:length(lift_nodes_to_find), found)
+            error("Could not find node $(lift_nodes_to_find[idxs]) in $(start_node.id). Searched to depth $(cnt)")
+        end
+    end
+    return steps_found
 end
