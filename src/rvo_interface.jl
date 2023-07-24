@@ -256,11 +256,6 @@ function rvo_add_agents!(scene_tree, active_nodes, sim=rvo_global_sim())
             end
         end
     end
-    # for node in active_nodes
-    #     if rvo_eligible_node(node)
-    #         idx = rvo_add_agent!(entity(node),sim)
-    #     end
-    # end
 end
 
 function rvo_sim_needs_update(scene_tree, active_nodes)
@@ -280,12 +275,6 @@ function rvo_sim_needs_update(scene_tree, active_nodes)
         end
     end
     return false
-    # ids = Set{AbstractID}([node_id(n) for n in active_nodes])
-    # if length(ids) == length(intersect(ids,get_vtx_ids(rvo_global_id_map())))
-    #     return false
-    # else
-    #     return true
-    # end
 end
 
 function rvo_update_sim!(active_nodes=get_nodes(scene_tree))
