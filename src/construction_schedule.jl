@@ -1451,17 +1451,14 @@ end
 
 
 """
-    init_transport_units(sched,robot_shape)
+    init_transport_units(scene_tree, robot_shape)
 """
-function init_transport_units!(scene_tree;
-        kwargs...
-    )
+function init_transport_units!(scene_tree; kwargs...)
     cvx_hulls = HierarchicalGeometry.compute_hierarchical_2d_convex_hulls(scene_tree)
-    for (id,pts) in cvx_hulls
+    for (id, pts) in cvx_hulls
         isempty(pts) ? continue : nothing
-        cargo = get_node(scene_tree,id)
-        # @info "configuring transport unit for $(summary(id))"
-        transport_unit = configure_transport_unit(cargo,pts;kwargs...)
+        cargo = get_node(scene_tree, id)
+        transport_unit = configure_transport_unit(cargo, pts; kwargs...)
         if has_vertex(scene_tree,node_id(transport_unit))
             @warn "scene tree already has node $(node_id(transport_unit))"
         else
@@ -1472,11 +1469,11 @@ function init_transport_units!(scene_tree;
 end
 
 """
-    configure_transport_unit(cargo,pts;
+    configure_transport_unit(cargo, pts;
 
 Define the transport unit for cargo. `pts` are the eligible support points
 """
-function configure_transport_unit(cargo,pts;
+function configure_transport_unit(cargo, pts;
         robot_radius = HierarchicalGeometry.default_robot_radius(),
         robot_height = default_robot_height(),
         optimize_carry_config = false,
@@ -1486,13 +1483,7 @@ function configure_transport_unit(cargo,pts;
     zmin = base_rect.center[3] .- base_rect.radius[3]
     cargo_tform = CoordinateTransformations.Translation(0.0, 0.0, robot_height - zmin) ∘ identity_linear_map()
     transport_unit = TransportUnitNode(node_id(cargo) => cargo_tform)
-    # project back to 3D and convert to SVector
-    # geom = map(SVector,map(HierarchicalGeometry.project_to_3d,pts))
-    # node = get_node(scene_tree,id)
-    # rect = get_base_geom(node,HyperrectangleKey())
-    # height = rect.radius[3]
-    # push!(geom, SVector(geom[1][1],geom[1][2],height))
-    support_pts = HierarchicalGeometry.select_support_locations(VPolygon(pts),robot_radius)
+    support_pts = HierarchicalGeometry.select_support_locations(VPolygon(pts), robot_radius)
     for pt in support_pts
         tform = CoordinateTransformations.Translation(pt[1],pt[2],0.0,) ∘ identity_linear_map()
         add_robot!(transport_unit,tform)

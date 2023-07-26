@@ -1,196 +1,140 @@
-using ConstructionBots
-using LDrawParser
-using HierarchicalGeometry
-using LazySets
-
-using TaskGraphs
-using JuMP
-
-using Graphs, GraphUtils
-using GeometryBasics, CoordinateTransformations, Rotations
-using StaticArrays
-using LinearAlgebra
-
-using PyCall
-
-using MeshCat
-using Plots
-using Random
-
-using TOML
-using Logging
-
-using Colors
-using Printf
-using Parameters
-
-using PGFPlots
-using PGFPlotsX
-using Measures
-import Cairo
-using Compose
-
-using JLD2
-
-using ProgressMeter
-
-# Set logging level
-log_level = Logging.LogLevel(2) # Logging.LogLvel(-1) Logging.Info Logging.Debug Logging.Warn Logging.Error
-global_logger(ConsoleLogger(stderr, log_level))
-
-include("../deps/GraphPlottingBFS.jl")
-include("../deps/FactoryRendering.jl")
-
-include("../src/render_tools.jl")
-include("../src/tg_render_tools.jl")
 include("full_demo.jl")
-
-
-using Gurobi
-set_default_milp_optimizer!(Gurobi.Optimizer)
-
-TaskGraphs.set_default_optimizer_attributes!(
-    "TimeLimit"=>100,
-    MOI.Silent()=>false
-    )
-
-rvo = pyimport("rvo2")
-ConstructionBots.set_rvo_python_module!(rvo)
 
 ## LOAD LDRAW FILE
 
 # project_name                = "colored_8x8.ldr"
-# MODEL_SCALE                 = 0.01
-# NUM_ROBOTS                  = 24
-# OBJECT_VTX_RANGE            = (-10:10,-10:10, 0:1)
-# HOME_VTX_RANGE              = (-10:-2, -10:-7, 0:0)
-# MAX_STEPS                   = 3000
-# ROBOT_SCALE                 = MODEL_SCALE * 0.9
+# model_scale                 = 0.01
+# num_robots                  = 24
+# object_vtx_range            = (-10:10,-10:10, 0:1)
+# home_vtx_range              = (-10:-2, -10:-7, 0:0)
+# max_steps                   = 3000
+# robot_scale                 = model_scale * 0.9
 
 # project_name              = "quad_nested.mpd"
-# MODEL_SCALE               = 0.004
-# NUM_ROBOTS                = 50
-# ROBOT_SCALE               = MODEL_SCALE
-# OBJECT_VTX_RANGE          = (-10:10,-10:10, 0:2)
-# MAX_STEPS                 = 3000
-# HOME_VTX_RANGE            = (-10:10,-10:10, 0:0)
-# STAGING_BUFFER_FACTOR     = 1.5
-# BUILD_STEP_BUFFER_FACTOR  = 0.55
-
-# project_name              = "quad_nested.mpd"
-# MODEL_SCALE               = 0.004
-# NUM_ROBOTS                = 50
-# ROBOT_SCALE               = MODEL_SCALE
-# OBJECT_VTX_RANGE          = (-70:0.5:20,-70:0.5:20, 0:2)
-# MAX_STEPS                 = 3000
-# HOME_VTX_RANGE            = (-70:0,-70:0, 0:0)
-# STAGING_BUFFER_FACTOR     = 1.5
-# BUILD_STEP_BUFFER_FACTOR  = 0.55
+# model_scale               = 0.004
+# num_robots                = 50
+# robot_scale               = model_scale
+# object_vtx_range          = (-10:10,-10:10, 0:2)
+# max_steps                 = 3000
+# home_vtx_range            = (-10:10,-10:10, 0:0)
+# staging_buffer_factor     = 1.5
+# build_step_buffer_factor  = 0.55
 
 # project_name                = "tractor.mpd"
-# MODEL_SCALE                 = 0.008
-# ROBOT_SCALE                 = MODEL_SCALE * 0.7
-# NUM_ROBOTS                  = 12
-# MAX_STEPS                   = 3000
-# OBJECT_VTX_RANGE            = (-10:10,-10:10, 0:1)
-# HOME_VTX_RANGE              = (-10:-4, -10:-8, 0:0)
-# STAGING_BUFFER_FACTOR       = 1.5
-# BUILD_STEP_BUFFER_FACTOR    = 1.5
+# model_scale                 = 0.008
+# robot_scale                 = model_scale * 0.7
+# num_robots                  = 12
+# max_steps                   = 3000
+# object_vtx_range            = (-10:10,-10:10, 0:1)
+# home_vtx_range              = (-10:-4, -10:-8, 0:0)
+# staging_buffer_factor       = 1.5
+# build_step_buffer_factor    = 1.5
 
-# project_name = "X-wingMini.mpd"
-# MODEL_SCALE               = 0.007
-# ROBOT_SCALE               = MODEL_SCALE * 0.7
-# NUM_ROBOTS                = 30
-# MAX_STEPS                 = 8000
-# OBJECT_VTX_RANGE          = (-12:12, -12:12, 0:0)
-# HOME_VTX_RANGE            = (-15:-5, -15:-10, 0:0)
-# STAGING_BUFFER_FACTOR     = 1.5
-# BUILD_STEP_BUFFER_FACTOR  = 1.5
+# project_name = "30051-1 - X-wing Fighter - Mini.mpd"
+# model_scale               = 0.007
+# robot_scale               = model_scale * 0.7
+# num_robots                = 30
+# max_steps                 = 8000
+# object_vtx_range          = (-12:12, -12:12, 0:0)
+# home_vtx_range            = (-15:-5, -15:-10, 0:0)
+# staging_buffer_factor     = 1.5
+# build_step_buffer_factor  = 1.5
 
 # project_name = "ATTEWalker.mpd"
-# MODEL_SCALE                 = 0.003
-# ROBOT_SCALE                 = MODEL_SCALE
-# NUM_ROBOTS                  = 36
-# MAX_STEPS                   = 8000
-# OBJECT_VTX_RANGE            = (-10:10,-10:10, 0:1)
-# HOME_VTX_RANGE              = (-10:-1, -10:-6, 0:0)
-# STAGING_BUFFER_FACTOR       = 1.5
-# BUILD_STEP_BUFFER_FACTOR    = 1.5
+# model_scale                 = 0.003
+# robot_scale                 = model_scale
+# num_robots                  = 36
+# max_steps                   = 8000
+# object_vtx_range            = (-10:10,-10:10, 0:1)
+# home_vtx_range              = (-10:-1, -10:-6, 0:0)
+# staging_buffer_factor       = 1.5
+# build_step_buffer_factor    = 1.5
 
+# project_name = "7140-1 - X-wing Fighter--mod.mpd"
+# model_scale               = 0.0028
+# robot_scale               = model_scale
+# num_robots                = 100 #? Maybe less?
+# max_steps                 = 15000
+# object_vtx_range          = (-14:0.5:14, -14:0.5:14, 0:0)
+# home_vtx_range            = (-25:0, -25:-20, 0:0)
+# staging_buffer_factor     = 1.5
+# build_step_buffer_factor  = 0.5
 
-# project_name = "X-wingFighter.mpd"
-# MODEL_SCALE               = 0.0028
-# ROBOT_SCALE               = MODEL_SCALE
-# NUM_ROBOTS                = 100
-# MAX_STEPS                 = 8000
-# OBJECT_VTX_RANGE          = (-14:0.5:14, -14:0.5:14, 0:0)
-# HOME_VTX_RANGE            = (-25:0, -25:-20, 0:0)
-# STAGING_BUFFER_FACTOR     = 2.2
-# BUILD_STEP_BUFFER_FACTOR  = 0.5
+project_name = "6080 - Kings Castle.mpd"
+model_scale               = 0.0025
+num_robots                = 75
+robot_scale               = model_scale
+max_steps                 = 40000
+object_vtx_range          = (-30:0.5:30, -30:0.5:30, 0:0)
+home_vtx_range            = (-35:-20, -35:-20, 0:0)
+staging_buffer_factor     = 1.5
+build_step_buffer_factor  = 0.5
 
 # project_name = "StarDestroyer.mpd"
-# MODEL_SCALE               = 0.002
-# NUM_ROBOTS                = 100
-# ROBOT_SCALE               = MODEL_SCALE
-# MAX_STEPS                 = 40000
-# OBJECT_VTX_RANGE          = (-16:0.5:16, -16:0.5:16, 0:0)
-# HOME_VTX_RANGE            = (-25:0, -25:-20, 0:0)
-# STAGING_BUFFER_FACTOR     = 1.5
-# BUILD_STEP_BUFFER_FACTOR  = 0.5
+# model_scale               = 0.002
+# num_robots                = 100
+# robot_scale               = model_scale
+# max_steps                 = 40000
+# object_vtx_range          = (-16:0.5:16, -16:0.5:16, 0:0)
+# home_vtx_range            = (-25:0, -25:-20, 0:0)
+# staging_buffer_factor     = 1.5
+# build_step_buffer_factor  = 0.5
 
-# project_name                = "heavily_nested.mpd"
-# MODEL_SCALE               = 0.004
-# NUM_ROBOTS                = 50
-# ROBOT_SCALE               = MODEL_SCALE
-# OBJECT_VTX_RANGE          = (-350:0.5:35,-35:0.5:35, 0:2)
-# MAX_STEPS                 = 40000
-# HOME_VTX_RANGE            = (-60:0.5:0,-60:0.5:0, 0:0)
-# STAGING_BUFFER_FACTOR     = 1.5
-# BUILD_STEP_BUFFER_FACTOR  = 0.55
+# project_name = "heavily_nestes.mpd"
+# model_scale               = 0.004
+# num_robots                = 50
+# robot_scale               = model_scale
+# object_vtx_range          = (-350:0.5:35,-35:0.5:35, 0:2)
+# max_steps                 = 40000
+# home_vtx_range            = (-60:0.5:0,-60:0.5:0, 0:0)
+# staging_buffer_factor     = 1.5
+# build_step_buffer_factor  = 0.55
 
-project_name = "Saturn.mpd"
-MODEL_SCALE               = 0.0015
-NUM_ROBOTS                = 100
-ROBOT_SCALE               = MODEL_SCALE
-MAX_STEPS                 = 100000
-OBJECT_VTX_RANGE          = (-30:0.5:30, -30:0.5:30, 0:1)
-HOME_VTX_RANGE            = (-50:0.5:0,-50:0, 0:0)
-STAGING_BUFFER_FACTOR     = 1.5
-BUILD_STEP_BUFFER_FACTOR  = 1.5
-
-
+# project_name = "Saturn.mpd"
+# model_scale               = 0.0015
+# num_robots                = 50 #100
+# robot_scale               = model_scale
+# max_steps                 = 100000
+# object_vtx_range          = (-30:0.5:30, -30:0.5:30, 0:1)
+# home_vtx_range            = (-50:0.5:0,-50:0, 0:0)
+# staging_buffer_factor     = 1.5
+# build_step_buffer_factor  = 1.5
 
 visualize_processing         = false
-visualize_animation_at_end   = true
-save_animation_along_the_way = true
-save_animation_at_end        = false
+visualize_animation_at_end   = false
+save_animation_along_the_way = false
+save_animation_at_end        = true
 anim_steps                   = true
 anim_active_areas            = true
-RVO_FLAG                     = true # false
-ASSIGNMENT_MODE              = :GREEDY # :OPTIMAL # :GREEDY
-OVERWRITE_RESULTS            = true
+rvo_flag                     = true # false
+assignment_mode              = :GREEDY # :OPTIMAL # :GREEDY
+write_results                = true
+overwrite_results            = true
 seed                         = 1
 
-max_num_iters_no_progress    = 2500
+max_num_iters_no_progress    = 1500
 
+using Gurobi
 
 env, STATS = run_lego_demo(;
     project_name                 = project_name,
-    MODEL_SCALE                  = MODEL_SCALE,
-    NUM_ROBOTS                   = NUM_ROBOTS,
-    ROBOT_SCALE                  = ROBOT_SCALE,
-    OBJECT_VTX_RANGE             = OBJECT_VTX_RANGE,
-    HOME_VTX_RANGE               = HOME_VTX_RANGE,
-    MAX_STEPS                    = MAX_STEPS,
-    ASSIGNMENT_MODE              = ASSIGNMENT_MODE,
-    RVO_FLAG                     = RVO_FLAG,
+    model_scale                  = model_scale,
+    num_robots                   = num_robots,
+    robot_scale                  = robot_scale,
+    object_vtx_range             = object_vtx_range,
+    home_vtx_range               = home_vtx_range,
+    max_steps                    = max_steps,
+    assignment_mode              = assignment_mode,
+    rvo_flag                     = rvo_flag,
     visualize_processing         = visualize_processing,
     visualize_animation_at_end   = visualize_animation_at_end,
     save_animation               = save_animation_at_end,
     save_animation_along_the_way = save_animation_along_the_way,
     anim_steps                   = anim_steps,
     anim_active_areas            = anim_active_areas,
-    OVERWRITE_RESULTS            = OVERWRITE_RESULTS,
+    write_results                = write_results,
+    overwrite_results            = overwrite_results,
     max_num_iters_no_progress    = max_num_iters_no_progress,
+    default_milp_optimizer       = Gurobi.Optimizer,
     seed                         = seed
 );

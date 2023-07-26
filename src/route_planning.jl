@@ -56,18 +56,18 @@ goal pose.
     tf_error = inv(state) ∘ goal # transform error from state to goal
     i.e., state ∘ tf_error == goal
 """
-function optimal_twist(tf_error,v_max,ω_max,dt,ϵ_x=1e-4,ϵ_θ=1e-4)
+function optimal_twist(tf_error, v_max, ω_max, dt, ϵ_x=1e-4, ϵ_θ=1e-4)
     # translation error
     dx = tf_error.translation
     if norm(dx) <= ϵ_x
-        vel = SVector(0.0,0.0,0.0)
+        vel = SVector(0.0, 0.0, 0.0)
     else
-        vel = normalize(dx) * min(v_max, norm(dx)/dt)
+        vel = normalize(dx) * min(v_max, norm(dx) / dt)
     end
-    vel = any(isnan,vel) ? SVector(0.0,0.0,0.0) : vel
+    vel = any(isnan, vel) ? SVector(0.0, 0.0, 0.0) : vel
     # rotation error
     r = RotationVec(tf_error.linear) # rotation vector
-    θ = SVector(r.sx,r.sy,r.sz) # convert r to svector
+    θ = SVector(r.sx, r.sy, r.sz) # convert r to svector
     if norm(θ) <= ϵ_θ
         ω = SVector(0.0,0.0,0.0)
     else
@@ -729,7 +729,6 @@ function get_twist_cmd(node, env::PlannerEnv)
     policy = agent_policies[node_id(agent)].nominal_policy
     if !(policy === nothing)
         pos = HierarchicalGeometry.project_to_2d(global_transform(agent).translation)
-        r = HierarchicalGeometry.get_radius(get_base_geom(agent,HypersphereKey()))
         excluded_ids = Set{AbstractID}()
 
         #? Can we use the cached version here?
@@ -748,14 +747,9 @@ function get_twist_cmd(node, env::PlannerEnv)
         goal_pt = query_policy_for_goal!(policy, circles, pos, HierarchicalGeometry.project_to_2d(goal.translation))
         new_goal = CoordinateTransformations.Translation(goal_pt...,0.0) ∘ CoordinateTransformations.LinearMap(goal.linear)
 
-        tf_error = relative_transform(global_transform(agent), new_goal)
-        v_max = get_rvo_max_speed(agent)
-        ω_max = default_rotational_loading_speed()
-        twist = optimal_twist(tf_error,v_max,ω_max,dt)
-
-        twist = compute_twist_from_goal(agent,new_goal,dt) # nominal twist
+        twist = compute_twist_from_goal(agent, new_goal, dt) # nominal twist
     else
-        twist = compute_twist_from_goal(agent,goal,dt)
+        twist = compute_twist_from_goal(agent, goal, dt)
     end
     if use_rvo()
         ############ Hacky Traffic Thinning #############
@@ -802,7 +796,7 @@ function get_twist_cmd(node, env::PlannerEnv)
             # compute goal
             goal_pt = pos + vel*dt
             goal = CoordinateTransformations.Translation(goal_pt...,0.0) ∘ CoordinateTransformations.LinearMap(goal.linear)
-            twist = compute_twist_from_goal(agent,goal,dt) # nominal twist
+            twist = compute_twist_from_goal(agent, goal, dt) # nominal twist
         elseif !(policy === nothing)
             policy.dist_to_nearest_active_agent = 0.0
         end
@@ -811,10 +805,11 @@ function get_twist_cmd(node, env::PlannerEnv)
     return twist
 end
 
-function compute_twist_from_goal(agent, goal, dt)
+function compute_twist_from_goal(
+    agent, goal, dt;
+    v_max=get_rvo_max_speed(agent), ω_max=default_rotational_loading_speed()
+)
     tf_error = relative_transform(global_transform(agent), goal)
-    v_max = get_rvo_max_speed(agent)
-    ω_max = default_rotational_loading_speed()
     return optimal_twist(tf_error,v_max,ω_max,dt)
 end
 
@@ -842,18 +837,18 @@ function get_cmd(node::Union{FormTransportUnit,DepositCargo}, env::PlannerEnv)
     agent = entity(node)
     cargo = get_node(env.scene_tree,cargo_id(agent))
     # compute velocity (angular and translational) for cargo
-    tf_error = relative_transform(global_transform(cargo),global_transform(cargo_goal_config(node)))
     v_max = default_loading_speed()
     ω_max = default_rotational_loading_speed()
-    return optimal_twist(tf_error, v_max, ω_max, env.dt)
+    g_tform = global_transform(cargo_goal_config(node))
+    return compute_twist_from_goal(cargo, g_tform, env.dt, v_max=v_max, ω_max=ω_max)
 end
 function get_cmd(node::LiftIntoPlace, env::PlannerEnv)
     cargo = entity(node)
     # compute velocity (angular and translational) for cargo
-    tf_error = relative_transform(global_transform(cargo),global_transform(goal_config(node)))
+    t_des = global_transform(goal_config(node))
     v_max = default_loading_speed()
     ω_max = default_rotational_loading_speed()
-    twist = optimal_twist(tf_error, v_max, ω_max, env.dt)
+    twist = compute_twist_from_goal(cargo, t_des, env.dt, v_max=v_max, ω_max=ω_max)
     if norm(twist.ω) >= 1e-2
         # rotate first
         return Twist(0*twist.vel,twist.ω)
@@ -899,7 +894,7 @@ end
 function apply_cmd!(node::LiftIntoPlace, twist::Twist, env::PlannerEnv)
     @unpack sched, scene_tree, cache, dt = env
     cargo = entity(node)
-    tform = integrate_twist(twist,dt)
+    tform = integrate_twist(twist, dt)
     set_local_transform!(cargo, local_transform(cargo) ∘ tform)
 end
 function apply_cmd!(node::Union{TransportUnitGo,RobotGo}, twist::Twist, env::PlannerEnv)
