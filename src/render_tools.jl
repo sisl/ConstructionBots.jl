@@ -199,7 +199,7 @@ function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="st
             )
         staging_nodes[id] = staging_vis[string(id)]
         cargo = get_node(scene_tree,id)
-        if isa(cargo,AssemblyNode)
+        if isa(cargo, AssemblyNode)
             cargo_node = get_node(sched,AssemblyComplete(cargo))
         else
             cargo_node = get_node!(sched,ObjectStart(cargo,TransformNode()))
@@ -210,7 +210,7 @@ function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="st
         # settransform!(staging_nodes[id],global_transform(start_config(cargo_node)))
     end
     for n in node_iterator(sched, topological_sort_by_dfs(sched))
-        if matches_template(OpenBuildStep,n)
+        if matches_template(OpenBuildStep, n)
             id = node_id(n)
             sphere = get_cached_geom(node_val(n).staging_circle)
             ctr = Point(HierarchicalGeometry.project_to_2d(sphere.center)..., -0.02)
@@ -756,10 +756,9 @@ Step through the different phases of preprocessing
 function animate_preprocessing_steps!(
         factory_vis,
         sched;
-        dt_animate=0.0,
         anim=nothing,
         dt=0.0,
-        interp_steps=40,
+        interp_steps=80,
         kwargs...,
     )
     @unpack vis, vis_nodes, scene_tree, geom_nodes = factory_vis
@@ -779,28 +778,27 @@ function animate_preprocessing_steps!(
         update_visualizer!(scene_tree,vis_nodes)
     end
     step_animation!(anim)
-    # Begin video
-    for n in get_nodes(scene_tree)
-        if isa(n,Union{AssemblyNode,ObjectNode})
-            atframe(anim,current_frame(anim)) do
-                setvisible!(rect_nodes[node_id(n)],true)
-                setvisible!(base_geom_nodes[node_id(n)],false)
-                update_visualizer!(scene_tree,vis_nodes,[n])
+    # First, show the components of the final assembly turning into the hyperectangles
+    for (ii, n) in enumerate(get_nodes(scene_tree))
+        if isa(n, Union{AssemblyNode, ObjectNode})
+            atframe(anim, current_frame(anim)) do
+                setvisible!(rect_nodes[node_id(n)], true)
+                setvisible!(base_geom_nodes[node_id(n)], false)
+                update_visualizer!(scene_tree,vis_nodes, [n])
             end
-            step_animation!(anim)
+            if mod(ii,2) == 0
+                step_animation!(anim)
+            end
         end
     end
-    # Show staging plan
-    animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,
-        filter(n->isa(n,AssemblyNode),get_nodes(scene_tree))
-        ;
-        anim=anim,
-        interp=true,
-        dt=dt,
-        interp_steps=interp_steps,
-        kwargs...
+    # Show objects moving to the staging/building locations
+    animate_reverse_staging_plan!(
+        vis, vis_nodes, scene_tree, sched,
+        filter(n -> isa(n, AssemblyNode), get_nodes(scene_tree));
+        anim=anim, interp=true, dt=dt, interp_steps=interp_steps, kwargs...
     )
-    # Animate objects moving to their starting positions
+
+    # Go from hyperectangles back to the full geometries (legos)
     for n in get_nodes(scene_tree)
         if isa(n,ObjectNode)
             atframe(anim,current_frame(anim)) do
@@ -808,14 +806,16 @@ function animate_preprocessing_steps!(
                 setvisible!(rect_nodes[node_id(n)],false)
                 update_visualizer!(scene_tree,vis_nodes,[n])
             end
-            step_animation!(anim)
         end
     end
-    animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,
-        filter(n->isa(n,ObjectNode),get_nodes(scene_tree));
-        dt=0.0, interp=true, interp_steps=80, anim=anim,
+    set_current_frame!(anim, current_frame(anim) + 10)
+
+    # Show the legos going to the starting locations
+    animate_reverse_staging_plan!(vis, vis_nodes, scene_tree, sched,
+        filter(n->isa(n,ObjectNode), get_nodes(scene_tree)); dt=dt, interp=true,
+        interp_steps=interp_steps, anim=anim, kwargs...
     )
-    atframe(anim,current_frame(anim)) do
+    atframe(anim, current_frame(anim)) do
         setvisible!(rect_nodes,false)
         setvisible!(base_geom_nodes,true)
     end
@@ -827,14 +827,14 @@ function animate_preprocessing_steps!(
                 setvisible!(vis_nodes[node_id(n)],true)
                 update_visualizer!(scene_tree,vis_nodes,[n])
             end
-            step_animation!(anim)
         end
     end
+    step_animation!(anim)
     atframe(anim,current_frame(anim)) do
         set_scene_tree_to_initial_condition!(scene_tree,sched;remove_all_edges=true)
         update_visualizer!(scene_tree,vis_nodes)
     end
-    step_animation!(anim)
+    set_current_frame!(anim, current_frame(anim) + 10)
     vis
 end
 
