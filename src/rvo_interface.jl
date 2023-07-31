@@ -88,9 +88,9 @@ end
 rvo_global_sim() = get_element(rvo_global_sim_wrapper())
 
 # RVO PARAMETERS
-global RVO_MAX_SPEED_VOLUME_FACTOR = 0.1
-global RVO_MAX_SPEED = 3.0
-global RVO_MIN_MAX_SPEED = 0.1
+global RVO_MAX_SPEED_VOLUME_FACTOR = 0.01
+global RVO_MAX_SPEED = 4.0
+global RVO_MIN_MAX_SPEED = 1.0
 function rvo_default_max_speed()
     RVO_MAX_SPEED
 end
