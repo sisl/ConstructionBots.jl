@@ -983,8 +983,8 @@ Keyword Args:
 - build_step_buffer_radius = 0.0 - amount by which to inflate each transport unit
 when layout out the build step.
 """
-function process_schedule_build_step!(node, sched, scene_tree, bounding_circles, staging_circles;
-        build_step_buffer_radius=0.0)
+function process_schedule_build_step!(node, sched, scene_tree, bounding_circles,
+    staging_circles; build_step_buffer_radius=0.0)
 
     open_build_step = node_val(node)
     assembly = open_build_step.assembly
