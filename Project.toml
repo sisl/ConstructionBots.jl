@@ -39,6 +39,7 @@ Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 Rotations = "6038ab10-8711-5258-84ad-4b1120ba62dc"
 SpatialIndexing = "d4ead438-fe20-5cc5-a293-4fd39a41b74c"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 TaskGraphs = "6635cb54-791c-11e9-2805-8512ad3937f9"
 
 [compat]
