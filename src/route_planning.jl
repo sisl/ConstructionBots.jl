@@ -144,21 +144,26 @@ cargo_ready_for_pickup(n::ScheduleNode, env::PlannerEnv) = cargo_ready_for_picku
 Low alpha means higher priority
 """
 function set_rvo_priority!(env::PlannerEnv, node)
-    @unpack sched, scene_tree, cache, staging_circles = env
-    if matches_template(Union{FormTransportUnit,DepositCargo},node)
+    if matches_template(Union{FormTransportUnit, DepositCargo}, node)
         alpha = 0.0
     elseif parent_build_step_is_active(node, env)
         if cargo_ready_for_pickup(node,env)
-            if matches_template(TransportUnitGo,node)
-                alpha = 0.0
+            if matches_template(TransportUnitGo, node)
+                alpha = 0.2
             else
-                alpha = 0.1
+                alpha = 0.3
             end
         else
             alpha = 0.5
         end
     else
-        alpha = 1.0
+        if matches_template(TransportUnitGo, node)
+            alpha = 0.6
+        elseif matches_template(RobotGo, node)
+            alpha = 0.7 + node.id.id / 2000
+        else
+            alpha = 1.0
+        end
     end
     rvo_set_agent_alpha!(node,alpha)
 end
@@ -733,10 +738,10 @@ function get_twist_cmd(node, env::PlannerEnv)
 
         #? Can we use the cached version here?
         if parent_build_step_is_active(node, env) && cargo_ready_for_pickup(node, env)
-            #? Do we want to excude all areas if parent build step is active or just the parent staging area
-            # parent_build_step = get_parent_build_step(sched,node)
-            # push!(excluded_ids, node_id(parent_build_step))
-            excluded_ids = Set([id for id in env.active_build_steps])
+            #! Do we want to excude all areas if parent build step is active or just the parent staging area
+            parent_build_step = get_parent_build_step(sched, node)
+            push!(excluded_ids, node_id(parent_build_step))
+            # excluded_ids = Set([id for id in env.active_build_steps])
         end
         # get circle obstacles, potentially inflated
         circles = active_staging_circles(env, excluded_ids)
