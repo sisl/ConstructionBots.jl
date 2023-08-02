@@ -1336,25 +1336,19 @@ function select_initial_object_grid_locations!(sched,vtxs)
     nodes = Vector{ObjectNode}()
     # collect nodes by walking through the schedule, so that the objects will be
     # sorted by precedence
-    for node in filtered_topological_sort(sched,LiftIntoPlace)
+    for node in filtered_topological_sort(sched, LiftIntoPlace)
         cargo = entity(node)
-        if matches_template(ObjectNode,cargo)
-            push!(nodes,cargo)
+        if matches_template(ObjectNode, cargo)
+            push!(nodes, cargo)
         end
     end
     tforms = map(
-        v->CoordinateTransformations.Translation(v[1],v[2],v[3]) ∘ identity_linear_map(),
+        v->CoordinateTransformations.Translation(v[1], v[2], v[3]) ∘ identity_linear_map(),
         vtxs
         )
     for (node,tform) in zip(nodes,Base.Iterators.cycle(tforms))
         start_node = get_node(sched,ObjectStart(node))
         HierarchicalGeometry.set_desired_global_transform!(start_config(start_node),tform)
-
-        # parent = get_parent(start_config(start_node))
-        # rtf = relative_transform(global_transform(parent),tform)
-        # HierarchicalGeometry.set_local_transform_in_global_frame!(start_config(start_node),rtf)
-
-        # set_local_transform!(start_config(start_node),tform)
     end
     sched
 end

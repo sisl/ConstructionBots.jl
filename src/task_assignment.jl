@@ -324,7 +324,7 @@ end
 function JuMP.optimize!(model::GreedyOrderedAssignment)
     # TaskGraphs.greedy_assignment!(model)
     assign_collaborative_tasks!(model)
-    set_leaf_vtxs!(model.schedule,ProjectComplete)
+    set_leaf_vtxs!(model.schedule, ProjectComplete)
 end
 
 function construct_build_step_task_set(sched,scene_tree,step_id)
