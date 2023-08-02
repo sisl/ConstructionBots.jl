@@ -1,82 +1,85 @@
-using ConstructionBots
-using LDrawParser
-using HierarchicalGeometry
-using LazySets
-
-using TaskGraphs
-using JuMP
-
-using Graphs, GraphUtils
-using GeometryBasics, CoordinateTransformations, Rotations
+using Parameters
+using Random
 using StaticArrays
 using LinearAlgebra
-
-using PyCall
-
-using MeshCat
-using Plots
-using Random
-
-using TOML
+using StatsBase
+using JLD2
+using ProgressMeter
 using Logging
+using LazySets
+using GeometryBasics
+using CoordinateTransformations
+using Rotations
+using TOML
+using Graphs
+using JuMP
+using PyCall
+using MeshCat
 
+using ConstructionBots
+
+using LDrawParser
+using TaskGraphs
+using HierarchicalGeometry
+using GraphUtils
+
+
+# TODO: Remove unused plotting functions
+using Plots
 using Colors
 using Printf
-using Parameters
-
 using PGFPlots
 using PGFPlotsX
 using Measures
 import Cairo
 using Compose
 
-using JLD2
-
-using ProgressMeter
-
-using Gurobi
-using GLPK
-using HiGHS
-
-using StatsBase
-
 include("../deps/GraphPlottingBFS.jl")
 include("../deps/FactoryRendering.jl")
 include("../src/render_tools.jl")
 include("../src/tg_render_tools.jl")
-
-struct SimParameters
-    sim_batch_size::Int
-    max_time_steps::Int
-    process_animation_tasks::Bool
-    save_anim_interval::Int
-    process_updates_interval::Int
-    anim_active_agents::Bool
-    anim_active_areas::Bool
-    save_anim_prog_path::String
-    save_animation_along_the_way::Bool
-    max_num_iters_no_progress::Int
-end
-
-mutable struct SimProcessingData
-    stop_simulating::Bool
-    iter::Int
-    starting_frame::Int
-    prog::ProgressMeter.Progress
-    num_closed_step_1::Int
-    last_iter_num_closed::Int
-    num_iters_no_progress::Int
-    num_iters_since_anim_save::Int
-    progress_update_fcn::Function
-end
-
-struct NoSolutionError <: Exception end
-Base.showerror(io::IO, e::NoSolutionError) = print(io, "No solution found!")
+include("demo_utils.jl")
 
 """
     run_lego_demo(;kwargs...)
 
-Run the entire lego demo for model `project_name`.
+Run the lego demo for model.
+
+    Keyword arguments:
+
+        - project_name::String: ldraw file of the model to run
+        - model_scale::Float64: scale of the model (default: 0.008)
+        - num_robots::Int: number of robots to use (default: 12)
+        - robot_scale::Float64: scale of the robots (default: 0.7 * model_scale)
+        - robot_height::Float64: height of the robots (default: 10 * robot_scale)
+        - robot_radius::Float64: radius of the robots (default: 25 * robot_scale)
+        - num_object_layers::Int: number of layers to stack the legos (default: 1)
+        - max_steps::Int: maximum number of steps to run the simulation (default: 100000)
+        - staging_buffer_factor::Float64: factor to multiply the largest transport unit radius by to get the staging buffer (default: 1.2)
+        - build_step_buffer_factor::Float64: factor to multiply the robot radius by to get the build step buffer (default: 0.5)
+        - base_results_path::String: base path to save results to
+        - results_path::String: folder name to save the results to (inside base_results_path)
+        - assignment_mode::Symbol: assignment mode to use (default: :greedy, options: :greedy, :milp, :milp_w_greedy_warm_start)
+        - open_animation_at_end::Bool: open the animation in the browser at the end of the simulation (default: false)
+        - save_animation::Bool: save the animation at the end of the simulation (default: false)
+        - save_animation_along_the_way::Bool: save the animation at periodic intervals during the simulation (default: false)
+        - anim_active_agents::Bool: animate which agents are active (green circles) (default: false)
+        - anim_active_areas::Bool: animate which areas are active (purple circles) (default: false)
+        - process_updates_interval::Int: the interval to process animation updates (default: 25)
+        - save_anim_interval::Int: the interval of number of updates to save the animation if `save_animation_along_the_way=true` (default: 500)
+        - rvo_flag::Bool: whether to use RVO (default: true)
+        - tangent_bug_flag::Bool: whether to use tangent bug (default: true)
+        - dispersion_flag::Bool: whether to use dispersion (default: true)
+        - overwrite_results::Bool: whether to overwrite the results if they already exist (default: true)
+        - write_results::Bool: whether to write the results to disk (default: true)
+        - max_num_iters_no_progress::Int: maximum number of iterations to run without progress (default: 10000)
+        - sim_batch_size::Int: number of steps to run in a simulation before clearing some memory (default: 50)
+        - log_level::Logging.LogLevel: log level to use (default: Logging.Warn)
+        - milp_optimizer::Symbol: optimizer to use for the MILP (default: :highs, options: :gurobi, :glpk)
+        - milp_optimizer_attribute_dict::Dict: dictionary of attributes to set on the optimizer (default: Dict())
+        - optimizer_time_limit::Int: time limit for the optimizer (default: 600)
+        - rng::Random.AbstractRNG: random number generator to use (default: MersenneTwister(1))
+
 """
 function run_lego_demo(;
     project_name::String                      ="tractor.mpd",
@@ -89,11 +92,11 @@ function run_lego_demo(;
     max_steps::Int                            =100000,
     staging_buffer_factor::Float64            =1.2,
     build_step_buffer_factor::Float64         =0.5,
-    base_graphics_path::String                =joinpath(dirname(pathof(ConstructionBots)), "..", "graphics"),
-    graphics_path::String                     =joinpath(base_graphics_path, project_name),
-    assignment_mode::Symbol                   =:GREEDY,
+    base_results_path::String                =joinpath(dirname(pathof(ConstructionBots)), "..", "results"),
+    results_path::String                     =joinpath(base_results_path, project_name),
+    assignment_mode::Symbol                   =:greedy,
     open_animation_at_end::Bool               =false,
-    save_animation::Bool                      =true,
+    save_animation::Bool                      =false,
     save_animation_along_the_way::Bool        =false,
     anim_active_agents::Bool                  =false,
     anim_active_areas::Bool                   =false,
@@ -107,7 +110,7 @@ function run_lego_demo(;
     max_num_iters_no_progress::Int            =10000,
     sim_batch_size::Int                       =50,
     log_level::Logging.LogLevel               =Logging.Warn,
-    milp_optimizer::Symbol                    =:HiGHS,
+    milp_optimizer::Symbol                    =:highs,
     milp_optimizer_attribute_dict::Dict       =Dict(),
     optimizer_time_limit::Int                 =600,
     rng::Random.AbstractRNG                   =Random.MersenneTwister(1)
@@ -129,7 +132,7 @@ function run_lego_demo(;
     stats[:tangent_bug_flag] = tangent_bug_flag
     stats[:dispersion_flag] = dispersion_flag
 
-    if assignment_mode == :OPTIMAL
+    if assignment_mode == :milp
         stats[:Optimizer] = string(milp_optimizer)
     end
 
@@ -142,25 +145,25 @@ function run_lego_demo(;
         visualizer = MeshCat.Visualizer()
     end
 
-    mkpath(graphics_path)
+    mkpath(results_path)
     filename = joinpath(dirname(pathof(ConstructionBots)), "..", "LDraw_files", project_name)
     @assert ispath(filename) "File $(filename) does not exist."
 
     global_logger(ConsoleLogger(stderr, log_level))
 
-    # Adding additional attributes for GLPK and Gurobi
+    # Adding additional attributes for GLPK, HiGHS, and Gurobi
     milp_optimizer_attribute_dict[MOI.Silent()] = false
     default_milp_optimizer = nothing
-    if milp_optimizer == :GLPK
+    if milp_optimizer == :glpk
         default_milp_optimizer = ()->GLPK.Optimizer(;want_infeasibility_certificates=false)
         milp_optimizer_attribute_dict["tm_lim"] = optimizer_time_limit * 1000
         milp_optimizer_attribute_dict["msg_lev"] = GLPK.GLP_MSG_ALL
-    elseif milp_optimizer == :Gurobi
+    elseif milp_optimizer == :gurobi
         default_milp_optimizer = Gurobi.Optimizer
         milp_optimizer_attribute_dict["TimeLimit"] = optimizer_time_limit
         # MIPFocus: 1 -- feasible solutions, 2 -- optimal solutions, 3 -- bound
         milp_optimizer_attribute_dict["MIPFocus"] = 1
-    elseif milp_optimizer == :HiGHS
+    elseif milp_optimizer == :highs
         default_milp_optimizer = () -> HiGHS.Optimizer()
         milp_optimizer_attribute_dict["time_limit"] = Float64(optimizer_time_limit)
         milp_optimizer_attribute_dict["presolve"] = "on"
@@ -187,24 +190,24 @@ function run_lego_demo(;
     else
         prefix = string(prefix, "_no-TangentBug")
     end
-    if assignment_mode == :OPTIMAL
-        prefix = string("optimal_", prefix)
-    elseif assignment_mode == :GREEDY
+    if assignment_mode == :milp
+        prefix = string("milp_", prefix)
+    elseif assignment_mode == :greedy
         prefix = string("greedy_", prefix)
-    elseif assignment_mode == :GreedyWarmStartMILP
-        prefix = string("warmstart_", prefix)
+    elseif assignment_mode == :milp_w_greedy_warm_start
+        prefix = string("milp-ws_", prefix)
     else
         error("Unknown assignment mode: $(assignment_mode)")
     end
-    mkpath(joinpath(graphics_path, prefix))
-    stats_path = joinpath(graphics_path, prefix, "stats.toml")
+    mkpath(joinpath(results_path, prefix))
+    stats_path = joinpath(results_path, prefix, "stats.toml")
     if isfile(stats_path) && write_results && !overwrite_results
         @warn "Terminating because results are already compiled at $(stats_path)"
         return nothing
     end
 
-    anim_path = joinpath(graphics_path, prefix, "construction_simulation.html")
-    anim_prog_path = joinpath(graphics_path, prefix, "construction_simulation_")
+    anim_path = joinpath(results_path, prefix, "construction_simulation.html")
+    anim_prog_path = joinpath(results_path, prefix, "construction_simulation_")
 
 
     sim_params = SimParameters(
@@ -324,7 +327,7 @@ function run_lego_demo(;
     stats[:ConfigTransportUnitsTime] = config_transport_units_time
     stats[:StagingPlanTime] = staging_plan_time
     if write_results
-        open(joinpath(graphics_path, prefix, "stats.toml"), "w") do io
+        open(joinpath(results_path, prefix, "stats.toml"), "w") do io
             TOML.print(io, stats)
         end
     end
@@ -376,24 +379,24 @@ function run_lego_demo(;
     ## MILP solver
     valid_milp_solution = true
     milp_model = SparseAdjacencyMILP()
-    if assignment_mode == :OPTIMAL
+    if assignment_mode == :milp
         milp_model = formulate_milp(milp_model, tg_sched, scene_tree)
         optimize!(milp_model)
         if primal_status(milp_model) == MOI.NO_SOLUTION
             valid_milp_solution = false
         end
-    elseif assignment_mode == :GREEDY
+    elseif assignment_mode == :greedy
         ## Greedy Assignment with enforced build-step ordering
         milp_model = ConstructionBots.GreedyOrderedAssignment(
             greedy_cost=TaskGraphs.GreedyFinalTimeCost(),
         )
         milp_model = formulate_milp(milp_model, tg_sched, scene_tree)
         optimize!(milp_model)
-    elseif assignment_mode == :GreedyWarmStartMILP
-        if milp_optimizer == :GLPK
+    elseif assignment_mode == :milp_w_greedy_warm_start
+        if milp_optimizer == :glpk
             println()
             @warn """GLPK is not currently implemented through JuMP to support warm-starting.
-                       Recommend using HiGHS (:HiGHS) or Gurobi (:Gurobi)."""
+                       Recommend using HiGHS (:highs) or Gurobi (:gurobi)."""
         end
         greedy_sched = deepcopy(tg_sched)
         greedy_model = ConstructionBots.GreedyOrderedAssignment(
@@ -445,7 +448,7 @@ function run_lego_demo(;
     stats[:ValidMILPSolution] = valid_milp_solution
     stats[:OptimizerTimeLimit] = optimizer_time_limit
     if write_results
-        open(joinpath(graphics_path, prefix, "stats.toml"), "w") do io
+        open(joinpath(results_path, prefix, "stats.toml"), "w") do io
             TOML.print(io, stats)
         end
     end
@@ -586,7 +589,7 @@ function run_lego_demo(;
     stats[:ExecutionRuntime] = execution_time
     stats[:Makespan] = time_steps * env.dt
     if write_results
-        open(joinpath(graphics_path, prefix, "stats.toml"), "w") do io
+        open(joinpath(results_path, prefix, "stats.toml"), "w") do io
             TOML.print(io, stats)
         end
     end
@@ -600,302 +603,4 @@ function run_lego_demo(;
         end
     end
     return env, stats
-end
-
-"""
-    run_simulation!(env, factory_vis, anim, sim_params)
-
-Run a simulation of the environment. Currently, this wraps another simulation function to
-help with memory issues. The goal is to refactor the code to not require this "hack".
-"""
-function run_simulation!(
-    env::PlannerEnv,
-    factory_vis::FactoryVisualizer,
-    anim::Union{AnimationWrapper,Nothing},
-    sim_params::SimParameters
-)
-
-    it = 1
-    ConstructionBots.step_environment!(env)
-    ConstructionBots.update_planning_cache!(env, 0.0)
-
-    step_1_closed = length(env.cache.closed_set)
-    total_nodes = nv(env.sched)
-    generate_showvalues(it, nc) = () -> [(:step_num,it), (:n_closed,nc), (:n_total,total_nodes)]
-    prog = ProgressMeter.Progress(
-        nv(env.sched) - step_1_closed;
-        desc="Simulating...",
-        barlen=50,
-        showspeed=true,
-        dt=1.0
-    )
-
-    starting_frame = 0
-    if !isnothing(anim)
-        starting_frame = current_frame(anim)
-    end
-
-    sim_process_data = SimProcessingData(
-        false, 1, starting_frame, prog, step_1_closed, step_1_closed, 0, 0, generate_showvalues
-    )
-
-    up_steps = []
-    while !sim_process_data.stop_simulating && sim_process_data.iter < sim_params.max_time_steps
-        up_steps = simulate!(env, factory_vis, anim, sim_params, sim_process_data, up_steps)
-    end
-
-    return ConstructionBots.project_complete(env), sim_process_data.iter
-end
-
-function simulate!(
-    env::PlannerEnv,
-    factory_vis::FactoryVisualizer,
-    anim::Union{AnimationWrapper,Nothing},
-    sim_params::SimParameters,
-    sim_process_data::SimProcessingData,
-    update_steps::Vector
-)
-
-    @unpack sched, cache = env
-    @unpack sim_batch_size, max_time_steps = sim_params
-    @unpack process_animation_tasks, save_anim_interval, process_updates_interval = sim_params
-    @unpack anim_active_agents, anim_active_areas, max_num_iters_no_progress = sim_params
-    @unpack save_animation_along_the_way, save_anim_prog_path = sim_params
-
-    for _ in 1:sim_batch_size
-        sim_process_data.iter += 1
-
-        ConstructionBots.step_environment!(env)
-        newly_updated = ConstructionBots.update_planning_cache!(env, 0.0)
-
-        if !isnothing(factory_vis.vis)
-            if !isempty(newly_updated)
-                scene_nodes, closed_steps_nodes, active_build_nodes, fac_active_flags_nodes = visualizer_update_function!(factory_vis, env, newly_updated)
-                sim_process_data.num_iters_since_anim_save += 1
-                if process_animation_tasks
-                    update_tuple = (sim_process_data.iter, deepcopy(factory_vis.vis_nodes),
-                        deepcopy(scene_nodes), closed_steps_nodes, active_build_nodes,
-                        fac_active_flags_nodes)
-                    push!(update_steps, update_tuple)
-                end
-            end
-        end
-
-        if length(cache.closed_set) == sim_process_data.last_iter_num_closed
-            sim_process_data.num_iters_no_progress += 1
-        else
-            sim_process_data.num_iters_no_progress = 0
-        end
-        sim_process_data.last_iter_num_closed = length(cache.closed_set)
-
-        project_stop_bool = ConstructionBots.project_complete(env)
-        if sim_process_data.num_iters_no_progress >= max_num_iters_no_progress
-            @warn "No progress for $(sim_process_data.num_iters_no_progress) iterations. Terminating."
-            project_stop_bool = true
-        end
-
-        if process_animation_tasks &&
-            (length(update_steps) >= process_updates_interval || project_stop_bool)
-
-            for step_k in update_steps
-                k_k = step_k[1]
-                vis_nodes_k = step_k[2]
-                scene_nodes_k = step_k[3]
-                closed_steps_nodes_k = step_k[4]
-                active_build_nodes_k = step_k[5]
-                fac_active_flags_nodes_k = step_k[6]
-
-                set_current_frame!(anim, k_k + sim_process_data.starting_frame)
-                atframe(anim, current_frame(anim)) do
-                    if anim_active_areas
-                        for node_i in closed_steps_nodes_k
-                            setvisible!(node_i, false)
-                        end
-                        for node_i in active_build_nodes_k
-                            setvisible!(node_i, true)
-                        end
-                    end
-                    if anim_active_agents
-                        setvisible!(factory_vis.active_flags, false)
-                        for node_key in fac_active_flags_nodes_k
-                            setvisible!(factory_vis.active_flags[node_key], true)
-                        end
-                    end
-                    update_visualizer!(vis_nodes_k, scene_nodes_k)
-                end
-            end
-            setanimation!(factory_vis.vis, anim.anim, play=false)
-            update_steps = []
-
-            if (save_animation_along_the_way &&
-                !isnothing(save_anim_prog_path) &&
-                !project_stop_bool &&
-                sim_process_data.num_iters_since_anim_save >= save_anim_interval)
-
-                save_animation!(factory_vis.vis, "$(save_anim_prog_path)$(sim_process_data.iter).html")
-                sim_process_data.num_iters_since_anim_save = 0
-            end
-        end
-
-        nc = length(cache.closed_set)
-        ProgressMeter.update!(
-            sim_process_data.prog, nc - sim_process_data.num_closed_step_1;
-            showvalues=sim_process_data.progress_update_fcn(sim_process_data.iter, nc)
-        )
-
-        if project_stop_bool
-            ProgressMeter.finish!(sim_process_data.prog)
-            if ConstructionBots.project_complete(env)
-                println("PROJECT COMPLETE!")
-            else
-                println("PROJECT INCOMPLETE!")
-                var_dump_path = joinpath(dirname(pathof(ConstructionBots)), "..", "variable_dump")
-                mkpath(var_dump_path)
-                var_dump_path = joinpath(var_dump_path, "var_dump_$(sim_process_data.iter).jld2")
-                println("Dumping variables to $(var_dump_path)")
-                var_dict = Dict(
-                    "env" => env,
-                    "factory_vis" => factory_vis,
-                    "anim" => anim,
-                    "sim_params" => sim_params,
-                    "sim_process_data" => sim_process_data
-                )
-                print("\tSaving...")
-                JLD2.save(var_dump_path, var_dict)
-                print("done!\n")
-            end
-        end
-
-        sim_process_data.stop_simulating = project_stop_bool
-        if sim_process_data.stop_simulating
-            break
-        end
-    end
-
-    return update_steps
-end
-
-function save_animation!(visualizer, path)
-    println("Saving animation to $(path)")
-    open(path, "w") do io
-        write(io, static_html(visualizer))
-    end
-end
-
-function get_buildstep_circles(sched)
-    circles = Dict{AbstractID, Ball2}()
-    for n in node_iterator(sched, topological_sort_by_dfs(sched))
-        if matches_template(OpenBuildStep, n)
-            id = node_id(n)
-            sphere = get_cached_geom(node_val(n).staging_circle)
-            ctr = HierarchicalGeometry.project_to_2d(sphere.center)
-            circles[id] = Ball2(ctr, sphere.radius)
-        end
-    end
-    return circles
-end
-
-function shift_staging_circles(staging_circles::Dict{AbstractID, Ball2}, sched, scene_tree)
-    shifted_circles = Dict{AbstractID, Ball2}()
-    for (id, geom) in staging_circles
-        node = get_node(scene_tree, id)
-        cargo = get_node(scene_tree, id)
-        if isa(cargo, AssemblyNode)
-            cargo_node = get_node(sched, AssemblyComplete(cargo))
-        else
-            cargo_node = get_node!(sched, ObjectStart(cargo, TransformNode()))
-        end
-
-        translate = HierarchicalGeometry.project_to_2d(global_transform(start_config(cargo_node)).translation)
-        tform = CoordinateTransformations.Translation(translate)
-        new_center = tform(geom.center)
-        shifted_circles[id] = Ball2(new_center, geom.radius)
-
-    end
-    return shifted_circles
-end
-
-function remove_redundant(balls::Vector{Ball2}; ϵ=1e-4)
-    redundant = falses(length(balls))
-    for ii in 1:length(balls)
-        for jj in 1:length(balls)
-            if ii != jj && !redundant[jj] && contained_in(balls[ii], balls[jj]; ϵ=ϵ)
-                redundant[ii] = true
-            end
-        end
-    end
-    return balls[.!redundant]
-end
-
-function contained_in(test_ball::Ball2, outer_ball::Ball2; ϵ=1e-4)
-    return norm(test_ball.center - outer_ball.center) + test_ball.radius <= outer_ball.radius + ϵ
-end
-
-function get_object_vtx(scene_tree, obstacles, max_cargo_height, num_layers, robot_d)
-    # Use object height to stack objects on top of each other as needed
-    objects_hyperrects = map(n -> get_base_geom(n, HyperrectangleKey()),
-        filter(n -> matches_template(ObjectNode, n), get_nodes(scene_tree)))
-
-    max_object_x = maximum([ob.radius[1] * 2 for ob in objects_hyperrects])
-    max_object_y = maximum([ob.radius[2] * 2 for ob in objects_hyperrects])
-    max_object_h = maximum([ob.radius[3] * 2 for ob in objects_hyperrects])
-
-    mean_object_x = sum([ob.radius[1] * 2 for ob in objects_hyperrects]) / length(objects_hyperrects)
-    mean_object_y = sum([ob.radius[2] * 2 for ob in objects_hyperrects]) / length(objects_hyperrects)
-
-    std_object_x = std([ob.radius[1] * 2 for ob in objects_hyperrects])
-    std_object_y = std([ob.radius[2] * 2 for ob in objects_hyperrects])
-
-    num_objects = length(filter(n -> matches_template(ObjectNode, n), get_nodes(scene_tree)))
-
-    object_x_delta = min(max_object_x, mean_object_x + 3 * std_object_x) + robot_d * 2
-    object_y_delta = min(max_object_y, mean_object_y + 3 * std_object_y) + robot_d * 2
-
-    inflate_delta = max(max_object_x, max_object_y)
-
-    inflated_obstacles = []
-    for ob in obstacles
-        push!(inflated_obstacles, Ball2(ob.center, ob.radius + inflate_delta))
-    end
-
-    num_objs_per_layer = ceil(num_objects / num_layers)
-
-    init_width = sqrt(num_objs_per_layer * object_x_delta * object_y_delta)/2
-
-    x_range = -init_width:object_x_delta:init_width
-    y_range = -init_width:object_y_delta:init_width
-    sweep_ranges = (x_range, y_range, 0:0)
-
-    found_size = false
-    cnt = 0
-    while !found_size
-        pts = ConstructionBots.construct_vtx_array(;
-            origin=SVector{3, Float64}(0.0, 0.0, 0.0),
-            obstacles=inflated_obstacles,
-            ranges=sweep_ranges
-        )
-        if length(pts) * num_layers >= num_objects
-            found_size = true
-        else
-            cnt += 1
-            x_range = (-init_width - cnt * object_x_delta):object_x_delta:(init_width + cnt * object_x_delta)
-            y_range = (-init_width - cnt * object_y_delta):object_y_delta:(init_width + cnt * object_y_delta)
-            sweep_ranges = (x_range, y_range, 0:0)
-        end
-    end
-
-    object_vtx_range = (
-        x_range,
-        y_range,
-        0:num_layers-1
-    )
-
-    vtxs = ConstructionBots.construct_vtx_array(;
-        origin=SVector{3, Float64}(0.0, 0.0, max_cargo_height),
-        obstacles=inflated_obstacles,
-        ranges=object_vtx_range,
-        spacing=(1.0, 1.0, max_object_h)
-    )
-
-    return vtxs
 end
