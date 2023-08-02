@@ -720,7 +720,7 @@ function select_assembly_start_configs_layered!(sched, scene_tree, staging_circl
                 staging_circle = staging_circles[node_id(assembly)]
                 staging_radius = staging_circle.radius + buffer_radius
 
-                radii_left = [staging_circles[id].radius + buffer_radius/2 for id in part_ids_left]
+                radii_left = [staging_circles[id].radius + buffer_radius for id in part_ids_left]
                 steps_left = [steps_dict[id] for id in part_ids_left]
                 unique_step_lengths = sort!(unique(steps_left))
 
@@ -780,7 +780,7 @@ function select_assembly_start_configs_layered!(sched, scene_tree, staging_circl
 
                     part_ids_left = setdiff(part_ids_left, part_ids_for_opt)
                     steps_left = [steps_dict[id] for id in part_ids_left]
-                    radii_left = [staging_circles[id].radius + buffer_radius/2 for id in part_ids_left]
+                    radii_left = [staging_circles[id].radius + buffer_radius for id in part_ids_left]
 
                     bool_mask = steps_left .<= unique_step_lengths[cnt]
 
@@ -800,10 +800,10 @@ function select_assembly_start_configs_layered!(sched, scene_tree, staging_circl
 
                 part_ids_left = setdiff(part_ids_left, part_ids_for_opt)
                 steps_left = [steps_dict[id] for id in part_ids_left]
-                radii_left = [staging_circles[id].radius + buffer_radius/2 for id in part_ids_left]
+                radii_left = [staging_circles[id].radius + buffer_radius for id in part_ids_left]
 
                 parts_for_opt = (get_node(scene_tree, part_id) for part_id in part_ids_for_opt)
-                radii_for_opt = [staging_circles[id].radius + buffer_radius/2 for id in part_ids_for_opt]
+                radii_for_opt = [staging_circles[id].radius + buffer_radius for id in part_ids_for_opt]
 
                 ring_radius = -1
                 θ_star = nothing
@@ -1475,8 +1475,7 @@ Define the transport unit for cargo. `pts` are the eligible support points
 """
 function configure_transport_unit(cargo, pts;
         robot_radius = HierarchicalGeometry.default_robot_radius(),
-        robot_height = default_robot_height(),
-        optimize_carry_config = false,
+        robot_height = default_robot_height()
     )
     # initialize transport node with cargo id
     base_rect = get_base_geom(cargo,HyperrectangleKey())
