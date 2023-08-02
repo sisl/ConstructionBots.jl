@@ -3,7 +3,12 @@ export
     step_environment!,
     get_cmd,
     apply_cmd!,
-    project_complete
+    project_complete,
+    close_node!,
+    preprocess_env!,
+    update_planning_cache!,
+    parent_build_step_is_active,
+    update_parent_build_status!
 
 
 export
@@ -51,18 +56,18 @@ goal pose.
     tf_error = inv(state) ∘ goal # transform error from state to goal
     i.e., state ∘ tf_error == goal
 """
-function optimal_twist(tf_error,v_max,ω_max,dt,ϵ_x=1e-4,ϵ_θ=1e-4)
+function optimal_twist(tf_error, v_max, ω_max, dt, ϵ_x=1e-4, ϵ_θ=1e-4)
     # translation error
     dx = tf_error.translation
     if norm(dx) <= ϵ_x
-        vel = SVector(0.0,0.0,0.0)
+        vel = SVector(0.0, 0.0, 0.0)
     else
-        vel = normalize(dx) * min(v_max, norm(dx)/dt)
+        vel = normalize(dx) * min(v_max, norm(dx) / dt)
     end
-    vel = any(isnan,vel) ? SVector(0.0,0.0,0.0) : vel
+    vel = any(isnan, vel) ? SVector(0.0, 0.0, 0.0) : vel
     # rotation error
     r = RotationVec(tf_error.linear) # rotation vector
-    θ = SVector(r.sx,r.sy,r.sz) # convert r to svector
+    θ = SVector(r.sx, r.sy, r.sz) # convert r to svector
     if norm(θ) <= ϵ_θ
         ω = SVector(0.0,0.0,0.0)
     else
@@ -95,20 +100,30 @@ Contains the Environment state and definition.
     cache::PlanningCache        = initialize_planning_cache(sched)
     staging_circles::Dict{AbstractID,Ball2} = Dict{AbstractID,Ball2}()
     active_build_steps::Set{AbstractID} = Set{AbstractID}()
-    # active_assemblies::Set{AbstractID} = Set{AbstractID}() # taken care of by active build step
     dt::Float64                 = rvo_default_time_step()
     agent_policies::Dict        = Dict()
+    agent_parent_build_step_active::Dict = Dict()
     staging_buffers::Dict{AbstractID,Float64} = Dict{AbstractID,Float64}() # dynamic buffer for staging areas
+    max_robot_go_id::Int64 = Inf
+    max_cargo_id::Int64 = Inf
 end
 
 node_is_active(env,node) = get_vtx(env.sched,node_id(node)) in env.cache.active_set
 node_is_closed(env,node) = get_vtx(env.sched,node_id(node)) in env.cache.closed_set
 
-function parent_build_step_is_active(node,env)
+function update_parent_build_status!(env::PlannerEnv, node)
+    env.agent_parent_build_step_active[node_id(entity(node))] = parent_build_step_is_active(node, env)
+end
+
+function parent_build_step_is_active(id::AbstractID, env::PlannerEnv)
+    return env.agent_parent_build_step_active[id]
+end
+
+function parent_build_step_is_active(node, env::PlannerEnv)
     build_step = get_parent_build_step(env.sched,node)
     !(build_step === nothing) && node_id(build_step) in env.active_build_steps
 end
-function cargo_ready_for_pickup(n::Union{FormTransportUnit,TransportUnitGo,DepositCargo},env)
+function cargo_ready_for_pickup(n::Union{FormTransportUnit,TransportUnitGo,DepositCargo}, env::PlannerEnv)
     @unpack sched, scene_tree, cache = env
     cargo = get_node(scene_tree,cargo_id(entity(n)))
     if matches_template(ObjectNode,cargo)
@@ -117,32 +132,35 @@ function cargo_ready_for_pickup(n::Union{FormTransportUnit,TransportUnitGo,Depos
         return node_is_closed(env,AssemblyComplete(cargo))
     end
 end
-function cargo_ready_for_pickup(n::Union{RobotStart,RobotGo},env)
+function cargo_ready_for_pickup(n::Union{RobotStart,RobotGo}, env::PlannerEnv)
     if outdegree(env.sched,n) < 1
         return false
     end
-    cargo_ready_for_pickup(get_node(env.sched,first(outneighbors(env.sched,n))),env)
+    cargo_ready_for_pickup(get_node(env.sched, first(outneighbors(env.sched,n))), env)
 end
-cargo_ready_for_pickup(n::ScheduleNode,env) = cargo_ready_for_pickup(n.node,env)
+cargo_ready_for_pickup(n::ScheduleNode, env::PlannerEnv) = cargo_ready_for_pickup(n.node,env)
 
 """
     set_rvo_priority!(env,node)
 
 Low alpha means higher priority
 """
-function set_rvo_priority!(env,node)
-    @unpack sched, scene_tree, cache, staging_circles = env
-    if matches_template(Union{FormTransportUnit,DepositCargo},node)
+function set_rvo_priority!(env::PlannerEnv, node)
+    if matches_template(Union{FormTransportUnit, DepositCargo}, node)
         alpha = 0.0
-    elseif parent_build_step_is_active(node,env)
-        if cargo_ready_for_pickup(node,env)
-            if matches_template(TransportUnitGo,node)
-                alpha = 0.0
-            else
-                alpha = 0.1
-            end
+    elseif matches_template(TransportUnitGo, node)
+        if parent_build_step_is_active(node, env)
+            c_id = cargo_id(entity(node)).id
+            alpha = 0.0 + c_id / (10 * env.max_cargo_id)
         else
-            alpha = 0.5
+            alpha = 1.0
+        end
+    elseif parent_build_step_is_active(node, env)
+        robot_id_scale = node.id.id / (10 * env.max_robot_go_id)
+        if cargo_ready_for_pickup(node, env)
+            alpha = 0.1 + robot_id_scale
+        else
+            alpha = 0.5 + robot_id_scale
         end
     else
         alpha = 1.0
@@ -159,7 +177,7 @@ FormTransportUnit,DepositCargo)
 """
 global LOADING_SPEED = 0.1
 default_loading_speed() = LOADING_SPEED
-function set_default_loading_speed!(val)
+function set_default_loading_speed!(val::Float64)
     global LOADING_SPEED = val
 end
 
@@ -169,19 +187,17 @@ end
 The max rotational velocity with which a part may be loaded (e.g., by
 LiftIntoPlace,FormTransportUnit,DepositCargo)
 """
-global ROTATIONAL_LOADING_SPEED = 0.1
+ global ROTATIONAL_LOADING_SPEED = 0.1
 default_rotational_loading_speed() = ROTATIONAL_LOADING_SPEED
-function set_default_rotational_loading_speed!(val)
+function set_default_rotational_loading_speed!(val::Float64)
     global ROTATIONAL_LOADING_SPEED = val
 end
 
-function simulate!(env,update_visualizer_function;
+function simulate!(
+    env;
     max_time_steps=2000,
-    dt_vis = env.dt,
-    )
-    @unpack sched, scene_tree, cache, dt = env
-    t0 = 0.0
-    time_stamp = t0
+)
+    @unpack sched, cache = env
     iters = 0
     for k in 1:max_time_steps
         iters = k
@@ -189,10 +205,7 @@ function simulate!(env,update_visualizer_function;
             @info " ******************* BEGINNING TIME STEP $k: $(length(cache.closed_set))/$(nv(sched)) nodes closed *******************"
         end
         step_environment!(env)
-        newly_updated = TaskGraphs.update_planning_cache!(env,0.0)
-        update_visualizer_function(env,newly_updated)
-        sleep(dt_vis)
-        time_stamp = t0+k*dt
+        update_planning_cache!(env, 0.0)
         if project_complete(env)
             println("PROJECT COMPLETE!")
             break
@@ -208,7 +221,6 @@ Update agent position from RVO simulator
 """
 function update_position_from_sim!(agent)
     pt = rvo_get_agent_position(agent)
-    # @debug "update position from sim agent $(node_id(agent))" pt
     @assert has_parent(agent,agent) "agent $(node_id(agent)) should be its own parent"
     set_local_transform!(agent,CoordinateTransformations.Translation(pt[1],pt[2],0.0))
     if !isapprox(norm(global_transform(agent).translation[1:2] .- pt), 0.0; rtol=1e-6,atol=1e-6)
@@ -217,31 +229,54 @@ function update_position_from_sim!(agent)
     return global_transform(agent)
 end
 
+function get_active_pos(env::PlannerEnv)
+    pos_dict = Dict{Int, Vector{Float64}}()
+    for v in env.cache.active_set
+        n = get_node(env.sched, v)
+        agent = entity(n)
+        pos = global_transform(agent).translation
+        pos_dict[v] = pos
+    end
+    return pos_dict
+end
+
 """
-    step_environment!(env::PlannerEnv,sim=rvo_global_sim())
+    step_environment!(env::PlannerEnv, sim=rvo_global_sim())
 
 Step forward one time step.
 """
-function step_environment!(env::PlannerEnv,sim=rvo_global_sim())
-    @unpack sched, scene_tree, cache, dt = env
-    for v in cache.active_set
-        node = get_node(sched,v).node
-        cmd = get_cmd(node,env)
-        # update non-rvo nodes
-        apply_cmd!(node,cmd,env)
+function step_environment!(env::PlannerEnv, sim=rvo_global_sim())
+
+    prev_active_pos_dict = get_active_pos(env)
+    for v in env.cache.active_set
+        node = get_node(env.sched, v).node
+        cmd = get_cmd(node, env)
+        apply_cmd!(node, cmd, env) # update non-rvo nodes
     end
-    # Step RVO
-    sim.doStep()
-    for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
-        if use_rvo()
-            # @info "Updating position from rvo"
-            tform = update_position_from_sim!(get_node(scene_tree,id))
+
+    for (_, policy) in env.agent_policies
+        if !isnothing(policy.dispersion_policy)
+            update_parent_build_status!(env, policy.dispersion_policy.node)
         end
     end
-    # swap transport unit positions if necessary
-    swap_first_paralyzed_transport_unit!(env::PlannerEnv)
+
+
+    # Step RVO
+    if !isnothing(sim)
+        sim.doStep()
+    end
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
-        # Set velocities to zero for any agents that are no longer "active"
+        if use_rvo()
+            tform = update_position_from_sim!(get_node(env.scene_tree, id))
+        end
+    end
+
+    # swap transport unit positions if necessary
+    swap_first_paralyzed_transport_unit!(env, prev_active_pos_dict)
+
+    # Set velocities to zero for all agents. The pref velocities are only overwritten if
+    # agent is "active" in the next time step
+    for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
         rvo_set_agent_pref_velocity!(id,(0.0,0.0))
     end
     return env
@@ -262,7 +297,7 @@ function update_rvo_sim!(env::PlannerEnv)
     end
 end
 
-function TaskGraphs.update_planning_cache!(env::PlannerEnv,time_stamp::Float64)
+function update_planning_cache!(env::PlannerEnv, time_stamp::Float64)
     @unpack sched, cache = env
     # Skip over nodes that are already planned or just don't need planning
     updated = false
@@ -270,14 +305,16 @@ function TaskGraphs.update_planning_cache!(env::PlannerEnv,time_stamp::Float64)
     while true
         done = true
         for v in collect(cache.active_set)
-            node = get_node(sched,v)
-            if CRCBS.is_goal(node,env)
-                close_node!(node,env)
+            # println("Node v: $v")
+            node = get_node(sched, v)
+            # println("\t node_type: $(typeof(node))")
+            if CRCBS.is_goal(node, env)
+                close_node!(node, env)
                 @info "node $(summary(node_id(node))) finished."
-                TaskGraphs.update_planning_cache!(nothing,sched,cache,v,time_stamp)
+                TaskGraphs.update_planning_cache!(nothing, sched, cache, v, time_stamp)
                 # @info "active nodes $([get_vtx_id(sched,v) for v in cache.active_set])"
                 @assert !(v in cache.active_set) && (v in cache.closed_set)
-                push!(newly_updated,v)
+                push!(newly_updated, v)
                 done = false
                 updated = true
             end
@@ -299,10 +336,10 @@ end
 
 Ensure that a node is completed
 """
-close_node!(node::ScheduleNode,env) = close_node!(node.node,env)
-close_node!(::ConstructionPredicate,env) =  nothing #close_node!(n,env)
-close_node!(n::OpenBuildStep,env) = push!(env.active_build_steps,node_id(n))
-function close_node!(node::CloseBuildStep,env)
+close_node!(node::ScheduleNode, env::PlannerEnv) = close_node!(node.node,env)
+close_node!(::ConstructionPredicate, env::PlannerEnv) =  nothing #close_node!(n,env)
+close_node!(n::OpenBuildStep, env::PlannerEnv) = push!(env.active_build_steps,node_id(n))
+function close_node!(node::CloseBuildStep, env::PlannerEnv)
     @unpack sched, scene_tree = env
     assembly = get_assembly(node)
     @info "Closing BuildingStep $(node_id(node))"
@@ -338,7 +375,6 @@ end
 
 function project_complete(env::PlannerEnv)
     @unpack sched, cache = env
-    # done = true
     for n in get_nodes(sched)
         if matches_template(ProjectComplete,n)
             if !(get_vtx(sched,n) in cache.closed_set)
@@ -347,17 +383,12 @@ function project_complete(env::PlannerEnv)
         end
     end
     return true
-    # if isempty(cache.active_set)
-    #     @assert nv(sched) == length(cache.closed_set)
-    #     return true
-    # end
-    # return false
 end
 
 # CRCBS.is_goal
-CRCBS.is_goal(n::ScheduleNode,env::PlannerEnv) = is_goal(n.node,env)
-CRCBS.is_goal(node::ConstructionPredicate,env) = true
-function CRCBS.is_goal(node::EntityGo,env)
+CRCBS.is_goal(n::ScheduleNode, env::PlannerEnv) = is_goal(n.node, env)
+CRCBS.is_goal(node::ConstructionPredicate, env::PlannerEnv) = true
+function CRCBS.is_goal(node::EntityGo, env::PlannerEnv)
     agent = entity(node)
     state = global_transform(agent)
     goal = global_transform(goal_config(node))
@@ -368,12 +399,12 @@ end
 
 If next node is FormTransportUnit, ensure that everybody else is in position.
 """
-# function CRCBS.is_goal(node::RobotGo,env)
-function CRCBS.is_goal(node::Union{RobotGo,TransportUnitGo},env)
+function CRCBS.is_goal(node::Union{RobotGo,TransportUnitGo}, env::PlannerEnv)
     @unpack sched, scene_tree, cache = env
     agent = entity(node)
     state = global_transform(agent)
     goal = global_transform(goal_config(node))
+
     if !is_within_capture_distance(state,goal)
         return false
     end
@@ -402,68 +433,22 @@ function CRCBS.is_goal(node::Union{RobotGo,TransportUnitGo},env)
     end
     return true
 end
-function CRCBS.is_goal(node::Union{FormTransportUnit,DepositCargo},env)
-    @unpack sched, scene_tree = env
+function CRCBS.is_goal(node::Union{FormTransportUnit,DepositCargo}, env::PlannerEnv)
     agent = entity(node)
-    cargo = get_node(scene_tree,cargo_id(agent))
+    cargo = get_node(env.scene_tree,cargo_id(agent))
     state = global_transform(cargo)
     goal = global_transform(cargo_goal_config(node))
     return is_within_capture_distance(state,goal)
 end
-function CRCBS.is_goal(node::LiftIntoPlace,env)
-    @unpack sched, scene_tree, cache, dt = env
+function CRCBS.is_goal(node::LiftIntoPlace, env::PlannerEnv)
     cargo = entity(node)
     state = global_transform(cargo)
     goal = global_transform(goal_config(node))
-    return is_within_capture_distance(state,goal)
+    return is_within_capture_distance(state, goal)
 end
 
-# function avoid_active_staging_areas(node::Union{TransportUnitGo,RobotGo},twist,env,ϵ=1e-3)
-#     @unpack sched, scene_tree, dt = env
-#     agent = entity(node)
-#     r = HierarchicalGeometry.get_radius(get_base_geom(agent,HypersphereKey()))
-#     pos = HierarchicalGeometry.project_to_2d(global_transform(agent).translation)
-#     goal = HierarchicalGeometry.project_to_2d(global_transform(goal_config(node)).translation)
-#     parent_build_step = get_parent_build_step(sched,node)
-#     dmin = Inf
-#     id = nothing
-#     circ = nothing
-#     for build_step_id in env.active_build_steps
-#         build_step_id == node_id(parent_build_step) ? continue : nothing
-#         build_step = get_node(sched,build_step_id).node
-#         circle = HierarchicalGeometry.project_to_2d(get_cached_geom(build_step.staging_circle))
-#         bloated_circle = Ball2(HierarchicalGeometry.get_center(circle),HierarchicalGeometry.get_radius(circle)+r)
-#         if HierarchicalGeometry.circle_intersects_line(bloated_circle,pos,goal)
-#             d = HierarchicalGeometry.get_radius(bloated_circle) - norm(HierarchicalGeometry.get_center(bloated_circle) - pos) # penetration
-#             if d < 0 && d < dmin
-#                 # in circle
-#                 dmin = d
-#                 id = build_step_id
-#                 circ = bloated_circle
-#             end
-#         end
-#     end
-#     # If on the "exiting" end of circle, just leave,
-#     if id === nothing ||  norm(goal - pos) + ϵ < norm(goal - HierarchicalGeometry.get_center(circ))
-#         return twist
-#     end
-#     dvec = pos-HierarchicalGeometry.get_center(circ)
-#     # return a vector tangent CCW to the circle
-#     if norm(dvec) < HierarchicalGeometry.get_radius(circ) + ϵ
-#         # start position is on or in circ
-#         vec = SVector(-dvec[2],dvec[1])
-#     else
-#         # start position is not on or in circ
-#         pt_left, pt_right = HierarchicalGeometry.get_tangent_pts_on_circle(circ,pos)
-#         vec = pt_right-pos
-#     end
-#     vel = norm(twist.vel) * normalize(vec)
-#     @info "$(summary(node_id(agent))) avoiding $id with vel = $vel"
-#     Twist(SVector(vel..., 0.0), twist.ω)
-# end
-
-function swap_first_paralyzed_transport_unit!(env::PlannerEnv)
-    @unpack sched, scene_tree, cache = env
+function swap_first_paralyzed_transport_unit!(env::PlannerEnv, pos_before_step::Dict{Int,Vector{Float64}})
+    @unpack sched, scene_tree, cache, dt = env
     for v in cache.active_set
         n = get_node(sched,v)
         if matches_template(RobotGo,n) && outdegree(sched,n) >= 1
@@ -485,12 +470,18 @@ function swap_first_paralyzed_transport_unit!(env::PlannerEnv)
                 pos = global_transform(agent).translation[1:2]
                 agent_radius = HierarchicalGeometry.get_radius(get_cached_geom(agent,HypersphereKey()))
                 if norm(pos .- ctr) < agent_radius + rad # within circle
+                    swap = false
                     if norm([vel...]) < 1e-6 # stuck
-                        # @info "Swapping agent $(summary(node_id(agent))) with $(summary(node_id(agent)))"
-                        swap_carrying_positions!(
-                            next_node.node,
-                            n.node,
-                            env)
+                        swap = true
+                    elseif haskey(pos_before_step, v)
+                        pos_bs = pos_before_step[v]
+                        vel_est = norm((pos[1:2] - pos_bs[1:2])) / dt
+                        if vel_est < 1e-2
+                            swap = true
+                        end
+                    end
+                    if swap
+                        swap_carrying_positions!(next_node.node, n.node, env)
                     end
                 end
             end
@@ -503,7 +494,7 @@ end
 
 For agent
 """
-function find_best_swap_candidate(node::FormTransportUnit,agent_node::RobotGo,env)
+function find_best_swap_candidate(node::FormTransportUnit, agent_node::RobotGo, env::PlannerEnv)
     @unpack sched, scene_tree = env
     transport_unit = entity(node)
     agent = entity(agent_node)
@@ -544,7 +535,7 @@ end
 
 To be executed if `agent` is within the hypersphere but stuck.
 """
-function swap_carrying_positions!(node::FormTransportUnit,agent_node::RobotGo,env)
+function swap_carrying_positions!(node::FormTransportUnit, agent_node::RobotGo, env::PlannerEnv)
     @unpack sched, scene_tree = env
     other_id = find_best_swap_candidate(node,agent_node,env)
     if !(other_id === nothing)
@@ -565,8 +556,8 @@ end
 
 Swap positions of two robots in simulation.
 """
-function swap_positions!(agent1,agent2)
-    @warn "Swapping agent $(summary(node_id(agent1))) with $(summary(node_id(agent2)))"
+function swap_positions!(agent1, agent2)
+    @info "Swapping agent $(summary(node_id(agent1))) with $(summary(node_id(agent2)))"
     tmp = global_transform(agent1)
     set_desired_global_transform!(agent1,global_transform(agent2))
     set_desired_global_transform!(agent2,tmp)
@@ -584,7 +575,7 @@ include("potential_fields.jl")
 Returns a 2D goal vector that will take the robot outside of circular boundary
 regions while pursuing its main goal
 """
-function circle_avoidance_policy(circles,agent_radius,pos,nominal_goal;
+function circle_avoidance_policy(circles, agent_radius, pos, nominal_goal;
         planning_radius::Float64=agent_radius*2,
         detour_horizon::Float64=2*planning_radius,
         buffer=staging_buffer_radius(),
@@ -669,7 +660,7 @@ end
 inflate_circle(circ::Ball2,r::Float64) = Ball2(HierarchicalGeometry.get_center(circ),HierarchicalGeometry.get_radius(circ)+r)
 # inflate_circle(circ::GeometryBasics.HyperSphere,r::Float64) = GeometryBasics.HyperSphere(HierarchicalGeometry.get_center(circ),HierarchicalGeometry.get_radius(circ)+r)
 
-function active_staging_circles(env,exclude_ids=Set())
+function active_staging_circles(env, exclude_ids=Set())
     buffer = env.staging_buffers # to increase radius of staging circles when necessary
     node_iter = (get_node(env.sched,id).node for id in env.active_build_steps if !(id in exclude_ids))
     circle_iter = (node_id(n)=>HierarchicalGeometry.project_to_2d(
@@ -677,7 +668,7 @@ function active_staging_circles(env,exclude_ids=Set())
         )) for n in node_iter)
 end
 
-function inflate_staging_circle_buffers!(env,policy,agent,circle_ids;
+function inflate_staging_circle_buffers!(env, policy, agent, circle_ids;
         threshold=0.2,
         delta = 0.1*default_robot_radius(),
         delta_max = 4*default_robot_radius(),
@@ -713,7 +704,7 @@ end
 
 Measures how many build steps a step is away from becoming active.
 """
-function active_build_step_countdown(step,env)
+function active_build_step_countdown(step, env::PlannerEnv)
     @unpack sched = env
     open_step = get_node(sched,OpenBuildStep(step)).node
     k = 0
@@ -734,7 +725,7 @@ end
 
 Query the agent's policy to get the desired twist
 """
-function get_twist_cmd(node,env)
+function get_twist_cmd(node, env::PlannerEnv)
     @unpack sched, scene_tree, agent_policies, cache, dt = env
     agent = entity(node)
     goal = global_transform(goal_config(node))
@@ -742,35 +733,34 @@ function get_twist_cmd(node,env)
     policy = agent_policies[node_id(agent)].nominal_policy
     if !(policy === nothing)
         pos = HierarchicalGeometry.project_to_2d(global_transform(agent).translation)
-        r = HierarchicalGeometry.get_radius(get_base_geom(agent,HypersphereKey()))
         excluded_ids = Set{AbstractID}()
-        if parent_build_step_is_active(node,env)
-            parent_build_step = get_parent_build_step(sched,node)
+
+        #? Can we use the cached version here?
+        if parent_build_step_is_active(node, env) && cargo_ready_for_pickup(node, env)
+            parent_build_step = get_parent_build_step(sched, node)
             push!(excluded_ids, node_id(parent_build_step))
         end
         # get circle obstacles, potentially inflated
-        circles = active_staging_circles(env,excluded_ids)
-        # INFLATE CIRCLES IF NECESSARY
-        # if policy.mode == :MOVE_TOWARD_GOAL
-        #     inflate_staging_circle_buffers!(env,policy,agent,excluded_ids)
-        # end
+        circles = active_staging_circles(env, excluded_ids)
+
         # update policy and get goal
         policy.config = global_transform(agent)
-        goal_pt = query_policy_for_goal!(policy,circles,pos,HierarchicalGeometry.project_to_2d(goal.translation))
+
+        goal_pt = query_policy_for_goal!(policy, circles, pos, HierarchicalGeometry.project_to_2d(goal.translation))
         new_goal = CoordinateTransformations.Translation(goal_pt...,0.0) ∘ CoordinateTransformations.LinearMap(goal.linear)
-        twist = compute_twist_from_goal(agent,new_goal,dt) # nominal twist
-        # @info "nominal vel: $(twist.vel)"
+
+        twist = compute_twist_from_goal(agent, new_goal, dt) # nominal twist
     else
-        twist = compute_twist_from_goal(agent,goal,dt)
+        twist = compute_twist_from_goal(agent, goal, dt)
     end
     if use_rvo()
         ############ Hacky Traffic Thinning #############
         # set nominal velocity to zero if close to goal (HACK)
-        parent_step = get_parent_build_step(sched,node)
+        parent_step = get_parent_build_step(sched, node)
         if !(parent_step === nothing)
-            countdown = active_build_step_countdown(parent_step.node,env)
+            countdown = active_build_step_countdown(parent_step.node, env)
             dist_to_goal = norm(goal.translation .- global_transform(agent).translation)
-            if dist_to_goal < 20*default_robot_radius()
+            if dist_to_goal < 15*default_robot_radius()
                 # So the agent doesn't crowd its destination
                 if matches_template(TransportUnitGo,node) && countdown >= 1
                     twist = Twist(0.0*twist.vel,twist.ω)
@@ -783,11 +773,12 @@ function get_twist_cmd(node,env)
         policy = agent_policies[node_id(agent)].dispersion_policy
         # For RobotGo node, ensure that parent assembly is "pickup-able"
         ready_for_pickup = cargo_ready_for_pickup(node,env)
+        #? Can we use the cached version here?
         build_step_active = parent_build_step_is_active(node,env)
         if !(policy === nothing || (build_step_active && ready_for_pickup))
             # update policy
             policy.node = node
-            update_dist_to_nearest_active_agent!(policy)
+            update_dist_to_nearest_active_agent!(policy, env)
             update_buffer_radius!(policy)
             # compute target position
             nominal_twist = twist
@@ -795,22 +786,19 @@ function get_twist_cmd(node,env)
             va = nominal_twist.vel[1:2]
             target_pos = pos .+ va * dt
             # commanded velocity from current position
-            # vb = compute_velocity_command!(policy,pos)
-            vb = -1.0 * compute_potential_gradient!(policy,pos)
+            vb = -1.0 * compute_potential_gradient!(policy, env, pos)
             # commanded velocity from current position
-            # vc = compute_velocity_command!(policy,target_pos)
-            vc = -1.0 * compute_potential_gradient!(policy,target_pos)
+            vc = -1.0 * compute_potential_gradient!(policy, env, target_pos)
             # blend the three velocities
             a = 1.0
             b = 1.0
             c = 0.0
-            # v = (a*va+b*vb+c*vc) / (a+b+c)
-            v = (a*va+b*vb+c*vc)
+            v = (a * va + b * vb + c * vc)
             vel = clip_velocity(v,policy.vmax)
             # compute goal
             goal_pt = pos + vel*dt
             goal = CoordinateTransformations.Translation(goal_pt...,0.0) ∘ CoordinateTransformations.LinearMap(goal.linear)
-            twist = compute_twist_from_goal(agent,goal,dt) # nominal twist
+            twist = compute_twist_from_goal(agent, goal, dt) # nominal twist
         elseif !(policy === nothing)
             policy.dist_to_nearest_active_agent = 0.0
         end
@@ -819,68 +807,61 @@ function get_twist_cmd(node,env)
     return twist
 end
 
-function compute_twist_from_goal(agent,goal,dt)
+function compute_twist_from_goal(
+    agent, goal, dt;
+    v_max=get_rvo_max_speed(agent), ω_max=default_rotational_loading_speed()
+)
     tf_error = relative_transform(global_transform(agent), goal)
-    v_max = get_rvo_max_speed(agent)
-    ω_max = default_rotational_loading_speed()
-    twist = optimal_twist(tf_error,v_max,ω_max,dt)
+    return optimal_twist(tf_error,v_max,ω_max,dt)
 end
-get_cmd(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},env) = nothing
-function get_cmd(node::Union{TransportUnitGo,RobotGo},env)
-    @unpack sched, scene_tree, dt = env
+
+get_cmd(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete}, env::PlannerEnv) = nothing
+function get_cmd(node::Union{TransportUnitGo,RobotGo}, env::PlannerEnv)
     agent = entity(node)
     if use_rvo()
         update_position_from_sim!(agent)
     end
-    if is_goal(node,env) && !is_terminal_node(sched,node)
+    if is_goal(node, env)
         twist = zero(Twist)
         max_speed = 0.0
     else
-        twist = get_twist_cmd(node,env)
-        # goal = get_twist_cmd(node,env)
-        # tf_error = relative_transform(global_transform(agent), goal)
-        # v_max = get_rvo_max_speed(agent)
-        # ω_max = default_rotational_loading_speed()
-        # twist = optimal_twist(tf_error,v_max,ω_max,dt)
+        twist = get_twist_cmd(node, env)
         max_speed = get_rvo_max_speed(agent)
     end
     if isa(node,TransportUnitGo)
         set_rvo_priority!(env,node)
     end
-    rvo_set_agent_max_speed!(agent,max_speed)
-    rvo_set_agent_pref_velocity!(agent,twist.vel[1:2])
+    rvo_set_agent_max_speed!(agent, max_speed)
+    rvo_set_agent_pref_velocity!(agent, twist.vel[1:2])
     return twist
 end
-function get_cmd(node::Union{FormTransportUnit,DepositCargo},env)
-    @unpack sched, scene_tree, cache, dt = env
+function get_cmd(node::Union{FormTransportUnit,DepositCargo}, env::PlannerEnv)
     agent = entity(node)
-    cargo = get_node(scene_tree,cargo_id(agent))
+    cargo = get_node(env.scene_tree,cargo_id(agent))
     # compute velocity (angular and translational) for cargo
-    tf_error = relative_transform(global_transform(cargo),global_transform(cargo_goal_config(node)))
     v_max = default_loading_speed()
     ω_max = default_rotational_loading_speed()
-    twist = optimal_twist(tf_error,v_max,ω_max,dt)
+    g_tform = global_transform(cargo_goal_config(node))
+    return compute_twist_from_goal(cargo, g_tform, env.dt, v_max=v_max, ω_max=ω_max)
 end
-function get_cmd(node::LiftIntoPlace,env)
-    @unpack sched, scene_tree, cache, dt = env
+function get_cmd(node::LiftIntoPlace, env::PlannerEnv)
     cargo = entity(node)
     # compute velocity (angular and translational) for cargo
-    tf_error = relative_transform(global_transform(cargo),global_transform(goal_config(node)))
+    t_des = global_transform(goal_config(node))
     v_max = default_loading_speed()
     ω_max = default_rotational_loading_speed()
-    twist = optimal_twist(tf_error,v_max,ω_max,dt)
+    twist = compute_twist_from_goal(cargo, t_des, env.dt, v_max=v_max, ω_max=ω_max)
     if norm(twist.ω) >= 1e-2
         # rotate first
         return Twist(0*twist.vel,twist.ω)
     end
-    # @info "twist for LiftIntoPlace" twist
-    twist
+    return twist
 end
 
-apply_cmd!(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},cmd,env) = nothing
-apply_cmd!(node::CloseBuildStep,cmd::Nothing,env) = close_node!(node,env)
-apply_cmd!(node::OpenBuildStep,cmd::Nothing,env) = close_node!(node,env)
-function apply_cmd!(node::FormTransportUnit,twist,env)
+apply_cmd!(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete}, cmd, env::PlannerEnv) = nothing
+apply_cmd!(node::CloseBuildStep,cmd::Nothing, env::PlannerEnv) = close_node!(node, env)
+apply_cmd!(node::OpenBuildStep,cmd::Nothing, env::PlannerEnv) = close_node!(node,env)
+function apply_cmd!(node::FormTransportUnit, twist::Twist, env::PlannerEnv)
     @unpack sched, scene_tree, cache, dt = env
     agent = entity(node)
     cargo = get_node(scene_tree,cargo_id(agent))
@@ -899,7 +880,7 @@ function apply_cmd!(node::FormTransportUnit,twist,env)
         rvo_set_agent_max_speed!(agent,0.0)
     end
 end
-function apply_cmd!(node::DepositCargo,twist,env)
+function apply_cmd!(node::DepositCargo, twist::Twist, env::PlannerEnv)
     @unpack sched, scene_tree, cache, dt = env
     agent = entity(node)
     cargo = get_node(scene_tree,cargo_id(agent))
@@ -912,13 +893,13 @@ function apply_cmd!(node::DepositCargo,twist,env)
         rvo_set_agent_max_speed!(agent,0.0)
     end
 end
-function apply_cmd!(node::LiftIntoPlace,twist,env)
+function apply_cmd!(node::LiftIntoPlace, twist::Twist, env::PlannerEnv)
     @unpack sched, scene_tree, cache, dt = env
     cargo = entity(node)
-    tform = integrate_twist(twist,dt)
+    tform = integrate_twist(twist, dt)
     set_local_transform!(cargo, local_transform(cargo) ∘ tform)
 end
-function apply_cmd!(node::Union{TransportUnitGo,RobotGo},twist,env)
+function apply_cmd!(node::Union{TransportUnitGo,RobotGo}, twist::Twist, env::PlannerEnv)
     @unpack sched, scene_tree, cache, dt = env
     if !use_rvo()
         agent = entity(node)

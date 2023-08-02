@@ -7,17 +7,17 @@ using Rotations
 using Graphs
 using GraphUtils
 using GeometryBasics
-using LDrawParser
-using HierarchicalGeometry
 using JuMP
 using ECOS
 using MathOptInterface
 using LinearAlgebra
 using ForwardDiff
 using SpatialIndexing
-
-using TaskGraphs
 using Logging
+
+using LDrawParser
+using HierarchicalGeometry
+using TaskGraphs
 
 import LibSpatialIndex
 
@@ -183,7 +183,7 @@ function copy_submodel_trees!(sched,model)
     for vp in topological_sort_by_dfs(sub_model_dependencies)
         k = get_vtx_id(sub_model_dependencies,vp)
         @assert has_vertex(sched,k) "SubModelPlan $k isn't in sched, but should be"
-        for v in vertices(sched)
+        for v in Graphs.vertices(sched)
             node = get_node(sched,v)
             val = node_val(node)
             if isa(val,SubFileRef)
@@ -205,7 +205,7 @@ Ensure that all `BuildingStep` nodes have the correct parent (submodel) name.
 function update_build_step_parents!(model_spec)
     descendant_map = backup_descendants(model_spec,
         n->matches_template(SubModelPlan,n))
-    for v in vertices(model_spec)
+    for v in Graphs.vertices(model_spec)
         node = get_node(model_spec,v)
         if matches_template(BuildingStep,node)
             node = replace_node!(model_spec,

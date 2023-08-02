@@ -1,0 +1,82 @@
+0 FILE New Model.ldr
+0 
+0 Name: New Model.ldr
+0 Author: 
+1 7 -30 -8 30 1 0 0 0 1 0 0 0 1 42534.dat
+1 7 -30 -8 -130 1 0 0 0 1 0 0 0 1 42534.dat
+0 STEP
+1 7 -30 -8 -210 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -110 -8 -210 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 50 -8 -210 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 50 -8 -130 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -30 -8 -130 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -110 -8 -130 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -110 -8 -50 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 50 -8 30 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -30 -8 -50 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -110 -8 30 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -30 -8 30 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 50 -8 110 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -110 -8 110 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 50 -8 -50 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -30 -8 110 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+0 STEP
+1 7 -150 -136 -250 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -70 -136 -250 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 10 -136 -250 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -70 -136 -90 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 90 -136 -250 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 10 -136 -170 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 10 -136 70 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 90 -136 150 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -70 -136 -170 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -150 -136 -170 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -150 -136 -90 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -150 -136 -10 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -150 -136 70 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -150 -136 150 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -70 -136 -10 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 10 -136 150 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -70 -136 150 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 -70 -136 70 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 90 -136 -170 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 90 -136 -90 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 10 -136 -90 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 90 -136 -10 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 10 -136 -10 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+1 7 90 -136 70 1 0 0 0 1 0 0 0 1 Submodel #2.ldr
+0 NOFILE
+0 FILE Submodel #1.ldr
+0 
+0 Name: Submodel #1.ldr
+0 Author: 
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 Submodel #3.ldr
+0 STEP
+1 16 0 -48 0 1 0 0 0 1 0 0 0 1 Submodel #3.ldr
+0 STEP
+1 4 0 -120 0 1 0 0 0 1 0 0 0 1 6223.dat
+0 STEP
+0 STEP
+0 NOFILE
+0 FILE Submodel #2.ldr
+0 
+0 Name: Submodel #2.ldr
+0 Author: 
+1 7 0 -8 0 1 0 0 0 1 0 0 0 1 3031.dat
+0 STEP
+1 7 -20 -8 20 1 0 0 0 1 0 0 0 1 Submodel #1.ldr
+1 7 -20 -8 -20 1 0 0 0 1 0 0 0 1 Submodel #1.ldr
+1 7 20 -8 20 1 0 0 0 1 0 0 0 1 Submodel #1.ldr
+1 7 20 -8 -20 1 0 0 0 1 0 0 0 1 Submodel #1.ldr
+0 NOFILE
+0 FILE Submodel #3.ldr
+0 
+0 Name: Submodel #3.ldr
+0 Author: 
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 6223.dat
+0 STEP
+1 7 -10 -48 -10 1 0 0 0 1 0 0 0 1 3005.dat
+1 7 -10 -48 10 1 0 0 0 1 0 0 0 1 3005.dat
+1 7 10 -48 10 1 0 0 0 1 0 0 0 1 3005.dat
+1 7 10 -48 -10 1 0 0 0 1 0 0 0 1 3005.dat
+0 NOFILE

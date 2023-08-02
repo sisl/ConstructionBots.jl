@@ -1,2 +1,5 @@
-/docs/build/
 Manifest.toml
+.vscode
+.DS_Store
+variable_dump/*
+results/*

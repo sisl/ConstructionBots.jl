@@ -1,0 +1,2917 @@
+0 FILE 21309 - main.ldr
+0 main
+0 Name: 21309 - main.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+0 !CATEGORY Space
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 0 -8 40 -1 0 0 0 1 0 0 0 -1 22888.dat
+1 72 0 -8 -40 1 0 0 0 1 0 0 0 1 22888.dat
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 6222.dat
+0 STEP
+1 72 0 14 -48 -1 0 0 0 0 1 0 1 0 21309 - 3.ldr
+1 72 48 14 0 0 -1 0 0 0 1 -1 0 0 21309 - 3.ldr
+1 72 -48 14 0 0 1 0 0 0 1 1 0 0 21309 - 3.ldr
+1 72 0 14 48 1 0 0 0 0 1 0 -1 0 21309 - 3.ldr
+1 15 -50 -16 50 -1 0 0 0 1 0 0 0 -1 6141.dat
+1 15 50 -16 50 -1 0 0 0 1 0 0 0 -1 6141.dat
+1 15 50 -16 -50 -1 0 0 0 1 0 0 0 -1 6141.dat
+1 15 -50 -16 -50 -1 0 0 0 1 0 0 0 -1 6141.dat
+1 19 0 -56 -70 -1 0 0 0 1 0 0 0 -1 3245a.dat
+1 19 70 -56 0 0 0 1 0 1 0 -1 0 0 3245a.dat
+1 19 0 -56 70 -1 0 0 0 1 0 0 0 -1 3245a.dat
+1 19 -70 -56 0 0 0 1 0 1 0 -1 0 0 3245a.dat
+0 STEP
+1 15 0 -72 -70 1 0 0 0 1 0 0 0 1 99206.dat
+1 15 0 -72 70 -1 0 0 0 1 0 0 0 -1 99206.dat
+1 15 -70 -72 0 0 0 1 0 1 0 -1 0 0 99206.dat
+1 15 70 -72 0 0 0 -1 0 1 0 1 0 0 99206.dat
+1 16 50 -64 50 -0.707 0 -0.707 0 1 0 0.707 0 -0.707 21309 - 6.ldr
+1 15 -50 -64 -50 0.707 0 0.707 0 1 0 -0.707 0 0.707 21309 - 6.ldr
+1 15 50 -64 -50 0.707 0 -0.707 0 1 0 0.707 0 0.707 21309 - 6.ldr
+1 15 -50 -64 50 -0.707 0 0.707 0 1 0 -0.707 0 -0.707 21309 - 6.ldr
+0 STEP
+1 16 0 -72 0 1 0 0 0 1 0 0 0 1 sec1.ldr
+0 STEP
+1 16 -66.97 -56 -64.142 1 0 0 0 1 0 0 0 1 sec1_1.ldr
+1 16 66.97 -56 64.142 1 0 0 0 1 0 0 0 1 sec1_2.ldr
+1 70 65.556 -156 -65.556 0 -0.707 -0.707 -1 0 0 0 0.707 -0.707 21309 - 15.ldr
+1 70 -65.556 -156 65.556 0 0.707 0.707 -1 0 0 0 -0.707 0.707 21309 - 15.ldr
+1 16 0 -296 0 1 0 0 0 1 0 0 0 1 sec1_3.ldr
+0 STEP
+1 70 0 -368 0 0 0 1 0 1 0 -1 0 0 21309 - 25-36.ldr
+0 STEP
+1 15 80 -116 0 0 -1 0 -1 0 0 0 0 -1 21309 - 38-48.ldr
+1 15 -80 -116 0 0 1 0 -1 0 0 0 0 1 21309 - 38-48.ldr
+1 15 0 -116 80 0 0 1 -1 0 0 0 -1 0 21309 - 38-48.ldr
+1 15 0 -116 -80 0 0 -1 -1 0 0 0 1 0 21309 - 38-48.ldr
+1 15 0 -616 -88 0 0 -1 -1 0 0 0 1 0 21309 - 50-54.ldr
+1 15 88 -616 0 0 -1 0 -1 0 0 0 0 -1 21309 - 50-54.ldr
+1 15 0 -616 88 0 0 1 -1 0 0 0 -1 0 21309 - 50-54.ldr
+1 15 -88 -616 0 0 1 0 -1 0 0 0 0 1 21309 - 50-54.ldr
+0 STEP
+1 16 0 -696 0 1 0 0 0 1 0 0 0 1 sec3_2.ldr
+0 STEP
+1 15 -30 -456 112 0 0 1 -1 0 0 0 -1 0 24309.dat
+1 15 -112 -456 -30 0 1 0 -1 0 0 0 0 1 24309.dat
+1 15 30 -456 -112 0 0 -1 -1 0 0 0 1 0 24309.dat
+1 15 112 -456 30 0 -1 0 -1 0 0 0 0 -1 24309.dat
+1 15 30 -456 112 0 0 -1 1 0 0 0 -1 0 24309.dat
+1 15 112 -456 -30 0 -1 0 1 0 0 0 0 1 24309.dat
+1 15 -30 -456 -112 0 0 1 1 0 0 0 1 0 24309.dat
+1 15 -112 -456 30 0 1 0 1 0 0 0 0 -1 24309.dat
+0 STEP
+1 70 71.21 -756 -71.21 0 -0.707 -0.707 -1 0 0 0 0.707 -0.707 21309 - 64-69.ldr
+1 70 -71.213 -756 71.21 0 0.707 0.707 -1 0 0 0 -0.707 0.707 21309 - 64-69.ldr
+1 1 78.283 -756 64.14 0 -0.707 0.707 -1 0 0 0 -0.707 -0.707 21309 - 71-77.ldr
+1 1 -78.283 -756 -64.14 0 0.707 -0.707 -1 0 0 0 0.707 0.707 21309 - 71-77.ldr
+0 STEP
+1 16 -58.484 -816 -72.627 0 0.707 -0.707 -1 0 0 0 0.707 0.707 21309 - 79.ldr
+1 1 58.484 -816 72.627 0 -0.707 0.707 -1 0 0 0 -0.707 -0.707 21309 - 79.ldr
+1 19 68.385 -736 82.522 1 0 0 0 -1 0 0 0 -1 21309 - 80-85.ldr
+1 19 -68.385 -736 -82.522 1 0 0 0 -1 0 0 0 -1 21309 - 80-85.ldr
+0 STEP
+1 19 -68.385 -280 -82.525 0.707 0 0.707 0 1 0 -0.707 0 0.707 21309 - 87-90.ldr
+1 19 68.383 -280 82.528 -0.707 0 -0.707 0 1 0 0.707 0 -0.707 21309 - 87-90.ldr
+1 19 68.383 -100 82.528 -0.707 0 -0.707 0 1 0 0.707 0 -0.707 21309 - 92-94.ldr
+1 19 -68.385 -100 -82.525 0.707 0 0.707 0 1 0 -0.707 0 0.707 21309 - 92-94.ldr
+1 72 0 -892 0 1 0 0 0 1 0 0 0 1 21309 - 136-243.ldr
+0 STEP
+1 15 -83.939 -116 -69.799 0 0.707 -0.707 -1 0 0 0 0.707 0.707 6636.dat
+1 15 83.94 -116 69.8 0 -0.707 0.707 -1 0 0 0 -0.707 -0.707 6636.dat
+1 15 83.94 -216 69.8 0 -0.707 0.707 -1 0 0 0 -0.707 -0.707 2431.dat
+1 15 -83.942 -216 -69.798 0 0.707 -0.707 -1 0 0 0 0.707 0.707 2431.dat
+1 15 0 -796 -96 0 0 -1 -1 0 0 0 1 0 21309 - 97-100.ldr
+1 15 96 -796 0 0 -1 0 -1 0 0 0 0 -1 21309 - 97-100.ldr
+1 15 0 -796 96 0 0 1 -1 0 0 0 -1 0 21309 - 97-100.ldr
+1 15 -96 -796 0 0 1 0 -1 0 0 0 0 1 21309 - 97-100.ldr
+1 72 0 -1416 0 1 0 0 0 1 0 0 0 1 21309 - 244-285.ldr
+0 STEP
+1 16 -96 -796 -30 0 1 0 -1 0 0 0 0 1 21309 - 102.ldr
+1 15 30 -796 -96 0 0 -1 -1 0 0 0 1 0 21309 - 102.ldr
+1 15 96 -796 30 0 -1 0 -1 0 0 0 0 -1 21309 - 102.ldr
+1 15 -30 -796 96 0 0 1 -1 0 0 0 -1 0 21309 - 102.ldr
+0 STEP
+1 15 -20 -316 46 0 -0.914 -0.407 1 0 0 0 -0.407 0.914 21309 - 103-107.ldr
+1 15 -46 -316 -20 0 0.407 -0.914 1 0 0 0 -0.914 -0.407 21309 - 103-107.ldr
+1 15 20 -316 -46 0 0.914 0.407 1 0 0 0 0.407 -0.914 21309 - 103-107.ldr
+1 15 46 -316 20 0 -0.407 0.914 1 0 0 0 0.914 0.407 21309 - 103-107.ldr
+1 15 46 -316 -20 0 -0.407 0.914 -1 0 0 0 -0.914 -0.407 21309 - 103-107.ldr
+1 15 -20 -316 -46 0 -0.914 -0.407 -1 0 0 0 0.407 -0.914 21309 - 103-107.ldr
+1 15 -45 -316 19 0 0.407 -0.914 -1 0 0 0 0.914 0.407 21309 - 103-107.ldr
+1 15 20 -316 46 0 0.914 0.407 -1 0 0 0 -0.407 0.914 21309 - 103-107.ldr
+0 STEP
+1 70 -71.212 -316 71.212 0 0.707 0.707 -1 0 0 0 -0.707 0.707 21309 - 115-117.ldr
+1 70 71.21 -316 -71.21 0 -0.707 -0.707 -1 0 0 0 0.707 -0.707 21309 - 115-117.ldr
+1 1 -78.282 -316 -64.142 0 0.707 -0.707 -1 0 0 0 0.707 0.707 21309 - 119.ldr
+1 1 78.283 -316 64.14 0 -0.707 0.707 -1 0 0 0 -0.707 -0.707 21309 - 119.ldr
+1 14 0 70 0 0 0 -1 -1 0 0 0 1 0 44294.dat
+1 0 -102 64 0 0 -1 0 1 0 0 0 0 1 3707.dat
+1 0 0 64 -102 0 -1 0 1 0 0 0 0 1 3707.dat
+1 0 102 64 0 0 -1 0 1 0 0 0 0 1 3707.dat
+1 0 0 64 102 0 -1 0 1 0 0 0 0 1 3707.dat
+0 STEP
+1 72 0 24 0 1 0 0 0 1 0 0 0 1 6143.dat
+1 71 0 34 102 1 0 0 0 -1 0 0 0 -1 33299.dat
+1 71 0 34 -102 -1 0 0 0 -1 0 0 0 1 33299.dat
+1 71 -102 34 0 0 0 1 0 -1 0 1 0 0 33299.dat
+1 71 102 34 0 0 0 -1 0 -1 0 -1 0 0 33299.dat
+0 STEP
+1 72 0 64 0 1 0 0 0 1 0 0 0 1 21309 - 122.ldr
+1 72 0 68 102 1 0 0 0 1 0 0 0 1 21309 - 123.ldr
+1 72 102 68 0 0 0 1 0 1 0 -1 0 0 21309 - 123.ldr
+1 72 0 68 -102 -1 0 0 0 1 0 0 0 -1 21309 - 123.ldr
+1 72 -102 68 0 0 0 -1 0 1 0 1 0 0 21309 - 123.ldr
+0 STEP
+1 148 -102 124 0 0 0 -1 0 -1 0 -1 0 0 21309 - 124.ldr
+1 148 0 124 102 -1 0 0 0 -1 0 0 0 1 21309 - 124.ldr
+1 148 102 124 0 0 0 1 0 -1 0 1 0 0 21309 - 124.ldr
+1 148 0 124 -102 1 0 0 0 -1 0 0 0 -1 21309 - 124.ldr
+1 148 0 120 0 0 0 1 0 -1 0 1 0 0 21309 - 124.ldr
+0 STEP
+1 148 0 140 -102 0 0 1 0 -1 0 1 0 0 21309 - 125.ldr
+1 148 -102 140 0 0 0 1 0 -1 0 1 0 0 21309 - 125.ldr
+1 148 0 140 102 0 0 1 0 -1 0 1 0 0 21309 - 125.ldr
+1 148 102 140 0 0 0 1 0 -1 0 1 0 0 21309 - 125.ldr
+1 148 0 138 0 0 0 1 0 -1 0 1 0 0 21309 - 125.ldr
+0 STEP
+1 72 -30 14 102 0 1 0 -1 0 0 0 0 1 21309 - 126.ldr
+1 72 30 14 -102 0 -1 0 -1 0 0 0 0 -1 21309 - 126.ldr
+1 72 102 14 30 0 0 1 -1 0 0 0 -1 0 21309 - 126.ldr
+1 72 -102 14 -30 0 0 -1 -1 0 0 0 1 0 21309 - 126.ldr
+0 STEP
+1 72 -102 14 30 0 0 1 -1 0 0 0 -1 0 21309 - 127.ldr
+1 72 -30 14 -102 0 1 0 -1 0 0 0 0 1 21309 - 127.ldr
+1 72 102 14 -30 0 0 -1 -1 0 0 0 1 0 21309 - 127.ldr
+1 72 30 14 102 0 -1 0 -1 0 0 0 0 -1 21309 - 127.ldr
+0 STEP
+1 15 0 -6 -136 1 0 0 0 0 -1 0 1 0 21309 - 129-132.ldr
+1 15 136 -6 0 0 -1 0 0 0 -1 1 0 0 21309 - 129-132.ldr
+1 15 0 -6 136 -1 0 0 0 0 -1 0 -1 0 21309 - 129-132.ldr
+1 15 -136 -6 0 0 1 0 0 0 -1 -1 0 0 21309 - 129-132.ldr
+0 STEP
+1 15 -74.038 -16 -74.038 0 0.707 -0.707 -1 0 0 0 0.707 0.707 21309 - 135.ldr
+1 70 74.038 -16 -74.038 0 -0.707 -0.707 -1 0 0 0 0.707 -0.707 21309 - 135.ldr
+1 15 74.038 -16 74.038 0 -0.707 0.707 -1 0 0 0 -0.707 -0.707 21309 - 135.ldr
+1 70 -74.038 -16 74.038 0 0.707 0.707 -1 0 0 0 -0.707 0.707 21309 - 135.ldr
+1 15 -144 -26 0 0 1 0 0 0 1 1 0 0 6239.dat
+1 15 144 -26 0 0 -1 0 0 0 1 -1 0 0 6239.dat
+1 15 0 -26 144 1 0 0 0 0 1 0 -1 0 6239.dat
+1 15 0 -26 -144 -1 0 0 0 0 1 0 1 0 6239.dat
+0 STEP
+1 15 0 -1920 0 1 0 0 0 1 0 0 0 1 21309 - 287.ldr
+0 STEP
+0 STEP
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 3.ldr
+0 3
+0 Name: 21309 - 3.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 15573.dat
+0 STEP
+1 71 0 -24 0 1 0 0 0 1 0 0 0 1 3700.dat
+0 STEP
+1 72 0 -32 0 1 0 0 0 1 0 0 0 1 44728.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 6.ldr
+0 6
+0 Name: 21309 - 6.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 99207.dat
+0 STEP
+1 71 0 -8 0 1 0 0 0 1 0 0 0 1 15573.dat
+0 STEP
+1 71 0 8 0 1 0 0 0 1 0 0 0 1 22885.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 9.ldr
+0 9
+0 Name: 21309 - 9.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 3795.dat
+0 STEP
+1 15 -70 0 0 0 0 1 0 1 0 -1 0 0 99206.dat
+1 15 70 0 0 0 0 -1 0 1 0 1 0 0 99206.dat
+
+
+
+
+0 NOFILE
+0 FILE 21309 - 10.ldr
+0 10
+0 Name: 21309 - 10.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 99207.dat
+0 STEP
+1 71 0 -8 0 1 0 0 0 1 0 0 0 1 15573.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 14.ldr
+0 14
+0 Name: 21309 - 14.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 3832.dat
+1 1 -20 -8 10 1 0 0 0 1 0 0 0 1 3460.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 15.ldr
+0 15
+0 Name: 21309 - 15.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 3832.dat
+0 STEP
+1 19 -20 -8 0 1 0 0 0 1 0 0 0 1 3034.dat
+0 STEP
+1 0 -40 -16 -10 1 0 0 0 1 0 0 0 1 6636.dat
+1 15 -40 -16 10 1 0 0 0 1 0 0 0 1 6636.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 16-22.ldr
+0 16-22
+0 Name: 21309 - 16-22.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 4 0 24 -10 1 0 0 0 1 0 0 0 1 99207.dat
+1 4 0 24 10 -1 0 0 0 1 0 0 0 -1 99207.dat
+0 STEP
+1 19 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 72 10 -8 0 0 0 -1 0 1 0 1 0 0 44728.dat
+1 72 -10 -8 0 0 0 1 0 1 0 -1 0 0 44728.dat
+0 STEP
+1 71 32 22 0 0 -1 0 0 0 1 -1 0 0 15573.dat
+1 71 32 2 0 0 -1 0 0 0 1 -1 0 0 15573.dat
+1 71 0 2 32 1 0 0 0 0 1 0 -1 0 15573.dat
+1 71 0 22 32 1 0 0 0 0 1 0 -1 0 15573.dat
+1 71 -32 2 0 0 1 0 0 0 1 1 0 0 15573.dat
+1 71 -32 22 0 0 1 0 0 0 1 1 0 0 15573.dat
+1 71 0 2 -32 -1 0 0 0 0 1 0 1 0 15573.dat
+1 71 0 22 -32 -1 0 0 0 0 1 0 1 0 15573.dat
+0 STEP
+1 14 -10 22 -40 -1 0 0 0 0 1 0 1 0 92280.dat
+1 14 10 2 -40 1 0 0 0 0 -1 0 1 0 92280.dat
+1 14 40 2 10 0 -1 0 0 0 -1 1 0 0 92280.dat
+1 14 40 22 -10 0 -1 0 0 0 1 -1 0 0 92280.dat
+1 14 -10 2 40 -1 0 0 0 0 -1 0 -1 0 92280.dat
+1 14 10 22 40 1 0 0 0 0 1 0 -1 0 92280.dat
+1 14 -40 2 -10 0 1 0 0 0 -1 -1 0 0 92280.dat
+1 14 -40 22 10 0 1 0 0 0 1 1 0 0 92280.dat
+0 STEP
+1 71 0 12 48 0 0 -1 1 0 0 0 -1 0 15573.dat
+1 71 0 12 -48 0 0 1 1 0 0 0 1 0 15573.dat
+1 71 -48 12 0 0 1 0 1 0 0 0 0 -1 15573.dat
+1 71 48 12 0 0 -1 0 1 0 0 0 0 1 15573.dat
+0 STEP
+1 19 0 -32 0 0 0 1 0 1 0 -1 0 0 3003.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 25-36.ldr
+0 25-36
+0 Name: 21309 - 25-36.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 19 0 0 0 1 0 0 0 1 0 0 0 1 3958.dat
+0 STEP
+1 297 50 -8 -50 1 0 0 0 1 0 0 0 1 85861.dat
+1 297 50 -8 50 1 0 0 0 1 0 0 0 1 85861.dat
+1 297 -50 -8 50 1 0 0 0 1 0 0 0 1 85861.dat
+1 297 -50 -8 -50 1 0 0 0 1 0 0 0 1 85861.dat
+0 STEP
+1 1 0 -8 -50 1 0 0 0 1 0 0 0 1 3023.dat
+1 1 0 -8 50 1 0 0 0 1 0 0 0 1 3023.dat
+1 1 50 -8 0 0 0 -1 0 1 0 1 0 0 3023.dat
+1 1 -50 -8 0 0 0 -1 0 1 0 1 0 0 3023.dat
+1 2 -30 0 0 0 0 -1 0 1 0 1 0 0 85984.dat
+1 2 30 0 0 0 0 1 0 1 0 -1 0 0 85984.dat
+1 2 0 0 30 1 0 0 0 1 0 0 0 1 85984.dat
+1 2 0 0 -30 -1 0 0 0 1 0 0 0 -1 85984.dat
+0 STEP
+1 15 0 -24 70 -1 0 0 0 1 0 0 0 -1 99206.dat
+1 15 0 -24 -70 1 0 0 0 1 0 0 0 1 99206.dat
+1 15 70 -24 0 0 0 -1 0 1 0 1 0 0 99206.dat
+1 15 -70 -24 0 0 0 1 0 1 0 -1 0 0 99206.dat
+0 STEP
+1 71 -30 -24 0 0 0 1 0 1 0 -1 0 0 2419.dat
+1 71 30 -24 0 0 0 -1 0 1 0 1 0 0 2419.dat
+0 STEP
+1 71 -50 -16 -50 0.707 0 0.707 0 1 0 -0.707 0 0.707 21309 - 10.ldr
+1 71 50 -16 -50 0.707 0 -0.707 0 1 0 0.707 0 0.707 21309 - 10.ldr
+1 71 -50 -16 50 -0.707 0 0.707 0 1 0 -0.707 0 -0.707 21309 - 10.ldr
+1 71 50 -16 50 -0.707 0 -0.707 0 1 0 0.707 0 -0.707 21309 - 10.ldr
+0 STEP
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 sec2_1.ldr
+0 STEP
+1 16 0 -184 0 1 0 0 0 1 0 0 0 1 sec2_2.ldr
+0 STEP
+1 16 0 -344 0 0 0 -1 0 1 0 1 0 0 21309 - 36.ldr
+
+
+
+0 NOFILE
+0 FILE 21309 - 36.ldr
+0 36
+0 Name: 21309 - 36.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 2 0 0 0 1 0 0 0 1 0 0 0 1 3031.dat
+0 STEP
+1 19 0 -24 -30 1 0 0 0 1 0 0 0 1 11211.dat
+1 19 0 -24 30 -1 0 0 0 1 0 0 0 -1 11211.dat
+1 19 -30 -24 0 0 0 1 0 1 0 -1 0 0 11211.dat
+1 19 30 -24 0 0 0 -1 0 1 0 1 0 0 11211.dat
+0 STEP
+1 4 0 -48 0 0 0 -1 0 1 0 1 0 0 87081.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 38-48.ldr
+0 38-48
+0 Name: 21309 - 38-48.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 0 -8 20 1 0 0 0 1 0 0 0 1 91988.dat
+1 72 0 -8 -20 1 0 0 0 1 0 0 0 1 91988.dat
+0 STEP
+1 4 -130 -32 0 0 0 1 0 1 0 -1 0 0 32064a.dat
+1 4 -110 -32 0 0 0 1 0 1 0 -1 0 0 32064a.dat
+1 19 -80 -32 0 0 0 1 0 1 0 -1 0 0 3003.dat
+1 71 0 -16 0 -1 0 0 0 1 0 0 0 -1 3795.dat
+0 STEP
+1 15 -100 -32 -30 -1 0 0 0 1 0 0 0 -1 30541.dat
+1 0 -100 -32 30 -1 0 0 0 1 0 0 0 -1 30541.dat
+1 0 -70 -32 30 -1 0 0 0 1 0 0 0 -1 3005.dat
+1 15 -70 -32 -30 -1 0 0 0 1 0 0 0 -1 3005.dat
+0 STEP
+1 15 -40 -32 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 15 0 -32 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 15 40 -32 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 0 -40 -32 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 0 0 -32 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 0 40 -32 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+0 STEP
+1 0 -80 -56 10 0 0 -1 0 1 0 1 0 0 41748.dat
+1 15 -80 -56 -10 0 0 -1 0 1 0 1 0 0 41747.dat
+1 15 200 -16 0 -1 0 0 0 1 0 0 0 -1 21309 - 43-47.ldr
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 43-47.ldr
+0 43-47
+0 Name: 21309 - 43-47.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 0 0 0 1 0 0 0 1 0 0 0 1 91988.dat
+0 STEP
+1 15 120 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 15 80 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 0 80 -16 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 0 120 -16 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 71 0 -8 0 1 0 0 0 1 0 0 0 1 3795.dat
+0 STEP
+1 15 40 -16 10 1 0 0 0 1 0 0 0 1 2412b.dat
+1 15 40 -16 -10 1 0 0 0 1 0 0 0 1 2412b.dat
+1 15 0 -16 -10 1 0 0 0 1 0 0 0 1 2412b.dat
+1 15 -40 -16 -10 1 0 0 0 1 0 0 0 1 2412b.dat
+1 15 0 -16 10 1 0 0 0 1 0 0 0 1 2412b.dat
+1 15 -40 -16 10 1 0 0 0 1 0 0 0 1 2412b.dat
+0 STEP
+1 71 -120 8 0 1 0 0 0 1 0 0 0 1 3032.dat
+0 STEP
+1 15 -70 -16 -30 1 0 0 0 1 0 0 0 1 50950.dat
+1 15 -70 -16 30 -1 0 0 0 1 0 0 0 -1 50950.dat
+1 15 -100 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 15 -100 -16 -30 1 0 0 0 1 0 0 0 1 24309.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 50-54.ldr
+0 50-54
+0 Name: 21309 - 50-54.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 0 0 0 1 0 0 0 1 0 0 0 1 3030.dat
+1 19 0 -8 0 1 0 0 0 1 0 0 0 1 3034.dat
+0 STEP
+1 1 -120 -8 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+1 19 -110 0 0 0 0 1 0 1 0 -1 0 0 3710.dat
+0 STEP
+1 15 70 -24 -30 1 0 0 0 1 0 0 0 1 50950.dat
+1 15 70 -24 30 -1 0 0 0 1 0 0 0 -1 50950.dat
+0 STEP
+1 15 40 -24 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 15 0 -24 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 15 -40 -24 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 15 -80 -24 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 15 40 -24 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 15 0 -24 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 15 -40 -24 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 15 -80 -24 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 15 -120 -24 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 15 -120 -24 -30 1 0 0 0 1 0 0 0 1 24309.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 56.ldr
+0 56
+0 Name: 21309 - 56.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 99207.dat
+0 STEP
+1 71 0 -8 0 1 0 0 0 1 0 0 0 1 15573.dat
+0 STEP
+1 15 0 -32 0 1 0 0 0 1 0 0 0 1 3062b.dat
+0 STEP
+1 4 0 -40 0 1 0 0 0 1 0 0 0 1 21309 - 56a.ldr
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 56a.ldr
+0 56a
+0 Name: 21309 - 56a.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 99207.dat
+0 STEP
+1 71 0 -8 0 1 0 0 0 1 0 0 0 1 15573.dat
+0 STEP
+1 15 0 -16 0 1 0 0 0 1 0 0 0 1 6141.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 57.ldr
+0 57
+0 Name: 21309 - 57.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 19 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 72 0 -32 10 1 0 0 0 1 0 0 0 1 18671.dat
+0 STEP
+1 71 0 -16 -10 1 0 0 0 1 0 0 0 1 99781.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 64-69.ldr
+0 64-69
+0 Name: 21309 - 64-69.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 19 0 0 0 1 0 0 0 1 0 0 0 1 3034.dat
+1 4 60 8 -10 1 0 0 0 1 0 0 0 1 63868.dat
+1 4 60 8 10 1 0 0 0 1 0 0 0 1 63868.dat
+0 STEP
+1 72 0 8 0 1 0 0 0 1 0 0 0 1 3020.dat
+1 19 -120 8 0 1 0 0 0 1 0 0 0 1 3034.dat
+0 STEP
+1 71 -180 0 0 1 0 0 0 1 0 0 0 1 3832.dat
+1 1 -210 8 0 0 0 1 0 1 0 -1 0 0 3023.dat
+0 STEP
+1 19 -300 8 0 1 0 0 0 1 0 0 0 1 3034.dat
+1 14 -310 0 0 1 0 0 0 1 0 0 0 1 3021.dat
+0 STEP
+1 15 40 -8 10 1 0 0 0 1 0 0 0 1 6636.dat
+1 15 -40 -8 10 1 0 0 0 1 0 0 0 1 3069b.dat
+1 0 20 -8 -10 1 0 0 0 1 0 0 0 1 4162.dat
+0 STEP
+1 15 -100 -8 0 1 0 0 0 1 0 0 0 1 87079.dat
+1 15 -180 -8 0 1 0 0 0 1 0 0 0 1 87079.dat
+1 15 -260 -8 0 1 0 0 0 1 0 0 0 1 87079.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 71-77.ldr
+0 71-77
+0 Name: 21309 - 71-77.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 3460.dat
+1 4 60 8 0 1 0 0 0 1 0 0 0 1 63868.dat
+0 STEP
+1 72 0 8 -10 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+1 19 -120 8 -10 1 0 0 0 1 0 0 0 1 3034.dat
+1 0 10 0 -20 0 0 -1 0 1 0 1 0 0 15712.dat
+0 STEP
+1 1 -100 0 0 1 0 0 0 1 0 0 0 1 3023.dat
+1 15 -200 0 0 1 0 0 0 1 0 0 0 1 3460.dat
+0 STEP
+1 71 -300 8 -10 1 0 0 0 1 0 0 0 1 3832.dat
+1 2 -310 0 0 1 0 0 0 1 0 0 0 1 3623.dat
+0 STEP
+1 15 -370 0 -10 0 0 1 0 1 0 -1 0 0 21309 - 76.ldr
+0 STEP
+1 15 -320 -8 0 -1 0 0 0 1 0 0 0 -1 6636.dat
+1 15 -200 -8 0 -1 0 0 0 1 0 0 0 -1 6636.dat
+1 15 -80 -8 0 -1 0 0 0 1 0 0 0 -1 6636.dat
+1 15 40 -8 0 -1 0 0 0 1 0 0 0 -1 6636.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 76.ldr
+0 76
+0 Name: 21309 - 76.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 11458.dat
+1 0 10 -6 10 0 0 1 0 1 0 -1 0 0 2780.dat
+0 STEP
+1 15 0 0 20 1 0 0 0 1 0 0 0 1 11458.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 79.ldr
+0 79
+0 Name: 21309 - 79.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 63868.dat
+0 STEP
+1 2 -10 -8 0 1 0 0 0 1 0 0 0 1 3623.dat
+0 STEP
+1 0 0 -16 0 1 0 0 0 1 0 0 0 1 2431.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 80-85.ldr
+0 80-85
+0 Name: 21309 - 80-85.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 11610.dat
+1 0 0 -24 0 1 0 0 0 1 0 0 0 1 3062b.dat
+0 STEP
+1 0 0 -32 0 1 0 0 0 1 0 0 0 1 6141.dat
+1 0 0 -40 0 1 0 0 0 1 0 0 0 1 6141.dat
+0 STEP
+1 15 0 -64 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 15 0 -88 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 15 0 -112 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 15 0 -136 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 15 0 -160 0 1 0 0 0 1 0 0 0 1 3062b.dat
+0 STEP
+1 15 0 -168 0 1 0 0 0 1 0 0 0 1 6141.dat
+0 STEP
+1 15 0 -192 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 15 0 -216 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 15 0 -240 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 15 0 -264 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 15 0 -288 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 15 0 -312 0 1 0 0 0 1 0 0 0 1 3062b.dat
+0 STEP
+1 15 0 -320 0 1 0 0 0 1 0 0 0 1 20482.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 87-90.ldr
+0 87-90
+0 Name: 21309 - 87-90.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 15 0 -24 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 15 0 -48 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 15 0 -72 0 1 0 0 0 1 0 0 0 1 3062b.dat
+0 STEP
+1 15 0 -80 0 1 0 0 0 1 0 0 0 1 6141.dat
+1 15 0 -88 0 1 0 0 0 1 0 0 0 1 6141.dat
+1 15 0 -88 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 15 0 -96 0 1 0 0 0 1 0 0 0 1 20482.dat
+0 STEP
+1 1 -10 34 6 1 0 0 0 0 -1 0 1 0 21309 - 90.ldr
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 90.ldr
+0 90
+0 Name: 21309 - 90.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 11458.dat
+1 1 10 -6 10 0 0 -1 0 1 0 1 0 0 4274.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 92-94.ldr
+0 92-94
+0 Name: 21309 - 92-94.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 0 0 -24 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 0 0 -48 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 0 0 -72 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 0 0 -96 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 0 0 -120 0 1 0 0 0 1 0 0 0 1 3062b.dat
+0 STEP
+1 0 0 -128 0 1 0 0 0 1 0 0 0 1 6141.dat
+1 0 0 -136 0 1 0 0 0 1 0 0 0 1 20482.dat
+0 STEP
+1 0 -10 34 6 1 0 0 0 0 -1 0 1 0 21309 - 90.ldr
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 97-100.ldr
+0 97-100
+0 Name: 21309 - 97-100.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 3795.dat
+1 19 -50 8 0 0 0 1 0 1 0 -1 0 0 3710.dat
+1 19 30 8 0 0 0 1 0 1 0 -1 0 0 3710.dat
+0 STEP
+1 0 -40 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 0 0 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 0 40 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+0 STEP
+1 15 -40 -16 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 15 40 -16 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 15 0 -24 -10 1 0 0 0 1 0 0 0 1 4865b.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 102.ldr
+0 102
+0 Name: 21309 - 102.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 1 0 0 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+1 15 0 8 -10 1 0 0 0 1 0 0 0 1 15068.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 103-107.ldr
+0 103-107
+0 Name: 21309 - 103-107.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 1 0 6 30 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+1 15 0 -2 20 1 0 0 0 1 0 0 0 1 48336.dat
+1 15 30 -2 20 1 0 0 0 1 0 0 0 1 6141.dat
+1 15 -30 -2 20 1 0 0 0 1 0 0 0 1 6141.dat
+0 STEP
+1 16 -40 -2 40 -1 0 0 0 1 0 0 0 -1 21309 - 105.ldr
+1 16 0 -2 40 -1 0 0 0 1 0 0 0 -1 21309 - 105.ldr
+1 16 40 -2 40 -1 0 0 0 1 0 0 0 -1 21309 - 105.ldr
+0 STEP
+1 4 20 -2 30 1 0 0 0 1 0 0 0 1 15068.dat
+1 4 -20 -2 30 1 0 0 0 1 0 0 0 1 15068.dat
+0 STEP
+1 15 40 -12 62 1 0 0 0 0 1 0 -1 0 2412b.dat
+1 15 40 8 62 1 0 0 0 0 1 0 -1 0 2412b.dat
+1 15 -40 -12 62 1 0 0 0 0 1 0 -1 0 2412b.dat
+1 15 -40 8 62 1 0 0 0 0 1 0 -1 0 2412b.dat
+1 15 0 -2 62 1 0 0 0 0 1 0 -1 0 3068b.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 105.ldr
+0 105
+0 Name: 21309 - 105.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 99781.dat
+0 STEP
+1 72 0 -8 0 1 0 0 0 1 0 0 0 1 99780.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 115-117.ldr
+0 115-117
+0 Name: 21309 - 115-117.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 3832.dat
+1 15 -40 -8 10 1 0 0 0 1 0 0 0 1 2412b.dat
+1 15 0 -8 10 1 0 0 0 1 0 0 0 1 2412b.dat
+1 15 40 -8 10 1 0 0 0 1 0 0 0 1 2412b.dat
+1 15 40 -8 -10 1 0 0 0 1 0 0 0 1 2412b.dat
+1 15 0 -8 -10 1 0 0 0 1 0 0 0 1 2412b.dat
+1 15 -40 -8 -10 1 0 0 0 1 0 0 0 1 2412b.dat
+1 15 -100 -8 10 1 0 0 0 1 0 0 0 1 2431.dat
+1 0 -100 -8 -10 1 0 0 0 1 0 0 0 1 2431.dat
+1 15 100 -8 0 1 0 0 0 1 0 0 0 1 87079.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 119.ldr
+0 119
+0 Name: 21309 - 119.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 3666.dat
+0 STEP
+1 15 -40 -8 0 1 0 0 0 1 0 0 0 1 2412b.dat
+1 15 0 -8 0 1 0 0 0 1 0 0 0 1 2412b.dat
+1 15 40 -8 0 1 0 0 0 1 0 0 0 1 2412b.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 122.ldr
+0 122
+0 Name: 21309 - 122.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 0 0 0 1 0 0 0 1 0 0 0 1 6233.dat
+0 STEP
+1 71 0 -8 0 1 0 0 0 1 0 0 0 1 4032b.dat
+1 71 0 -16 0 1 0 0 0 1 0 0 0 1 4032b.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 123.ldr
+0 123
+0 Name: 21309 - 123.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 0 0 0 1 0 0 0 1 0 0 0 1 6233.dat
+0 STEP
+1 0 0 -24 0 0 0 1 0 1 0 -1 0 0 30389b.dat
+0 STEP
+1 148 0 -14 -30 1 0 0 0 0 -1 0 1 0 2922b.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 124.ldr
+0 124
+0 Name: 21309 - 124.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 148 0 0 0 1 0 0 0 1 0 0 0 1 75937.dat
+1 148 21.25 2 -21.25 -0.131 0.695 -0.707 0.983 0.185 0 0.131 -0.695 -0.707 76116.dat
+1 0 28.452 42.577 -28.452 -0.707 -0.131 0.695 0 0.983 0.185 -0.707 0.131 -0.695 20482.dat
+1 72 25.058 68.13 -25.058 -0.695 -0.707 0.131 -0.185 0 -0.983 0.695 -0.707 -0.131 4349.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 125.ldr
+0 125
+0 Name: 21309 - 125.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 4032b.dat
+0 STEP
+1 15 0 -8 0 1 0 0 0 1 0 0 0 1 18674.dat
+0 STEP
+1 57 0 -16 0 1 0 0 0 1 0 0 0 1 44882.dat
+0 STEP
+1 148 0 15 0 1 0 0 0 1 0 0 0 1 64951.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 126.ldr
+0 126
+0 Name: 21309 - 126.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 -30 -2 0 1 0 0 0 1 0 0 0 1 44302.dat
+0 STEP
+1 71 -40 -18 0 -1 0 0 0 1 0 0 0 -1 6005.dat
+1 71 -20 -18 0 -1 0 0 0 1 0 0 0 -1 6005.dat
+0 STEP
+1 71 -30 -18 0 -1 0 0 0 1 0 0 0 -1 3069b.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 127.ldr
+0 127
+0 Name: 21309 - 127.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 -30 -2 0 1 0 0 0 1 0 0 0 1 44302.dat
+0 STEP
+1 71 -20 -18 0 1 0 0 0 1 0 0 0 1 6005.dat
+1 71 -40 -18 0 1 0 0 0 1 0 0 0 1 6005.dat
+0 STEP
+1 71 -30 -18 0 1 0 0 0 1 0 0 0 1 3069b.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 129-132.ldr
+0 129-132
+0 Name: 21309 - 129-132.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 1 0 0 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+1 0 -20 8 0 0 0 1 0 1 0 -1 0 0 92946.dat
+1 15 20 8 0 0 0 -1 0 1 0 1 0 0 15672.dat
+0 STEP
+1 15 20 16 -10 0 0 -1 0 1 0 1 0 0 3022.dat
+1 0 -20 16 -10 0 0 -1 0 1 0 1 0 0 3022.dat
+0 STEP
+1 15 10 -8 -20 0 0 -1 0 1 0 1 0 0 3040b.dat
+1 0 -10 -8 -20 0 0 1 0 1 0 -1 0 0 3040b.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 135.ldr
+0 135
+0 Name: 21309 - 135.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 0 20 8 -20 1 0 0 0 1 0 0 0 1 15068.dat
+1 0 -20 8 -20 1 0 0 0 1 0 0 0 1 15068.dat
+1 15 20 8 20 -1 0 0 0 1 0 0 0 -1 15068.dat
+1 15 -20 8 20 -1 0 0 0 1 0 0 0 -1 15068.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 136-243.ldr
+0 136-243
+0 Name: 21309 - 136-243.ldr
+0 Author: Jaco van der Molen [Jaco]
+1 71 0 48 0 1 0 0 0 1 0 0 0 1 21309 - 173-179.ldr
+1 16 0 16 0 1 0 0 0 1 0 0 0 1 sec4_0.ldr
+0 STEP
+1 16 0 -40 0 1 0 0 0 1 0 0 0 1 sec4_1.ldr
+0 STEP
+1 16 0 -200 0 1 0 0 0 1 0 0 0 1 sec4_2.ldr
+0 STEP
+1 16 0 -368 0 1 0 0 0 1 0 0 0 1 sec4_3.ldr
+0 STEP
+1 16 0 -404 0 1 0 0 0 1 0 0 0 1 sec4_4.ldr
+0 STEP
+1 4 -48.586 -504 -48.586 0 0.707 -0.707 -1 0 0 0 0.707 0.707 21309 - 181.ldr
+1 72 65.556 -124 -65.556 0 -0.707 -0.707 -1 0 0 0 0.707 -0.707 21309 - 204-210.ldr
+1 72 48.586 -504 -48.586 0 -0.707 -0.707 -1 0 0 0 0.707 -0.707 21309 - 212.ldr
+1 72 -71.213 6 -71.213 -0.707 0.707 0 0 0 1 0.707 0.707 0 21309 - 182-192.ldr
+1 15 -48.586 -504 48.586 0 0.707 0.707 -1 0 0 0 -0.707 0.707 21309 - 212.ldr
+1 15 48.586 -504 48.586 0 -0.707 0.707 -1 0 0 0 -0.707 -0.707 21309 - 212.ldr
+1 15 65.556 -124 65.556 0 -0.707 0.707 -1 0 0 0 -0.707 -0.707 21309 - 215-221.ldr
+1 15 -65.556 -124 65.556 0 0.707 0.707 -1 0 0 0 -0.707 0.707 21309 - 215-221.ldr
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+0 STEP
+1 15 -71.213 -214 -71.213 -0.707 0.707 0 0 0 1 0.707 0.707 0 21309 - 194-201.ldr
+1 72 65.556 -284 -65.556 0 -0.707 0.707 1 0 0 0 0.707 0.707 21309 - 213.ldr
+1 15 -65.556 -284 65.556 0 0.707 -0.707 1 0 0 0 -0.707 -0.707 21309 - 224.ldr
+1 15 65.556 -284 65.556 0 -0.707 -0.707 1 0 0 0 -0.707 0.707 21309 - 224.ldr
+0 STEP
+1 15 -69.799 -164 -83.941 0 0.707 0.707 1 0 0 0 0.707 -0.707 6636.dat
+1 15 -83.941 -444 -69.799 0 0.707 0.707 1 0 0 0 0.707 -0.707 3069b.dat
+1 15 -69.799 -404 -83.941 0 0.707 0.707 1 0 0 0 0.707 -0.707 6636.dat
+1 15 83.941 -164 -69.799 0 -0.707 0.707 1 0 0 0 0.707 0.707 6636.dat
+1 15 69.799 -264 -83.941 0 -0.707 0.707 1 0 0 0 0.707 0.707 4162.dat
+1 15 69.799 -164 83.941 0 -0.707 -0.707 1 0 0 0 -0.707 0.707 6636.dat
+1 15 83.941 -164 69.799 0 -0.707 -0.707 1 0 0 0 -0.707 0.707 6636.dat
+1 15 -69.799 -164 83.941 0 0.707 -0.707 1 0 0 0 -0.707 -0.707 6636.dat
+1 15 -83.941 -164 69.799 0 0.707 -0.707 1 0 0 0 -0.707 -0.707 6636.dat
+0 STEP
+1 4 96 -44 0 0 -1 0 -1 0 0 0 0 -1 21309 - 226-234.ldr
+1 4 -96 -44 0 0 1 0 -1 0 0 0 0 1 21309 - 226-234.ldr
+1 4 0 -44 96 0 0 1 -1 0 0 0 -1 0 21309 - 226-234.ldr
+1 4 0 -44 -96 0 0 -1 -1 0 0 0 1 0 21309 - 226-234.ldr
+0 STEP
+1 4 0 -404 -104 0 0 -1 -1 0 0 0 1 0 21309 - 238.ldr
+1 4 104 -404 0 0 -1 0 -1 0 0 0 0 -1 21309 - 238.ldr
+1 4 0 -404 104 0 0 1 -1 0 0 0 -1 0 21309 - 238.ldr
+1 4 -104 -404 0 0 1 0 -1 0 0 0 0 1 21309 - 238.ldr
+1 4 -20 -394 46 -0.391 -0.921 0 0 0 -1 0.921 -0.391 0 21309 - 236.ldr
+1 4 -46 -394 -20 -0.921 0.391 0 0 0 -1 -0.391 -0.921 0 21309 - 236.ldr
+1 4 20 -394 -46 0.391 0.921 0 0 0 -1 -0.921 0.391 0 21309 - 236.ldr
+1 4 46 -394 20 0.921 -0.391 0 0 0 -1 0.391 0.921 0 21309 - 236.ldr
+1 4 20 -394 46 0.375 0.927 0 0 0 1 0.927 -0.375 0 21309 - 237.ldr
+1 4 -46 -394 20 -0.927 0.375 0 0 0 1 0.375 0.927 0 21309 - 237.ldr
+1 4 -20 -394 -46 -0.375 -0.927 0 0 0 1 -0.927 0.375 0 21309 - 237.ldr
+1 4 46 -394 -20 0.914 -0.407 0 0 0 1 -0.407 -0.914 0 21309 - 237.ldr
+0 STEP
+1 15 -71.211 -474.006 -71.209 -0.707 0.707 0 0 0 1 0.707 0.707 0 93348.dat
+1 15 71.211 -474.006 71.209 0.707 -0.707 0 0 0 1 -0.707 -0.707 0 93348.dat
+1 15 -71.209 -474.006 71.211 0.707 0.707 0 0 0 1 0.707 -0.707 0 93348.dat
+1 15 71.209 -474.006 -71.211 -0.707 -0.707 0 0 0 1 -0.707 0.707 0 93348.dat
+1 70 -82 -496 0 0 0 1 0 1 0 -1 0 0 21309 - 239.ldr
+1 70 82 -496 0 0 0 -1 0 1 0 1 0 0 21309 - 239.ldr
+1 70 0 -496 82 -1 0 0 0 1 0 0 0 -1 21309 - 239.ldr
+1 70 0 -496 -82 1 0 0 0 1 0 0 0 1 21309 - 239.ldr
+0 STEP
+1 72 0 -510 82 1 0 0 0 0.5 0.866 0 -0.866 0.5 21309 - 240.ldr
+1 72 0 -510 -82 -1 0 0 0 0.5 0.866 0 0.866 -0.5 21309 - 240.ldr
+1 72 82 -510 0 0 -0.866 0.5 0 0.5 0.866 -1 0 0 21309 - 240.ldr
+1 72 -82 -510 0 0 0.866 -0.5 0 0.5 0.866 1 0 0 21309 - 240.ldr
+0 STEP
+1 72 0 -532.321 80.66 1 0 0 0 0.5 0.866 0 -0.866 0.5 21309 - 241.ldr
+1 72 80.66 -532.321 0 0 -0.866 0.5 0 0.5 0.866 -1 0 0 21309 - 241.ldr
+1 72 0 -532.321 -80.66 -1 0 0 0 0.5 0.866 0 0.866 -0.5 21309 - 241.ldr
+1 72 -80.66 -532.321 0 0 0.866 -0.5 0 0.5 0.866 1 0 0 21309 - 241.ldr
+1 71 0 89 0 -1 0 0 0 -1 0 0 0 1 21309 - 242.ldr
+1 71 54 87 0 -1 0 0 0 -1 0 0 0 1 21309 - 242.ldr
+1 71 0 87 -54 -1 0 0 0 -1 0 0 0 1 21309 - 242.ldr
+1 71 -54 87 0 -1 0 0 0 -1 0 0 0 1 21309 - 242.ldr
+1 71 0 87 54 -1 0 0 0 -1 0 0 0 1 21309 - 242.ldr
+0 STEP
+0 STEP
+
+
+
+
+0 NOFILE
+0 FILE 21309 - 142.ldr
+0 142
+0 Name: 21309 - 142.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 99207.dat
+0 STEP
+1 19 0 8 0 1 0 0 0 1 0 0 0 1 92411.dat
+1 71 0 -8 0 1 0 0 0 1 0 0 0 1 15573.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 144.ldr
+0 144
+0 Name: 21309 - 144.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 1 0 0 0 -1 0 0 0 1 0 0 0 -1 3023.dat
+1 19 0 8 70 0 0 1 0 1 0 -1 0 0 3034.dat
+1 1 0 0 140 -1 0 0 0 1 0 0 0 -1 3023.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 149.ldr
+0 149
+0 Name: 21309 - 149.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 3795.dat
+0 STEP
+1 15 -70 0 0 0 0 1 0 1 0 -1 0 0 99206.dat
+1 15 70 0 0 0 0 -1 0 1 0 1 0 0 99206.dat
+0 STEP
+1 2 -50 -8 0 0 0 1 0 1 0 -1 0 0 88072.dat
+1 2 50 -8 0 0 0 -1 0 1 0 1 0 0 88072.dat
+0 STEP
+1 72 0 -8 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 150.ldr
+0 150
+0 Name: 21309 - 150.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 1 0 0 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+1 2 0 -8 0 1 0 0 0 1 0 0 0 1 88072.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 151.ldr
+0 151
+0 Name: 21309 - 151.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 0 0 0 1 0 0 0 1 0 0 0 1 99780.dat
+0 STEP
+1 71 0 -8 0 1 0 0 0 1 0 0 0 1 15573.dat
+0 STEP
+1 15 0 -16 0 1 0 0 0 1 0 0 0 1 6141.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 155.ldr
+0 155
+0 Name: 21309 - 155.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 1 0 0 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+1 14 20 -8 0 1 0 0 0 1 0 0 0 1 92280.dat
+1 4 -10 -8 0 1 0 0 0 1 0 0 0 1 15712.dat
+0 STEP
+1 15 10 -16 0 1 0 0 0 1 0 0 0 1 6141.dat
+1 15 10 -24 0 1 0 0 0 1 0 0 0 1 6141.dat
+0 STEP
+1 4 10 -48 0 1 0 0 0 1 0 0 0 1 87087.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 156.ldr
+0 156
+0 Name: 21309 - 156.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 6141.dat
+0 STEP
+1 0 0 -24 0 1 0 0 0 1 0 0 0 1 3062b.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 157.ldr
+0 157
+0 Name: 21309 - 157.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 19 0 0 0 1 0 0 0 1 0 0 0 1 3958.dat
+1 1 0 -8 50 1 0 0 0 1 0 0 0 1 3023.dat
+1 1 0 -8 -50 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+1 297 50 -8 -50 1 0 0 0 1 0 0 0 1 85861.dat
+1 297 50 -8 50 1 0 0 0 1 0 0 0 1 85861.dat
+1 297 -50 -8 50 1 0 0 0 1 0 0 0 1 85861.dat
+1 297 -50 -8 -50 1 0 0 0 1 0 0 0 1 85861.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 158-.ldr
+0 158-
+0 Name: 21309 - 158-.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+1 4 20 8 10 1 0 0 0 1 0 0 0 1 63868.dat
+1 4 20 8 -10 1 0 0 0 1 0 0 0 1 63868.dat
+0 STEP
+1 71 -40 36 0 0 -1 0 0 0 1 -1 0 0 3956.dat
+0 STEP
+1 1 -30 16 0 0 0 1 0 1 0 -1 0 0 3023.dat
+1 71 0 16 -10 1 0 0 0 1 0 0 0 1 99781.dat
+1 71 0 16 10 -1 0 0 0 1 0 0 0 -1 99781.dat
+0 STEP
+1 14 -10 -8 0 -1 0 0 0 1 0 0 0 -1 3021.dat
+1 2 30 0 0 0 0 -1 0 1 0 1 0 0 85984.dat
+0 STEP
+1 1 -20 -16 0 1 0 0 0 1 0 0 0 1 21309 - 163.ldr
+0 STEP
+1 19 -20 -24 -10 1 0 0 0 1 0 0 0 1 92411.dat
+1 19 -20 -24 10 -1 0 0 0 1 0 0 0 -1 92411.dat
+0 STEP
+1 71 -10 16 32 0 0 1 -1 0 0 0 -1 0 15573.dat
+1 71 -10 16 -32 0 0 1 1 0 0 0 1 0 15573.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 163.ldr
+0 163
+0 Name: 21309 - 163.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+1 72 30 -8 0 0 0 -1 0 1 0 1 0 0 99780.dat
+0 STEP
+1 1 -30 -8 0 0 0 -1 0 1 0 1 0 0 3023.dat
+1 1 -30 -16 0 0 0 -1 0 1 0 1 0 0 3023.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 169.ldr
+0 169
+0 Name: 21309 - 169.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 30136.dat
+0 STEP
+1 19 -10 -8 0 0 0 1 0 1 0 -1 0 0 61252.dat
+1 19 10 -8 0 0 0 -1 0 1 0 1 0 0 61252.dat
+0 STEP
+1 19 0 -16 0 1 0 0 0 1 0 0 0 1 92411.dat
+0 STEP
+1 57 50 -8 0 0 0 1 0 1 0 -1 0 0 21309 - 169a.ldr
+1 57 -50 -8 0 0 0 -1 0 1 0 1 0 0 21309 - 169a.ldr
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 169a.ldr
+0 169a
+0 Name: 21309 - 169a.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 26047.dat
+1 57 0 -8 0 1 0 0 0 1 0 0 0 1 98138.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 172.ldr
+0 172
+0 Name: 21309 - 172.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+1 72 -30 -8 0 0 0 1 0 1 0 -1 0 0 99780.dat
+1 14 10 -8 0 -1 0 0 0 1 0 0 0 -1 3021.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 173-179.ldr
+0 173-179
+0 Name: 21309 - 173-179.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 60474.dat
+0 STEP
+1 71 0 -8 0 1 0 0 0 1 0 0 0 1 18674.dat
+0 STEP
+1 1 0 -8 30 1 0 0 0 1 0 0 0 1 3023.dat
+1 1 0 -8 -30 1 0 0 0 1 0 0 0 1 3023.dat
+1 71 -30 -8 0 0 0 1 0 1 0 -1 0 0 3710.dat
+1 71 30 -8 0 0 0 1 0 1 0 -1 0 0 3710.dat
+0 STEP
+1 0 0 -32 0 0 0 1 0 1 0 -1 0 0 3062b.dat
+0 STEP
+1 19 -30 -32 0 0 0 1 0 1 0 -1 0 0 11211.dat
+1 19 30 -32 0 0 0 -1 0 1 0 1 0 0 11211.dat
+1 19 0 -32 -30 1 0 0 0 1 0 0 0 1 11211.dat
+1 19 0 -32 30 -1 0 0 0 1 0 0 0 -1 11211.dat
+0 STEP
+1 2 0 -40 0 -1 0 0 0 1 0 0 0 -1 3031.dat
+0 STEP
+1 71 -64 -22 0 0 1 0 0 0 -1 -1 0 0 21309 - 178.ldr
+1 71 64 -22 0 0 -1 0 0 0 -1 1 0 0 21309 - 178.ldr
+1 71 0 -22 -64 1 0 0 0 0 -1 0 1 0 21309 - 179.ldr
+1 71 0 -22 64 -1 0 0 0 0 -1 0 -1 0 21309 - 179.ldr
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 178.ldr
+0 178
+0 Name: 21309 - 178.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 3700.dat
+0 STEP
+1 0 0 10 -10 0 0 1 0 1 0 -1 0 0 2780.dat
+0 STEP
+1 71 0 0 -20 1 0 0 0 1 0 0 0 1 3700.dat
+0 STEP
+1 71 0 -24 0 1 0 0 0 1 0 0 0 1 3037.dat
+0 STEP
+1 71 30 0 -10 0 0 1 0 1 0 -1 0 0 30136.dat
+1 71 -30 0 -10 0 0 1 0 1 0 -1 0 0 30136.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 179.ldr
+0 179
+0 Name: 21309 - 179.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 3700.dat
+0 STEP
+1 0 0 10 -10 0 0 1 0 1 0 -1 0 0 2780.dat
+0 STEP
+1 71 0 0 -20 1 0 0 0 1 0 0 0 1 3700.dat
+0 STEP
+1 71 0 -24 0 1 0 0 0 1 0 0 0 1 3037.dat
+0 STEP
+1 71 30 0 -10 0 0 -1 0 1 0 1 0 0 3039.dat
+1 71 -30 0 -10 0 0 1 0 1 0 -1 0 0 3039.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 181.ldr
+0 181
+0 Name: 21309 - 181.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 2817.dat
+0 STEP
+1 15 -30 -32 0 0 0 -1 0 1 0 1 0 0 11215.dat
+0 STEP
+1 14 -70 -24 0 1 0 0 0 1 0 0 0 1 3021.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 182-192.ldr
+0 182-192
+0 Name: 21309 - 182-192.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 11458.dat
+0 STEP
+1 1 10 -6 -20 0 0 1 0 1 0 -1 0 0 6558.dat
+0 STEP
+1 16 0 0 -20 1 0 0 0 1 0 0 0 1 21309 - 183.ldr
+0 STEP
+1 15 10 -6 -50 0 0 1 0 -1 0 1 0 0 62462.dat
+1 0 10 -6 -70 0 0 1 0 -1 0 1 0 0 2780.dat
+0 STEP
+1 15 10 -6 -90 0 0 1 0 -1 0 1 0 0 62462.dat
+1 0 10 -6 -110 0 0 1 0 -1 0 1 0 0 2780.dat
+0 STEP
+1 15 10 -6 -130 0 0 1 0 -1 0 1 0 0 62462.dat
+1 0 10 -6 -150 0 0 1 0 -1 0 1 0 0 2780.dat
+0 STEP
+1 15 10 -6 -170 0 0 1 0 -1 0 1 0 0 62462.dat
+1 0 10 -6 -190 0 0 1 0 -1 0 1 0 0 2780.dat
+0 STEP
+1 16 0 0 -200 1 0 0 0 1 0 0 0 1 21309 - 188.ldr
+0 STEP
+1 71 -10 8 -110 0 0 1 0 1 0 -1 0 0 21309 - 189.ldr
+0 STEP
+1 16 10 8 10 0 0 -1 0 1 0 1 0 0 21309 - 190.ldr
+0 STEP
+1 15 -10 -8 -90 0 0 -1 0 1 0 1 0 0 3069b.dat
+1 15 -10 0 -60 1 0 0 0 1 0 0 0 1 54200.dat
+1 0 -10 -8 -40 1 0 0 0 1 0 0 0 1 15712.dat
+1 0 -10 -8 -10 0 0 -1 0 1 0 1 0 0 3069b.dat
+1 0 -10 -8 20 1 0 0 0 1 0 0 0 1 15712.dat
+1 15 10 0 20 -1 0 0 0 1 0 0 0 -1 54200.dat
+0 STEP
+1 15 -10 -14 -50 1 0 0 0 0 -1 0 1 0 30374.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 183.ldr
+0 183
+0 Name: 21309 - 183.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 0 10 8 0 1 0 0 0 1 0 0 0 1 6141.dat
+0 STEP
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 11458.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 188.ldr
+0 188
+0 Name: 21309 - 188.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 1 10 8 -10 0 0 1 0 1 0 -1 0 0 3023.dat
+0 STEP
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 11458.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 189.ldr
+0 189
+0 Name: 21309 - 189.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 19 0 0 0 1 0 0 0 1 0 0 0 1 4477.dat
+0 STEP
+1 71 0 -8 0 1 0 0 0 1 0 0 0 1 3460.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 190.ldr
+0 190
+0 Name: 21309 - 190.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 0 0 0 1 0 0 0 1 0 0 0 1 60478.dat
+1 72 0 0 20 1 0 0 0 1 0 0 0 1 60478.dat
+0 STEP
+1 1 10 -8 10 0 0 1 0 1 0 -1 0 0 3023.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 194-201.ldr
+0 194-201
+0 Name: 21309 - 194-201.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 11458.dat
+0 STEP
+1 0 10 -6 -10 0 0 1 0 -1 0 1 0 0 2780.dat
+0 STEP
+1 15 10 -6 -30 0 0 1 0 -1 0 1 0 0 62462.dat
+1 0 10 -6 -50 0 0 1 0 -1 0 1 0 0 2780.dat
+0 STEP
+1 15 10 -6 -70 0 0 1 0 -1 0 1 0 0 62462.dat
+1 0 10 -6 -90 0 0 1 0 -1 0 1 0 0 2780.dat
+0 STEP
+1 15 10 -6 -110 0 0 1 0 -1 0 1 0 0 62462.dat
+0 STEP
+1 15 -10 8 -70 0 0 1 0 1 0 -1 0 0 21309 - 198.ldr
+0 STEP
+1 15 0 0 -140 1 0 0 0 1 0 0 0 1 21309 - 183.ldr
+0 STEP
+1 4 10 -6 -150 0 0 1 0 1 0 -1 0 0 61184.dat
+0 STEP
+1 15 10 -6 -174 -1 0 0 0 0 1 0 1 0 21309 - 201.ldr
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 198.ldr
+0 198
+0 Name: 21309 - 198.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 3460.dat
+0 STEP
+1 1 0 -8 0 1 0 0 0 1 0 0 0 1 3666.dat
+0 STEP
+1 15 0 -16 0 1 0 0 0 1 0 0 0 1 6636.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 201.ldr
+0 201
+0 Name: 21309 - 201.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 3062b.dat
+0 STEP
+1 15 0 -8 0 1 0 0 0 1 0 0 0 1 6141.dat
+0 STEP
+1 15 0 -32 0 1 0 0 0 1 0 0 0 1 59900.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 204-210.ldr
+0 204-210
+0 Name: 21309 - 204-210.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 19 0 0 0 1 0 0 0 1 0 0 0 1 3034.dat
+0 STEP
+1 72 40 -8 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+1 19 -80 -8 0 1 0 0 0 1 0 0 0 1 3034.dat
+0 STEP
+1 70 -100 0 0 1 0 0 0 1 0 0 0 1 3022.dat
+1 72 -140 0 10 -1 0 0 0 1 0 0 0 -1 60478.dat
+1 72 -140 0 -10 -1 0 0 0 1 0 0 0 -1 60478.dat
+0 STEP
+1 15 -150 -16 10 0 0 -1 0 1 0 1 0 0 15712.dat
+1 15 -70 -16 10 0 0 -1 0 1 0 1 0 0 15712.dat
+1 15 -130 -16 10 0 0 -1 0 1 0 1 0 0 3070b.dat
+1 0 -100 -16 10 1 0 0 0 1 0 0 0 1 3069b.dat
+1 15 0 -16 10 1 0 0 0 1 0 0 0 1 6636.dat
+0 STEP
+1 0 -150 -16 -10 0 0 -1 0 1 0 1 0 0 15712.dat
+1 0 -90 -16 -10 0 0 -1 0 1 0 1 0 0 15712.dat
+1 0 -120 -16 -10 1 0 0 0 1 0 0 0 1 3069b.dat
+1 15 -70 -8 -10 0 0 -1 0 1 0 1 0 0 54200.dat
+1 15 -40 -16 -10 1 0 0 0 1 0 0 0 1 3069b.dat
+1 15 -80 -22 -10 0 -1 0 0 0 1 -1 0 0 30374.dat
+1 15 -58 -22 10 0 1 0 0 0 1 1 0 0 63965.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 212.ldr
+0 212
+0 Name: 21309 - 212.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 2817.dat
+0 STEP
+1 15 -30 -32 0 0 0 -1 0 1 0 1 0 0 11215.dat
+0 STEP
+1 14 -70 -24 0 1 0 0 0 1 0 0 0 1 3021.dat
+0 STEP
+1 15 -60 -40 0 1 0 0 0 1 0 0 0 1 3068b.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 213.ldr
+0 213
+0 Name: 21309 - 213.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 19 0 0 0 1 0 0 0 1 0 0 0 1 3034.dat
+0 STEP
+1 71 -80 -8 0 1 0 0 0 1 0 0 0 1 3795.dat
+1 1 -10 -8 0 0 0 1 0 1 0 -1 0 0 3023.dat
+1 72 40 -8 0 -1 0 0 0 1 0 0 0 -1 3020.dat
+0 STEP
+1 15 0 -16 10 -1 0 0 0 1 0 0 0 -1 6636.dat
+1 15 -80 -16 0 -1 0 0 0 1 0 0 0 -1 3068b.dat
+1 15 -120 -16 10 -1 0 0 0 1 0 0 0 -1 2412b.dat
+1 15 -120 -16 -10 -1 0 0 0 1 0 0 0 -1 2412b.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 215-221.ldr
+0 215-221
+0 Name: 21309 - 215-221.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 19 0 0 0 1 0 0 0 1 0 0 0 1 3034.dat
+0 STEP
+1 72 40 -8 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+1 19 -80 -8 0 1 0 0 0 1 0 0 0 1 3034.dat
+0 STEP
+1 70 -100 0 0 1 0 0 0 1 0 0 0 1 3022.dat
+1 72 -140 0 10 -1 0 0 0 1 0 0 0 -1 60478.dat
+1 72 -140 0 -10 -1 0 0 0 1 0 0 0 -1 60478.dat
+0 STEP
+1 15 -70 -16 10 0 0 -1 0 1 0 1 0 0 3070b.dat
+1 0 -100 -16 10 1 0 0 0 1 0 0 0 1 3069b.dat
+1 15 -140 -16 10 1 0 0 0 1 0 0 0 1 3069b.dat
+0 STEP
+1 0 -150 -16 -10 0 0 -1 0 1 0 1 0 0 15712.dat
+1 0 -90 -16 -10 0 0 -1 0 1 0 1 0 0 15712.dat
+1 0 -120 -16 -10 1 0 0 0 1 0 0 0 1 3069b.dat
+1 15 -70 -8 -10 0 0 -1 0 1 0 1 0 0 54200.dat
+0 STEP
+1 15 -80 -22 -10 0 -1 0 0 0 1 -1 0 0 30374.dat
+1 15 -40 -16 0 1 0 0 0 1 0 0 0 1 3068b.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 224.ldr
+0 224
+0 Name: 21309 - 224.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 19 0 0 0 1 0 0 0 1 0 0 0 1 3034.dat
+0 STEP
+1 71 -80 -8 0 1 0 0 0 1 0 0 0 1 3795.dat
+1 1 -10 -8 0 0 0 1 0 1 0 -1 0 0 3023.dat
+1 72 40 -8 0 -1 0 0 0 1 0 0 0 -1 3020.dat
+0 STEP
+1 15 0 -16 10 -1 0 0 0 1 0 0 0 -1 6636.dat
+1 15 -80 -16 0 -1 0 0 0 1 0 0 0 -1 3068b.dat
+1 15 -120 -16 10 -1 0 0 0 1 0 0 0 -1 2412b.dat
+1 15 -120 -16 -10 -1 0 0 0 1 0 0 0 -1 2412b.dat
+1 15 0 -16 -10 -1 0 0 0 1 0 0 0 -1 6636.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 226-234.ldr
+0 226-234
+0 Name: 21309 - 226-234.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 19 0 0 0 1 0 0 0 1 0 0 0 1 3034.dat
+0 STEP
+1 71 40 8 0 1 0 0 0 1 0 0 0 1 3032.dat
+1 72 -40 8 0 0 0 1 0 1 0 -1 0 0 3020.dat
+0 STEP
+1 70 100 0 0 0 0 1 0 1 0 -1 0 0 3022.dat
+0 STEP
+1 71 160 8 0 1 0 0 0 1 0 0 0 1 3032.dat
+0 STEP
+1 19 200 0 0 1 0 0 0 1 0 0 0 1 3034.dat
+0 STEP
+1 71 280 8 0 1 0 0 0 1 0 0 0 1 3032.dat
+0 STEP
+1 15 360 0 0 1 0 0 0 1 0 0 0 1 21309 - 232.ldr
+0 STEP
+1 15 -60 -16 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 0 -20 -16 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 0 -60 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 0 -20 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 15 10 -16 -30 1 0 0 0 1 0 0 0 1 50950.dat
+1 15 10 -16 30 -1 0 0 0 1 0 0 0 -1 50950.dat
+0 STEP
+1 15 40 -16 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 15 80 -16 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 15 120 -16 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 15 160 -16 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 15 200 -16 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 15 240 -16 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 15 280 -16 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 15 320 -16 -30 1 0 0 0 1 0 0 0 1 24309.dat
+1 15 40 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 15 80 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 15 120 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 15 160 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 15 200 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 15 240 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 15 280 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 15 320 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 232.ldr
+0 232
+0 Name: 21309 - 232.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 19 0 0 0 1 0 0 0 1 0 0 0 1 3034.dat
+0 STEP
+1 1 70 8 0 0 0 1 0 1 0 -1 0 0 3023.dat
+1 72 40 8 0 0 0 1 0 1 0 -1 0 0 3020.dat
+0 STEP
+1 0 70 -8 0 0 0 1 0 1 0 -1 0 0 3023.dat
+0 STEP
+1 0 70 0 0 -1 0 0 0 1 0 0 0 -1 93273.dat
+1 15 40 -16 30 -1 0 0 0 1 0 0 0 -1 24309.dat
+1 15 40 -16 -30 1 0 0 0 1 0 0 0 1 24309.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 236.ldr
+0 236
+0 Name: 21309 - 236.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 1 30 6 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+1 0 20 -2 0 0 0 1 0 1 0 -1 0 0 26047.dat
+1 71 40 -2 10 0 0 -1 0 1 0 1 0 0 99781.dat
+0 STEP
+1 72 40 -10 10 0 0 -1 0 1 0 1 0 0 99780.dat
+0 STEP
+1 14 30 -2 0 0 0 1 0 1 0 -1 0 0 11477.dat
+0 STEP
+1 15 62 -12 10 0 -1 0 0 0 -1 1 0 0 2412b.dat
+1 15 62 8 10 0 -1 0 0 0 -1 1 0 0 2412b.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 237.ldr
+0 237
+0 Name: 21309 - 237.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 1 30 6 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+1 0 20 -2 0 0 0 1 0 1 0 -1 0 0 26047.dat
+1 71 40 -2 -10 0 0 -1 0 1 0 1 0 0 99781.dat
+0 STEP
+1 72 40 -10 -10 0 0 -1 0 1 0 1 0 0 99780.dat
+0 STEP
+1 4 30 -2 0 0 0 1 0 1 0 -1 0 0 11477.dat
+0 STEP
+1 15 62 -12 -10 0 -1 0 0 0 -1 1 0 0 2412b.dat
+1 15 62 8 -10 0 -1 0 0 0 -1 1 0 0 2412b.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 238.ldr
+0 238
+0 Name: 21309 - 238.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 3022.dat
+0 STEP
+1 15 0 -8 -10 1 0 0 0 1 0 0 0 1 2412b.dat
+1 15 0 -8 10 1 0 0 0 1 0 0 0 1 2412b.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 239.ldr
+0 239
+0 Name: 21309 - 239.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 1 0 0 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3937.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 240.ldr
+0 240
+0 Name: 21309 - 240.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 -10 0 1 0 0 0 1 0 0 0 1 6134.dat
+0 STEP
+1 0 0 -2 20 0 0 1 0 1 0 -1 0 0 93273.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 241.ldr
+0 241
+0 Name: 21309 - 241.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 1 0 0 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+1 0 -20 8 10 0 0 1 0 1 0 -1 0 0 15068.dat
+1 0 20 8 10 0 0 -1 0 1 0 1 0 0 15068.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 242.ldr
+0 242
+0 Name: 21309 - 242.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 135 0 0 0 1 0 0 0 0 1 0 -1 0 18976.dat
+0 STEP
+1 57 0 -20 0 -1 0 0 0 1 0 0 0 -1 30057.dat
+0 STEP
+1 15 0 -19 0 -1 0 0 0 1 0 0 0 -1 30374.dat
+0 STEP
+1 135 0 24 0 -1 0 0 0 1 0 0 0 -1 15395.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 244-285.ldr
+0 244-285
+0 Name: 21309 - 244-285.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 60474.dat
+1 2 0 -8 0 1 0 0 0 1 0 0 0 1 15535.dat
+0 STEP
+1 71 -20 -40 -30 1 0 0 0 1 0 0 0 1 22885.dat
+1 71 20 -40 -30 1 0 0 0 1 0 0 0 1 22885.dat
+1 71 20 -40 30 -1 0 0 0 1 0 0 0 -1 22885.dat
+1 71 -20 -40 30 -1 0 0 0 1 0 0 0 -1 22885.dat
+1 15 0 -8 0 -1 0 0 0 -1 0 0 0 1 63965.dat
+0 STEP
+1 72 30 -40 0 0 -1 0 0 0 -1 1 0 0 21309 - 246.ldr
+1 72 -30 -40 0 0 1 0 0 0 -1 -1 0 0 21309 - 246.ldr
+1 71 0 24 0 -1 0 0 0 -1 0 0 0 1 43898.dat
+0 STEP
+1 2 0 -32 0 0 0 1 0 1 0 -1 0 0 21309 - 247.ldr
+1 71 10 34 0 0 -1 0 0 0 -1 1 0 0 21309 - 283.ldr
+0 STEP
+1 15 -20 -56 30 -1 0 0 0 1 0 0 0 -1 99206.dat
+1 15 20 -56 30 -1 0 0 0 1 0 0 0 -1 99206.dat
+1 15 20 -56 -30 1 0 0 0 1 0 0 0 1 99206.dat
+1 15 -20 -56 -30 1 0 0 0 1 0 0 0 1 99206.dat
+1 135 0 52 0 1 0 0 0 -1 0 0 0 -1 15395.dat
+0 STEP
+1 16 0 -48 0 1 0 0 0 1 0 0 0 1 sec5_1.ldr
+1 57 0 80 0 1 0 0 0 0 -1 0 1 0 21309 - 285.ldr
+0 STEP
+1 15 -72 -80 0 0 1 0 1 0 0 0 0 -1 21309 - 252.ldr
+1 15 72 -80 0 0 -1 0 -1 0 0 0 0 -1 21309 - 252.ldr
+1 16 0 -160 0 1 0 0 0 1 0 0 0 1 sec5_2.ldr
+1 71 0 -288 0 1 0 0 0 1 0 0 0 1 3022.dat
+0 STEP
+1 15 -48 -250 0 0 1 0 0 0 1 1 0 0 21309 - 262.ldr
+1 15 48 -250 0 0 -1 0 0 0 1 -1 0 0 21309 - 262.ldr
+1 0 -50 -280 0 1 0 0 0 1 0 0 0 1 3021.dat
+1 0 50 -280 0 1 0 0 0 1 0 0 0 1 3021.dat
+1 72 0 -40 56 1 0 0 0 0 1 0 -1 0 21309 - 264.ldr
+1 72 0 -40 -56 -1 0 0 0 0 1 0 1 0 21309 - 264.ldr
+1 71 0 -296 0 1 0 0 0 1 0 0 0 1 44375b.dat
+0 STEP
+1 72 36 -120 -30 0 0.707 0.707 1 0 0 0 0.707 -0.707 21309 - 265-270.ldr
+1 72 -36 -120 30 0 -0.707 -0.707 1 0 0 0 -0.707 0.707 21309 - 265-270.ldr
+1 72 -36 -120 -30 0 -0.707 -0.707 -1 0 0 0 0.707 -0.707 21309 - 272-277.ldr
+1 72 36 -120 30 0 0.707 0.707 -1 0 0 0 -0.707 0.707 21309 - 272-277.ldr
+1 71 0 -304 0 1 0 0 0 1 0 0 0 1 18674.dat
+0 STEP
+1 72 0 -140 -72 0 0 -1 -1 0 0 0 1 0 21309 - 279.ldr
+1 72 0 -140 72 0 0 1 -1 0 0 0 -1 0 21309 - 279.ldr
+0 STEP
+0 STEP
+0 STEP
+0 STEP
+0 STEP
+0 STEP
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 246.ldr
+0 246
+0 Name: 21309 - 246.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 0 1 0 -1 0 22885.dat
+0 STEP
+1 19 0 -18 -10 0 0 -1 0 1 0 1 0 0 3021.dat
+0 STEP
+1 71 0 -10 -30 0 0 -1 0 1 0 1 0 0 93273.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 247.ldr
+0 247
+0 Name: 21309 - 247.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 0 0 0 1 0 0 0 1 0 0 0 1 6143.dat
+1 1 0 -8 -10 1 0 0 0 1 0 0 0 1 3023.dat
+1 1 0 -8 10 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 249.ldr
+0 249
+0 Name: 21309 - 249.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 0 0 0 1 0 0 0 1 0 0 0 1 6143.dat
+1 72 0 -24 0 1 0 0 0 1 0 0 0 1 6143.dat
+1 72 0 -48 0 1 0 0 0 1 0 0 0 1 6143.dat
+0 STEP
+1 70 0 -56 0 1 0 0 0 1 0 0 0 1 3022.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 250.ldr
+0 250
+0 Name: 21309 - 250.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 44237.dat
+0 STEP
+1 19 50 -8 0 0 0 -1 0 1 0 1 0 0 92411.dat
+1 19 -50 -8 0 0 0 1 0 1 0 -1 0 0 92411.dat
+0 STEP
+1 19 0 -8 10 -1 0 0 0 1 0 0 0 -1 92411.dat
+1 19 0 -8 -10 1 0 0 0 1 0 0 0 1 92411.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 251.ldr
+0 251
+0 Name: 21309 - 251.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 1 0 0 0 -1 0 0 0 -1 0 0 0 1 3020.dat
+0 STEP
+1 72 -20 -8 -10 -1 0 0 0 -1 0 0 0 1 14417.dat
+1 72 20 -8 -10 -1 0 0 0 -1 0 0 0 1 14417.dat
+1 72 20 -8 10 1 0 0 0 -1 0 0 0 -1 14417.dat
+1 72 -20 -8 10 1 0 0 0 -1 0 0 0 -1 14417.dat
+0 STEP
+1 70 0 -16 0 1 0 0 0 -1 0 0 0 -1 3022.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 252.ldr
+0 252
+0 Name: 21309 - 252.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 44237.dat
+0 STEP
+1 15 -40 8 20 -1 0 0 0 1 0 0 0 -1 15068.dat
+1 15 0 8 20 -1 0 0 0 1 0 0 0 -1 15068.dat
+1 15 40 8 20 -1 0 0 0 1 0 0 0 -1 15068.dat
+0 STEP
+1 15 40 8 -20 1 0 0 0 1 0 0 0 1 15068.dat
+1 15 0 8 -20 1 0 0 0 1 0 0 0 1 15068.dat
+1 15 -40 8 -20 1 0 0 0 1 0 0 0 1 15068.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 253.ldr
+0 253
+0 Name: 21309 - 253.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 0 0 0 1 0 0 0 1 0 0 0 1 6143.dat
+1 72 0 -24 0 1 0 0 0 1 0 0 0 1 6143.dat
+1 72 0 -48 0 1 0 0 0 1 0 0 0 1 6143.dat
+0 STEP
+1 1 0 -56 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 254-260.ldr
+0 254-260
+0 Name: 21309 - 254-260.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 99206.dat
+1 4 -50 0 10 0 0 1 0 1 0 -1 0 0 99206.dat
+0 STEP
+1 70 -20 0 30 0 0 1 0 1 0 -1 0 0 3022.dat
+0 STEP
+1 15 -40 0 60 -1 0 0 0 1 0 0 0 -1 99206.dat
+1 4 10 0 50 0 0 -1 0 1 0 1 0 0 99206.dat
+0 STEP
+1 2 -20 -8 30 -1 0 0 0 1 0 0 0 -1 3031.dat
+0 STEP
+1 1 0 -16 30 0 0 -1 0 1 0 1 0 0 3020.dat
+1 1 -40 -16 30 0 0 -1 0 1 0 1 0 0 3020.dat
+0 STEP
+1 15 -20 6 78 1 0 0 0 0 1 0 -1 0 21309 - 259.ldr
+1 15 -20 6 -18 -1 0 0 0 0 1 0 1 0 21309 - 259.ldr
+0 STEP
+1 0 -20 -24 30 0 0 1 0 1 0 -1 0 0 3034.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 259.ldr
+0 259
+0 Name: 21309 - 259.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 99207.dat
+0 STEP
+1 1 0 -8 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+1 0 0 -16 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+1 0 10 -22 -22 0 0 -1 -1 0 0 0 1 0 26047.dat
+1 0 -10 -22 -22 0 0 1 1 0 0 0 1 0 26047.dat
+1 15 -10 -2 -22 0 0 1 1 0 0 0 1 0 6141.dat
+1 15 10 -2 -22 0 0 1 1 0 0 0 1 0 6141.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 262.ldr
+0 262
+0 Name: 21309 - 262.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 99207.dat
+0 STEP
+1 15 10 -2 -22 0 0 1 1 0 0 0 1 0 6141.dat
+1 15 -10 -2 -22 0 0 1 1 0 0 0 1 0 6141.dat
+1 0 -10 -22 -22 0 0 1 1 0 0 0 1 0 26047.dat
+1 0 10 -22 -22 0 0 -1 -1 0 0 0 1 0 26047.dat
+0 STEP
+1 15 0 -24 50 0 0 -1 0 1 0 1 0 0 44237.dat
+0 STEP
+1 15 20 -16 90 0 0 -1 0 1 0 1 0 0 15068.dat
+1 15 20 -16 50 0 0 -1 0 1 0 1 0 0 15068.dat
+1 15 -20 -16 90 0 0 1 0 1 0 -1 0 0 15068.dat
+1 15 -20 -16 50 0 0 1 0 1 0 -1 0 0 15068.dat
+1 0 -20 -16 10 0 0 1 0 1 0 -1 0 0 15068.dat
+1 0 20 -16 10 0 0 -1 0 1 0 1 0 0 15068.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 264.ldr
+0 264
+0 Name: 21309 - 264.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+1 15 0 -8 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+1 14 -30 8 -10 1 0 0 0 1 0 0 0 1 2420.dat
+1 14 30 8 -10 0 0 -1 0 1 0 1 0 0 2420.dat
+1 72 10 8 20 0 0 -1 0 1 0 1 0 0 60478.dat
+1 72 -10 8 20 0 0 -1 0 1 0 1 0 0 60478.dat
+0 STEP
+1 71 0 16 30 0 0 -1 0 1 0 1 0 0 93273.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 265-270.ldr
+0 265-270
+0 Name: 21309 - 265-270.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 4 20 1 0 0 0 1 0 0 0 1 4477.dat
+1 15 80 -20 20 1 0 0 0 1 0 0 0 1 4865b.dat
+0 STEP
+1 15 30 -4 10 0 0 -1 0 1 0 1 0 0 3839b.dat
+1 15 50 -4 20 0 0 -1 0 1 0 1 0 0 3024.dat
+0 STEP
+1 71 0 -4 20 1 0 0 0 1 0 0 0 1 14704.dat
+1 71 -40 -4 20 1 0 0 0 1 0 0 0 1 14704.dat
+1 15 -90 -4 20 1 0 0 0 1 0 0 0 1 3623.dat
+0 STEP
+1 0 -130 4 20 1 0 0 0 1 0 0 0 1 21309 - 268.ldr
+0 STEP
+1 15 -40 -12 20 1 0 0 0 1 0 0 0 1 4477.dat
+0 STEP
+1 15 -20 -20 20 1 0 0 0 1 0 0 0 1 4162.dat
+1 0 -120 -20 20 1 0 0 0 1 0 0 0 1 30070.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 268.ldr
+0 268
+0 Name: 21309 - 268.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 3623.dat
+0 STEP
+1 0 -10 -8 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+1 0 -20 -8 0 1 0 0 0 1 0 0 0 1 54200.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 272-277.ldr
+0 272-277
+0 Name: 21309 - 272-277.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 4 20 1 0 0 0 1 0 0 0 1 4477.dat
+1 15 -80 -20 20 1 0 0 0 1 0 0 0 1 4865b.dat
+0 STEP
+1 71 -50 -26 34 1 0 0 0 0 1 0 -1 0 21309 - 273.ldr
+0 STEP
+1 71 0 -4 20 1 0 0 0 1 0 0 0 1 14704.dat
+1 71 40 -4 20 1 0 0 0 1 0 0 0 1 14704.dat
+1 15 90 -4 20 1 0 0 0 1 0 0 0 1 3623.dat
+0 STEP
+1 0 130 4 20 -1 0 0 0 1 0 0 0 -1 21309 - 275.ldr
+0 STEP
+1 15 10 -12 20 1 0 0 0 1 0 0 0 1 3623.dat
+1 15 70 -12 20 1 0 0 0 1 0 0 0 1 3623.dat
+1 0 120 -12 20 1 0 0 0 1 0 0 0 1 3023.dat
+1 15 150 -4 20 1 0 0 0 1 0 0 0 1 54200.dat
+0 STEP
+1 0 120 -20 20 1 0 0 0 1 0 0 0 1 30070.dat
+1 15 20 -20 20 1 0 0 0 1 0 0 0 1 4162.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 273.ldr
+0 273
+0 Name: 21309 - 273.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 0 4 20 1 0 0 0 1 0 0 0 1 4070.dat
+1 72 20 4 20 1 0 0 0 1 0 0 0 1 4070.dat
+0 STEP
+1 71 10 -4 20 1 0 0 0 1 0 0 0 1 96910.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 275.ldr
+0 275
+0 Name: 21309 - 275.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 3623.dat
+0 STEP
+1 0 -10 -8 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+
+
+
+
+0 NOFILE
+0 FILE 21309 - 279.ldr
+0 279
+0 Name: 21309 - 279.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 2445.dat
+0 STEP
+1 0 100 8 -20 1 0 0 0 1 0 0 0 1 15068.dat
+1 15 60 8 -20 1 0 0 0 1 0 0 0 1 15068.dat
+1 15 20 8 -20 1 0 0 0 1 0 0 0 1 15068.dat
+1 15 -20 8 -20 1 0 0 0 1 0 0 0 1 15068.dat
+1 15 -60 8 -20 1 0 0 0 1 0 0 0 1 15068.dat
+1 15 -100 8 -20 1 0 0 0 1 0 0 0 1 15068.dat
+0 STEP
+1 0 100 8 20 -1 0 0 0 1 0 0 0 -1 15068.dat
+1 15 60 8 20 -1 0 0 0 1 0 0 0 -1 15068.dat
+1 15 20 8 20 -1 0 0 0 1 0 0 0 -1 15068.dat
+1 15 -20 8 20 -1 0 0 0 1 0 0 0 -1 15068.dat
+1 15 -60 8 20 -1 0 0 0 1 0 0 0 -1 15068.dat
+1 15 -100 8 20 -1 0 0 0 1 0 0 0 -1 15068.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 283.ldr
+0 283
+0 Name: 21309 - 283.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 72 0 0 0 1 0 0 0 1 0 0 0 1 4070.dat
+1 71 0 -8 0 1 0 0 0 1 0 0 0 1 24246.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 285.ldr
+0 285
+0 Name: 21309 - 285.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 135 0 0 0 1 0 0 0 1 0 0 0 1 18976.dat
+0 STEP
+1 57 0 0 -20 -1 0 0 0 0 1 0 1 0 30057.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 287.ldr
+0 287
+0 Name: 21309 - 287.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 60474.dat
+1 15 0 -8 0 1 0 0 0 1 0 0 0 1 60474.dat
+0 STEP
+1 72 0 -32 0 1 0 0 0 1 0 0 0 1 6143.dat
+1 19 0 8 0 0 -1 0 1 0 0 0 0 1 99008.dat
+0 STEP
+1 71 0 -56 -10 1 0 0 0 1 0 0 0 1 30136.dat
+1 71 0 -56 10 1 0 0 0 1 0 0 0 1 30136.dat
+1 0 0 28 0 -1 0 0 0 1 0 0 0 -1 6233.dat
+0 STEP
+1 71 0 -56 0 0 0 -1 0 1 0 1 0 0 24593.dat
+1 71 0 -56 0 0 0 1 0 1 0 -1 0 0 24593.dat
+1 71 0 8 0 0 0 -1 0 1 0 1 0 0 21309 - 300-3001.ldr
+1 71 0 8 0 0 0 1 0 1 0 -1 0 0 21309 - 300-3001.ldr
+0 STEP
+1 71 0 -80 0 0 0 1 0 1 0 -1 0 0 6222.dat
+0 STEP
+1 71 0 -88 0 0 0 1 0 1 0 -1 0 0 11833.dat
+1 71 0 -70 40 0 0 1 1 0 0 0 1 0 33291.dat
+1 71 -40 -70 0 0 -1 0 1 0 0 0 0 1 33291.dat
+1 71 0 -70 -40 0 0 -1 1 0 0 0 -1 0 33291.dat
+1 71 40 -70 0 0 1 0 -1 0 0 0 0 1 33291.dat
+0 STEP
+1 16 0 -76 0 1 0 0 0 1 0 0 0 1 sec6_1.ldr
+0 STEP
+0 STEP
+0 STEP
+0 STEP
+0 STEP
+0 STEP
+0 STEP
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 294.ldr
+0 294
+0 Name: 21309 - 294.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 4599b.dat
+1 15 0 -24 0 1 0 0 0 1 0 0 0 1 4599b.dat
+1 15 0 -48 0 1 0 0 0 1 0 0 0 1 4599b.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 296.ldr
+0 296
+0 Name: 21309 - 296.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 3707.dat
+1 15 83.35 0 0 0 -1 0 -1 0 0 0 0 -1 98100.dat
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 300-3001.ldr
+0 300-3001
+0 Name: 21309 - 300-3001.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 48310.dat
+0 STEP
+1 15 0 192 0 1 0 0 0 1 0 0 0 1 21309 - 3001.ldr
+1 15 0 192 0 0 0 1 0 1 0 -1 0 0 21309 - 3001.ldr
+0 STEP
+
+
+
+0 NOFILE
+0 FILE 21309 - 3001.ldr
+0 3001
+0 Name: 21309 - 3001.ldr
+0 Author: Jaco van der Molen [Jaco]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !KEYWORDS NASA, Apollo Saturn V, Saturn V
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 48092.dat
+1 15 0 -24 0 1 0 0 0 1 0 0 0 1 48092.dat
+1 15 0 -48 0 1 0 0 0 1 0 0 0 1 48092.dat
+0 STEP
+
+
+
+
+
+0 NOFILE
+0 FILE sec1.ldr
+0 
+0 Name: sec1.ldr
+0 Author: 
+1 15 0 -144 0 1 0 0 0 1 0 0 0 1 30562.dat
+1 72 0 -144 0 0 0 -1 0 1 0 1 0 0 30562.dat
+1 72 0 -144 0 0 0 1 0 1 0 -1 0 0 30562.dat
+1 15 0 -144 0 -1 0 0 0 1 0 0 0 -1 30562.dat
+0 STEP
+1 16 0 -160 0 0 0 -1 0 1 0 1 0 0 21309 - 9.ldr
+1 15 -70 -160 0 0 0 1 0 1 0 -1 0 0 99206.dat
+1 15 70 -160 0 0 0 -1 0 1 0 1 0 0 99206.dat
+0 STEP
+1 15 -50 -152 50 -0.707 0 0.707 0 1 0 -0.707 0 -0.707 21309 - 10.ldr
+1 15 -50 -152 -50 0.707 0 0.707 0 1 0 -0.707 0 0.707 21309 - 10.ldr
+1 15 50 -152 -50 0.707 0 -0.707 0 1 0 0.707 0 0.707 21309 - 10.ldr
+1 15 50 -152 50 -0.707 0 -0.707 0 1 0 0.707 0 -0.707 21309 - 10.ldr
+0 STEP
+1 19 0 -168 -40 1 0 0 0 1 0 0 0 1 22888.dat
+1 19 0 -168 40 -1 0 0 0 1 0 0 0 -1 22888.dat
+0 STEP
+1 0 0 -216 0 1 0 0 0 1 0 0 0 1 3943b.dat
+1 70 0 -224 0 1 0 0 0 1 0 0 0 1 3022.dat
+0 NOFILE
+0 FILE sec1_1.ldr
+0 
+0 Name: sec1_1.ldr
+0 Author: 
+1 1 1.414 -10 -1.414 0.707 0.707 0 0 0 -1 -0.707 0.707 0 3023.dat
+0 STEP
+1 71 1.414 -120 -1.414 0 0.707 -0.707 -1 0 0 0 0.707 0.707 3832.dat
+1 1 -11.312 -100 0 0 0.707 -0.707 -1 0 0 0 0.707 0.707 3460.dat
+0 NOFILE
+0 FILE sec1_2.ldr
+0 
+0 Name: sec1_2.ldr
+0 Author: 
+1 1 -1.414 -10 1.414 -0.707 -0.707 0 0 0 -1 0.707 -0.707 0 3023.dat
+0 STEP
+1 71 -1.414 -120 1.414 0 -0.707 0.707 -1 0 0 0 -0.707 -0.707 3832.dat
+1 1 11.312 -100 0 0 -0.707 0.707 -1 0 0 0 -0.707 -0.707 3460.dat
+0 NOFILE
+0 FILE sec1_3.ldr
+0 
+0 Name: sec1_3.ldr
+0 Author: 
+1 4 0 -8 -10 1 0 0 0 1 0 0 0 1 99207.dat
+1 4 0 -8 10 -1 0 0 0 1 0 0 0 -1 99207.dat
+0 STEP
+1 19 0 -32 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 72 10 -40 0 0 0 -1 0 1 0 1 0 0 44728.dat
+1 72 -10 -40 0 0 0 1 0 1 0 -1 0 0 44728.dat
+0 STEP
+1 71 32 -10 0 0 -1 0 0 0 1 -1 0 0 15573.dat
+1 71 32 -30 0 0 -1 0 0 0 1 -1 0 0 15573.dat
+1 71 0 -30 32 1 0 0 0 0 1 0 -1 0 15573.dat
+1 71 -32 -10 0 0 1 0 0 0 1 1 0 0 15573.dat
+1 71 0 -30 -32 -1 0 0 0 0 1 0 1 0 15573.dat
+1 71 0 -10 -32 -1 0 0 0 0 1 0 1 0 15573.dat
+1 71 0 -10 32 1 0 0 0 0 1 0 -1 0 15573.dat
+1 71 -32 -30 0 0 1 0 0 0 1 1 0 0 15573.dat
+1 19 0 -64 0 0 0 1 0 1 0 -1 0 0 3003.dat
+0 STEP
+1 14 -10 -10 -40 -1 0 0 0 0 1 0 1 0 92280.dat
+1 14 10 -30 -40 1 0 0 0 0 -1 0 1 0 92280.dat
+1 14 40 -30 10 0 -1 0 0 0 -1 1 0 0 92280.dat
+1 14 40 -10 -10 0 -1 0 0 0 1 -1 0 0 92280.dat
+1 14 -10 -30 40 -1 0 0 0 0 -1 0 -1 0 92280.dat
+1 14 10 -10 40 1 0 0 0 0 1 0 -1 0 92280.dat
+1 14 -40 -30 -10 0 1 0 0 0 -1 -1 0 0 92280.dat
+1 14 -40 -10 10 0 1 0 0 0 1 1 0 0 92280.dat
+0 STEP
+1 71 0 -20 48 0 0 -1 1 0 0 0 -1 0 15573.dat
+1 71 0 -20 -48 0 0 1 1 0 0 0 1 0 15573.dat
+1 71 -48 -20 0 0 1 0 1 0 0 0 0 -1 15573.dat
+1 71 48 -20 0 0 -1 0 1 0 0 0 0 1 15573.dat
+0 STEP
+1 297 0 -20 -88 1 0 0 0 0 -1 0 1 0 64644.dat
+1 297 0 -20 88 1 0 0 0 0 1 0 -1 0 64644.dat
+1 297 -88 -20 0 0 1 0 0 0 1 1 0 0 64644.dat
+1 297 88 -20 0 0 -1 0 0 0 -1 1 0 0 64644.dat
+0 NOFILE
+0 FILE sec2_1.ldr
+0 
+0 Name: sec2_1.ldr
+0 Author: 
+1 72 0 -144 0 0 0 -1 0 1 0 1 0 0 30562.dat
+1 72 0 -144 0 0 0 1 0 1 0 -1 0 0 30562.dat
+1 15 0 -144 0 1 0 0 0 1 0 0 0 1 30562.dat
+1 15 0 -144 0 -1 0 0 0 1 0 0 0 -1 30562.dat
+0 STEP
+1 19 0 -152 0 -1 0 0 0 1 0 0 0 -1 3034.dat
+1 1 0 -152 -70 -1 0 0 0 1 0 0 0 -1 3023.dat
+1 1 0 -152 70 -1 0 0 0 1 0 0 0 -1 3023.dat
+0 STEP
+1 19 0 -160 0 0 0 -1 0 1 0 1 0 0 3034.dat
+1 1 -70 -160 0 0 0 -1 0 1 0 1 0 0 3023.dat
+1 1 70 -160 0 0 0 -1 0 1 0 1 0 0 3023.dat
+0 STEP
+1 71 -50 -152 -50 0.707 0 0.707 0 1 0 -0.707 0 0.707 21309 - 10.ldr
+1 71 50 -152 -50 0.707 0 -0.707 0 1 0 0.707 0 0.707 21309 - 10.ldr
+1 71 50 -152 50 -0.707 0 -0.707 0 1 0 0.707 0 -0.707 21309 - 10.ldr
+1 71 -50 -152 50 -0.707 0 0.707 0 1 0 -0.707 0 -0.707 21309 - 10.ldr
+0 NOFILE
+0 FILE sec2_2.ldr
+0 
+0 Name: sec2_2.ldr
+0 Author: 
+1 72 0 -144 0 0 0 -1 0 1 0 1 0 0 30562.dat
+1 72 0 -144 0 0 0 1 0 1 0 -1 0 0 30562.dat
+1 15 0 -144 0 1 0 0 0 1 0 0 0 1 30562.dat
+1 15 0 -144 0 -1 0 0 0 1 0 0 0 -1 30562.dat
+0 STEP
+1 19 0 -152 0 0 0 -1 0 1 0 1 0 0 3034.dat
+1 1 -70 -152 0 0 0 -1 0 1 0 1 0 0 3023.dat
+1 1 70 -152 0 0 0 -1 0 1 0 1 0 0 3023.dat
+0 NOFILE
+0 FILE sec3_1.ldr
+0 
+0 Name: sec3_1.ldr
+0 Author: 
+1 70 -50 -8 -50 0.707 0 0.707 0 1 0 -0.707 0 0.707 21309 - 56.ldr
+1 70 50 -8 -50 0.707 0 -0.707 0 1 0 0.707 0 0.707 21309 - 56.ldr
+1 70 50 -8 50 -0.707 0 -0.707 0 1 0 0.707 0 -0.707 21309 - 56.ldr
+1 70 -50 -8 50 -0.707 0 0.707 0 1 0 -0.707 0 -0.707 21309 - 56.ldr
+0 STEP
+1 15 64 -40 0 0 -1 0 0 0 1 -1 0 0 21309 - 57.ldr
+1 15 -64 -40 0 0 1 0 0 0 1 1 0 0 21309 - 57.ldr
+1 15 0 -40 -64 -1 0 0 0 0 1 0 1 0 21309 - 57.ldr
+1 15 0 -40 64 1 0 0 0 0 1 0 -1 0 21309 - 57.ldr
+0 STEP
+1 19 0 -72 40 -1 0 0 0 1 0 0 0 -1 22888.dat
+1 19 0 -72 -40 1 0 0 0 1 0 0 0 1 22888.dat
+0 NOFILE
+0 FILE sec3_2.ldr
+0 
+0 Name: sec3_2.ldr
+0 Author: 
+1 15 64 -40 0 0 -1 0 0 0 1 -1 0 0 21309 - 57.ldr
+1 15 -64 -40 0 0 1 0 0 0 1 1 0 0 21309 - 57.ldr
+1 15 0 -40 -64 -1 0 0 0 0 1 0 1 0 21309 - 57.ldr
+1 15 0 -40 64 1 0 0 0 0 1 0 -1 0 21309 - 57.ldr
+1 70 -50 -8 -50 0.707 0 0.707 0 1 0 -0.707 0 0.707 21309 - 56.ldr
+1 70 50 -8 -50 0.707 0 -0.707 0 1 0 0.707 0 0.707 21309 - 56.ldr
+1 70 50 -8 50 -0.707 0 -0.707 0 1 0 0.707 0 -0.707 21309 - 56.ldr
+1 70 -50 -8 50 -0.707 0 0.707 0 1 0 -0.707 0 -0.707 21309 - 56.ldr
+0 STEP
+1 19 0 -72 40 -1 0 0 0 1 0 0 0 -1 22888.dat
+1 19 0 -72 -40 1 0 0 0 1 0 0 0 1 22888.dat
+1 15 112 -20 30 0 -1 0 -1 0 0 0 0 -1 24309.dat
+1 0 112 -20 -30 0 -1 0 1 0 0 0 0 1 24309.dat
+1 15 30 -20 -112 0 0 -1 -1 0 0 0 1 0 24309.dat
+1 0 -30 -20 -112 0 0 1 1 0 0 0 1 0 24309.dat
+1 15 -112 -20 -30 0 1 0 -1 0 0 0 0 1 24309.dat
+1 0 -112 -20 30 0 1 0 1 0 0 0 0 -1 24309.dat
+1 15 -30 -20 112 0 0 1 -1 0 0 0 -1 0 24309.dat
+1 0 30 -20 112 0 0 -1 1 0 0 0 -1 0 24309.dat
+0 STEP
+1 297 50 -80 -50 1 0 0 0 1 0 0 0 1 85861.dat
+1 297 50 -80 50 1 0 0 0 1 0 0 0 1 85861.dat
+1 297 -50 -80 50 1 0 0 0 1 0 0 0 1 85861.dat
+1 297 -50 -80 -50 1 0 0 0 1 0 0 0 1 85861.dat
+1 71 20 -80 -60 1 0 0 0 1 0 0 0 1 3956.dat
+1 71 -20 -80 -60 1 0 0 0 1 0 0 0 1 3956.dat
+1 71 20 -80 60 -1 0 0 0 1 0 0 0 -1 3956.dat
+1 71 -20 -80 60 -1 0 0 0 1 0 0 0 -1 3956.dat
+1 71 -60 -80 -20 0 0 1 0 1 0 -1 0 0 3956.dat
+1 71 -60 -80 20 0 0 1 0 1 0 -1 0 0 3956.dat
+1 71 60 -80 -20 0 0 -1 0 1 0 1 0 0 3956.dat
+1 71 60 -80 20 0 0 -1 0 1 0 1 0 0 3956.dat
+0 STEP
+1 4 50 -88 50 -0.707 0 -0.707 0 1 0 0.707 0 -0.707 99207.dat
+1 4 50 -88 -50 0.707 0 -0.707 0 1 0 0.707 0 0.707 99207.dat
+1 4 -50 -88 -50 0.707 0 0.707 0 1 0 -0.707 0 0.707 99207.dat
+1 4 -50 -88 50 -0.707 0 0.707 0 1 0 -0.707 0 -0.707 99207.dat
+0 NOFILE
+0 FILE sec4_1.ldr
+0 
+0 Name: sec4_1.ldr
+0 Author: 
+1 15 0 -144 0 -1 0 0 0 1 0 0 0 -1 30562.dat
+1 15 0 -144 0 1 0 0 0 1 0 0 0 1 30562.dat
+1 72 0 -144 0 0 0 -1 0 1 0 1 0 0 30562.dat
+1 72 0 -144 0 0 0 1 0 1 0 -1 0 0 30562.dat
+0 STEP
+1 16 0 -160 -70 1 0 0 0 1 0 0 0 1 21309 - 144.ldr
+0 STEP
+1 70 0 -160 0 1 0 0 0 1 0 0 0 1 21309 - 9.ldr
+0 STEP
+1 70 -50 -152 -50 0.707 0 0.707 0 1 0 -0.707 0 0.707 21309 - 10.ldr
+1 70 50 -152 -50 0.707 0 -0.707 0 1 0 0.707 0 0.707 21309 - 10.ldr
+1 70 50 -152 50 -0.707 0 -0.707 0 1 0 0.707 0 -0.707 21309 - 10.ldr
+1 70 -50 -152 50 -0.707 0 0.707 0 1 0 -0.707 0 -0.707 21309 - 10.ldr
+0 NOFILE
+0 FILE sec4_2.ldr
+0 
+0 Name: sec4_2.ldr
+0 Author: 
+1 15 0 -144 0 1 0 0 0 1 0 0 0 1 30562.dat
+1 72 0 -144 0 0 0 1 0 1 0 -1 0 0 30562.dat
+1 72 0 -144 0 0 0 -1 0 1 0 1 0 0 30562.dat
+1 15 0 -144 0 -1 0 0 0 1 0 0 0 -1 30562.dat
+0 STEP
+1 19 0 -152 0 1 0 0 0 1 0 0 0 1 3034.dat
+0 STEP
+1 72 0 -160 0 0 0 1 0 1 0 -1 0 0 21309 - 149.ldr
+0 STEP
+1 16 -50 -160 0 0 0 1 0 1 0 -1 0 0 21309 - 150.ldr
+1 16 50 -160 0 0 0 -1 0 1 0 1 0 0 21309 - 150.ldr
+0 STEP
+1 15 50 -152 50 -0.707 0 -0.707 0 1 0 0.707 0 -0.707 21309 - 151.ldr
+1 15 -50 -152 50 -0.707 0 0.707 0 1 0 -0.707 0 -0.707 21309 - 151.ldr
+1 15 -50 -152 -50 0.707 0 0.707 0 1 0 -0.707 0 0.707 21309 - 151.ldr
+1 15 50 -152 -50 0.707 0 -0.707 0 1 0 0.707 0 0.707 21309 - 151.ldr
+0 NOFILE
+0 FILE sec4_3.ldr
+0 
+0 Name: sec4_3.ldr
+0 Author: 
+1 71 0 -8 40 -1 0 0 0 1 0 0 0 -1 3795.dat
+1 71 0 -8 0 -1 0 0 0 1 0 0 0 -1 3795.dat
+1 71 0 -8 -40 -1 0 0 0 1 0 0 0 -1 3795.dat
+0 STEP
+1 15 0 -16 50 -1 0 0 0 1 0 0 0 -1 3069b.dat
+1 15 0 -16 -50 -1 0 0 0 1 0 0 0 -1 3069b.dat
+1 15 -50 -16 0 0 0 -1 0 1 0 1 0 0 3069b.dat
+1 15 50 -16 0 0 0 -1 0 1 0 1 0 0 3069b.dat
+1 15 30 -32 0 0 0 -1 0 1 0 1 0 0 4865b.dat
+1 15 -30 -32 0 0 0 1 0 1 0 -1 0 0 4865b.dat
+1 15 0 -32 30 -1 0 0 0 1 0 0 0 -1 4865b.dat
+1 15 0 -32 -30 1 0 0 0 1 0 0 0 1 4865b.dat
+1 19 0 -32 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 70 0 -40 0 1 0 0 0 1 0 0 0 1 3022.dat
+0 STEP
+1 4 -10 -26 -32 1 0 0 0 0 -1 0 1 0 21309 - 155.ldr
+1 4 10 -26 32 -1 0 0 0 0 -1 0 -1 0 21309 - 155.ldr
+1 4 32 -26 -10 0 -1 0 0 0 -1 1 0 0 21309 - 155.ldr
+1 4 -32 -26 10 0 1 0 0 0 -1 -1 0 0 21309 - 155.ldr
+0 STEP
+1 71 -40 -16 40 -1 0 0 0 1 0 0 0 -1 21309 - 156.ldr
+1 71 -40 -16 -40 -1 0 0 0 1 0 0 0 -1 21309 - 156.ldr
+1 71 40 -16 -40 -1 0 0 0 1 0 0 0 -1 21309 - 156.ldr
+1 71 40 -16 40 -1 0 0 0 1 0 0 0 -1 21309 - 156.ldr
+0 NOFILE
+0 FILE sec4_4.ldr
+0 
+0 Name: sec4_4.ldr
+0 Author: 
+1 70 0 -12 0 0 0 1 0 1 0 -1 0 0 21309 - 157.ldr
+0 STEP
+1 70 -50 -28 50 -0.707 0 0.707 0 1 0 -0.707 0 -0.707 21309 - 56a.ldr
+1 70 50 -28 50 -0.707 0 -0.707 0 1 0 0.707 0 -0.707 21309 - 56a.ldr
+1 70 50 -28 -50 0.707 0 -0.707 0 1 0 0.707 0 0.707 21309 - 56a.ldr
+1 70 -50 -28 -50 0.707 0 0.707 0 1 0 -0.707 0 0.707 21309 - 56a.ldr
+0 STEP
+1 71 0 -60 56 0 0 1 -1 0 0 0 -1 0 21309 - 158-.ldr
+1 71 0 -60 -56 0 0 -1 -1 0 0 0 1 0 21309 - 158-.ldr
+0 STEP
+1 15 40 -50 0 0 -1 0 0 0 1 -1 0 0 6636.dat
+1 15 -40 -50 0 0 1 0 0 0 1 1 0 0 6636.dat
+0 STEP
+1 70 50 -44 0 0 0 -1 0 1 0 1 0 0 21309 - 169.ldr
+1 70 -50 -44 0 0 0 1 0 1 0 -1 0 0 21309 - 169.ldr
+0 STEP
+1 4 -72 -40 0 0 1 0 1 0 0 0 0 -1 21309 - 172.ldr
+1 4 72 -40 0 0 -1 0 1 0 0 0 0 1 21309 - 172.ldr
+0 NOFILE
+0 FILE sec4_0.ldr
+0 
+0 Name: sec4_0.ldr
+0 Author: 
+1 71 0 -16 0 1 0 0 0 1 0 0 0 1 3795.dat
+1 19 0 -24 40 -1 0 0 0 1 0 0 0 -1 22888.dat
+1 19 0 -24 -40 1 0 0 0 1 0 0 0 1 22888.dat
+1 70 0 -16 -40 1 0 0 0 1 0 0 0 1 3022.dat
+1 70 0 -16 40 1 0 0 0 1 0 0 0 1 3022.dat
+0 STEP
+1 15 20 -16 -70 1 0 0 0 1 0 0 0 1 99206.dat
+1 15 -20 -16 -70 1 0 0 0 1 0 0 0 1 99206.dat
+1 15 -20 -16 70 -1 0 0 0 1 0 0 0 -1 99206.dat
+1 15 20 -16 70 -1 0 0 0 1 0 0 0 -1 99206.dat
+1 15 -70 -16 20 0 0 1 0 1 0 -1 0 0 99206.dat
+1 15 -70 -16 -20 0 0 1 0 1 0 -1 0 0 99206.dat
+1 15 70 -16 20 0 0 -1 0 1 0 1 0 0 99206.dat
+1 15 70 -16 -20 0 0 -1 0 1 0 1 0 0 99206.dat
+0 STEP
+1 72 -70 -40 0 0 0 -1 0 1 0 1 0 0 47457.dat
+1 72 0 -40 -70 -1 0 0 0 1 0 0 0 -1 47457.dat
+1 72 0 -40 70 1 0 0 0 1 0 0 0 1 47457.dat
+1 72 70 -40 0 0 0 1 0 1 0 -1 0 0 47457.dat
+1 297 50 -32 -50 0 0 1 0 1 0 -1 0 0 85861.dat
+1 297 50 -32 50 0 0 1 0 1 0 -1 0 0 85861.dat
+1 297 -50 -32 50 0 0 1 0 1 0 -1 0 0 85861.dat
+1 297 -50 -32 -50 0 0 1 0 1 0 -1 0 0 85861.dat
+0 STEP
+1 15 70 -56 0 0 0 -1 0 1 0 1 0 0 99206.dat
+1 15 0 -56 70 -1 0 0 0 1 0 0 0 -1 99206.dat
+1 15 -70 -56 0 0 0 1 0 1 0 -1 0 0 99206.dat
+1 15 0 -56 -70 1 0 0 0 1 0 0 0 1 99206.dat
+1 71 -50 -48 -50 0.707 0 0.707 0 1 0 -0.707 0 0.707 21309 - 142.ldr
+1 71 50 -48 -50 0.707 0 -0.707 0 1 0 0.707 0 0.707 21309 - 142.ldr
+1 71 50 -48 50 -0.707 0 -0.707 0 1 0 0.707 0 -0.707 21309 - 142.ldr
+1 71 -50 -48 50 -0.707 0 0.707 0 1 0 -0.707 0 -0.707 21309 - 142.ldr
+0 NOFILE
+0 FILE sec5_1.ldr
+0 
+0 Name: sec5_1.ldr
+0 Author: 
+1 70 0 -24 0 1 0 0 0 1 0 0 0 1 21309 - 249.ldr
+0 STEP
+1 72 0 -104 0 0 0 1 0 1 0 -1 0 0 21309 - 250.ldr
+0 STEP
+1 70 -48 -92 0 0 -1 0 -1 0 0 0 0 -1 21309 - 251.ldr
+1 70 48 -92 0 0 1 0 1 0 0 0 0 -1 21309 - 251.ldr
+0 NOFILE
+0 FILE sec5_2.ldr
+0 
+0 Name: sec5_2.ldr
+0 Author: 
+1 72 0 -24 0 1 0 0 0 1 0 0 0 1 21309 - 253.ldr
+0 STEP
+1 0 20 -96 -30 1 0 0 0 1 0 0 0 1 21309 - 254-260.ldr
+0 NOFILE
+0 FILE sec6_1.ldr
+0 
+0 Name: sec6_1.ldr
+0 Author: 
+1 15 0 -60 0 0 0 1 0 1 0 -1 0 0 3943b.dat
+0 STEP
+1 15 10 -84 -10 1 0 0 0 1 0 0 0 1 21309 - 294.ldr
+1 15 -10 -84 -10 0.866 0 -0.5 0 1 0 0.5 0 0.866 21309 - 294.ldr
+1 15 -10 -84 10 0.5 0 0.866 0 1 0 -0.866 0 0.5 21309 - 294.ldr
+1 15 10 -84 10 -0.866 0 0.5 0 1 0 -0.5 0 -0.866 21309 - 294.ldr
+0 STEP
+1 15 0 -140 0 0 0 1 0 1 0 -1 0 0 4032a.dat
+0 STEP
+1 15 0 -80 0 0 0 1 -1 0 0 0 -1 0 21309 - 296.ldr
+0 STEP
+1 15 0 -307.35 0 1 0 0 0 1 0 0 0 1 43888.dat
+1 15 0 -331.35 0 1 0 0 0 1 0 0 0 1 59900.dat
+0 NOFILE

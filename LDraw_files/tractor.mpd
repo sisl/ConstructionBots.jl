@@ -1,0 +1,63 @@
+0 FILE full_assembly.ldr
+0 
+0 Name: full_assembly.ldr
+0 Author: 
+1 2 0 0 0 1 0 0 0 1 0 0 0 1 chassis.ldr
+0 STEP
+0 !LEOCAD PIECE PIVOT  0 -8 0 1 0 0 0 1 0 0 0 1
+1 0 40 2 0 0 0 -1 0 1 0 1 0 0 rear_axle.ldr
+1 2 -20 8 0 0 0 1 0 1 0 -1 0 0 front_axle.ldr
+0 STEP
+1 39 30 -64 0 0 0 1 0 1 0 -1 0 0 6227.dat
+1 288 50 -64 0 0 0 -1 0 1 0 1 0 0 3004.dat
+0 STEP
+1 288 40 -72 -10 1 0 0 0 1 0 0 0 1 3023.dat
+1 288 40 -72 10 -1 0 0 0 1 0 0 0 -1 3023.dat
+1 0 -20 -63 0 1 0 0 0 1 0 0 0 1 3062b.dat
+0 NOFILE
+0 FILE front_axle.ldr
+0 
+0 Name: front_axle.ldr
+0 Author: 
+1 7 0 -8 0 1 0 0 0 1 0 0 0 1 4600.dat
+0 STEP
+1 132 -30 5 0 0 0 1 0 1 0 -1 0 0 front_wheel_and_tire.ldr
+1 132 30 5 0 0 0 -1 0 1 0 1 0 0 front_wheel_and_tire.ldr
+0 NOFILE
+0 FILE front_wheel_and_tire.ldr
+0 
+0 Name: front_wheel_and_tire.ldr
+0 Author: 
+1 7 0 -8 0 1 0 0 0 1 0 0 0 1 4624.dat
+0 STEP
+1 0 0 -8 0 1 0 0 0 1 0 0 0 1 87414.dat
+0 NOFILE
+0 FILE rear_wheel_and_tire.ldr
+0 
+0 Name: rear_wheel_and_tire.ldr
+0 Author: 
+1 7 0 -13 10 1 0 0 0 1 0 0 0 1 6014.dat
+0 STEP
+1 0 0 -13 4 1 0 0 0 1 0 0 0 1 87697.dat
+0 NOFILE
+0 FILE rear_axle.ldr
+0 
+0 Name: rear_axle.ldr
+0 Author: 
+1 7 0 -10 0 1 0 0 0 1 0 0 0 1 4600.dat
+0 STEP
+1 7 -40 8 0 0 0 1 0 1 0 -1 0 0 rear_wheel_and_tire.ldr
+1 132 40 8 0 0 0 -1 0 1 0 1 0 0 rear_wheel_and_tire.ldr
+0 NOFILE
+0 FILE chassis.ldr
+0 
+0 Name: chassis.ldr
+0 Author: 
+1 10 -10 -8 0 1 0 0 0 1 0 0 0 1 3021.dat
+0 STEP
+1 4 30 -16 0 1 0 0 0 1 0 0 0 1 3021.dat
+1 4 -20 -16 0 1 0 0 0 1 0 0 0 1 3022.dat
+0 STEP
+1 2 0 -40 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 2 50 -40 0 0 0 -1 0 1 0 1 0 0 3004.dat
+0 NOFILE

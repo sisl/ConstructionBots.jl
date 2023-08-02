@@ -1,0 +1,686 @@
+0 FILE 7140 - Main Model.ldr
+0 Main Model
+0 Name: 7140 - Main Model.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+0 !THEME Star Wars
+0 !KEYWORDS Episode IV, Luke Skywalker, Biggs Darklighter, Rebel Technician, R2-D2
+
+0 !HISTORY 2012-05-19 [TK-949] Creation
+0 !HISTORY 2016-02-21 [legolijntje] Updated ~moved files and swapped inlined parts for official versions
+
+1 16 410 48 0 1 0 0 0 1 0 0 0 1 7140 - Support Vehicle.ldr
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 7140 - Ship.ldr
+0 STEP
+1 16 410 -32 -180 1 0 0 0 1 0 0 0 1 7140 - Minifig - Rebel Technician.ldr
+1 16 140 -8 -100 0.707107 0 -0.707107 0 1 0 0.707107 0 0.707107 7140 - Minifig - Biggs Darklighter.ldr
+0 STEP
+1 16 0 -112 0 1 0 0 0 1 0 0 0 1 7140 - Minifig - R2-D2.ldr
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 7140 - Minifig - Luke Skywalker.ldr
+0 STEP
+0 STEP
+1 40 0 -134 -50 1 0 0 0 1 0 0 0 1 30372p79.dat
+
+
+0 NOFILE
+0 FILE 7140 - Minifig - Luke Skywalker.ldr
+0 Minifig - Luke Skywalker
+0 Name: 7140 - Minifig - Luke Skywalker.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 25 0 -49 -72 1 0 0 0 0 1 0 -1 0 3816.dat
+1 25 0 -49 -72 1 0 0 0 0 1 0 -1 0 3817.dat
+1 8 0 -60.872 -73.833 1 0 0 0 0.990268 -0.139173 0 0.139173 0.990268 3815.dat
+0 STEP
+1 25 0 -92.56 -78.285 1 0 0 0 0.990268 -0.139173 0 0.139173 0.990268 973ps1.dat
+1 25 -15.552 -83.647 -77.033 0.985 -0.17 0 0.158709 0.919577 -0.358368 0.060923 0.352992 0.93358 3818.dat
+1 25 15.552 -83.647 -77.033 0.985 0.17 0 -0.158709 0.919577 -0.358368 -0.060923 0.352992 0.93358 3819.dat
+1 0 -23.863 -63.525 -80.361 0.985 -0.12019 0.12019 0.158709 0.396775 -0.903507 0.060923 0.909607 0.410476 3820.dat
+1 0 23.863 -63.525 -80.361 0.985 0.12019 -0.12019 -0.158709 0.396775 -0.903507 -0.060923 0.909607 0.410476 3820.dat
+0 STEP
+1 14 0 -116.324 -81.626 1 0 0 0 0.990268 -0.139173 0 0.139173 0.990268 3626bps3.dat
+0 STEP
+1 15 0 -116.324 -81.626 1 0 0 0 0.990268 -0.139173 0 0.139173 0.990268 30370ps2.dat
+
+
+0 NOFILE
+0 FILE 7140 - Minifig - Biggs Darklighter.ldr
+0 Minifig - Biggs Darklighter
+0 Name: 7140 - Minifig - Biggs Darklighter.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 25 0 44 0 1 0 0 0 1 0 0 0 1 3816.dat
+1 25 0 44 0 1 0 0 0 1 0 0 0 1 3817.dat
+1 8 0 32 0 1 0 0 0 1 0 0 0 1 3815.dat
+0 STEP
+1 25 0 0 0 1 0 0 0 1 0 0 0 1 973ps1.dat
+1 25 -15.552 9 0 0.985 -0.17 0 0.17 0.985 0 0 0 1 3818.dat
+1 25 15.552 9 0 0.985 0.17 0 -0.17 0.985 0 0 0 1 3819.dat
+1 0 -23.8634 26.5956 -10.321 0.985 -0.12019 0.12019 0.17 0.696395 -0.696395 0 0.707 0.707 3820.dat
+1 0 23.8634 26.5956 -10.321 0.985 0.12019 -0.12019 -0.17 0.696395 -0.696395 0 0.707 0.707 3820.dat
+0 STEP
+1 14 0 -24 0 1 0 0 0 1 0 0 0 1 3626bp03.dat
+0 STEP
+1 15 0 -24 0 1 0 0 0 1 0 0 0 1 30370ps4.dat
+
+
+0 NOFILE
+0 FILE 7140 - Minifig - Rebel Technician.ldr
+0 Minifig - Rebel Technician
+0 Name: 7140 - Minifig - Rebel Technician.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 19 0 32 0 1 0 0 0 1 0 0 0 1 3815.dat
+1 19 0 44 0 1 0 0 0 1 0 0 0 1 3816.dat
+1 19 0 44 0 1 0 0 0 1 0 0 0 1 3817.dat
+0 STEP
+1 19 0 0 0 1 0 0 0 1 0 0 0 1 973psa.dat
+1 19 -15.552 9 0 0.985 -0.17 0 0.148685 0.8615 -0.48481 0.082418 0.477537 0.87462 3818.dat
+1 19 15.552 9 0 0.985 0.17 0 -0.148685 0.8615 -0.48481 -0.082418 0.477537 0.87462 3819.dat
+1 14 -23.863 29.389 -0.494 0.988435 -0.036414 0.1442 0.148286 0.316345 -0.936448 -0.011521 0.947555 0.31864 3820.dat
+1 14 23.863 29.389 -0.494 0.987963 0.069993 -0.134718 -0.150091 0.316248 -0.936193 -0.02293 0.9457 0.323502 3820.dat
+0 STEP
+1 14 0 -24 0 1 0 0 0 1 0 0 0 1 3626bp35.dat
+0 STEP
+1 19 0 -24 0 1 0 0 0 1 0 0 0 1 4485.dat
+
+
+0 NOFILE
+0 FILE 7140 - Minifig - R2-D2.ldr
+0 Minifig - R2-D2
+0 Name: 7140 - Minifig - R2-D2.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 30361aps1.dat
+0 STEP
+1 15 20 0 0 0 0 1 0 1 0 -1 0 0 30362.dat
+1 15 -20 0 0 0 0 -1 0 1 0 1 0 0 30362.dat
+0 STEP
+1 15 0 -34 0 1 0 0 0 1 0 0 0 1 30367aps1.dat
+
+
+0 NOFILE
+0 FILE 7140 - Support Vehicle Section 1.ldr
+0 Support Vehicle Section 1
+0 Name: 7140 - Support Vehicle Section 1.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 7 0 0 0 0 0 -1 0 1 0 1 0 0 3032.dat
+0 STEP
+0 ROTSTEP 0 0 180 REL
+1 0 -20 8 40 1 0 0 0 1 0 0 0 1 2654.dat
+1 0 20 8 40 1 0 0 0 1 0 0 0 1 2654.dat
+1 0 -20 8 -40 1 0 0 0 1 0 0 0 1 2654.dat
+1 0 20 8 -40 1 0 0 0 1 0 0 0 1 2654.dat
+0 STEP
+0 ROTSTEP END
+1 0 0 -8 40 -1 0 0 0 1 0 0 0 -1 3730.dat
+1 0 0 -8 -20 0 0 -1 0 1 0 1 0 0 3020.dat
+0 STEP
+1 8 0 -32 20 0 0 1 0 1 0 -1 0 0 4854.dat
+0 STEP
+1 14 0 -16 -30 -1 0 0 0 1 0 0 0 -1 2342.dat
+1 14 -30 -40 20 0 0 -1 0 1 0 1 0 0 2431.dat
+1 14 30 -40 20 0 0 -1 0 1 0 1 0 0 2431.dat
+0 STEP
+1 0 18 -40 -30 0 -1 0 1 0 0 0 0 1 4592.dat
+1 14 20 -40 -30 0 -0.139173 0.990268 1 0 0 0 0.990268 0.139173 4593.dat
+1 0 -18 -40 -30 0 1 0 -1 0 0 0 0 1 4592.dat
+1 14 -20 -40 -30 0 0.139173 -0.990268 -1 0 0 0 0.990268 0.139173 4593.dat
+0 STEP
+1 0 0 -40 44 1 0 0 0 0 1 0 -1 0 3003.dat
+1 0 0 -40 68 1 0 0 0 0 1 0 -1 0 3003.dat
+1 46 -10 -40 10 1 0 0 0 1 0 0 0 1 4589.dat
+1 46 10 -40 10 1 0 0 0 1 0 0 0 1 4589.dat
+
+
+0 NOFILE
+0 FILE 7140 - Support Vehicle Section 2.ldr
+0 Support Vehicle Section 2
+0 Name: 7140 - Support Vehicle Section 2.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 7 0 0 0 1 0 0 0 1 0 0 0 1 3031.dat
+0 STEP
+0 ROTSTEP 0 0 180 REL
+1 0 -20 8 20 1 0 0 0 1 0 0 0 1 2654.dat
+1 0 20 8 20 1 0 0 0 1 0 0 0 1 2654.dat
+1 0 -20 8 -20 1 0 0 0 1 0 0 0 1 2654.dat
+1 0 20 8 -20 1 0 0 0 1 0 0 0 1 2654.dat
+0 STEP
+0 ROTSTEP END
+1 0 0 -8 -20 1 0 0 0 1 0 0 0 1 3731.dat
+1 0 0 -8 20 -1 0 0 0 1 0 0 0 -1 3730.dat
+0 STEP
+1 8 0 -32 0 0 0 1 0 1 0 -1 0 0 4854.dat
+0 STEP
+1 0 0 -40 0 0 0 -1 0 1 0 1 0 0 3001.dat
+0 STEP
+1 14 -30 -40 0 0 0 -1 0 1 0 1 0 0 2431.dat
+1 14 30 -40 0 0 0 -1 0 1 0 1 0 0 2431.dat
+
+
+0 NOFILE
+0 FILE 7140 - Support Vehicle Section 3.ldr
+0 Support Vehicle Section 3
+0 Name: 7140 - Support Vehicle Section 3.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 7 0 0 0 1 0 0 0 1 0 0 0 1 3031.dat
+0 STEP
+0 ROTSTEP 0 0 180 REL
+1 0 -20 8 20 1 0 0 0 1 0 0 0 1 2654.dat
+1 0 20 8 20 1 0 0 0 1 0 0 0 1 2654.dat
+1 0 -20 8 -20 1 0 0 0 1 0 0 0 1 2654.dat
+1 0 20 8 -20 1 0 0 0 1 0 0 0 1 2654.dat
+0 STEP
+0 ROTSTEP END
+1 0 20 -8 0 1 0 0 0 1 0 0 0 1 3022.dat
+1 0 -20 -8 0 0 0 1 0 1 0 -1 0 0 3731.dat
+0 STEP
+1 8 0 -32 0 1 0 0 0 1 0 0 0 1 4854.dat
+0 STEP
+1 0 -20 -40 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 14 -30 -40 -30 1 0 0 0 1 0 0 0 1 4085c.dat
+1 14 -10 -40 -30 1 0 0 0 1 0 0 0 1 4085c.dat
+1 14 -10 -40 30 -1 0 0 0 1 0 0 0 -1 4085c.dat
+1 14 -30 -40 30 -1 0 0 0 1 0 0 0 -1 4085c.dat
+0 STEP
+1 14 10 -40 0 0 0 -1 0 1 0 1 0 0 2431.dat
+1 14 30 -40 -30 1 0 0 0 1 0 0 0 1 4085c.dat
+1 14 30 -40 30 -1 0 0 0 1 0 0 0 -1 4085c.dat
+0 STEP
+1 0 30 -40 -10 0 0 -1 0 1 0 1 0 0 4070.dat
+1 0 30 -40 10 0 0 -1 0 1 0 1 0 0 4070.dat
+1 0 44 -30 10 0 -1 0 0 0 1 -1 0 0 2555.dat
+0 STEP
+1 0 52.2652 55.0024 9.2 1 0 0 0 1 0 0 0 1 7140 - Support Vehicle - Hose mod.ldr
+1 8 0 -64.046 -10 1 0 0 0 1 0 0 0 1 3037.dat
+1 8 0 -64.046 10 -1 0 0 0 1 0 0 0 -1 3037.dat
+0 STEP
+1 0 -10 -32.046 50 1 0 0 0 1 0 0 0 1 55300.dat
+1 0 -30 -32.046 50 1 0 0 0 1 0 0 0 1 55295.dat
+1 0 30 -40.046 50 -0.190809 0 0.981627 0 1 0 -0.981627 0 -0.190809 55297.dat
+1 0 -30 -32.046 -50 -1 0 0 0 1 0 0 0 -1 55299.dat
+1 0 -10 -32.046 -50 1 0 0 0 1 0 0 0 1 55298.dat
+1 0 30 -40.046 -50 0.207912 0 0.978148 0 1 0 -0.978148 0 0.207912 55296.dat
+
+
+0 NOFILE
+0 FILE 7140 - Support Vehicle.ldr
+0 Support Vehicle
+0 Name: 7140 - Support Vehicle.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 16 0 0 -130 1 0 0 0 1 0 0 0 1 7140 - Support Vehicle Section 1.ldr
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 7140 - Support Vehicle Section 2.ldr
+1 16 0 0 110 0 0 -1 0 1 0 1 0 0 7140 - Support Vehicle Section 3.ldr
+
+
+0 NOFILE
+0 FILE 7140 - Ship.ldr
+0 Ship
+0 Name: 7140 - Ship.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 7 0 0 0 0 0 -1 0 1 0 1 0 0 3029.dat
+1 7 -20 -24 110 -1 0 0 0 1 0 0 0 -1 3747a.dat
+1 7 20 -24 110 -1 0 0 0 1 0 0 0 -1 3747a.dat
+0 STEP
+1 8 -30 -24 40 0 0 -1 0 1 0 1 0 0 3009.dat
+1 8 30 -24 40 0 0 -1 0 1 0 1 0 0 3009.dat
+1 7 10 0 -130 0 0 1 0 1 0 -1 0 0 2420.dat
+1 7 -10 0 -130 -1 0 0 0 1 0 0 0 -1 2420.dat
+0 STEP
+1 8 -30 -24 -40 0 0 1 0 1 0 -1 0 0 3660.dat
+1 8 -30 -24 -80 0 0 1 0 1 0 -1 0 0 3660.dat
+1 8 -30 -24 -120 0 0 1 0 1 0 -1 0 0 3660.dat
+1 8 30 -24 -120 0 0 -1 0 1 0 1 0 0 3660.dat
+1 8 30 -24 -80 0 0 -1 0 1 0 1 0 0 3660.dat
+1 8 30 -24 -40 0 0 -1 0 1 0 1 0 0 3660.dat
+0 STEP
+1 7 0 -24 -150 1 0 0 0 1 0 0 0 1 4855.dat
+0 STEP
+1 4 0 -32 140 1 0 0 0 1 0 0 0 1 3020.dat
+1 4 0 -32 40 0 0 -1 0 1 0 1 0 0 3035.dat
+1 4 0 -32 -120 0 0 -1 0 1 0 1 0 0 3035.dat
+0 STEP
+1 4 -50 -32 -80 0 0 -1 0 1 0 1 0 0 3666.dat
+1 4 50 -32 -80 0 0 -1 0 1 0 1 0 0 3666.dat
+1 7 0 -40 150 1 0 0 0 1 0 0 0 1 3069bps1.dat
+0 STEP
+1 7 0 -104 130 -1 0 0 0 1 0 0 0 -1 2362b.dat
+1 14 0 -40 110 1 0 0 0 1 0 0 0 1 3069b.dat
+1 14 0 -40 80 1 0 0 0 1 0 0 0 1 3068b.dat
+0 STEP
+1 7 -30 -56 120 0 0 -1 0 1 0 1 0 0 3010.dat
+1 7 30 -56 120 0 0 -1 0 1 0 1 0 0 3010.dat
+1 7 -30 -56 70 1 0 0 0 1 0 0 0 1 3005.dat
+1 7 30 -56 70 1 0 0 0 1 0 0 0 1 3005.dat
+1 7 20 -56 50 1 0 0 0 1 0 0 0 1 30365.dat
+1 7 20 -56 30 1 0 0 0 1 0 0 0 1 30365.dat
+1 7 -20 -56 30 -1 0 0 0 1 0 0 0 -1 30365.dat
+1 7 -20 -56 50 -1 0 0 0 1 0 0 0 -1 30365.dat
+0 STEP
+1 0 -20 -56 -20 0 0 -1 0 1 0 1 0 0 3001.dat
+1 0 20 -56 -20 0 0 -1 0 1 0 1 0 0 3001.dat
+1 19 0 -40 -90 0 0 -1 0 1 0 1 0 0 3021.dat
+1 7 -30 -40 -80 0 0 1 0 1 0 -1 0 0 3069bps1.dat
+1 7 30 -40 -80 0 0 -1 0 1 0 1 0 0 3069bps1.dat
+0 STEP
+1 7 -50 -56 -40 0 0 1 0 1 0 -1 0 0 2877.dat
+1 7 -50 -56 -80 0 0 1 0 1 0 -1 0 0 2877.dat
+1 7 -50 -56 -120 0 0 1 0 1 0 -1 0 0 2877.dat
+1 7 50 -56 -120 0 0 -1 0 1 0 1 0 0 2877.dat
+1 7 50 -56 -80 0 0 -1 0 1 0 1 0 0 2877.dat
+1 7 50 -56 -40 0 0 -1 0 1 0 1 0 0 2877.dat
+0 STEP
+1 1 -30 -56 -120 0 0 -1 0 1 0 1 0 0 3004.dat
+1 1 30 -56 -120 0 0 -1 0 1 0 1 0 0 3004.dat
+1 0 0 -56 -160 0 0 -1 0 1 0 1 0 0 3001.dat
+0 STEP
+1 7 40 -56 -170 1 0 0 0 1 0 0 0 1 6565.dat
+1 7 -40 -56 -170 1 0 0 0 1 0 0 0 1 6564.dat
+0 STEP
+1 7 -30 -80 150 1 0 0 0 1 0 0 0 1 3005.dat
+1 7 30 -80 150 1 0 0 0 1 0 0 0 1 3005.dat
+1 7 -30 -80 80 0 0 -1 0 1 0 1 0 0 3009.dat
+1 7 30 -80 80 0 0 -1 0 1 0 1 0 0 3009.dat
+0 STEP
+1 4 0 -64 0 1 0 0 0 1 0 0 0 1 3022.dat
+1 4 -30 -64 0 0 0 -1 0 1 0 1 0 0 3794a.dat
+1 4 30 -64 0 0 0 -1 0 1 0 1 0 0 3794a.dat
+1 0 0 -80 40 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 14 0 -72 0 1 0 0 0 1 0 0 0 1 3068b.dat
+1 4 0 -80 -40 1 0 0 0 1 0 0 0 1 2456.dat
+1 4 -50 -80 -80 0 0 -1 0 1 0 1 0 0 3004.dat
+1 4 50 -80 -80 0 0 -1 0 1 0 1 0 0 3004.dat
+0 STEP
+1 7 40 -80 -130 1 0 0 0 1 0 0 0 1 6565.dat
+1 7 -40 -80 -130 1 0 0 0 1 0 0 0 1 6564.dat
+1 0 0 -80 -150 -1 0 0 0 1 0 0 0 -1 3039ps1.dat
+0 
+1 7 -30 -104 130 -1 0 0 0 1 0 0 0 -1 3040b.dat
+1 7 30 -104 130 -1 0 0 0 1 0 0 0 -1 3040b.dat
+1 8 -30 -104 90 0 0 1 0 1 0 -1 0 0 3622.dat
+1 8 30 -104 90 0 0 1 0 1 0 -1 0 0 3622.dat
+0 STEP
+1 7 0 -104 -30 1 0 0 0 1 0 0 0 1 3009.dat
+1 7 20 -104 50 1 0 0 0 1 0 0 0 1 30365.dat
+1 7 20 -104 30 1 0 0 0 1 0 0 0 1 30365.dat
+1 7 -20 -104 30 -1 0 0 0 1 0 0 0 -1 30365.dat
+1 7 -20 -104 50 -1 0 0 0 1 0 0 0 -1 30365.dat
+0 STEP
+1 8 -50 -88 -60 0 0 -1 0 1 0 1 0 0 3023.dat
+1 8 50 -88 -60 0 0 -1 0 1 0 1 0 0 3023.dat
+1 8 -50 -88 -110 1 0 0 0 1 0 0 0 1 2420.dat
+1 8 50 -88 -110 0 0 -1 0 1 0 1 0 0 2420.dat
+0 STEP
+1 8 -30 -88 -150 1 0 0 0 1 0 0 0 1 2420.dat
+1 8 30 -88 -150 0 0 -1 0 1 0 1 0 0 2420.dat
+1 8 0 -112 40 1 0 0 0 1 0 0 0 1 3022.dat
+1 4 30 -112 80 0 0 -1 0 1 0 1 0 0 2431.dat
+1 4 -30 -112 80 0 0 -1 0 1 0 1 0 0 2431.dat
+0 STEP
+1 7 0 -112 130 1 0 0 0 1 0 0 0 1 4625.dat
+1 8 0 -120 100 1 0 0 0 1 0 0 0 1 4213.dat
+1 19 0 -120 40 -1 0 0 0 1 0 0 0 -1 3068bps1.dat
+1 7 -10 -128 -30 0 0 1 0 1 0 -1 0 0 3040b.dat
+1 7 10 -128 -30 0 0 -1 0 1 0 1 0 0 3040b.dat
+0 STEP
+1 7 0 -32 -320 1 0 0 0 1 0 0 0 1 7140 - Ship Nose.ldr
+0 STEP
+1 7 0 -88 -50 1 0 0 0 1 0 0 0 1 7140 - Cockpit Rear.ldr
+1 19 0 -96 -220 0 0 -1 0 1 0 1 0 0 3034.dat
+0 STEP
+1 19 50 -96 -80 0 0 -1 0 1 0 1 0 0 3710.dat
+1 19 -50 -96 -80 0 0 -1 0 1 0 1 0 0 3710.dat
+1 19 -30 -96 -140 0 0 -1 0 1 0 1 0 0 3710.dat
+1 19 30 -96 -140 0 0 -1 0 1 0 1 0 0 3710.dat
+1 19 0 -96 -370 1 0 0 0 1 0 0 0 1 3069b.dat
+1 7 0 -96 -390 1 0 0 0 1 0 0 0 1 3069b.dat
+1 19 0 -136 -40 1 0 0 0 1 0 0 0 1 3068bps1.dat
+0 STEP
+1 16 180 -64 40 1 0 0 0 1 0 0 0 1 7140 - Lower Left Wing.ldr
+0 STEP
+1 16 -180 -64 40 -1 0 0 0 1 0 0 0 -1 7140 - Lower Right Wing.ldr
+0 STEP
+1 16 180 -80 40 1 0 0 0 1 0 0 0 1 7140 - Upper Left Wing.ldr
+0 STEP
+1 16 -180 -80 40 -1 0 0 0 1 0 0 0 -1 7140 - Upper Right Wing.ldr
+0 STEP
+1 16 90 -114 156 1 0 0 0 0 -1 0 1 0 7140 - Rear Engines.ldr
+1 16 90 -26 156 1 0 0 0 0 -1 0 1 0 7140 - Rear Engines.ldr
+1 16 -90 -114 156 1 0 0 0 0 -1 0 1 0 7140 - Rear Engines.ldr
+1 16 -90 -26 156 1 0 0 0 0 -1 0 1 0 7140 - Rear Engines.ldr
+1 40 0 16 40 1 0 0 0 1 0 0 0 1 7140 - Landing Gear Tail.ldr
+1 40 0 -24 -360 1 0 0 0 1 0 0 0 1 7140 - Landing Gear Bow.ldr
+
+
+
+0 NOFILE
+0 FILE 7140 - Ship Nose.ldr
+0 Ship Nose
+0 Name: 7140 - Ship Nose.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 7 0 0 0 0 0 -1 0 1 0 1 0 0 2445.dat
+1 7 -10 -24 110 0 0 1 0 1 0 -1 0 0 3665.dat
+1 7 10 -24 110 0 0 -1 0 1 0 1 0 0 3665.dat
+0 STEP
+1 7 0 -24 80 0 0 -1 0 1 0 1 0 0 4871.dat
+0 STEP
+1 7 0 -24 20 0 0 -1 0 1 0 1 0 0 4854.dat
+1 7 0 -24 -60 0 0 -1 0 1 0 1 0 0 4854.dat
+1 7 0 -24 -110 1 0 0 0 1 0 0 0 1 4855.dat
+0 STEP
+1 4 0 -32 -100 1 0 0 0 1 0 0 0 1 3020.dat
+1 8 0 -32 -160 1 0 0 0 1 0 0 0 1 4859.dat
+0 STEP
+1 4 0 -32 80 0 0 -1 0 1 0 1 0 0 3035.dat
+1 7 30 -32 -40 0 0 -1 0 1 0 1 0 0 2431.dat
+0 STEP
+1 7 10 -56 150 1 0 0 0 1 0 0 0 1 3046.dat
+1 7 -10 -56 150 0 0 1 0 1 0 -1 0 0 3046.dat
+0 STEP
+1 7 -10 -56 100 0 0 1 0 1 0 -1 0 0 3039.dat
+1 7 10 -56 100 0 0 -1 0 1 0 1 0 0 3039.dat
+1 7 -10 -56 40 0 0 1 0 1 0 -1 0 0 3037.dat
+1 7 10 -56 40 0 0 -1 0 1 0 1 0 0 3037.dat
+0 STEP
+1 7 -30 -32 -40 0 0 -1 0 1 0 1 0 0 4625.dat
+1 7 0 -56 -40 0 0 -1 0 1 0 1 0 0 4857.dat
+0 STEP
+1 7 -10 -56 -90 0 0 1 0 1 0 -1 0 0 3040b.dat
+1 7 10 -56 -90 0 0 -1 0 1 0 1 0 0 3040b.dat
+1 7 0 -56 -110 1 0 0 0 1 0 0 0 1 6069ps1.dat
+
+
+
+0 NOFILE
+0 FILE 7140 - Cockpit Rear.ldr
+0 Cockpit Rear
+0 Name: 7140 - Cockpit Rear.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 8 0 0 0 1 0 0 0 1 0 0 0 1 3710.dat
+1 19 0 -8 0 1 0 0 0 1 0 0 0 1 3710.dat
+0 STEP
+1 8 20 -32 0 1 0 0 0 1 0 0 0 1 76385.dat
+1 8 -20 -32 0 -1 0 0 0 1 0 0 0 -1 76385.dat
+0 STEP
+1 1 0 -40 0 1 0 0 0 1 0 0 0 1 3023.dat
+
+
+
+0 NOFILE
+0 FILE 7140 - Lower Left Wing.ldr
+0 Lower Left Wing
+0 Name: 7140 - Lower Left Wing.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 7 0 0 0 0 0 -1 0 1 0 1 0 0 30355.dat
+1 4 -100 -8 0 1 0 0 0 1 0 0 0 1 3068b.dat
+1 4 110 -8 -40 0 0 -1 0 1 0 1 0 0 2412b.dat
+0 STEP
+0 ROTSTEP 0 180 180 REL
+1 8 -100 8 10 -1 0 0 0 1 0 0 0 -1 30364.dat
+1 8 -100 8 -10 -1 0 0 0 1 0 0 0 -1 30364.dat
+0 STEP
+1 8 -70 8 0 0 0 -1 0 1 0 1 0 0 3747a.dat
+0 STEP
+1 7 -90 38 0 1 0 0 0 1 0 0 0 1 30360.dat
+0 STEP
+1 7 -50 8 30 0 0 -1 0 1 0 1 0 0 4287.dat
+1 7 -50 8 -30 0 0 -1 0 1 0 1 0 0 4287.dat
+0 STEP
+1 8 110 8 -20 1 0 0 0 1 0 0 0 1 30359a.dat
+1 8 110 18.5 -160 1 0 0 0 0 1 0 -1 0 4740.dat
+1 7 110 18.5 -168 1 0 0 0 0 1 0 -1 0 4589.dat
+
+
+
+0 NOFILE
+0 FILE 7140 - Lower Right Wing.ldr
+0 Lower Right Wing
+0 Name: 7140 - Lower Right Wing.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 7 0 0 0 0 0 -1 0 1 0 1 0 0 30356.dat
+1 4 -100 -8 0 1 0 0 0 1 0 0 0 1 3068b.dat
+1 4 110 -8 40 0 0 -1 0 1 0 1 0 0 2412b.dat
+0 STEP
+0 ROTSTEP 0 180 180 REL
+1 8 -100 8 10 -1 0 0 0 1 0 0 0 -1 30364.dat
+1 8 -100 8 -10 -1 0 0 0 1 0 0 0 -1 30364.dat
+0 STEP
+1 8 -70 8 0 0 0 -1 0 1 0 1 0 0 3747a.dat
+0 STEP
+1 7 -90 38 0 -1 0 0 0 1 0 0 0 -1 30360.dat
+0 STEP
+1 7 -50 8 30 0 0 -1 0 1 0 1 0 0 4287.dat
+1 7 -50 8 -30 0 0 -1 0 1 0 1 0 0 4287.dat
+0 STEP
+1 8 110 8 20 -1 0 0 0 1 0 0 0 -1 30359a.dat
+1 8 110 18.5 160 -1 0 0 0 0 1 0 1 0 4740.dat
+1 7 110 18.5 168 -1 0 0 0 0 1 0 1 0 4589.dat
+
+
+
+0 NOFILE
+0 FILE 7140 - Upper Left Wing.ldr
+0 Upper Left Wing
+0 Name: 7140 - Upper Left Wing.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 7 0 0 0 0 0 -1 0 1 0 1 0 0 30355.dat
+1 8 -100 -24 10 -1 0 0 0 1 0 0 0 -1 30364.dat
+1 8 -100 -24 -10 -1 0 0 0 1 0 0 0 -1 30364.dat
+0 STEP
+1 8 -70 -24 0 0 0 -1 0 1 0 1 0 0 3298.dat
+0 STEP
+1 8 0 0 0 1 0 0 0 1 0 0 0 1 7140 - Upper Left Wing Engine.ldr
+0 STEP
+1 7 -50 -24 -30 0 0 -1 0 1 0 1 0 0 4286.dat
+1 7 -50 -24 30 0 0 -1 0 1 0 1 0 0 4286.dat
+0 STEP
+1 4 60 -8 -20 1 0 0 0 1 0 0 0 1 3068b.dat
+1 7 20 -8 10 1 0 0 0 1 0 0 0 1 2431p79.dat
+0 STEP
+1 8 110 -24 -20 1 0 0 0 1 0 0 0 1 30359a.dat
+1 8 110 -13.5 -160 1 0 0 0 0 1 0 -1 0 4740.dat
+1 7 110 -13.5 -168 1 0 0 0 0 1 0 -1 0 4589.dat
+
+
+
+0 NOFILE
+0 FILE 7140 - Upper Left Wing Engine.ldr
+0 Upper Left Wing Engine
+0 Name: 7140 - Upper Left Wing Engine.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 7 -90 -34 0 1 0 0 0 1 0 0 0 1 30360.dat
+1 4 -110 -48 0 0 0 -1 0 1 0 1 0 0 2412b.dat
+0 STEP
+1 7 -90 -64 0 0 0 -1 0 1 0 1 0 0 3039.dat
+
+
+
+0 NOFILE
+0 FILE 7140 - Upper Right Wing.ldr
+0 Upper Right Wing
+0 Name: 7140 - Upper Right Wing.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 7 0 0 0 0 0 -1 0 1 0 1 0 0 30356.dat
+1 8 -100 -24 10 -1 0 0 0 1 0 0 0 -1 30364.dat
+1 8 -100 -24 -10 -1 0 0 0 1 0 0 0 -1 30364.dat
+0 STEP
+1 8 -70 -24 0 0 0 -1 0 1 0 1 0 0 3298.dat
+0 STEP
+1 8 0 0 0 1 0 0 0 1 0 0 0 1 7140 - Upper Right Wing Engine.ldr
+0 STEP
+1 7 -50 -24 30 0 0 -1 0 1 0 1 0 0 4286.dat
+1 7 -50 -24 -30 0 0 -1 0 1 0 1 0 0 4286.dat
+0 STEP
+1 7 20 -8 -10 1 0 0 0 1 0 0 0 1 2431p79.dat
+1 4 60 -8 20 1 0 0 0 1 0 0 0 1 3068b.dat
+0 STEP
+1 8 110 -24 20 -1 0 0 0 1 0 0 0 -1 30359a.dat
+1 8 110 -13.5 160 -1 0 0 0 0 1 0 1 0 4740.dat
+1 7 110 -13.5 168 -1 0 0 0 0 1 0 1 0 4589.dat
+
+
+
+0 NOFILE
+0 FILE 7140 - Upper Right Wing Engine.ldr
+0 Upper Right Wing Engine
+0 Name: 7140 - Upper Right Wing Engine.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 7 -90 -34 0 -1 0 0 0 1 0 0 0 -1 30360.dat
+1 4 -110 -48 0 0 0 -1 0 1 0 1 0 0 2412b.dat
+0 STEP
+1 7 -90 -64 0 0 0 -1 0 1 0 1 0 0 3039.dat
+
+
+
+0 NOFILE
+0 FILE 7140 - Rear Engines.ldr
+0 Rear Engines
+0 Name: 7140 - Rear Engines.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 38 0 0 0 1 0 0 0 1 0 0 0 1 3941.dat
+0 STEP
+1 7 0 -24 0 1 0 0 0 1 0 0 0 1 3941.dat
+1 7 0 -48 0 1 0 0 0 1 0 0 0 1 3941.dat
+0 STEP
+1 0 0 -56 0 1 0 0 0 1 0 0 0 1 4032a.dat
+
+
+
+0 NOFILE
+0 FILE 7140 - Landing Gear Bow.ldr
+0 Landing Gear Bow
+0 Name: 7140 - Landing Gear Bow.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 7 0 80 2 1 0 0 0 1 0 0 0 1 6120.dat
+0 STEP
+1 7 0 72 0 1 0 0 0 1 0 0 0 1 6141.dat
+0 STEP
+1 7 0 24 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 7 0 48 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 7 0 0 0 -1 0 0 0 1 0 0 0 -1 3665.dat
+
+
+0 NOFILE
+0 FILE 7140 - Landing Gear Tail.ldr
+0 Landing Gear Tail
+0 Name: 7140 - Landing Gear Tail.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+1 7 -90 40 -10 0 0 -1 0 1 0 1 0 0 3623.dat
+1 7 90 40 -10 0 0 -1 0 1 0 1 0 0 3623.dat
+0 STEP
+1 7 0 -8 0 0 0 -1 0 1 0 1 0 0 30180.dat
+
+0 NOFILE
+0 FILE 7140 - Support Vehicle - Hose mod.ldr
+0 Support Vehicle - Hose
+0 Name: 7140 - Support Vehicle - Hose mod.ldr
+0 Author: Daniel Goerner [TK-949]
+0 !LEOCAD PIECE PIVOT  0 8 0 1 0 0 0 1 0 0 0 1
+1 7 0 -94 0 1 0 0 0 -1 0 0 0 -1 750.dat
+0 STEP
+1 16 3.1026 -56.5571 0.9965 1 0 0 0 1 0 0 0 1 top_part_hose.ldr
+0 STEP
+1 16 21.9862 -45.4477 -4.0885 1 0 0 0 1 0 0 0 1 bottom_part_hose.ldr
+0 STEP
+1 16 12.548 -65.633 -18.3361 1 0 0 0 1 0 0 0 1 last_part_hose.ldr
+0 STEP
+0 !LEOCAD PIECE PIVOT  0 8 0 1 0 0 0 1 0 0 0 1
+1 7 0 -85 -20 0 -1 0 1 0 0 0 0 1 750.dat
+0 STEP
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+0 NOFILE
+0 FILE top_part_hose.ldr
+0 
+0 Name: top_part_hose.ldr
+0 Author: 
+1 7 -3.1026 -37.4429 -0.9965 1 0 0 0 1 0 0 0 1 755.dat
+1 7 -2.6477 -29.5455 -0.9263 0.992546 0.121869 0 -0.121869 0.992546 0 0 0 1 756.dat
+1 7 -1.3358 -24.3816 -1.0546 0.965926 0.258819 0 -0.258819 0.965926 0 0 0 1 27328k02.dat
+1 7 0.3422 -17.5107 -0.4453 0.945519 0.307831 -0.105995 -0.324329 0.918978 -0.224253 0.028375 0.246412 0.96875 756.dat
+1 7 0.9421 -12.3723 0.2481 0.989908 0.135056 -0.042922 -0.140733 0.972434 -0.185918 0.01663 0.190082 0.981627 27328k02.dat
+1 7 3.0799 -5.0301 2.3186 0.838671 0.532737 -0.113236 -0.542566 0.835343 -0.088455 0.047468 0.135623 0.989623 756.dat
+0 NOFILE
+0 FILE bottom_part_hose.ldr
+0 
+0 Name: bottom_part_hose.ldr
+0 Author: 
+1 7 8.8964 -21.8109 -8.8138 0.925919 0.317538 -0.204557 -0.374548 0.841902 -0.388476 0.048861 0.436314 0.898467 57539k02.dat
+1 7 10.7337 -15.8342 -4.7669 0.953201 0.086458 -0.289711 -0.278581 0.623492 -0.730514 0.117474 0.777035 0.618398 756.dat
+1 7 9.1395 -12.1836 -0.3345 0.747789 -0.32148 -0.580916 -0.29107 0.627657 -0.722028 0.596733 0.709011 0.375782 27328k02.dat
+1 7 5.7158 -7.9885 5.2422 0.335941 -0.675196 -0.656699 -0.658507 0.330135 -0.676299 0.673433 0.659637 -0.333715 756.dat
+1 7 0.5915 -8.1756 8.0837 0.240444 0.857093 0.455608 -0.955952 0.127686 0.264294 0.16835 -0.499087 0.850041 57539k02.dat
+1 7 -4.1817 -8.7629 10.7001 0.326163 0.931621 0.160311 -0.940732 0.303203 0.151962 0.092964 -0.200374 0.975299 756.dat
+1 7 -10.8526 -12.2549 9.1914 0.567134 0.809538 -0.151681 -0.82143 0.542512 -0.175878 -0.060091 0.224342 0.972656 57539k02.dat
+0 NOFILE
+0 FILE last_part_hose.ldr
+0 
+0 Name: last_part_hose.ldr
+0 Author: 
+1 7 -10.7058 -19.1559 -1.8143 -0.017452 0.999848 0 -0.999848 -0.017452 0 0 0 1 755.dat
+1 7 -3.2811 -19.0622 -2.2894 0.156393 0.987083 -0.034767 -0.987692 0.156382 -0.003042 0.002434 0.034814 0.999391 756.dat
+1 7 1.6762 -17.1825 -1.7043 0.357875 0.921744 -0.14938 -0.933706 0.355113 -0.045696 0.010927 0.155831 0.987723 27328k02.dat
+1 7 8.0209 -14.2934 -0.4305 0.556544 0.809984 -0.184889 -0.830673 0.538328 -0.142078 -0.01555 0.232655 0.972435 756.dat
+1 7 12.1543 -11.0452 1.1413 0.699466 0.686476 -0.198741 -0.713906 0.658338 -0.2386 -0.032954 0.308775 0.950564 57539k02.dat
+1 7 16.8434 -5.5895 2.7944 0.786917 0.543275 -0.292598 -0.607906 0.763913 -0.216534 0.105882 0.348267 0.931396 756.dat
+0 NOFILE

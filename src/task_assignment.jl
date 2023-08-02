@@ -1,7 +1,15 @@
 TaskGraphs.duration_lower_bound(node::ConstructionPredicate) = 0.0
 function TaskGraphs.duration_lower_bound(node::ConstructionPredicate,start,goal,max_speed)
+    env_dt = rvo_default_time_step()
     d = norm(goal-start)
-    dt = d/max_speed
+    δd = max_speed * env_dt
+    num_steps = floor(d / δd)
+    ϵ = HierarchicalGeometry.capture_distance_tolerance()
+    if abs(d - num_steps * δd) > ϵ # eps(Float64)
+        num_add_steps = ceil(ϵ / δd)
+        num_steps += num_add_steps
+    end
+    return env_dt * num_steps
 end
 function TaskGraphs.duration_lower_bound(node::EntityGo)
     start = global_transform(start_config(node)).translation
@@ -12,17 +20,37 @@ function TaskGraphs.duration_lower_bound(node::Union{FormTransportUnit,DepositCa
     start = global_transform(cargo_start_config(node)).translation
     goal = global_transform(cargo_goal_config(node)).translation
     TaskGraphs.duration_lower_bound(node,start,goal,default_loading_speed())
-    # d = norm(goal-start)
-    # max_speed = default_loading_speed()
-    # dt = d/max_speed
 end
 function TaskGraphs.duration_lower_bound(node::LiftIntoPlace)
-    start = global_transform(start_config(node)).translation
-    goal = global_transform(goal_config(node)).translation
-    TaskGraphs.duration_lower_bound(node,start,goal,default_loading_speed())
-    # d = norm(goal-start)
-    # max_speed = default_loading_speed()
-    # dt = d/max_speed
+    # Need to account for order of movement: rotate, then translate
+    env_dt = rvo_default_time_step()
+
+    v_max = default_loading_speed()
+    ω_max = default_rotational_loading_speed()
+
+    start_tform = global_transform(start_config(node))
+    goal_tform = global_transform(goal_config(node))
+    tf_error = relative_transform(start_tform, goal_tform)
+
+    # translation error
+    dx = tf_error.translation[1:2]
+    trans_dt = 0.0
+    if norm(dx) <= 1e-4
+        trans_dt = env_dt
+    else
+        vel = normalize(dx) * min(v_max, norm(dx) / env_dt)
+        trans_dt = TaskGraphs.duration_lower_bound(node, tf_error.translation[1:2], [0, 0], norm(vel))
+    end
+    # rotation error (estimate for time)
+    r = RotationVec(tf_error.linear) # rotation vector
+    θ = SVector(r.sx, r.sy, r.sz) # convert r to svector
+    if norm(θ) <= 1e-4
+        rot_dt = 0.0
+    else
+        ω = normalize(θ) * min(ω_max, norm(θ) / env_dt)
+        rot_dt = TaskGraphs.duration_lower_bound(node, θ, [0, 0, 0], norm(ω))
+    end
+    return trans_dt + rot_dt
 end
 
 TaskGraphs.is_tight(node::Union{TransportUnitGo,RobotGo}) = true
@@ -285,7 +313,7 @@ end
 function set_leaf_vtxs!(sched::OperatingSchedule,template=ProjectComplete)
     empty!(TaskGraphs.get_terminal_vtxs(sched))
     empty!(TaskGraphs.get_root_node_weights(sched))
-    for v in vertices(sched)
+    for v in Graphs.vertices(sched)
         if is_terminal_node(sched,v) && matches_template(template,get_node(sched,v))
             push!(TaskGraphs.get_terminal_vtxs(sched),v)
             TaskGraphs.get_root_node_weights(sched)[v] = 1.0
@@ -296,7 +324,7 @@ end
 function JuMP.optimize!(model::GreedyOrderedAssignment)
     # TaskGraphs.greedy_assignment!(model)
     assign_collaborative_tasks!(model)
-    set_leaf_vtxs!(model.schedule,ProjectComplete)
+    set_leaf_vtxs!(model.schedule, ProjectComplete)
 end
 
 function construct_build_step_task_set(sched,scene_tree,step_id)

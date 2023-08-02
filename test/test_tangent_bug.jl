@@ -76,12 +76,11 @@ for time_step in 1:800
     end
     pos = pos + dt*vel
     # @show time_step, pos
-    atframe(anim,current_frame(anim)) do 
+    atframe(anim,current_frame(anim)) do
         settransform!(vis["waypoint"],CT.Translation(waypoint...,0.0))
         settransform!(vis["robot"],CT.Translation(pos...,0.0))
     end
     step_animation!(anim)
-    # sleep(dt)
 end
 setanimation!(vis,anim.anim)
 
@@ -116,5 +115,4 @@ setanimation!(vis,anim.anim)
 #     pos = pos .+ vel*dt
 #     # update visualizer
 #     settransform!(vis[:robot],CT.Translation(pos...,0.0))
-#     sleep(dt)
 # end
