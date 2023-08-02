@@ -46,13 +46,13 @@ include("../src/tg_render_tools.jl")
 struct SimParameters
     sim_batch_size::Int
     max_time_steps::Int
-    visualize_processing::Bool
     process_animation_tasks::Bool
     save_anim_interval::Int
     process_updates_interval::Int
-    anim_steps::Bool
+    anim_active_agents::Bool
     anim_active_areas::Bool
     save_anim_prog_path::String
+    save_animation_along_the_way::Bool
     max_num_iters_no_progress::Int
 end
 
@@ -87,35 +87,45 @@ function run_lego_demo(;
     base_graphics_path                  =joinpath(dirname(pathof(ConstructionBots)), "..", "graphics"),
     graphics_path                       =joinpath(base_graphics_path, project_name),
     assignment_mode                     =:GREEDY,
-    visualize_processing                =false,
     visualize_animation_at_end          =false,
     save_animation                      =true,
     save_animation_along_the_way        =false,
-    anim_steps                          =false,
+    anim_active_agents                  =false,
     anim_active_areas                   =false,
     process_updates_interval            =25,
     save_anim_interval                  =500,
     rvo_flag                            =true,
-    overwrite_results                   =false,
+    tangent_bug_flag                    =true,
+    dispersion_flag                     =true,
+    overwrite_results                   =true,
     write_results                       =true,
     quit_after_optimal                  =false,
     max_num_iters_no_progress           =Inf,
     sim_batch_size                      =50,
-    log_level                           =Logging.LogLevel(2),
+    log_level                           =Logging.Warn,
     default_milp_optimizer              =Gurobi.Optimizer, #! Need to change to non-Gurobi
-    optimizer_time_limit                =100,
-    seed                                =1
+    optimizer_time_limit                =600,
+    seed                                =1 # TODO: Switch to passing a rng vs a seed for the global rng
 )
 
     process_animation_tasks = save_animation || save_animation_along_the_way || visualize_animation_at_end
-    @assert !(process_animation_tasks && visualize_processing) "Cannot visualize processing while processing animation tasks."
+
+    # record statistics
+    stats = Dict()
+    stats[:seed] = seed
+    stats[:modelscale] = model_scale
+    stats[:robotscale] = robot_scale
+    stats[:assignment_mode] = string(assignment_mode)
+    stats[:rvo_flag] = string(rvo_flag)
+    stats[:tangent_bug_flag] = string(tangent_bug_flag)
+    stats[:dispersion_flag] = string(dispersion_flag)
 
     if save_animation_along_the_way
         save_animation = true
     end
 
     visualizer = nothing
-    if process_animation_tasks || visualize_processing
+    if process_animation_tasks
         visualizer = MeshCat.Visualizer()
     end
 
@@ -130,10 +140,20 @@ function run_lego_demo(;
         MOI.Silent()=>false
     )
 
-    if rvo_flag == true
-        prefix = "with_rvo"
+    if rvo_flag
+        prefix = "RVO"
     else
-        prefix = "without_rvo"
+        prefix = "no-RVO"
+    end
+    if dispersion_flag
+        prefix = string(prefix, "_Dispersion")
+    else
+        prefix = string(prefix, "_no-Dispersion")
+    end
+    if tangent_bug_flag
+        prefix = string(prefix, "_TangentBug")
+    else
+        prefix = string(prefix, "_no-TangentBug")
     end
     if assignment_mode == :OPTIMAL
         prefix = string("optimal_", prefix)
@@ -154,13 +174,13 @@ function run_lego_demo(;
     sim_params = SimParameters(
         sim_batch_size,
         max_steps,
-        visualize_processing,
         process_animation_tasks,
         save_anim_interval,
         process_updates_interval,
-        anim_steps,
+        anim_active_agents,
         anim_active_areas,
         anim_prog_path,
+        save_animation_along_the_way,
         max_num_iters_no_progress
     )
 
@@ -172,6 +192,9 @@ function run_lego_demo(;
         Cylinder(Point(0.0, 0.0, 0.0), Point(0.0, 0.0, robot_height), robot_radius)
     )
     FactoryRendering.set_render_param!(:Radius, :Robot, robot_radius)
+    ConstructionBots.set_rvo_default_time_step!(1 / 40.0)
+    ConstructionBots.set_default_loading_speed!(50 * HierarchicalGeometry.default_robot_radius())
+    ConstructionBots.set_default_rotational_loading_speed!(50 * HierarchicalGeometry.default_robot_radius())
 
     pre_execution_start_time = time()
     model = parse_ldraw_file(filename)
@@ -253,7 +276,6 @@ function run_lego_demo(;
     print("done!\n")
 
     # record statistics
-    stats = Dict()
     stats[:numobjects] = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(ObjectNode, n)])
     stats[:numassemblies] = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(AssemblyNode, n)])
     stats[:numrobots] = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(RobotNode, n)])
@@ -305,6 +327,7 @@ function run_lego_demo(;
     # Convert to OperatingSchedule
     ConstructionBots.set_default_loading_speed!(50 * HierarchicalGeometry.default_robot_radius())
     ConstructionBots.set_default_rotational_loading_speed!(50 * HierarchicalGeometry.default_robot_radius())
+
     tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 
     #? Can we use the greedy assignment to seed the MILP?!
@@ -335,7 +358,6 @@ function run_lego_demo(;
     # Assign robots to "home" locations so they don't sit around in each others' way
     go_nodes = [n for n in get_nodes(tg_sched) if matches_template(RobotGo, n) && is_terminal_node(tg_sched, n)]
     min_assembly_1_xy = (staging_circles[AssemblyID(1)].center .- staging_circles[AssemblyID(1)].radius)[1:2]
-    # home_vtxs = draw_random_uniform(home_vtx_candidates, length(go_nodes))
     for (ii, n) in enumerate(go_nodes)
         vtx_x = min_assembly_1_xy[1] - ii * 5 * robot_radius
         vtx_y = min_assembly_1_xy[2]
@@ -363,17 +385,10 @@ function run_lego_demo(;
         return nothing
     end
 
-
-    if !isnothing(visualizer)
-        if visualize_processing
-            println("Visualizer started at $(visualizer.core.host):$(visualizer.core.port)")
-            open(visualizer)
-        end
-        delete!(visualizer)
-    end
-
     factory_vis = FactoryVisualizer(vis=visualizer)
     if !isnothing(visualizer)
+        delete!(visualizer)
+
         # Visualize assembly
         factory_vis = populate_visualizer!(scene_tree, visualizer;
             color_map=color_map,
@@ -401,51 +416,63 @@ function run_lego_demo(;
 
     set_scene_tree_to_initial_condition!(scene_tree, sched; remove_all_edges=true)
 
+    #! Why is this here?
+    ConstructionBots.set_staging_buffer_radius!(HierarchicalGeometry.default_robot_radius())
+
     #? Can we only set the RVO module if we are using it? Might avoid the requirement of
     #? having to install the RVO module if we don't want to use it (make it easier for
     #? others to run the code just focusing on the scheduling)
     # rvo
-    ConstructionBots.reset_rvo_python_module!()
-
-    ConstructionBots.set_rvo_default_time_step!(1 / 40.0)
     ConstructionBots.set_rvo_default_neighbor_distance!(16 * HierarchicalGeometry.default_robot_radius()) # 4
     ConstructionBots.set_rvo_default_min_neighbor_distance!(10 * HierarchicalGeometry.default_robot_radius()) # 3
+
+    #! We can put a check here for the rvo_flag?
+    ConstructionBots.reset_rvo_python_module!()
     ConstructionBots.rvo_set_new_sim!(ConstructionBots.rvo_new_sim(; horizon=2.0))
-    ConstructionBots.set_staging_buffer_radius!(HierarchicalGeometry.default_robot_radius())
+
+
+    max_robot_go_id = maximum([n.id.id for n in get_nodes(tg_sched) if matches_template(RobotGo, n)])
+    max_cargo_id = maximum([cargo_id(entity(n)).id for n in get_nodes(tg_sched) if matches_template(TransportUnitGo, n)])
 
     env = PlannerEnv(
         sched=tg_sched,
         scene_tree=scene_tree,
-        staging_circles=staging_circles
+        staging_circles=staging_circles,
+        max_robot_go_id=max_robot_go_id,
+        max_cargo_id=max_cargo_id,
     )
     active_nodes = (get_node(tg_sched, v) for v in env.cache.active_set)
+
+    #! Check here for the rvo_flag as well?
     ConstructionBots.rvo_add_agents!(scene_tree, active_nodes)
 
     static_potential_function = (x, r) -> 0.0
     pairwise_potential_function = ConstructionBots.repulsion_potential
-
-    #? Should we add an option here to allow for processing without the tangent bug or
-    #? potential field controllers?
     for node in get_nodes(env.sched)
         if matches_template(Union{RobotStart,FormTransportUnit}, node)
             n = entity(node)
             agent_radius = HierarchicalGeometry.get_radius(get_base_geom(n, HypersphereKey()))
             vmax = ConstructionBots.get_rvo_max_speed(n)
-            env.agent_policies[node_id(n)] = ConstructionBots.VelocityController(
-                nominal_policy=TangentBugPolicy(
-                    dt=env.dt,
-                    vmax=vmax,
-                    agent_radius=agent_radius,
-                ),
-                dispersion_policy=ConstructionBots.PotentialFieldController(
-                    agent=n,
-                    node=node,
-                    agent_radius=agent_radius,
-                    vmax=vmax,
-                    max_buffer_radius=2.5 * HierarchicalGeometry.default_robot_radius(),
-                    static_potentials=static_potential_function,
-                    pairwise_potentials=pairwise_potential_function,
+
+            tagent_bug_pol = nothing
+            dispersion_pol = nothing
+            if tangent_bug_flag
+                tagent_bug_pol = TangentBugPolicy(
+                    dt=env.dt, vmax=vmax, agent_radius=agent_radius
                 )
+            end
+            if dispersion_flag
+                dispersion_pol = ConstructionBots.PotentialFieldController(
+                    agent=n, node=node, agent_radius=agent_radius, vmax=vmax,
+                    max_buffer_radius=2.5 * agent_radius,
+                    static_potentials=static_potential_function,
+                    pairwise_potentials=pairwise_potential_function
+                )
+            end
+
+            env.agent_policies[node_id(n)] = ConstructionBots.VelocityController(
+                nominal_policy=tagent_bug_pol,
+                dispersion_policy=dispersion_pol
             )
         end
     end
@@ -511,6 +538,7 @@ function run_lego_demo(;
     end
     return env, stats
 end
+
 """
     run_simulation!(env, factory_vis, anim, sim_params)
 
@@ -549,7 +577,7 @@ function run_simulation!(
     )
 
     up_steps = []
-    while !sim_process_data.stop_simulating && sim_process_data.iter < max_steps
+    while !sim_process_data.stop_simulating && sim_process_data.iter < sim_params.max_time_steps
         up_steps = simulate!(env, factory_vis, anim, sim_params, sim_process_data, up_steps)
     end
 
@@ -566,9 +594,10 @@ function simulate!(
 )
 
     @unpack sched, cache = env
-    @unpack sim_batch_size, max_time_steps, visualize_processing = sim_params
+    @unpack sim_batch_size, max_time_steps = sim_params
     @unpack process_animation_tasks, save_anim_interval, process_updates_interval = sim_params
-    @unpack anim_steps, anim_active_areas, save_anim_prog_path, max_num_iters_no_progress = sim_params
+    @unpack anim_active_agents, anim_active_areas, max_num_iters_no_progress = sim_params
+    @unpack save_animation_along_the_way, save_anim_prog_path = sim_params
 
     for _ in 1:sim_batch_size
         sim_process_data.iter += 1
@@ -615,7 +644,7 @@ function simulate!(
 
                 set_current_frame!(anim, k_k + sim_process_data.starting_frame)
                 atframe(anim, current_frame(anim)) do
-                    if anim_steps
+                    if anim_active_areas
                         for node_i in closed_steps_nodes_k
                             setvisible!(node_i, false)
                         end
@@ -623,7 +652,7 @@ function simulate!(
                             setvisible!(node_i, true)
                         end
                     end
-                    if anim_active_areas
+                    if anim_active_agents
                         setvisible!(factory_vis.active_flags, false)
                         for node_key in fac_active_flags_nodes_k
                             setvisible!(factory_vis.active_flags[node_key], true)
@@ -635,7 +664,8 @@ function simulate!(
             setanimation!(factory_vis.vis, anim.anim, play=false)
             update_steps = []
 
-            if (!isnothing(save_anim_prog_path) &&
+            if (save_animation_along_the_way &&
+                !isnothing(save_anim_prog_path) &&
                 !project_stop_bool &&
                 sim_process_data.num_iters_since_anim_save >= save_anim_interval)
 
