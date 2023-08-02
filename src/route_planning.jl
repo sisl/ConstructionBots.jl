@@ -104,6 +104,8 @@ Contains the Environment state and definition.
     agent_policies::Dict        = Dict()
     agent_parent_build_step_active::Dict = Dict()
     staging_buffers::Dict{AbstractID,Float64} = Dict{AbstractID,Float64}() # dynamic buffer for staging areas
+    max_robot_go_id::Int64 = Inf
+    max_cargo_id::Int64 = Inf
 end
 
 node_is_active(env,node) = get_vtx(env.sched,node_id(node)) in env.cache.active_set
@@ -146,24 +148,22 @@ Low alpha means higher priority
 function set_rvo_priority!(env::PlannerEnv, node)
     if matches_template(Union{FormTransportUnit, DepositCargo}, node)
         alpha = 0.0
-    elseif parent_build_step_is_active(node, env)
-        if cargo_ready_for_pickup(node,env)
-            if matches_template(TransportUnitGo, node)
-                alpha = 0.2
-            else
-                alpha = 0.3
-            end
-        else
-            alpha = 0.5
-        end
-    else
-        if matches_template(TransportUnitGo, node)
-            alpha = 0.6
-        elseif matches_template(RobotGo, node)
-            alpha = 0.7 + node.id.id / 2000
+    elseif matches_template(TransportUnitGo, node)
+        if parent_build_step_is_active(node, env)
+            c_id = cargo_id(entity(node)).id
+            alpha = 0.0 + c_id / (10 * env.max_cargo_id)
         else
             alpha = 1.0
         end
+    elseif parent_build_step_is_active(node, env)
+        robot_id_scale = node.id.id / (10 * env.max_robot_go_id)
+        if cargo_ready_for_pickup(node, env)
+            alpha = 0.1 + robot_id_scale
+        else
+            alpha = 0.5 + robot_id_scale
+        end
+    else
+        alpha = 1.0
     end
     rvo_set_agent_alpha!(node,alpha)
 end
@@ -187,7 +187,7 @@ end
 The max rotational velocity with which a part may be loaded (e.g., by
 LiftIntoPlace,FormTransportUnit,DepositCargo)
 """
-global ROTATIONAL_LOADING_SPEED = 0.1
+ global ROTATIONAL_LOADING_SPEED = 0.1
 default_rotational_loading_speed() = ROTATIONAL_LOADING_SPEED
 function set_default_rotational_loading_speed!(val::Float64)
     global ROTATIONAL_LOADING_SPEED = val
@@ -255,7 +255,9 @@ function step_environment!(env::PlannerEnv, sim=rvo_global_sim())
     end
 
     for (_, policy) in env.agent_policies
-        update_parent_build_status!(env, policy.dispersion_policy.node)
+        if !isnothing(policy.dispersion_policy)
+            update_parent_build_status!(env, policy.dispersion_policy.node)
+        end
     end
 
 
@@ -400,11 +402,6 @@ function CRCBS.is_goal(node::Union{RobotGo,TransportUnitGo}, env::PlannerEnv)
     agent = entity(node)
     state = global_transform(agent)
     goal = global_transform(goal_config(node))
-
-    # println("\t Goal T : $(goal.translation)")
-    # println("\t State T: $(state.translation)")
-    # println("\t Goal L : $(goal.linear)")
-    # println("\t State L: $(state.linear)")
 
     if !is_within_capture_distance(state,goal)
         return false
@@ -738,10 +735,8 @@ function get_twist_cmd(node, env::PlannerEnv)
 
         #? Can we use the cached version here?
         if parent_build_step_is_active(node, env) && cargo_ready_for_pickup(node, env)
-            #! Do we want to excude all areas if parent build step is active or just the parent staging area
             parent_build_step = get_parent_build_step(sched, node)
             push!(excluded_ids, node_id(parent_build_step))
-            # excluded_ids = Set([id for id in env.active_build_steps])
         end
         # get circle obstacles, potentially inflated
         circles = active_staging_circles(env, excluded_ids)
@@ -759,9 +754,9 @@ function get_twist_cmd(node, env::PlannerEnv)
     if use_rvo()
         ############ Hacky Traffic Thinning #############
         # set nominal velocity to zero if close to goal (HACK)
-        parent_step = get_parent_build_step(sched,node)
+        parent_step = get_parent_build_step(sched, node)
         if !(parent_step === nothing)
-            countdown = active_build_step_countdown(parent_step.node,env)
+            countdown = active_build_step_countdown(parent_step.node, env)
             dist_to_goal = norm(goal.translation .- global_transform(agent).translation)
             if dist_to_goal < 15*default_robot_radius()
                 # So the agent doesn't crowd its destination

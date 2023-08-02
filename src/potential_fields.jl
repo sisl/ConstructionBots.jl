@@ -256,7 +256,7 @@ function compute_potential_gradient!(policy::PotentialFieldController, env::Plan
     for other_agent in rvo_active_agents(scene_tree)
         if !(agent === other_agent)
             α2 = rvo_get_agent_alpha(other_agent)
-            if α1 < α2 # can't be pushed by other agent
+            if α1 <= α2 # can't be pushed by other agent
                 continue
             end
             other_policy = env.agent_policies[node_id(other_agent)].dispersion_policy
