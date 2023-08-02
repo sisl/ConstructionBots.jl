@@ -34,9 +34,11 @@ using JLD2
 
 using ProgressMeter
 
-using StatsBase: std
-
 using Gurobi
+using GLPK
+using HiGHS
+
+using StatsBase
 
 include("../deps/GraphPlottingBFS.jl")
 include("../deps/FactoryRendering.jl")
@@ -68,57 +70,68 @@ mutable struct SimProcessingData
     progress_update_fcn::Function
 end
 
+struct NoSolutionError <: Exception end
+Base.showerror(io::IO, e::NoSolutionError) = print(io, "No solution found!")
+
 """
     run_lego_demo(;kwargs...)
 
 Run the entire lego demo for model `project_name`.
 """
 function run_lego_demo(;
-    project_name                        ="tractor.mpd",
-    model_scale                         =0.008,
-    num_robots                          =12,
-    robot_scale                         =model_scale * 0.7,
-    robot_height                        =10 * robot_scale,
-    robot_radius                        =25 * robot_scale,
-    num_object_layers                   =1,
-    max_steps                           =100000,
-    staging_buffer_factor               =1.2,
-    build_step_buffer_factor            =0.5,
-    base_graphics_path                  =joinpath(dirname(pathof(ConstructionBots)), "..", "graphics"),
-    graphics_path                       =joinpath(base_graphics_path, project_name),
-    assignment_mode                     =:GREEDY,
-    visualize_animation_at_end          =false,
-    save_animation                      =true,
-    save_animation_along_the_way        =false,
-    anim_active_agents                  =false,
-    anim_active_areas                   =false,
-    process_updates_interval            =25,
-    save_anim_interval                  =500,
-    rvo_flag                            =true,
-    tangent_bug_flag                    =true,
-    dispersion_flag                     =true,
-    overwrite_results                   =true,
-    write_results                       =true,
-    quit_after_optimal                  =false,
-    max_num_iters_no_progress           =Inf,
-    sim_batch_size                      =50,
-    log_level                           =Logging.Warn,
-    default_milp_optimizer              =Gurobi.Optimizer, #! Need to change to non-Gurobi
-    optimizer_time_limit                =600,
-    seed                                =1 # TODO: Switch to passing a rng vs a seed for the global rng
+    project_name::String                      ="tractor.mpd",
+    model_scale::Float64                      =0.008,
+    num_robots::Int                           =12,
+    robot_scale::Float64                      =model_scale * 0.7,
+    robot_height::Float64                     =10 * robot_scale,
+    robot_radius::Float64                     =25 * robot_scale,
+    num_object_layers::Int                    =1,
+    max_steps::Int                            =100000,
+    staging_buffer_factor::Float64            =1.2,
+    build_step_buffer_factor::Float64         =0.5,
+    base_graphics_path::String                =joinpath(dirname(pathof(ConstructionBots)), "..", "graphics"),
+    graphics_path::String                     =joinpath(base_graphics_path, project_name),
+    assignment_mode::Symbol                   =:GREEDY,
+    open_animation_at_end::Bool               =false,
+    save_animation::Bool                      =true,
+    save_animation_along_the_way::Bool        =false,
+    anim_active_agents::Bool                  =false,
+    anim_active_areas::Bool                   =false,
+    process_updates_interval::Int             =25,
+    save_anim_interval::Int                   =500,
+    rvo_flag::Bool                            =true,
+    tangent_bug_flag::Bool                    =true,
+    dispersion_flag::Bool                     =true,
+    overwrite_results::Bool                   =true,
+    write_results::Bool                       =true,
+    max_num_iters_no_progress::Int            =10000,
+    sim_batch_size::Int                       =50,
+    log_level::Logging.LogLevel               =Logging.Warn,
+    milp_optimizer::Symbol                    =:HiGHS,
+    milp_optimizer_attribute_dict::Dict       =Dict(),
+    optimizer_time_limit::Int                 =600,
+    rng::Random.AbstractRNG                   =Random.MersenneTwister(1)
 )
 
-    process_animation_tasks = save_animation || save_animation_along_the_way || visualize_animation_at_end
+    process_animation_tasks = save_animation || save_animation_along_the_way || open_animation_at_end
+
+    if rvo_flag && !dispersion_flag
+        @warn "RVO is enabled but dispersion is disabled. This is not recommended."
+    end
 
     # record statistics
     stats = Dict()
-    stats[:seed] = seed
+    stats[:rng] = "$rng"
     stats[:modelscale] = model_scale
     stats[:robotscale] = robot_scale
     stats[:assignment_mode] = string(assignment_mode)
-    stats[:rvo_flag] = string(rvo_flag)
-    stats[:tangent_bug_flag] = string(tangent_bug_flag)
-    stats[:dispersion_flag] = string(dispersion_flag)
+    stats[:rvo_flag] = rvo_flag
+    stats[:tangent_bug_flag] = tangent_bug_flag
+    stats[:dispersion_flag] = dispersion_flag
+
+    if assignment_mode == :OPTIMAL
+        stats[:Optimizer] = string(milp_optimizer)
+    end
 
     if save_animation_along_the_way
         save_animation = true
@@ -134,11 +147,30 @@ function run_lego_demo(;
     @assert ispath(filename) "File $(filename) does not exist."
 
     global_logger(ConsoleLogger(stderr, log_level))
+
+    # Adding additional attributes for GLPK and Gurobi
+    milp_optimizer_attribute_dict[MOI.Silent()] = false
+    default_milp_optimizer = nothing
+    if milp_optimizer == :GLPK
+        default_milp_optimizer = ()->GLPK.Optimizer(;want_infeasibility_certificates=false)
+        milp_optimizer_attribute_dict["tm_lim"] = optimizer_time_limit * 1000
+        milp_optimizer_attribute_dict["msg_lev"] = GLPK.GLP_MSG_ALL
+    elseif milp_optimizer == :Gurobi
+        default_milp_optimizer = Gurobi.Optimizer
+        milp_optimizer_attribute_dict["TimeLimit"] = optimizer_time_limit
+        # MIPFocus: 1 -- feasible solutions, 2 -- optimal solutions, 3 -- bound
+        milp_optimizer_attribute_dict["MIPFocus"] = 1
+    elseif milp_optimizer == :HiGHS
+        default_milp_optimizer = () -> HiGHS.Optimizer()
+        milp_optimizer_attribute_dict["time_limit"] = Float64(optimizer_time_limit)
+        milp_optimizer_attribute_dict["presolve"] = "on"
+    else
+        @warn "No additional parameters for $milp_optimizer were set."
+    end
     set_default_milp_optimizer!(default_milp_optimizer)
-    TaskGraphs.set_default_optimizer_attributes!(
-        "TimeLimit"=>optimizer_time_limit,
-        MOI.Silent()=>false
-    )
+    TaskGraphs.clear_default_optimizer_attributes!()
+
+    TaskGraphs.set_default_optimizer_attributes!(milp_optimizer_attribute_dict)
 
     if rvo_flag
         prefix = "RVO"
@@ -157,8 +189,12 @@ function run_lego_demo(;
     end
     if assignment_mode == :OPTIMAL
         prefix = string("optimal_", prefix)
-    else
+    elseif assignment_mode == :GREEDY
         prefix = string("greedy_", prefix)
+    elseif assignment_mode == :GreedyWarmStartMILP
+        prefix = string("warmstart_", prefix)
+    else
+        error("Unknown assignment mode: $(assignment_mode)")
     end
     mkpath(joinpath(graphics_path, prefix))
     stats_path = joinpath(graphics_path, prefix, "stats.toml")
@@ -186,7 +222,6 @@ function run_lego_demo(;
 
     reset_all_id_counters!()
     reset_all_invalid_id_counters!()
-    Random.seed!(seed)
 
     set_default_robot_geom!(
         Cylinder(Point(0.0, 0.0, 0.0), Point(0.0, 0.0, robot_height), robot_radius)
@@ -195,6 +230,10 @@ function run_lego_demo(;
     ConstructionBots.set_rvo_default_time_step!(1 / 40.0)
     ConstructionBots.set_default_loading_speed!(50 * HierarchicalGeometry.default_robot_radius())
     ConstructionBots.set_default_rotational_loading_speed!(50 * HierarchicalGeometry.default_robot_radius())
+    ConstructionBots.set_staging_buffer_radius!(HierarchicalGeometry.default_robot_radius()) # for tangent_bug policy
+    ConstructionBots.set_rvo_default_neighbor_distance!(16 * HierarchicalGeometry.default_robot_radius())
+    ConstructionBots.set_rvo_default_min_neighbor_distance!(10 * HierarchicalGeometry.default_robot_radius())
+
 
     pre_execution_start_time = time()
     model = parse_ldraw_file(filename)
@@ -244,7 +283,10 @@ function run_lego_demo(;
     robot_start_box_side = ceil(sqrt(num_robots)) * robot_spacing
     xy_range = (-robot_start_box_side/2:robot_spacing:robot_start_box_side/2)
     vtxs = ConstructionBots.construct_vtx_array(; spacing=(1.0, 1.0, 0.0), ranges=(xy_range, xy_range, 0:0))
-    robot_vtxs = draw_random_uniform(vtxs, num_robots)
+
+    robot_vtxs = StatsBase.sample(rng, vtxs, num_robots; replace=false)
+    # robot_vtxs = draw_random_uniform(vtxs, num_robots)
+
     ConstructionBots.add_robots_to_scene!(scene_tree, robot_vtxs, [default_robot_geom()])
 
     ## Recompute approximate geometry for when the robot is transporting it
@@ -330,59 +372,86 @@ function run_lego_demo(;
 
     tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 
-    #? Can we use the greedy assignment to seed the MILP?!
     assignment_time = time()
-    ## Black box MILP solver
+    ## MILP solver
+    valid_milp_solution = true
     milp_model = SparseAdjacencyMILP()
     if assignment_mode == :OPTIMAL
         milp_model = formulate_milp(milp_model, tg_sched, scene_tree)
         optimize!(milp_model)
-    end
-    if primal_status(milp_model) == MOI.NO_SOLUTION
+        if primal_status(milp_model) == MOI.NO_SOLUTION
+            valid_milp_solution = false
+        end
+    elseif assignment_mode == :GREEDY
         ## Greedy Assignment with enforced build-step ordering
         milp_model = ConstructionBots.GreedyOrderedAssignment(
             greedy_cost=TaskGraphs.GreedyFinalTimeCost(),
         )
         milp_model = formulate_milp(milp_model, tg_sched, scene_tree)
         optimize!(milp_model)
-    end
-    validate_schedule_transform_tree(
-        ConstructionBots.convert_from_operating_schedule(typeof(sched), tg_sched)
-        ; post_staging=true)
-    update_project_schedule!(nothing, milp_model, tg_sched, scene_tree)
-    @assert validate(tg_sched)
-    assignment_time = time() - assignment_time
-    post_assignment_makespan = TaskGraphs.makespan(tg_sched)
-    print("done!\n")
-
-    # Assign robots to "home" locations so they don't sit around in each others' way
-    go_nodes = [n for n in get_nodes(tg_sched) if matches_template(RobotGo, n) && is_terminal_node(tg_sched, n)]
-    min_assembly_1_xy = (staging_circles[AssemblyID(1)].center .- staging_circles[AssemblyID(1)].radius)[1:2]
-    for (ii, n) in enumerate(go_nodes)
-        vtx_x = min_assembly_1_xy[1] - ii * 5 * robot_radius
-        vtx_y = min_assembly_1_xy[2]
-        HierarchicalGeometry.set_desired_global_transform!(goal_config(n),
-            CoordinateTransformations.Translation(vtx_x, vtx_y, 0.0) ∘ identity_linear_map()
+    elseif assignment_mode == :GreedyWarmStartMILP
+        if milp_optimizer == :GLPK
+            println()
+            @warn """GLPK is not currently implemented through JuMP to support warm-starting.
+                       Recommend using HiGHS (:HiGHS) or Gurobi (:Gurobi)."""
+        end
+        greedy_sched = deepcopy(tg_sched)
+        greedy_model = ConstructionBots.GreedyOrderedAssignment(
+            greedy_cost=TaskGraphs.GreedyFinalTimeCost(),
         )
+        greedy_model = formulate_milp(greedy_model, greedy_sched, scene_tree)
+        optimize!(greedy_model)
+        greedy_assignmnet_matrix = get_assignment_matrix(greedy_model)
+
+        milp_model = SparseAdjacencyMILP()
+        milp_model = formulate_milp(milp_model, tg_sched, scene_tree; warm_start_soln=greedy_assignmnet_matrix)
+        optimize!(milp_model)
+        if primal_status(milp_model) == MOI.NO_SOLUTION
+            valid_milp_solution = false
+        end
+    else
+        error("Unknown assignment mode: $assignment_mode")
     end
+
+    post_assignment_makespan = Inf
+    if valid_milp_solution
+        validate_schedule_transform_tree(
+            ConstructionBots.convert_from_operating_schedule(typeof(sched), tg_sched)
+            ; post_staging=true)
+        update_project_schedule!(nothing, milp_model, tg_sched, scene_tree)
+        @assert validate(tg_sched)
+
+        # Assign robots to "home" locations so they don't sit around in each others' way
+        go_nodes = [n for n in get_nodes(tg_sched) if matches_template(RobotGo, n) && is_terminal_node(tg_sched, n)]
+        min_assembly_1_xy = (staging_circles[AssemblyID(1)].center .- staging_circles[AssemblyID(1)].radius)[1:2]
+        for (ii, n) in enumerate(go_nodes)
+            vtx_x = min_assembly_1_xy[1] - ii * 5 * robot_radius
+            vtx_y = min_assembly_1_xy[2]
+            HierarchicalGeometry.set_desired_global_transform!(goal_config(n),
+                CoordinateTransformations.Translation(vtx_x, vtx_y, 0.0) ∘ identity_linear_map()
+            )
+        end
+        post_assignment_makespan = TaskGraphs.makespan(tg_sched)
+    end
+    assignment_time = time() - assignment_time
+    print("done!\n")
 
     # compile pre execution statistics
     pre_execution_time = time() - pre_execution_start_time
-    if assignment_mode == :OPTIMAL && isa(milp_model, AbstractGreedyAssignment)
-        assignment_time = Inf
-        post_assignment_makespan = Inf
-        pre_execution_time = Inf
-    end
+
     stats[:AssigmentTime] = assignment_time
     stats[:PreExecutionRuntime] = pre_execution_time
     stats[:OptimisticMakespan] = post_assignment_makespan
+    stats[:ValidMILPSolution] = valid_milp_solution
+    stats[:OptimizerTimeLimit] = optimizer_time_limit
     if write_results
         open(joinpath(graphics_path, prefix, "stats.toml"), "w") do io
             TOML.print(io, stats)
         end
     end
-    if assignment_mode == :OPTIMAL && quit_after_optimal
-        return nothing
+
+    if !valid_milp_solution
+        throw(NoSolutionError())
     end
 
     factory_vis = FactoryVisualizer(vis=visualizer)
@@ -416,19 +485,12 @@ function run_lego_demo(;
 
     set_scene_tree_to_initial_condition!(scene_tree, sched; remove_all_edges=true)
 
-    #! Why is this here?
-    ConstructionBots.set_staging_buffer_radius!(HierarchicalGeometry.default_robot_radius())
 
-    #? Can we only set the RVO module if we are using it? Might avoid the requirement of
-    #? having to install the RVO module if we don't want to use it (make it easier for
-    #? others to run the code just focusing on the scheduling)
     # rvo
-    ConstructionBots.set_rvo_default_neighbor_distance!(16 * HierarchicalGeometry.default_robot_radius()) # 4
-    ConstructionBots.set_rvo_default_min_neighbor_distance!(10 * HierarchicalGeometry.default_robot_radius()) # 3
-
-    #! We can put a check here for the rvo_flag?
-    ConstructionBots.reset_rvo_python_module!()
-    ConstructionBots.rvo_set_new_sim!(ConstructionBots.rvo_new_sim(; horizon=2.0))
+    if rvo_flag
+        ConstructionBots.reset_rvo_python_module!()
+        ConstructionBots.rvo_set_new_sim!(ConstructionBots.rvo_new_sim(; horizon=2.0))
+    end
 
 
     max_robot_go_id = maximum([n.id.id for n in get_nodes(tg_sched) if matches_template(RobotGo, n)])
@@ -443,8 +505,9 @@ function run_lego_demo(;
     )
     active_nodes = (get_node(tg_sched, v) for v in env.cache.active_set)
 
-    #! Check here for the rvo_flag as well?
-    ConstructionBots.rvo_add_agents!(scene_tree, active_nodes)
+    if rvo_flag
+        ConstructionBots.rvo_add_agents!(scene_tree, active_nodes)
+    end
 
     static_potential_function = (x, r) -> 0.0
     pairwise_potential_function = ConstructionBots.repulsion_potential
@@ -532,7 +595,7 @@ function run_lego_demo(;
         if save_animation
             save_animation!(visualizer, anim_path)
         end
-        if visualize_animation_at_end
+        if open_animation_at_end
             open(visualizer)
         end
     end

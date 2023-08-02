@@ -262,7 +262,9 @@ function step_environment!(env::PlannerEnv, sim=rvo_global_sim())
 
 
     # Step RVO
-    sim.doStep()
+    if !isnothing(sim)
+        sim.doStep()
+    end
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
         if use_rvo()
             tform = update_position_from_sim!(get_node(env.scene_tree, id))

@@ -18,17 +18,17 @@ include("full_demo.jl")
 # model_scale  = 0.008
 # num_robots   = 10
 
-project_name = "8028-1 - TIE Fighter - Mini.mpd" #* 44 x 4, 7 sec
-model_scale  = 0.008
-num_robots   = 15
+# project_name = "8028-1 - TIE Fighter - Mini.mpd" #* 44 x 4, 7 sec
+# model_scale  = 0.008
+# num_robots   = 15
 
 # project_name = "30051-1 - X-wing Fighter - Mini.mpd" #* 61 x 12, 9 sec
 # model_scale  = 0.008
 # num_robots   = 20
 
-# project_name = "4494-1 - Imperial Shuttle - Mini.mpd" #* 84 x 5, 13 sec
-# model_scale  = 0.008
-# num_robots   = 15
+project_name = "4494-1 - Imperial Shuttle - Mini.mpd" #* 84 x 5, 13 sec
+model_scale  = 0.008
+num_robots   = 15
 
 # project_name = "X-wing--Tie Mini.mpd" #* 105 x 17, 26 sec
 # model_scale  = 0.008
@@ -58,12 +58,12 @@ num_robots   = 15
 # model_scale  = 0.004
 # num_robots   = 100
 
-# TODO again for clean run
+# TODO again for clean run (with RVO, TangentBug)
 # project_name = "21309-1 - NASA Apollo Saturn V.mpd" #* 1845 x 306, 163 min
 # model_scale  = 0.0015
 # num_robots   = 200
 
-visualize_animation_at_end   = true
+open_animation_at_end        = false
 save_animation_along_the_way = false
 save_animation_at_end        = false
 anim_active_agents           = false
@@ -72,14 +72,12 @@ anim_active_areas            = false
 rvo_flag                     = false
 tangent_bug_flag             = false
 dispersion_flag              = false
-assignment_mode              = :GREEDY # :OPTIMAL # :GREEDY
+assignment_mode              = :GreedyWarmStartMILP # :OPTIMAL :GREEDY :GreedyWarmStartMILP
 
 write_results                = true
 overwrite_results            = true
 
 max_num_iters_no_progress    = 5000
-
-using Gurobi
 
 env, STATS = run_lego_demo(;
     project_name                 = project_name,
@@ -89,7 +87,7 @@ env, STATS = run_lego_demo(;
     rvo_flag                     = rvo_flag,
     tangent_bug_flag             = tangent_bug_flag,
     dispersion_flag              = dispersion_flag,
-    visualize_animation_at_end   = visualize_animation_at_end,
+    open_animation_at_end        = open_animation_at_end,
     save_animation               = save_animation_at_end,
     save_animation_along_the_way = save_animation_along_the_way,
     anim_active_agents           = anim_active_agents,
@@ -97,5 +95,6 @@ env, STATS = run_lego_demo(;
     write_results                = write_results,
     overwrite_results            = overwrite_results,
     max_num_iters_no_progress    = max_num_iters_no_progress,
-    default_milp_optimizer       = Gurobi.Optimizer
+    milp_optimizer               = :Gurobi, # :HiGHS
+    optimizer_time_limit         = 60
 );
