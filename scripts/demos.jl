@@ -42,7 +42,8 @@ overwrite_results            = true
 
 
 env, stats = run_lego_demo(;
-    project_name                 = project_params[:file_name],
+    ldraw_file                   = project_params[:file_name],
+    project_name                 = project_params[:project_name],
     model_scale                  = project_params[:model_scale],
     num_robots                   = project_params[:num_robots],
 

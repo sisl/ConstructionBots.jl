@@ -2,6 +2,7 @@ using Parameters
 using Random
 using StaticArrays
 using LinearAlgebra
+using Dates
 using StatsBase
 using JLD2
 using ProgressMeter
@@ -47,7 +48,8 @@ Run the lego demo for model.
 
     Keyword arguments:
 
-        - project_name::String: ldraw file of the model to run
+        - ldraw_file::String: ldraw file
+        - project_name::String: project name (default: ldraw_file)
         - model_scale::Float64: scale of the model (default: 0.008)
         - num_robots::Int: number of robots to use (default: 12)
         - robot_scale::Float64: scale of the robots (default: 0.7 * model_scale)
@@ -70,7 +72,7 @@ Run the lego demo for model.
         - rvo_flag::Bool: whether to use RVO (default: true)
         - tangent_bug_flag::Bool: whether to use tangent bug (default: true)
         - dispersion_flag::Bool: whether to use dispersion (default: true)
-        - overwrite_results::Bool: whether to overwrite the results if they already exist (default: true)
+        - overwrite_results::Bool: whether to overwrite the stats.toml file or create a new one with a date-time filename (default: true)
         - write_results::Bool: whether to write the results to disk (default: true)
         - max_num_iters_no_progress::Int: maximum number of iterations to run without progress (default: 10000)
         - sim_batch_size::Int: number of steps to run in a simulation before clearing some memory (default: 50)
@@ -82,7 +84,8 @@ Run the lego demo for model.
 
 """
 function run_lego_demo(;
-    project_name::String                      ="tractor.mpd",
+    ldraw_file::String                        ="tractor.mpd",
+    project_name::String                      =ldraw_file,
     model_scale::Float64                      =0.008,
     num_robots::Int                           =12,
     robot_scale::Float64                      =model_scale * 0.7,
@@ -92,8 +95,8 @@ function run_lego_demo(;
     max_steps::Int                            =100000,
     staging_buffer_factor::Float64            =1.2,
     build_step_buffer_factor::Float64         =0.5,
-    base_results_path::String                =joinpath(dirname(pathof(ConstructionBots)), "..", "results"),
-    results_path::String                     =joinpath(base_results_path, project_name),
+    base_results_path::String                 =joinpath(dirname(pathof(ConstructionBots)), "..", "results"),
+    results_path::String                      =joinpath(base_results_path, project_name),
     assignment_mode::Symbol                   =:greedy,
     open_animation_at_end::Bool               =false,
     save_animation::Bool                      =false,
@@ -146,7 +149,7 @@ function run_lego_demo(;
     end
 
     mkpath(results_path)
-    filename = joinpath(dirname(pathof(ConstructionBots)), "..", "LDraw_files", project_name)
+    filename = joinpath(dirname(pathof(ConstructionBots)), "..", "LDraw_files", ldraw_file)
     @assert ispath(filename) "File $(filename) does not exist."
 
     global_logger(ConsoleLogger(stderr, log_level))
@@ -200,14 +203,19 @@ function run_lego_demo(;
         error("Unknown assignment mode: $(assignment_mode)")
     end
     mkpath(joinpath(results_path, prefix))
-    stats_path = joinpath(results_path, prefix, "stats.toml")
-    if isfile(stats_path) && write_results && !overwrite_results
-        @warn "Terminating because results are already compiled at $(stats_path)"
-        return nothing
+
+    name_augment = ""
+    if !overwrite_results
+        name_augment = string(Dates.format(Dates.now(), "yyyymmdd_HHMMSS"), "_")
     end
 
-    anim_path = joinpath(results_path, prefix, "construction_simulation.html")
-    anim_prog_path = joinpath(results_path, prefix, "construction_simulation_")
+    stats_file_name = string(name_augment, "stats", ".toml")
+    anim_file_name = string(name_augment, "visualization.html")
+    anim_prog_file_name = string(name_augment, "visualization_")
+
+    stats_path = joinpath(results_path, prefix, stats_file_name)
+    anim_path = joinpath(results_path, prefix, anim_file_name)
+    anim_prog_path = joinpath(results_path, prefix, anim_prog_file_name)
 
 
     sim_params = SimParameters(
@@ -327,7 +335,7 @@ function run_lego_demo(;
     stats[:ConfigTransportUnitsTime] = config_transport_units_time
     stats[:StagingPlanTime] = staging_plan_time
     if write_results
-        open(joinpath(results_path, prefix, "stats.toml"), "w") do io
+        open(stats_path, "w") do io
             TOML.print(io, stats)
         end
     end
@@ -448,7 +456,7 @@ function run_lego_demo(;
     stats[:ValidMILPSolution] = valid_milp_solution
     stats[:OptimizerTimeLimit] = optimizer_time_limit
     if write_results
-        open(joinpath(results_path, prefix, "stats.toml"), "w") do io
+        open(stats_path, "w") do io
             TOML.print(io, stats)
         end
     end
@@ -589,7 +597,7 @@ function run_lego_demo(;
     stats[:ExecutionRuntime] = execution_time
     stats[:Makespan] = time_steps * env.dt
     if write_results
-        open(joinpath(results_path, prefix, "stats.toml"), "w") do io
+        open(stats_path, "w") do io
             TOML.print(io, stats)
         end
     end

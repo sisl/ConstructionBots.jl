@@ -19,76 +19,91 @@ projects = Dict(
 
 project_params = Dict(
     :colored_8x8 => (
+        project_name = "colored_8x8",
         file_name = "colored_8x8.ldr",
         model_scale = 0.008,
         num_robots = 24
     ),
     :quad_nested => (
+        project_name = "quad_nested",
         file_name = "quad_nested.mpd",
         model_scale = 0.008,
         num_robots = 50
     ),
     :heavily_nested => (
+        project_name = "heavily_nested",
         file_name = "heavily_nested.mpd",
         model_scale = 0.0015,
         num_robots = 50
     ),
     :tractor => (
+        project_name = "tractor",
         file_name = "tractor.mpd",
         model_scale = 0.008,
         num_robots = 10
     ),
     :tie_fighter => (
+        project_name = "tie_fighter",
         file_name = "8028-1 - TIE Fighter - Mini.mpd",
         model_scale = 0.008,
         num_robots = 15
     ),
     :x_wing_mini => (
+        project_name = "x_wing_mini",
         file_name = "30051-1 - X-wing Fighter - Mini.mpd",
         model_scale = 0.008,
         num_robots = 20
     ),
     :imperial_shuttle => (
+        project_name = "imperial_shuttle",
         file_name = "4494-1 - Imperial Shuttle - Mini.mpd",
         model_scale = 0.008,
         num_robots = 15
     ),
     :x_wing_tie_mini => (
+        project_name = "x_wing_tie_mini",
         file_name = "8028-1 - TIE Fighter - Mini.mpd",
         model_scale = 0.008,
         num_robots = 20
     ),
     :at_te_walker => (
+        project_name = "at_te_walker",
         file_name = "4482-1 - AT-TE - Mini.mpd",
         model_scale = 0.008,
         num_robots = 35
     ),
     :x_wing => (
+        project_name = "x_wing",
         file_name = "7140-1 - X-wing Fighter.mpd",
         model_scale = 0.004,
         num_robots = 50
     ),
     :passenger_plane => (
+        project_name = "passenger_plane",
         file_name = "3181-1 - Passenger Plane.mpd",
         model_scale = 0.004,
         num_robots = 50
     ),
     :imperial_star_destroyer => (
+        project_name = "imperial_star_destroyer",
         file_name = "8099-1 - Midi-Scale Imperial Star Destroyer.mpd",
         model_scale = 0.004,
         num_robots = 75
     ),
     :kings_castle => (
+        project_name = "kings_castle",
         file_name = "6080 - King's Castle.mpd",
         model_scale = 0.004,
         num_robots = 125
     ),
     :at_at => (
+        project_name = "at_at",
         file_name = "75054-1 - AT-AT.mpd",
         model_scale = 0.004,
         num_robots = 150
     ),
     :saturn_v => (
+        project_name = "saturn_v",
         file_name = "21309-1 - NASA Apollo Saturn V.mpd",
         model_scale = 0.004,
         num_robots = 200
