@@ -68,7 +68,7 @@ project_params = Dict(
     ),
     :at_te_walker => (
         project_name = "at_te_walker",
-        file_name = "4482-1 - AT-TE - Mini.mpd",
+        file_name = "20009-1 - AT-TE Walker - Mini.mpd",
         model_scale = 0.008,
         num_robots = 35
     ),
@@ -80,7 +80,7 @@ project_params = Dict(
     ),
     :passenger_plane => (
         project_name = "passenger_plane",
-        file_name = "3181-1 - Passenger Plane.mpd",
+        file_name = "3181 - Passenger Plane.mpd",
         model_scale = 0.004,
         num_robots = 50
     ),
@@ -92,7 +92,7 @@ project_params = Dict(
     ),
     :kings_castle => (
         project_name = "kings_castle",
-        file_name = "6080 - King's Castle.mpd",
+        file_name = "6080 - Kings Castle.mpd",
         model_scale = 0.004,
         num_robots = 125
     ),
