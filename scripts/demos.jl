@@ -48,7 +48,7 @@ env, stats = run_lego_demo(;
     num_robots                   = project_params[:num_robots],
 
     assignment_mode              = assignment_mode,
-    milp_optimizer               = :Gurobi, # :HiGHS
+    milp_optimizer               = :gurobi, # :HiGHS
     optimizer_time_limit         = 120,
 
     rvo_flag                     = rvo_flag,

@@ -155,28 +155,29 @@ function run_lego_demo(;
     global_logger(ConsoleLogger(stderr, log_level))
 
     # Adding additional attributes for GLPK, HiGHS, and Gurobi
-    milp_optimizer_attribute_dict[MOI.Silent()] = false
-    default_milp_optimizer = nothing
-    if milp_optimizer == :glpk
-        default_milp_optimizer = ()->GLPK.Optimizer(;want_infeasibility_certificates=false)
-        milp_optimizer_attribute_dict["tm_lim"] = optimizer_time_limit * 1000
-        milp_optimizer_attribute_dict["msg_lev"] = GLPK.GLP_MSG_ALL
-    elseif milp_optimizer == :gurobi
-        default_milp_optimizer = Gurobi.Optimizer
-        milp_optimizer_attribute_dict["TimeLimit"] = optimizer_time_limit
-        # MIPFocus: 1 -- feasible solutions, 2 -- optimal solutions, 3 -- bound
-        milp_optimizer_attribute_dict["MIPFocus"] = 1
-    elseif milp_optimizer == :highs
-        default_milp_optimizer = () -> HiGHS.Optimizer()
-        milp_optimizer_attribute_dict["time_limit"] = Float64(optimizer_time_limit)
-        milp_optimizer_attribute_dict["presolve"] = "on"
-    else
-        @warn "No additional parameters for $milp_optimizer were set."
+    if assignment_mode == :milp || assignment_mode == :milp_w_greedy_warm_start
+        milp_optimizer_attribute_dict[MOI.Silent()] = false
+        default_milp_optimizer = nothing
+        if milp_optimizer == :glpk
+            default_milp_optimizer = ()->GLPK.Optimizer(;want_infeasibility_certificates=false)
+            milp_optimizer_attribute_dict["tm_lim"] = optimizer_time_limit * 1000
+            milp_optimizer_attribute_dict["msg_lev"] = GLPK.GLP_MSG_ALL
+        elseif milp_optimizer == :gurobi
+            default_milp_optimizer = Gurobi.Optimizer
+            milp_optimizer_attribute_dict["TimeLimit"] = optimizer_time_limit
+            # MIPFocus: 1 -- feasible solutions, 2 -- optimal solutions, 3 -- bound
+            milp_optimizer_attribute_dict["MIPFocus"] = 1
+        elseif milp_optimizer == :highs
+            default_milp_optimizer = () -> HiGHS.Optimizer()
+            milp_optimizer_attribute_dict["time_limit"] = Float64(optimizer_time_limit)
+            milp_optimizer_attribute_dict["presolve"] = "on"
+        else
+            @warn "No additional parameters for $milp_optimizer were set."
+        end
+        set_default_milp_optimizer!(default_milp_optimizer)
+        TaskGraphs.clear_default_optimizer_attributes!()
+        TaskGraphs.set_default_optimizer_attributes!(milp_optimizer_attribute_dict)
     end
-    set_default_milp_optimizer!(default_milp_optimizer)
-    TaskGraphs.clear_default_optimizer_attributes!()
-
-    TaskGraphs.set_default_optimizer_attributes!(milp_optimizer_attribute_dict)
 
     if rvo_flag
         prefix = "RVO"
