@@ -35,10 +35,10 @@ anim_active_areas            = false
 rvo_flag                     = false
 tangent_bug_flag             = false
 dispersion_flag              = false
-assignment_mode              = :greedy # :milp :greedy :milp_w_greedy_warm_start
+assignment_mode              = :milp_w_greedy_warm_start # :milp :greedy :milp_w_greedy_warm_start
 
 write_results                = true
-overwrite_results            = true
+overwrite_results            = false
 
 
 env, stats = run_lego_demo(;
@@ -48,8 +48,8 @@ env, stats = run_lego_demo(;
     num_robots                   = project_params[:num_robots],
 
     assignment_mode              = assignment_mode,
-    milp_optimizer               = :gurobi, # :HiGHS
-    optimizer_time_limit         = 120,
+    milp_optimizer               = :gurobi, # :gurobi :highs
+    optimizer_time_limit         = 100,
 
     rvo_flag                     = rvo_flag,
     tangent_bug_flag             = tangent_bug_flag,
@@ -63,4 +63,8 @@ env, stats = run_lego_demo(;
 
     write_results                = write_results,
     overwrite_results            = overwrite_results,
+
+    look_for_previous_milp_solution = true,
+    save_milp_solution               = true,
+    previous_found_optimizer_time   = 20
 );

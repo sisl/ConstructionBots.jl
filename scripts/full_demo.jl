@@ -17,6 +17,8 @@ using JuMP
 using PyCall
 using MeshCat
 
+using SparseArrays
+
 using ConstructionBots
 
 using LDrawParser
@@ -26,7 +28,6 @@ using GraphUtils
 
 
 # TODO: Remove unused plotting functions
-using Plots
 using Colors
 using Printf
 using PGFPlots
@@ -108,7 +109,7 @@ function run_lego_demo(;
     rvo_flag::Bool                            =true,
     tangent_bug_flag::Bool                    =true,
     dispersion_flag::Bool                     =true,
-    overwrite_results::Bool                   =true,
+    overwrite_results::Bool                   =false,
     write_results::Bool                       =true,
     max_num_iters_no_progress::Int            =10000,
     sim_batch_size::Int                       =50,
@@ -116,6 +117,9 @@ function run_lego_demo(;
     milp_optimizer::Symbol                    =:highs,
     milp_optimizer_attribute_dict::Dict       =Dict(),
     optimizer_time_limit::Int                 =600,
+    look_for_previous_milp_solution::Bool     =false,
+    save_milp_solution::Bool                  =false,
+    previous_found_optimizer_time             =30,
     rng::Random.AbstractRNG                   =Random.MersenneTwister(1)
 )
 
@@ -134,6 +138,7 @@ function run_lego_demo(;
     stats[:rvo_flag] = rvo_flag
     stats[:tangent_bug_flag] = tangent_bug_flag
     stats[:dispersion_flag] = dispersion_flag
+    stats[:OptimizerTimeLimit] = optimizer_time_limit
 
     if assignment_mode == :milp
         stats[:Optimizer] = string(milp_optimizer)
@@ -155,6 +160,7 @@ function run_lego_demo(;
     global_logger(ConsoleLogger(stderr, log_level))
 
     # Adding additional attributes for GLPK, HiGHS, and Gurobi
+    time_limit_key = nothing
     if assignment_mode == :milp || assignment_mode == :milp_w_greedy_warm_start
         milp_optimizer_attribute_dict[MOI.Silent()] = false
         default_milp_optimizer = nothing
@@ -162,15 +168,19 @@ function run_lego_demo(;
             default_milp_optimizer = ()->GLPK.Optimizer(;want_infeasibility_certificates=false)
             milp_optimizer_attribute_dict["tm_lim"] = optimizer_time_limit * 1000
             milp_optimizer_attribute_dict["msg_lev"] = GLPK.GLP_MSG_ALL
+            time_limit_key = "tm_lim"
         elseif milp_optimizer == :gurobi
-            default_milp_optimizer = Gurobi.Optimizer
+            default_milp_optimizer = ()->Gurobi.Optimizer()
+            # default_milp_optimizer = Gurobi.Optimizer
             milp_optimizer_attribute_dict["TimeLimit"] = optimizer_time_limit
             # MIPFocus: 1 -- feasible solutions, 2 -- optimal solutions, 3 -- bound
             milp_optimizer_attribute_dict["MIPFocus"] = 1
+            time_limit_key = "TimeLimit"
         elseif milp_optimizer == :highs
             default_milp_optimizer = () -> HiGHS.Optimizer()
             milp_optimizer_attribute_dict["time_limit"] = Float64(optimizer_time_limit)
             milp_optimizer_attribute_dict["presolve"] = "on"
+            time_limit_key = "time_limit"
         else
             @warn "No additional parameters for $milp_optimizer were set."
         end
@@ -194,12 +204,16 @@ function run_lego_demo(;
     else
         prefix = string(prefix, "_no-TangentBug")
     end
+    soln_str_pre = ""
     if assignment_mode == :milp
-        prefix = string("milp_", prefix)
+        soln_str_pre = "milp_"
+        prefix = string(soln_str_pre, prefix)
     elseif assignment_mode == :greedy
-        prefix = string("greedy_", prefix)
+        soln_str_pre = "greedy_"
+        prefix = string(soln_str_pre, prefix)
     elseif assignment_mode == :milp_w_greedy_warm_start
-        prefix = string("milp-ws_", prefix)
+        soln_str_pre = "milp-ws_"
+        prefix = string(soln_str_pre, prefix)
     else
         error("Unknown assignment mode: $(assignment_mode)")
     end
@@ -386,11 +400,41 @@ function run_lego_demo(;
 
     assignment_time = time()
     ## MILP solver
+
+    solution_fname = joinpath(results_path, string(soln_str_pre, "$(num_robots).jld2"))
+    no_solution_fname = joinpath(results_path, string(soln_str_pre, "$(num_robots)_NO-SOLN.jld2"))
+
+    soln_matrix = nothing
+    if look_for_previous_milp_solution && (assignment_mode != :greedy)
+        if milp_optimizer == :glpk
+            @warn """GLPK is not currently implemented through JuMP to support warm-starting.
+                       Recommend using HiGHS (:highs) or Gurobi (:gurobi) when using previous solutions."""
+        end
+        if isfile(solution_fname)
+            println("\n\tFound previous MILP solution at $solution_fname")
+            soln_matrix = JLD2.load(solution_fname, "soln_matrix")
+            soln_matrix = SparseArrays.SparseMatrixCSC(soln_matrix)
+            milp_optimizer_attribute_dict[time_limit_key] = Float64(previous_found_optimizer_time)
+            TaskGraphs.clear_default_optimizer_attributes!()
+            TaskGraphs.set_default_optimizer_attributes!(milp_optimizer_attribute_dict)
+        elseif isfile(no_solution_fname)
+            println("Aborting based on finding $no_solution_fname")
+            throw(NoSolutionError())
+        else
+            println("\n\tNo previous MILP solution at $solution_fname")
+        end
+    end
+
     valid_milp_solution = true
     milp_model = SparseAdjacencyMILP()
     if assignment_mode == :milp
-        milp_model = formulate_milp(milp_model, tg_sched, scene_tree)
+        if !isnothing(soln_matrix)
+            milp_model = formulate_milp(milp_model, tg_sched, scene_tree; warm_start_soln=soln_matrix)
+        else
+            milp_model = formulate_milp(milp_model, tg_sched, scene_tree)
+        end
         optimize!(milp_model)
+
         if primal_status(milp_model) == MOI.NO_SOLUTION
             valid_milp_solution = false
         end
@@ -407,16 +451,20 @@ function run_lego_demo(;
             @warn """GLPK is not currently implemented through JuMP to support warm-starting.
                        Recommend using HiGHS (:highs) or Gurobi (:gurobi)."""
         end
-        greedy_sched = deepcopy(tg_sched)
-        greedy_model = ConstructionBots.GreedyOrderedAssignment(
-            greedy_cost=TaskGraphs.GreedyFinalTimeCost(),
-        )
-        greedy_model = formulate_milp(greedy_model, greedy_sched, scene_tree)
-        optimize!(greedy_model)
-        greedy_assignmnet_matrix = get_assignment_matrix(greedy_model)
+        if !isnothing(soln_matrix)
+            milp_model = formulate_milp(milp_model, tg_sched, scene_tree; warm_start_soln=soln_matrix)
+        else
+            greedy_sched = deepcopy(tg_sched)
+            greedy_model = ConstructionBots.GreedyOrderedAssignment(
+                greedy_cost=TaskGraphs.GreedyFinalTimeCost(),
+            )
+            greedy_model = formulate_milp(greedy_model, greedy_sched, scene_tree)
+            optimize!(greedy_model)
+            greedy_assignmnet_matrix = get_assignment_matrix(greedy_model)
 
-        milp_model = SparseAdjacencyMILP()
-        milp_model = formulate_milp(milp_model, tg_sched, scene_tree; warm_start_soln=greedy_assignmnet_matrix)
+            milp_model = SparseAdjacencyMILP()
+            milp_model = formulate_milp(milp_model, tg_sched, scene_tree; warm_start_soln=greedy_assignmnet_matrix)
+        end
         optimize!(milp_model)
         if primal_status(milp_model) == MOI.NO_SOLUTION
             valid_milp_solution = false
@@ -448,6 +496,15 @@ function run_lego_demo(;
     assignment_time = time() - assignment_time
     print("done!\n")
 
+    # If valid milp solution found, save if option was passed
+    if valid_milp_solution && save_milp_solution && (assignment_mode != :greedy)
+        println("Saving MILP solution to $solution_fname")
+        JLD2.save(solution_fname, "soln_matrix", get_assignment_matrix(milp_model))
+    elseif save_milp_solution && (assignment_mode != :greedy)
+        println("Saving a no soltuion file to $no_solution_fname")
+        JLD2.save(no_solution_fname, "soln_matrix", false)
+    end
+
     # compile pre execution statistics
     pre_execution_time = time() - pre_execution_start_time
 
@@ -455,7 +512,6 @@ function run_lego_demo(;
     stats[:PreExecutionRuntime] = pre_execution_time
     stats[:OptimisticMakespan] = post_assignment_makespan
     stats[:ValidMILPSolution] = valid_milp_solution
-    stats[:OptimizerTimeLimit] = optimizer_time_limit
     if write_results
         open(stats_path, "w") do io
             TOML.print(io, stats)

@@ -17,7 +17,7 @@ projects = Dict(
     15 => :saturn_v                     # 1845 x 306, 163 min
 )
 
-project_params = Dict(
+project_parameters = Dict(
     :colored_8x8 => (
         project_name = "colored_8x8",
         file_name = "colored_8x8.ldr",
@@ -58,11 +58,11 @@ project_params = Dict(
         project_name = "imperial_shuttle",
         file_name = "4494-1 - Imperial Shuttle - Mini.mpd",
         model_scale = 0.008,
-        num_robots = 15
+        num_robots = 20
     ),
     :x_wing_tie_mini => (
         project_name = "x_wing_tie_mini",
-        file_name = "8028-1 - TIE Fighter - Mini.mpd",
+        file_name = "X-wing--Tie Mini.mpd",
         model_scale = 0.008,
         num_robots = 20
     ),
@@ -125,9 +125,9 @@ function get_project_params(project::Int)
     return get_project_params(projects[project])
 end
 function get_project_params(project::Symbol)
-    if !(project in keys(project_params))
+    if !(project in keys(project_parameters))
         list_projects()
         error("Project $project not found.")
     end
-    return project_params[project]
+    return project_parameters[project]
 end
