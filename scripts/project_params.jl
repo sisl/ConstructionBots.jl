@@ -27,7 +27,7 @@ project_parameters = Dict(
     :quad_nested => (
         project_name = "quad_nested",
         file_name = "quad_nested.mpd",
-        model_scale = 0.008,
+        model_scale = 0.0015,
         num_robots = 50
     ),
     :heavily_nested => (
@@ -105,7 +105,7 @@ project_parameters = Dict(
     :saturn_v => (
         project_name = "saturn_v",
         file_name = "21309-1 - NASA Apollo Saturn V.mpd",
-        model_scale = 0.004,
+        model_scale = 0.0015,
         num_robots = 200
     )
 )

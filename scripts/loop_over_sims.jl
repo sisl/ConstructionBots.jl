@@ -22,12 +22,12 @@ using Gurobi
 
 
 # First, run with colored_8x8 for compilation time
-project_params = get_project_params(1)
-env, stats = run_lego_demo(;
-    ldraw_file                   = project_params[:file_name],
-    project_name                 = project_params[:project_name],
-    model_scale                  = project_params[:model_scale],
-    num_robots                   = project_params[:num_robots],
+project_params_t = get_project_params(1)
+run_lego_demo(;
+    ldraw_file                   = project_params_t[:file_name],
+    project_name                 = project_params_t[:project_name],
+    model_scale                  = project_params_t[:model_scale],
+    num_robots                   = project_params_t[:num_robots],
     assignment_mode              = :greedy,
     milp_optimizer               = :gurobi,
     optimizer_time_limit         = 10,
@@ -38,15 +38,18 @@ env, stats = run_lego_demo(;
 )
 
 
-# assignment_modes = [:milp, :milp_w_greedy_warm_start]
+assignment_modes = [:milp, :milp_w_greedy_warm_start]
 # assignment_modes = [:greedy, :milp, :milp_w_greedy_warm_start]
-assignment_modes = [:greedy, :milp_w_greedy_warm_start]
+# assignment_modes = [:greedy, :milp_w_greedy_warm_start]
+# assignment_modes = [:greedy]
+# assignment_modes = [:milp_w_greedy_warm_start]
 # projects_for_sim = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15]
-projects_for_sim = [13, 15]
+projects_for_sim = [10, 11]
 
 rvo_dispersion = [false, true]
 tangent_bug = [false, true]
-delta_robot = [0]
+# delta_robot = [50, 100, 150, 250]
+delta_robot = [-10, 0, 10]
 
 for proj in projects_for_sim
     for assignment_mode in assignment_modes
