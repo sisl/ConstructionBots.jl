@@ -120,6 +120,7 @@ function run_lego_demo(;
     look_for_previous_milp_solution::Bool     =false,
     save_milp_solution::Bool                  =false,
     previous_found_optimizer_time             =30,
+    stop_after_task_assignment                =false,
     rng::Random.AbstractRNG                   =Random.MersenneTwister(1)
 )
 
@@ -520,6 +521,8 @@ function run_lego_demo(;
 
     if !valid_milp_solution
         throw(NoSolutionError())
+    elseif stop_after_task_assignment
+        return nothing, stats
     end
 
     factory_vis = FactoryVisualizer(vis=visualizer)
