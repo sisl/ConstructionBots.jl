@@ -156,11 +156,10 @@ function set_rvo_priority!(env::PlannerEnv, node)
             alpha = 1.0
         end
     elseif parent_build_step_is_active(node, env)
-        robot_id_scale = node.id.id / (10 * env.max_robot_go_id)
         if cargo_ready_for_pickup(node, env)
-            alpha = 0.1 + robot_id_scale
+            alpha = 0.1
         else
-            alpha = 0.5 + robot_id_scale
+            alpha = 0.5
         end
     else
         alpha = 1.0
