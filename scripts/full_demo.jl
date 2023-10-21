@@ -1,3 +1,4 @@
+using Printf
 using Parameters
 using Random
 using StaticArrays
@@ -7,39 +8,31 @@ using StatsBase
 using JLD2
 using ProgressMeter
 using Logging
+using TOML
 using LazySets
 using GeometryBasics
 using CoordinateTransformations
 using Rotations
-using TOML
 using Graphs
 using JuMP
 using PyCall
 using MeshCat
-
 using SparseArrays
 
-using ConstructionBots
-
 using LDrawParser
+
 using TaskGraphs
 using HierarchicalGeometry
 using GraphUtils
 
-
-# TODO: Remove unused plotting functions
 using Colors
-using Printf
-using PGFPlots
-using PGFPlotsX
-using Measures
-import Cairo
-using Compose
 
-include("../deps/GraphPlottingBFS.jl")
-include("../deps/FactoryRendering.jl")
-include("../src/render_tools.jl")
-include("../src/tg_render_tools.jl")
+using ConstructionBots
+
+using GraphPlottingBFS
+
+
+# include("../src/render_tools.jl")
 include("demo_utils.jl")
 
 """
@@ -81,6 +74,11 @@ Run the lego demo for model.
         - milp_optimizer::Symbol: optimizer to use for the MILP (default: :highs, options: :gurobi, :glpk)
         - milp_optimizer_attribute_dict::Dict: dictionary of attributes to set on the optimizer (default: Dict())
         - optimizer_time_limit::Int: time limit for the optimizer (default: 600)
+        - look_for_previous_milp_solution::Bool: whether to look for a previous MILP solution (default: false)
+        - save_milp_solution::Bool: whether to save the MILP solution (default: false)
+        - previous_found_optimizer_time: time limit for the optimizer when looking for a previous solution (default: 30)
+        - stop_after_task_assignment: whether to stop after task assignment (default: false)
+        - ignore_rot_matrix_warning: whether to ignore the rotation matrix warning (default: true)
         - rng::Random.AbstractRNG: random number generator to use (default: MersenneTwister(1))
 
 """
@@ -121,6 +119,7 @@ function run_lego_demo(;
     save_milp_solution::Bool                  =false,
     previous_found_optimizer_time             =30,
     stop_after_task_assignment                =false,
+    ignore_rot_matrix_warning                 =true,
     rng::Random.AbstractRNG                   =Random.MersenneTwister(1)
 )
 
@@ -250,10 +249,10 @@ function run_lego_demo(;
     reset_all_id_counters!()
     reset_all_invalid_id_counters!()
 
-    set_default_robot_geom!(
+    HierarchicalGeometry.set_default_robot_geom!(
         Cylinder(Point(0.0, 0.0, 0.0), Point(0.0, 0.0, robot_height), robot_radius)
     )
-    FactoryRendering.set_render_param!(:Radius, :Robot, robot_radius)
+
     ConstructionBots.set_rvo_default_time_step!(1 / 40.0)
     ConstructionBots.set_default_loading_speed!(50 * HierarchicalGeometry.default_robot_radius())
     ConstructionBots.set_default_rotational_loading_speed!(50 * HierarchicalGeometry.default_robot_radius())
@@ -263,16 +262,16 @@ function run_lego_demo(;
 
 
     pre_execution_start_time = time()
-    model = parse_ldraw_file(filename)
-    populate_part_geometry!(model)
-    LDrawParser.change_coordinate_system!(model, ldraw_base_transform(), model_scale)
+    model = parse_ldraw_file(filename; ignore_rotation_determinant=ignore_rot_matrix_warning)
+    populate_part_geometry!(model; ignore_rotation_determinant=ignore_rot_matrix_warning)
+    LDrawParser.change_coordinate_system!(model, ldraw_base_transform(), model_scale; ignore_rotation_determinant=ignore_rot_matrix_warning)
 
     ## CONSTRUCT MODEL SPEC
     print("Constructing model spec...")
     spec = ConstructionBots.construct_model_spec(model)
     model_spec = ConstructionBots.extract_single_model(spec)
     id_map = ConstructionBots.build_id_map(model, model_spec)
-    color_map = construct_color_map(model_spec, id_map)
+    color_map = ConstructionBots.construct_color_map(model_spec, id_map)
     @assert GraphUtils.validate_graph(model_spec)
     print("done!\n")
 
@@ -525,25 +524,25 @@ function run_lego_demo(;
         return nothing, stats
     end
 
-    factory_vis = FactoryVisualizer(vis=visualizer)
+    factory_vis = ConstructionBots.FactoryVisualizer(vis=visualizer)
     if !isnothing(visualizer)
         delete!(visualizer)
 
         # Visualize assembly
-        factory_vis = populate_visualizer!(scene_tree, visualizer;
+        factory_vis = ConstructionBots.populate_visualizer!(scene_tree, visualizer;
             color_map=color_map,
             color=RGB(0.3, 0.3, 0.3),
             material_type=MeshLambertMaterial
         )
-        add_indicator_nodes!(factory_vis)
-        factory_vis.staging_nodes = render_staging_areas!(visualizer, scene_tree,
+        ConstructionBots.add_indicator_nodes!(factory_vis)
+        factory_vis.staging_nodes = ConstructionBots.render_staging_areas!(visualizer, scene_tree,
             sched, staging_circles;
             dz=0.00, color=RGBA(0.4, 0.0, 0.4, 0.5))
         for (k, color) in [
             (HypersphereKey() => RGBA(0.0, 1.0, 0.0, 0.3)),
             (HyperrectangleKey() => RGBA(1.0, 0.0, 0.0, 0.3))
         ]
-            show_geometry_layer!(factory_vis, k; color=color)
+            ConstructionBots.show_geometry_layer!(factory_vis, k; color=color)
         end
         for (k, nodes) in factory_vis.geom_nodes
             setvisible!(nodes, false)
@@ -551,7 +550,7 @@ function run_lego_demo(;
         setvisible!(factory_vis.geom_nodes[BaseGeomKey()], true)
         setvisible!(factory_vis.active_flags, false)
         set_scene_tree_to_initial_condition!(scene_tree, sched; remove_all_edges=true)
-        update_visualizer!(factory_vis)
+        ConstructionBots.update_visualizer!(factory_vis)
     end
 
     set_scene_tree_to_initial_condition!(scene_tree, sched; remove_all_edges=true)
@@ -615,15 +614,15 @@ function run_lego_demo(;
     anim = nothing
     if process_animation_tasks
         print("Animating preprocessing step...")
-        anim = AnimationWrapper(0)
-        atframe(anim, current_frame(anim)) do
+        anim = ConstructionBots.AnimationWrapper(0)
+        atframe(anim, ConstructionBots.current_frame(anim)) do
             HierarchicalGeometry.jump_to_final_configuration!(scene_tree; set_edges=true)
-            update_visualizer!(factory_vis)
+            ConstructionBots.update_visualizer!(factory_vis)
             setvisible!(factory_vis.geom_nodes[HyperrectangleKey()], false)
             setvisible!(factory_vis.staging_nodes, false)
         end
-        step_animation!(anim)
-        animate_preprocessing_steps!(
+        ConstructionBots.step_animation!(anim)
+        ConstructionBots.animate_preprocessing_steps!(
             factory_vis,
             sched;
             dt=0.0,

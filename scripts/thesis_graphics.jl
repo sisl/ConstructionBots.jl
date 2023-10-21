@@ -164,7 +164,7 @@ LDrawParser.change_coordinate_system!(model,ldraw_base_transform(),MODEL_SCALE);
 spec = ConstructionBots.construct_model_spec(model)
 model_spec = ConstructionBots.extract_single_model(spec)
 id_map = ConstructionBots.build_id_map(model,model_spec)
-color_map = construct_color_map(model_spec,id_map)
+color_map = ConstructionBots.construct_color_map(model_spec,id_map)
 @assert GraphUtils.validate_graph(model_spec)
 # plt = display_graph(model_spec,scale=1,aspect_stretch=(1.2,1.0)) #,enforce_visited=true)
 # display(plt)
@@ -295,7 +295,7 @@ let
     #                     ) ? GraphPlottingBFS._title_text_scale(get_node(G,v)) : 0.45,
     #             ),
     #             pad=(0.0,0.0),
-    #         ) 
+    #         )
     #         display(plt)
     #         draw(PDF(joinpath(graphics_path,"sub_schedule_assembly$(a).pdf")),plt)
     #     end
@@ -323,7 +323,7 @@ let
     #     draw_node_function=(G,v)->GraphPlottingBFS.draw_node(get_node(G,v);
     #         subtitle_text="",title_scale=0.4),
     #         align_mode=:split_aligned,
-    # ) 
+    # )
     # display(plt)
     # draw(PDF(joinpath(graphics_path,"schedule_unassigned.pdf")),plt)
 
@@ -394,7 +394,7 @@ let
     # # draw(PDF(joinpath(graphics_path,"staging_plan.pdf")),stage_plt)
     # # draw(PDF(joinpath(graphics_path,"staging_plan_with_buffer.pdf")),stage_plt)
     # # draw(SVG(joinpath(graphics_path,"staging_plan.svg")),stage_plt)
-    
+
     # # for each build step?
     # a = get_node(scene_tree,AssemblyID(1))
     # start = get_node(sched,AssemblyComplete(a))
@@ -413,7 +413,7 @@ let
     #         _show_intermediate_stages=true,
     #         _stage_stroke_color="red",
     #         base_geom_layer=Compose.compose(
-    #             context(), 
+    #             context(),
     #             Compose.linewidth(0.02pt),
     #             [plot_base_geom_2d(get_node(scene_tree,k),scene_tree,
     #                 # tform=global_transform(goal_config(start)) ∘ tform,
@@ -470,9 +470,9 @@ ConstructionBots.select_initial_object_grid_locations!(sched,object_vtxs)
 # Move assemblies up so they float above the robots
 # TODO Debug error here
 for node in get_nodes(scene_tree)
-    if matches_template(AssemblyNode,node) 
+    if matches_template(AssemblyNode,node)
         start_node = get_node(sched,AssemblyComplete(node))
-        # raise start 
+        # raise start
         current = global_transform(start_config(start_node))
         rect = current(get_base_geom(node,HyperrectangleKey()))
         dh = MAX_CARGO_HEIGHT - (rect.center .- rect.radius)[3]
@@ -496,7 +496,7 @@ ConstructionBots.calibrate_transport_tasks!(sched)
 # Task Assignments
 ConstructionBots.add_dummy_robot_go_nodes!(sched)
 @assert validate_schedule_transform_tree(sched;post_staging=true)
-let 
+let
     # # Plot partial schedule with dummy RobotGo nodes
     # for a in [1,2,4,6]
     #     frontier = [get_vtx(sched,AssemblyComplete(get_node(scene_tree,AssemblyID(a))))]
@@ -619,7 +619,7 @@ end
 
 ## Visualize assembly
 delete!(vis)
-factory_vis = populate_visualizer!(scene_tree,vis;
+factory_vis = ConstructionBots.populate_visualizer!(scene_tree,vis;
     color_map=color_map,
     color=RGB(0.3,0.3,0.3),
     # wireframe=true,
@@ -632,7 +632,7 @@ for (k,color) in [
     ]
     show_geometry_layer!(factory_vis,k;color=color)
 end
-for (k,nodes) in factory_vis.geom_nodes 
+for (k,nodes) in factory_vis.geom_nodes
     setvisible!(nodes,false)
 end
 setvisible!(factory_vis.geom_nodes[BaseGeomKey()],true)
@@ -748,7 +748,7 @@ ConstructionBots.rvo_add_agents!(scene_tree,active_nodes)
 # instantiate agent policies
 # potential field
 # agent <-> agent: cone + barrier
-# cone(x1,x2,r1,r2,scale,height) = 
+# cone(x1,x2,r1,r2,scale,height) =
 
 # agent = get_node(scene_tree,RobotID(1))
 # policy = ConstructionBots.PotentialFieldController(
@@ -829,7 +829,7 @@ status, TIME_STEPS = ConstructionBots.simulate!(env, update_visualizer_function,
     )
 setanimation!(vis,anim.anim)
 for i in 0:current_frame(anim)
-    atframe(anim,i) do 
+    atframe(anim,i) do
         setvisible!(factory_vis.active_flags,false)
     end
 end
@@ -849,9 +849,9 @@ MeshCat.render(vis)
 # setobject!(vis["agent_flag"],HyperSphere(Point(0.0,0.0,0.0),2*HG.default_robot_radius()),MeshLambertMaterial(color=RGBA(1.0,0.0,1.0,0.5)))
 # # active_nodes = Base.Iterators.cycle(map(v->get_node(env.sched,v),collect(env.cache.active_set)))
 # active_nodes = Base.Iterators.cycle([
-#     n for n in get_nodes(env.sched) if get_vtx(env.sched,n) in env.cache.active_set 
-#         && matches_template(Union{RobotGo,TransportUnitGo},n) 
-#         && ConstructionBots.parent_build_step_is_active(n,env) 
+#     n for n in get_nodes(env.sched) if get_vtx(env.sched,n) in env.cache.active_set
+#         && matches_template(Union{RobotGo,TransportUnitGo},n)
+#         && ConstructionBots.parent_build_step_is_active(n,env)
 #         && ConstructionBots.cargo_ready_for_pickup(n,env)
 #         ])
 # i = 1

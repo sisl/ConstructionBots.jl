@@ -367,160 +367,17 @@ function animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,nodes=get_
     end
 end
 
-function staging_plan_bbox(staging_circs)
-    xlo = minimum(c.center[1]-c.radius for (k,c) in staging_circs)
-    ylo = minimum(c.center[2]-c.radius for (k,c) in staging_circs)
-    xhi = maximum(c.center[1]+c.radius for (k,c) in staging_circs)
-    yhi = maximum(c.center[2]+c.radius for (k,c) in staging_circs)
-    GeometryBasics.Rect2D(xlo,ylo,xhi-xlo,yhi-ylo)
-end
-staging_plan_bbox(sched::AbstractGraph) = staging_plan_bbox(extract_build_step_staging_circles(sched))
-
-function extract_build_step_staging_circles(sched)
-    circs = Dict()
-    for n in get_nodes(sched)
-        if matches_template(CloseBuildStep,n)
-            circs[node_id(n)] = get_cached_geom(node_val(n).staging_circle)
-        end
-    end
-    circs
-end
-
-function transform_final_assembly_staging_circles(sched,scene_tree,staging_circles)
-    circs = Dict()
-    for (k,v) in staging_circles
-        tform = global_transform(goal_config(get_node(sched,
-            AssemblyComplete(get_node(scene_tree,k)))))
-        circ = LazySets.translate(v,tform.translation[1:2])
-        circs[k] = circ
-    end
-    circs
-end
-
-"""
-    plot_staging_plan_2d(sched,scene_tree;
-
-Plot the staging plan in 2D.
-"""
-function plot_staging_plan_2d(sched,scene_tree;
-        nominal_width=10cm,
-        _fontsize=20pt,
-        _show_final_stages=true,
-        _final_stage_stroke_color=FactoryRendering.get_render_param(:Color,:Stroke,:StagingCircle,:Final,default="red"),
-        _final_stage_bg_color=FactoryRendering.get_render_param(:Color,:Fill,:StagingCircle,:Final,default=RGBA(1.0,0.0,0.0,0.5)),
-        _stage_label_color=FactoryRendering.get_render_param(:Color,:Label,:StagingCircle,:Final,default="black"),
-        _show_intermediate_stages=false,
-        _stage_stroke_color=FactoryRendering.get_render_param(:Color,:Stroke,:StagingCircle,default="yellow"),
-        _stage_bg_color=FactoryRendering.get_render_param(:Color,:Fill,:StagingCircle,default=RGBA(1.0,1.0,0.0,0.5)),
-        _show_bounding_circs=false,
-        _bounding_stroke_color=FactoryRendering.get_render_param(:Color,:Stroke,:BoundingCircle,default="blue"),
-        _bounding_bg_color=FactoryRendering.get_render_param(:Color,:Fill,:BoundingCircle,default=RGBA(0.0,0.0,1.0,0.5)),
-        _show_dropoffs=false,
-        _dropoff_stroke_color=FactoryRendering.get_render_param(:Color,:Stroke,:DropoffCircle,default="green"),
-        _dropoff_bg_color=FactoryRendering.get_render_param(:Color,:Fill,:DropoffCircle,default=RGBA(0.0,1.0,0.0,0.5)),
-        _dropoff_label_color=FactoryRendering.get_render_param(:Color,:Label,:DropoffCircle,default="black"),
-        _assembly_dropoffs_only=false,
-        _show_base_geom=true,
-        base_geom_layer=plot_assemblies(sched,scene_tree),
-        bg_color="white",
-        text_placement_func=circ->circ.center[1:2],
-        node_list=node_iterator(sched,topological_sort_by_dfs(sched)),
-        bbox = staging_plan_bbox(sched),
-    )
-    staging_circs = []
-    final_staging_circs = []
-    bounding_circs = []
-    dropoff_circs = []
-    base_geoms = []
-    for n in node_list
-        if matches_template(CloseBuildStep,n)
-            # if _show_intermediate_stages
-                push!(staging_circs,node_id(n) => get_cached_geom(node_val(n).staging_circle))
-            # end
-            if _show_bounding_circs
-                push!(bounding_circs,node_id(n) => get_cached_geom(node_val(n).bounding_circle))
-            end
-            if _show_final_stages
-                is_terminal_build_step = true
-                for v in outneighbors(sched,n)
-                    if matches_template(OpenBuildStep,get_node(sched,v))
-                        is_terminal_build_step = false
-                    end
-                end
-                is_terminal_build_step ? nothing : continue
-                push!(final_staging_circs,node_id(n) => get_cached_geom(node_val(n).staging_circle))
-            end
-        elseif matches_template(DepositCargo,n)
-            if _show_dropoffs
-                tu = entity(n)
-                a = get_node(scene_tree,cargo_id(tu))
-                if isa(a,AssemblyNode) || !_assembly_dropoffs_only
-                    tf = global_transform(goal_config(n))
-                    push!(dropoff_circs,node_id(n)=>tf(get_base_geom(tu,HypersphereKey())))
-                end
-            end
-        end
-    end
-    # bbox = staging_plan_bbox(staging_circs)
-    bg_ctx = (context(),Compose.rectangle(),Compose.fill(bg_color))
-    Compose.set_default_graphic_size(nominal_width,(bbox.widths[2]/bbox.widths[1])*nominal_width)
-    text_ctx = (context(),
-        Compose.fontsize(_fontsize),
-            (context(),[Compose.text(text_placement_func(c)...,
-                string(get_id(node_id(node_val(get_node(sched,k)).assembly))),
-                hcenter,vcenter,
-                ) for (k,c) in final_staging_circs]...,
-            Compose.fill(_stage_label_color),
-            ),
-            (context(),[Compose.text(text_placement_func(c)...,
-                string(get_id(k)),
-                hcenter,vcenter,
-                ) for (k,c) in dropoff_circs if _show_dropoffs]...,
-            Compose.fill(_dropoff_label_color),
-            ),
-        )
-    circles_ctx = (context(),
-        (context(),
-        [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in final_staging_circs]...,
-        Compose.stroke(_final_stage_stroke_color),
-        Compose.fill(_final_stage_bg_color),
-        ),
-        (context(),
-        [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in staging_circs if _show_intermediate_stages]...,
-        Compose.stroke(_stage_stroke_color),
-        Compose.fill(_stage_bg_color),
-        ),
-        (context(),
-        [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in dropoff_circs]...,
-        Compose.stroke(_dropoff_stroke_color),
-        Compose.fill(_dropoff_bg_color),
-        ),
-        (context(),
-        [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in bounding_circs]...,
-        Compose.stroke(_bounding_stroke_color),
-        Compose.fill(_bounding_bg_color),
-        ),
-    )
-    Compose.compose(
-        context(units=UnitBox(bbox.origin...,bbox.widths...)),
-        text_ctx,
-        base_geom_layer,
-        circles_ctx,
-        bg_ctx,
-    )
-end
-
 function render_transport_unit_2d(scene_tree,tu,cvx_hull=[];
     scale=4cm,
     hull_thickness=0.01,
     line_thickness=0.0025,
     hull_color=RGB(0.0,1.0,0.0),
     config_pt_radius=2*hull_thickness,
-    config_pt_color=FactoryRendering.get_render_param(:Color,:Object),
-    robot_color=FactoryRendering.get_render_param(:Color,:Robot,default=RGB(0.0,0.0,1.0)),
+    config_pt_color=RGB(1.0,0.5,0.2),
+    robot_color=RGB(0.1,0.5,0.9),
     geom_fill_color=RGBA(0.9,0.9,0.9,0.3),
     geom_stroke_color=RGBA(0.0,0.0,0.0,1.0),
-    robot_radius = FactoryRendering.get_render_param(:Radius,:Robot,default=ROBOT_RADIUS),
+    robot_radius = HierarchicalGeometry.default_robot_radius(),
     rect2d = HierarchicalGeometry.project_to_2d(get_base_geom(tu,HyperrectangleKey())),
     xpad=(0,0),
     ypad=(0,0),
@@ -610,6 +467,7 @@ function plot_base_geom_2d(node,scene_tree;
         Compose.stroke(stroke_color),
         )
 end
+
 function unit_box_from_rect(r;
         pad=0.0,
         xpad=(pad,pad),
@@ -622,131 +480,6 @@ function unit_box_from_rect(r;
         2*r.radius[2]+sum(ypad),
         )
 end
-function plot_assemblies(sched,scene_tree;
-        base_ctx=context(),
-        kwargs...,
-        )
-    ctxs = []
-    for n in get_nodes(sched)
-        if matches_template(AssemblyComplete,n)
-            tform = global_transform(goal_config(n))
-            push!(ctxs,plot_base_geom_2d(entity(n),scene_tree;tform=tform,kwargs...))
-        end
-    end
-    Compose.compose(base_ctx,ctxs...)
-end
-
-function render_node_types_and_table(
-        sched,scene_tree;
-        graphics_path=pwd(),
-        robot=get_node(scene_tree,RobotID(1)),
-        object=get_node(scene_tree,ObjectID(1)),
-        assembly=get_node(scene_tree,AssemblyID(2)),
-        tu = get_node(scene_tree,TransportUnitNode(assembly)),
-    )
-    mkpath(graphics_path)
-    r = get_node(sched,RobotStart(robot))
-    rg = get_node(sched,outneighbors(sched,r)[1])
-    o = get_node(sched,ObjectStart(object))
-    s = get_node(sched,AssemblyStart(assembly))
-    c, f, tg, d, l = ConstructionBots.get_transport_node_sequence(sched,assembly)
-    cb = get_node(sched,inneighbors(sched,c)[1])
-    ob = get_node(sched,OpenBuildStep(node_val(cb)))
-    p = get_node(sched,ProjectComplete(1))
-
-    set_default_graphic_size(5cm,5cm)
-    paths = Dict()
-    for n in [r,rg,o,s,f,tg,d,l,c,p,ob,cb]
-        plt = draw_node(n;subtitle_text="",title_scale=0.5)
-        display(plt)
-        path = joinpath(graphics_path,string(typeof(node_val(n)).name,".pdf"))
-        paths[string(typeof(node_val(n)).name)] = path
-        paths[node_id(n)] = path
-        # draw node
-        draw(PDF(path),plt)
-    end
-    # build table with required predecessos and successors
-    neighbor_dict = Dict()
-    xkeys = []
-    name_func(k) = string("\\schednodeinline{$(paths[string(k)])}")
-    # for n in [r,rg,o,s,f,tg,d,l,c,p,ob,cb]
-    for n in [p,o,s,c,ob,cb,r,rg,f,tg,d,l]
-        nname = name_func(typeof(node_val(n)).name)
-        push!(xkeys,Dict(:type=>nname))
-        my_dict = neighbor_dict[nname] = Dict()
-        for (neighbor_list,neighbor_key) in [
-                (required_predecessors(sched,n), "\\textsc{Req. Pred.}"),
-                (required_successors(sched,n), "\\textsc{Req. Succ.}"),
-                (eligible_predecessors(sched,n), "\\textsc{El. Pred.}"),
-                (required_successors(sched,n), "\\textsc{El. Succ.}"),
-            ]
-            pred_strings = []
-            for (k,v) in neighbor_list
-                if v > 1
-                    v = "\\textsc{variable}"
-                end
-                if isa(k,Union)
-                    type_key = k
-                    pred_list = []
-                    while isa(type_key,Union)
-                        push!(pred_list,name_func(type_key.a))
-                        type_key = type_key.b
-                    end
-                    push!(pred_list,name_func(type_key))
-                    push!(pred_strings,string(join(pred_list," / ")," \$\\times\$ $v"))
-                else
-                    push!(pred_strings,string(name_func(k)," \$\\times\$ $v"))
-                end
-            end
-            my_dict[neighbor_key] = ""
-            if length(pred_strings) > 0
-                cell_tab = init_table(
-                    [Dict(:row=>k) for k in 1:length(pred_strings)],
-                    [Dict(:col=>1)],
-                )
-                for (k,p) in enumerate(pred_strings)
-                    cell_tab.data[k] = p
-                end
-                io = IOBuffer()
-                print(io,"{\\renewcommand{\\arraystretch}{1.0}\n")
-                write_tex_table(io,cell_tab;
-                    print_func=print_real,
-                    print_row_start=false,
-                    print_column_labels=false,
-                    alignspec="t"
-                )
-                print(io,"}\n")
-                my_dict[neighbor_key] = String(take!(io))
-            end
-            # my_dict[neighbor_key] = join(pred_strings,"; ")
-        end
-    end
-    # @show neighbor_dict
-    # xkeys = [Dict(:type=>k) for k in sort(collect(keys(neighbor_dict)))]
-    ykeys = [Dict(:direction=>k) for k in sort(collect(keys(collect(values(neighbor_dict))[1])))]
-    tab = init_table(xkeys,ykeys)
-    for (i,xdict) in enumerate(get_xkeys(tab))
-        k = xdict[:type]
-        dict = neighbor_dict[k]
-        for (j,ydict) in enumerate(get_ykeys(tab))
-            tab.data[i,j] = dict[ydict[:direction]]
-        end
-    end
-    # tab.data
-    # io = IOBuffer()
-    # write_tex_table(io,tab;
-    #     print_func=print)
-    # println(String(take!(io)))
-    write_tex_table(joinpath(graphics_path,"node_table.tex"),tab;
-        # print_func=print,
-        print_func=print_real,
-        row_label_func=(k,v)->"\$$(v)\$",
-        col_label_func=(k,v)->"\$$(v)\$",
-        alignspec="t",
-        group_delim=" ",
-        )
-end
-
 
 """
     animate_preprocessing_steps!
@@ -946,70 +679,6 @@ function call_update!(scene_tree, vis_nodes, nodes, dt)
     render(vis)
 end
 
-function visualize_construction_plan!(scene_tree, sched, vis, vis_nodes; dt=0.2)
-    for v in topological_sort_by_dfs(sched)
-        update = true
-        node = get_node(sched,v)
-        update_nodes = []
-        if matches_template(ProjectComplete,node)
-        # elseif matches_template(RobotStart,node)
-        #     robot_node = entity(node)
-        #     @assert has_parent(robot_node,robot_node)
-        # elseif matches_template(ObjectStart,node)
-        #     part_node = get_node(scene_tree,node_id(entity(node)))
-        #     @assert has_parent(part_node,part_node)
-        #     set_local_transform!(part_node,local_transform(goal_config(node)))
-        elseif matches_template(RobotGo,node)
-            robot_node = entity(node)
-            @assert has_parent(robot_node,robot_node)
-            set_local_transform!(robot_node,global_transform(goal_config(node)))
-            push!(update_nodes,robot_node)
-        elseif matches_template(FormTransportUnit,node)
-            transport_unit = entity(node)
-            part_node = get_node(scene_tree,cargo_id(transport_unit))
-            @assert has_parent(part_node,part_node)
-            @assert has_parent(transport_unit,transport_unit)
-            set_local_transform!(transport_unit,global_transform(goal_config(node)))
-            set_child!(scene_tree,transport_unit,part_node)
-            @assert has_parent(part_node,transport_unit)
-            append!(update_nodes,[transport_unit,part_node])
-        elseif matches_template(TransportUnitGo,node)
-            transport_unit = entity(node)
-            set_local_transform!(transport_unit,global_transform(goal_config(node)))
-            append!(update_nodes,[transport_unit])
-        elseif matches_template(DepositCargo,node)
-            transport_unit = entity(node)
-            part_node = get_node(scene_tree,cargo_id(transport_unit))
-            @assert has_parent(part_node,transport_unit)
-            disband!(scene_tree,transport_unit)
-            @assert has_parent(part_node,part_node)
-            set_local_transform!(part_node,global_transform(cargo_deployed_config(node)))
-            append!(update_nodes,[transport_unit,part_node])
-        elseif matches_template(LiftIntoPlace,node)
-            part_node = get_node(scene_tree,node_id(entity(node)))
-            @assert has_parent(part_node,part_node)
-            set_local_transform!(part_node,global_transform(goal_config(node)))
-            if matches_template(AssemblyNode,part_node)
-                @info "$(string(node_id(node)))" part_node
-            end
-            append!(update_nodes,[part_node])
-        elseif matches_template(CloseBuildStep,node)
-            for (id,_) in assembly_components(node)
-                set_child!(scene_tree,ConstructionBots.get_assembly(node),id)
-                push!(update_nodes,get_node(scene_tree,id))
-            end
-        end
-        if !isempty(update_nodes)
-            # id = node_id(node)
-            # ids = map(n->string(node_id(n))=>string(global_transform(n).translation), update_nodes)
-            # @info "Updating nodes" id ids
-            # call_update!(scene_tree,vis_nodes,update_nodes,dt)
-            update_visualizer!(scene_tree, vis_nodes)
-            render(vis)
-        end
-    end
-end
-
 function render_model_spec_with_pictures(model_spec;
         base_image_path="",
         bg_color="white",
@@ -1121,9 +790,6 @@ end
 
 GraphPlottingBFS._subtitle_text_scale(n::Union{ConstructionPredicate,SceneNode}) = 0.28
 GraphPlottingBFS._title_text_scale(n::Union{ConstructionPredicate,SceneNode}) = 0.28
-# GraphPlottingBFS._node_shape(n::CustomNode,args...) = GraphPlottingBFS._node_shape(node_val(n),args...)
-# GraphPlottingBFS._node_color(n::CustomNode,args...) = GraphPlottingBFS._node_color(node_val(n),args...)
-# GraphPlottingBFS._title_string(n::CustomNode,args...) = GraphPlottingBFS._title_string(node_val(n),args...)
 
 GraphPlottingBFS._subtitle_string(n::SceneNode) = "$(get_id(node_id(n)))"
 GraphPlottingBFS._subtitle_string(n::Union{EntityGo,EntityConfigPredicate,FormTransportUnit,DepositCargo}) = GraphPlottingBFS._subtitle_string(entity(n))
@@ -1165,4 +831,167 @@ GraphPlottingBFS._node_color(::ConstructionBots.LiftIntoPlace)      = BRIGHT_BLU
 
 function GraphPlottingBFS.draw_node(g::AbstractCustomNGraph,v,args...;kwargs...)
     GraphPlottingBFS.draw_node(get_node(g,v),args...;kwargs...)
+end
+
+function plot_staging_area(
+    sched, scene_tree, staging_circles;
+    save_file_name="staging_area.pdf",
+    save_image=true,
+    nominal_width=30cm,
+    node_list=node_iterator(sched, topological_sort_by_dfs(sched)),
+    show_intermediate_stages=false,
+)
+
+    _final_stage_stroke_color = "red"
+    _final_stage_bg_color = nothing
+
+    _stage_stroke_color= "yellow"
+    _stage_bg_color = RGBA(1.0,1.0,0.0,0.5)
+
+    _bounding_stroke_color = "blue"
+    _bounding_bg_color = nothing
+
+    _dropoff_stroke_color = "green"
+    _dropoff_bg_color = nothing
+
+
+    base_geom_layer=Compose.compose(
+        context(),
+        Compose.linewidth(0.02pt),
+        plot_assemblies(sched,scene_tree,
+            fill_color=RGBA(0.5,0.5,0.5,0.9),
+            stroke_color=nothing,
+        ))
+
+    bg_color=nothing
+
+    staging_circs = []
+    final_staging_circs = []
+    bounding_circs = []
+    dropoff_circs = []
+    for n in node_list
+        if matches_template(AssemblyStart, n)
+        elseif matches_template(CloseBuildStep, n)
+
+
+            push!(staging_circs,node_id(n) => get_cached_geom(node_val(n).staging_circle))
+
+            push!(bounding_circs,node_id(n) => get_cached_geom(node_val(n).bounding_circle))
+
+            is_terminal_build_step = true
+            for v in outneighbors(sched,n)
+                if matches_template(OpenBuildStep,get_node(sched,v))
+                    is_terminal_build_step = false
+                end
+            end
+            is_terminal_build_step ? nothing : continue
+            push!(final_staging_circs,node_id(n) => get_cached_geom(node_val(n).staging_circle))
+
+        elseif matches_template(DepositCargo, n)
+            tu = entity(n)
+            a = get_node(scene_tree, cargo_id(tu))
+            tf = global_transform(goal_config(n))
+            push!(dropoff_circs, node_id(n) => tf(get_base_geom(tu, HypersphereKey())))
+        end
+    end
+
+    bbox = staging_plan_bbox(staging_circs)
+    bg_ctx = (context(),Compose.rectangle(),Compose.fill(bg_color))
+
+    Compose.set_default_graphic_size(nominal_width,(bbox.widths[2]/bbox.widths[1])*nominal_width)
+
+
+    circles_ctx = (context(),
+        (context(),
+            [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in final_staging_circs]...,
+            Compose.stroke(_final_stage_stroke_color),
+            Compose.fill(_final_stage_bg_color),
+        ),
+        (context(),
+            [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in staging_circs if show_intermediate_stages]...,
+            Compose.stroke(_stage_stroke_color),
+            Compose.fill(_stage_bg_color),
+        ),
+        (context(),
+            [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in dropoff_circs]...,
+            Compose.stroke(_dropoff_stroke_color),
+            Compose.fill(_dropoff_bg_color),
+        ),
+        (context(),
+            [Compose.circle(c.center[1],c.center[2],c.radius) for (k,c) in bounding_circs]...,
+            Compose.stroke(_bounding_stroke_color),
+            Compose.fill(_bounding_bg_color),
+        ),
+    )
+
+    plt = Compose.compose(
+        context(units=UnitBox(bbox.origin...,bbox.widths...)),
+        base_geom_layer,
+        circles_ctx,
+        bg_ctx
+    )
+
+    circs = transform_final_assembly_staging_circles(sched, scene_tree, staging_circles);
+
+
+    forms = [Compose.circle(v.center...,v.radius) for v in values(circs)]
+    stage_plt = Compose.compose(context(),plt,
+        (context(units=UnitBox(bbox.origin...,bbox.widths...)),
+            forms...,
+            Compose.fill(nothing),
+            Compose.stroke(RGBA(0.5,0.5,0.5,1.0)),
+            ),
+        (context(),Compose.rectangle(),
+            Compose.fill(RGB(0.25,0.25,0.25)),
+            )
+    )
+    if save_image
+        draw(PDF(save_file_name), stage_plt)
+    end
+    display(stage_plt)
+end
+
+function staging_plan_bbox(staging_circs)
+    xlo = minimum(c.center[1]-c.radius for (k,c) in staging_circs)
+    ylo = minimum(c.center[2]-c.radius for (k,c) in staging_circs)
+    xhi = maximum(c.center[1]+c.radius for (k,c) in staging_circs)
+    yhi = maximum(c.center[2]+c.radius for (k,c) in staging_circs)
+    GeometryBasics.Rect2D(xlo,ylo,xhi-xlo,yhi-ylo)
+end
+staging_plan_bbox(sched::AbstractGraph) = staging_plan_bbox(extract_build_step_staging_circles(sched))
+
+function extract_build_step_staging_circles(sched)
+    circs = Dict()
+    for n in get_nodes(sched)
+        if matches_template(CloseBuildStep,n)
+            circs[node_id(n)] = get_cached_geom(node_val(n).staging_circle)
+        end
+    end
+    circs
+end
+
+function transform_final_assembly_staging_circles(sched,scene_tree,staging_circles)
+    circs = Dict()
+    for (k,v) in staging_circles
+        tform = global_transform(goal_config(get_node(sched,
+            AssemblyComplete(get_node(scene_tree,k)))))
+        # circ = LazySets.translate(v,tform.translation[1:2])
+        circ = Ball2(v.center + tform.translation[1:2], v.radius)
+        circs[k] = circ
+    end
+    circs
+end
+
+function plot_assemblies(sched,scene_tree;
+    base_ctx=context(),
+    kwargs...,
+    )
+    ctxs = []
+    for n in get_nodes(sched)
+        if matches_template(AssemblyComplete,n)
+            tform = global_transform(goal_config(n))
+            push!(ctxs,plot_base_geom_2d(entity(n),scene_tree;tform=tform,kwargs...))
+        end
+    end
+    Compose.compose(base_ctx,ctxs...)
 end
