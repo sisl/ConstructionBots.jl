@@ -1,4 +1,4 @@
-name = "GraphPlottingBFS.jl"
+name = "GraphPlottingBFS"
 uuid = "536b97ad-71b1-495c-9292-3a512172a761"
 
 [deps]
