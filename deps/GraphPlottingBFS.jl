@@ -154,10 +154,9 @@ function backward_pass!(G,feats,feat_vals=Dict(f=>map(v->initial_value(f),Graphs
 end
 
 function get_graph_layout(
-        G,feats=[ForwardDepth(),BackwardDepth(),ForwardWidth(),BackwardWidth()]
-        ;
+        G,feats=[ForwardDepth(),BackwardDepth(),ForwardWidth(),BackwardWidth()];
         enforce_visited=false,
-        )
+)
     @assert !is_cyclic(G)
     feat_vals = forward_pass!(G,feats)
     feat_vals = backward_pass!(G,feats,feat_vals)
@@ -172,10 +171,10 @@ function get_graph_layout(
 	for v in end_vtxs
 		s = bfs!(graph,v,s,Set{Int}(),enforce_visited)
 	end
-	for (idx_key,ctr_key,depth_key) in [
-            (ForwardIndex(),ForwardCenter(),ForwardDepth()),
-            ((BackwardIndex(),BackwardCenter(),BackwardDepth()))
-            ]
+	for (idx_key, ctr_key, depth_key) in [
+            (ForwardIndex(), ForwardCenter(), ForwardDepth()),
+            ((BackwardIndex(), BackwardCenter(), BackwardDepth()))
+        ]
 		vec = feat_vals[depth_key]
 		forward_width_counts = map(v->Int[],1:maximum(vec))
 		forward_idxs = zeros(nv(G))
@@ -295,7 +294,7 @@ function display_graph(graph;
         enforce_visited=false
     )
 
-    feat_vals = get_graph_layout(graph;enforce_visited=enforce_visited)
+    feat_vals = get_graph_layout(graph; enforce_visited=enforce_visited)
     # alignment
     if align_mode == :leaf_aligned
         x = feat_vals[ForwardDepth()]
@@ -304,6 +303,30 @@ function display_graph(graph;
         x = feat_vals[BackwardDepth()]
 		x = 1 + maximum(x) .- x
         y = feat_vals[BackwardCenter()]
+    elseif align_mode == :split_aligned
+        x = feat_vals[ForwardDepth()]
+	    y = feat_vals[ForwardCenter()]
+        # Start with the root node, which is the max x value for forward_depth
+        root_node = argmax(x)
+        parents = [root_node]
+        temp_parents = []
+        while !isempty(parents)
+            for parent in parents
+                for v in inneighbors(graph, parent)
+                    push!(temp_parents, v)
+                    for vc in outneighbors(graph, v)
+                        if vc == parent
+                            continue
+                        end
+                        x[vc] = x[parent]
+                    end
+                    x[v] = x[parent] - 1
+                end
+            end
+            parents = temp_parents
+            temp_parents = []
+        end
+
     else
         throw(ErrorException("Unknown align_mode $align_mode"))
     end
