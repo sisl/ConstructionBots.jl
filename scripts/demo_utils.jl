@@ -35,8 +35,8 @@ help with memory issues. The goal is to refactor the code to not require this "h
 """
 function run_simulation!(
     env::PlannerEnv,
-    factory_vis::FactoryVisualizer,
-    anim::Union{AnimationWrapper,Nothing},
+    factory_vis::ConstructionBots.FactoryVisualizer,
+    anim::Union{ConstructionBots.AnimationWrapper,Nothing},
     sim_params::SimParameters
 )
 
@@ -57,7 +57,7 @@ function run_simulation!(
 
     starting_frame = 0
     if !isnothing(anim)
-        starting_frame = current_frame(anim)
+        starting_frame = ConstructionBots.current_frame(anim)
     end
 
     sim_process_data = SimProcessingData(
@@ -74,8 +74,8 @@ end
 
 function simulate!(
     env::PlannerEnv,
-    factory_vis::FactoryVisualizer,
-    anim::Union{AnimationWrapper,Nothing},
+    factory_vis::ConstructionBots.FactoryVisualizer,
+    anim::Union{ConstructionBots.AnimationWrapper,Nothing},
     sim_params::SimParameters,
     sim_process_data::SimProcessingData,
     update_steps::Vector
@@ -95,7 +95,7 @@ function simulate!(
 
         if !isnothing(factory_vis.vis)
             if !isempty(newly_updated)
-                scene_nodes, closed_steps_nodes, active_build_nodes, fac_active_flags_nodes = visualizer_update_function!(factory_vis, env, newly_updated)
+                scene_nodes, closed_steps_nodes, active_build_nodes, fac_active_flags_nodes = ConstructionBots.visualizer_update_function!(factory_vis, env, newly_updated)
                 sim_process_data.num_iters_since_anim_save += 1
                 if process_animation_tasks
                     update_tuple = (sim_process_data.iter, deepcopy(factory_vis.vis_nodes),
@@ -130,8 +130,8 @@ function simulate!(
                 active_build_nodes_k = step_k[5]
                 fac_active_flags_nodes_k = step_k[6]
 
-                set_current_frame!(anim, k_k + sim_process_data.starting_frame)
-                atframe(anim, current_frame(anim)) do
+                ConstructionBots.set_current_frame!(anim, k_k + sim_process_data.starting_frame)
+                atframe(anim, ConstructionBots.current_frame(anim)) do
                     if anim_active_areas
                         for node_i in closed_steps_nodes_k
                             setvisible!(node_i, false)
@@ -146,7 +146,7 @@ function simulate!(
                             setvisible!(factory_vis.active_flags[node_key], true)
                         end
                     end
-                    update_visualizer!(vis_nodes_k, scene_nodes_k)
+                    ConstructionBots.update_visualizer!(vis_nodes_k, scene_nodes_k)
                 end
             end
             setanimation!(factory_vis.vis, anim.anim, play=false)

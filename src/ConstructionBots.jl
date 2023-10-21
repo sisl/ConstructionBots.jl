@@ -1,5 +1,6 @@
 module ConstructionBots
 
+using Printf
 using Parameters
 using StaticArrays
 using CoordinateTransformations
@@ -14,6 +15,12 @@ using LinearAlgebra
 using ForwardDiff
 using SpatialIndexing
 using Logging
+
+using MeshCat
+using Colors
+
+using GraphPlottingBFS
+
 
 using LDrawParser
 using HierarchicalGeometry
@@ -252,13 +259,6 @@ function extract_single_model(spec::S,
         if !has_vertex(new_spec,dst_id)
             continue
         end
-        # for v2 in inneighbors(spec,id)
-
-        #     if !has_vertex(new_spec,)
-        # end
-    # for edge in edges(reverse(bfs_tree(spec,root;dir=:in)))
-        # TODO bfs_tree is the problem here
-        # src_id = get_vtx_id(spec,edge.src)
         if !has_vertex(new_spec,dst_id)
             transplant!(new_spec,spec,dst_id)
         end
@@ -269,18 +269,7 @@ function extract_single_model(spec::S,
             end
             add_edge!(new_spec,src_id,dst_id)
         end
-
-        # dst_id = get_vtx_id(spec,edge.dst)
-        # if !has_vertex(new_spec,dst_id)
-        #     transplant!(new_spec,spec,dst_id)
-        # end
-        # add_edge!(new_spec,src_id,dst_id)
     end
-    # for edge in edges(spec)
-    #     src_id = get_vtx_id(spec,edge.src)
-    #     dst_id = get_vtx_id(spec,edge.dst)
-    #     add_edge!(new_spec,src_id,dst_id)
-    # end
     new_spec
 end
 
@@ -494,6 +483,7 @@ include("utils.jl")
 include("rvo_interface.jl")
 include("task_assignment.jl")
 include("route_planning.jl")
+include("render_tools.jl")
 
 """
     construct_spatial_index(scene_tree)
@@ -589,12 +579,41 @@ function compute_separating_hyperplane(ptsA,ptsB,dim=3)
     return normalize(value.(x))
 end
 
-"""
-    compute_mating_vector(geom,neighbor_geom,element_pairs)
+function GeometryBasics.decompose(
+    ::Type{TriangleFace{Int}},
+    n::GeometryBasics.Ngon{3,Float64,N,Point{3,Float64}}) where {N}
+    return SVector{N - 1,TriangleFace{Int}}(
+        TriangleFace{Int}(1, i, i + 1) for i in 1:N-1
+    )
+end
+function GeometryBasics.decompose(
+    ::Type{Point{3,Float64}},
+    n::GeometryBasics.Ngon)
+    return n.points
+end
+GeometryBasics.faces(n::GeometryBasics.Ngon{3,Float64,4,Point{3,Float64}}) = [
+    TriangleFace{Int}(1, 2, 3), TriangleFace{Int}(1, 3, 4)
+]
+GeometryBasics.faces(n::GeometryBasics.Ngon{3,Float64,3,Point{3,Float64}}) = [
+    TriangleFace{Int}(1, 2, 3)
+]
 
-Given a subset of
-"""
-function compute_mating_vector(geom,neighbor_geom,element_pairs)
+GeometryBasics.coordinates(v::AbstractVector) = collect(Base.Iterators.flatten(map(coordinates, v)))
+
+function GeometryBasics.coordinates(v::AbstractVector{G}) where {N,G<:GeometryBasics.Ngon{3,Float64,N,Point{3,Float64}}}
+    vcat(map(coordinates, v)...)
+end
+function GeometryBasics.faces(v::AbstractVector{G}) where {N,G<:GeometryBasics.Ngon{3,Float64,N,Point{3,Float64}}}
+    vcat(map(i -> map(f -> f .+ ((i - 1) * N), faces(v[i])), 1:length(v))...)
+end
+function GeometryBasics.faces(v::AbstractVector{G}) where {G<:GeometryBasics.Ngon}
+    face_vec = Vector{TriangleFace{Int}}()
+    i = 0
+    for element in v
+        append!(face_vec, map(f -> f .+ i, faces(element)))
+        i = face_vec[end].data[3]
+    end
+    return face_vec
 end
 
 end

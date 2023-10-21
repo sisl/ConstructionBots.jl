@@ -26,18 +26,18 @@ using Gurobi
 project_params = get_project_params(4)
 
 
-open_animation_at_end        = false
+open_animation_at_end        = true
 save_animation_along_the_way = false
 save_animation_at_end        = false
-anim_active_agents           = false
-anim_active_areas            = false
+anim_active_agents           = true
+anim_active_areas            = true
 
 rvo_flag                     = false
 tangent_bug_flag             = false
 dispersion_flag              = false
-assignment_mode              = :milp_w_greedy_warm_start # :milp :greedy :milp_w_greedy_warm_start
+assignment_mode              = :greedy # :milp :greedy :milp_w_greedy_warm_start
 
-write_results                = true
+write_results                = false
 overwrite_results            = false
 
 
@@ -65,6 +65,8 @@ env, stats = run_lego_demo(;
     overwrite_results            = overwrite_results,
 
     look_for_previous_milp_solution = true,
-    save_milp_solution               = true,
-    previous_found_optimizer_time   = 20
+    save_milp_solution              = true,
+    previous_found_optimizer_time   = 20,
+
+    stop_after_task_assignment = false
 );

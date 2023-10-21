@@ -2,21 +2,24 @@ import Pkg: Pkg, PackageSpec
 
 Pkg.activate(".")
 
-packages = [
-    PackageSpec(url="https://github.com/sisl/CRCBS.jl.git"),
-    PackageSpec(url="https://github.com/sisl/GraphUtils.jl.git"),
-    PackageSpec(url="https://github.com/sisl/TaskGraphs.jl.git"),
-    PackageSpec(url="https://github.com/sisl/HierarchicalGeometry.jl.git"),
-    PackageSpec(url="https://github.com/sisl/LDrawParser.jl.git")
-]
-Pkg.add(packages)
+Pkg.add(PackageSpec(url="https://github.com/sisl/LDrawParser.jl.git")) # Can remove this once it's registered (20 Oct)
 
-include("deps/GraphPlottingBFS.jl")
-include("deps/FactoryRendering.jl")
+
+packages = [
+    PackageSpec(path="deps/CRCBS.jl"),
+    PackageSpec(path="deps/GraphUtils.jl"),
+    PackageSpec(path="deps/TaskGraphs.jl"),
+    PackageSpec(path="deps/HierarchicalGeometry.jl"),
+    PackageSpec(path="deps/GraphPlottingBFS.jl")
+]
+
+Pkg.develop(packages)
 
 Pkg.instantiate()
 Pkg.build()
 Pkg.precompile()
+
+# include("deps/GraphPlottingBFS.jl")
 
 # TODO: Check for RVO2 python access. If not, can we automate the build process here?
 # using PyCall
