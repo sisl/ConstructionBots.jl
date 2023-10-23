@@ -2,9 +2,6 @@ import Pkg: Pkg, PackageSpec
 
 Pkg.activate(".")
 
-Pkg.add(PackageSpec(url="https://github.com/sisl/LDrawParser.jl.git")) # Can remove this once it's registered (20 Oct)
-
-
 packages = [
     PackageSpec(path="deps/CRCBS.jl"),
     PackageSpec(path="deps/GraphUtils.jl"),

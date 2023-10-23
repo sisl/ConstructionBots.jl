@@ -25,8 +25,8 @@ Base.typemax(c::Tuple) = typemax(typeof(c))
 
 for op = (:(>), :(<), :(>=), :(<=))
     eval(quote
-        Base.$op(a::T,b::R) where {N,T<:Tuple,R<:Real} = $op(a[1],b)
-        Base.$op(b::R,a::T) where {N,T<:Tuple,R<:Real} = $op(b,a[1])
+        Base.$op(a::T,b::R) where {T<:Tuple,R<:Real} = $op(a[1],b)
+        Base.$op(b::R,a::T) where {T<:Tuple,R<:Real} = $op(b,a[1])
     end)
 end
 
@@ -190,7 +190,7 @@ end
 """
     CompositeCostModel{T}
 
-Combines multiple cost models in a specific order (i.e., to use for cascaded 
+Combines multiple cost models in a specific order (i.e., to use for cascaded
 tie-breaking).
 """
 struct CompositeCostModel{M<:Tuple,T<:Tuple} <: AbstractCostModel{T}
@@ -353,10 +353,10 @@ end
 # end
 for op in [:add_heuristic_cost,:compute_heuristic_cost]
     @eval begin
-        function $op(m::TransformCostModel, h::H, env::E, args...) where {H<:AbstractCostModel,E<:AbstractLowLevelEnv} 
+        function $op(m::TransformCostModel, h::H, env::E, args...) where {H<:AbstractCostModel,E<:AbstractLowLevelEnv}
             m.f($op(m.model, h, env, args...))
         end
-        function $op(m::TransformCostModel, env::E, args...) where {E<:AbstractLowLevelEnv} 
+        function $op(m::TransformCostModel, env::E, args...) where {E<:AbstractLowLevelEnv}
             m.f($op(m.model, env, args...))
         end
     end
@@ -441,8 +441,8 @@ struct MultiDeadlineCost{F} <: AbstractDeadlineCost
     f::F # aggregation function
     tF::Vector{Float64}
     root_nodes::Vector{Int} # weights and deadlines correspond to root_nodes only
-    weights::Vector{Float64} 
-    deadlines::Vector{Float64} 
+    weights::Vector{Float64}
+    deadlines::Vector{Float64}
     m::TravelTime
 end
 const SumOfMakeSpans = MultiDeadlineCost{SumCost}
@@ -475,7 +475,7 @@ Deadlines come from an external environment
     m::TravelTime = TravelTime()
 end
 # EnvDeadlineCost() = EnvDeadlineCost(SumCost(),nothing,TravelTime())
-EnvDeadlineCost{E,F}() where {E,F} = EnvDeadlineCost(env=E(),f=F())
+# EnvDeadlineCost{E,F}() where {E,F} = EnvDeadlineCost(env=E(),f=F())
 aggregate_costs(::EnvDeadlineCost,costs) = maximum(costs)
 
 ################################################################################
@@ -583,7 +583,7 @@ end
 """
     get_conflicting_paths
 
-Operates over a lookup table and returns a dictionary mapping path index to the 
+Operates over a lookup table and returns a dictionary mapping path index to the
 time index at which the conflict occurred
 """
 function get_conflicting_paths(ct::T) where {T<:HardConflictTable}
@@ -614,7 +614,7 @@ function HardConflictTable(graph::G,T::Int,num_agents::Int) where {G<:AbstractGr
         CAT = construct_empty_lookup_table(graph,T)
         )
 end
-function HardConflictTable(graph::G,T::Float64,num_agents::Int) where {G<:AbstractGraph} 
+function HardConflictTable(graph::G,T::Float64,num_agents::Int) where {G<:AbstractGraph}
     @assert abs(T - Int(round(T))) < 0.01
     HardConflictTable(graph,Int(round(T)),num_agents)
 end
@@ -757,7 +757,7 @@ SoftConflictCost(args...) = FullCostModel(sum,ConflictCostModel(SoftConflictTabl
 SoftConflictCost(table::SoftConflictTable,args...) = FullCostModel(sum,ConflictCostModel(table))
 
 get_time_horizon(h::H) where {H<:ConflictCostModel} = get_time_horizon(h.table)
-get_planned_vtx(h::H,args...) where {T<:HardConflictTable,H<:ConflictCostModel}  = get_planned_vtx(h.table,args...)
+get_planned_vtx(h::H,args...) where {H<:ConflictCostModel}  = get_planned_vtx(h.table,args...)
 reset_path!(h::H,args...) where {H<:ConflictCostModel}    = reset_path!(h.table,args...)
 reset_path!(h::H,args...) where {H<:AbstractCostModel}    = nothing
 reset_path!(h::FullCostModel{F,T,M},args...) where {F,T,M<:ConflictCostModel} = reset_path!(h.model,args...)

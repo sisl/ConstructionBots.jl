@@ -141,7 +141,7 @@ function get_path_node(path::P,t::Int) where {P<:AbstractPath}
         sp = get_sp(node)
         for τ in t₀+1:t_idx
             s = sp
-            a = wait(s)
+            a = CRCBS.wait(s)
             sp = get_next_state(s,a)
         end
         return PathNode(s,a,sp)
@@ -180,8 +180,8 @@ function extend_path!(path::P,T::Int) where {P<:Path}
     # while get_index_from_time(path,get_end_index(path)) < T
     while get_end_index(path) < T
         s = get_final_state(path)
-        a = wait(s)
-        push!(path,PathNode(s,wait(s),get_next_state(s,a)))
+        a = CRCSB.wait(s)
+        push!(path,PathNode(s,CRCBS.wait(s),get_next_state(s,a)))
     end
     return path
 end
@@ -302,7 +302,6 @@ export
     build_env,
     states_match,
     is_goal,
-    wait,
     get_possible_actions,
     get_next_state,
     get_transition_cost,

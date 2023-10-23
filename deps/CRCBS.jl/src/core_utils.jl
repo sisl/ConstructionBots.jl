@@ -65,7 +65,7 @@ function extend_path!(env::E,path::P,T::Int) where {E<:AbstractLowLevelEnv,P<:Pa
     # while get_index_from_time(path,get_end_index(path)) < T
     while get_end_index(path) < T
         s = get_final_state(path)
-        a = wait(env,s)
+        a = CRCBS.wait(env,s)
         sp = get_next_state(env,s,a)
         push!(path,PathNode(s,a,sp))
         set_cost!(path, accumulate_cost(env, get_cost(path), get_transition_cost(env,s,a,sp)))

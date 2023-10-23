@@ -479,7 +479,6 @@ function convert_to_scene_tree(assembly_tree;set_children::Bool=true)
 end
 
 include("construction_schedule.jl")
-include("utils.jl")
 include("rvo_interface.jl")
 include("task_assignment.jl")
 include("route_planning.jl")

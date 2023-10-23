@@ -43,7 +43,7 @@ export
 """
     GraphEnv{S,A,C} <: AbstractLowLevelEnv{S,A,C}
 
-An abstract environment type whose concrete subtypes comply with a standard 
+An abstract environment type whose concrete subtypes comply with a standard
 interface.
 """
 abstract type GraphEnv{S,A,C} <: AbstractLowLevelEnv{S,A,C} end
@@ -135,7 +135,7 @@ function get_heuristic_cost(h::EnvDistanceHeuristic,env::GraphEnv,s)
     get_distance(env, s, get_goal(env))
 end
 # function get_heuristic_cost(env::GraphEnv,h::H,s) where {E<:GraphEnv, H<:ConflictTableHeuristic}
-function get_heuristic_cost(h::H,env::GraphEnv,s) where {E<:GraphEnv, H<:ConflictTableHeuristic}
+function get_heuristic_cost(h::H,env::GraphEnv,s) where {H<:ConflictTableHeuristic}
     get_heuristic_cost(h, get_agent_id(env), get_vtx(s), get_t(s))
 end
 # states_match

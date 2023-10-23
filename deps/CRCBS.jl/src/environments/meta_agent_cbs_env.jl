@@ -31,10 +31,10 @@ abstract type AbstractMetaEnv{S,A,T,C} <: AbstractLowLevelEnv{State{S},Action{A}
         FullCostModel(sum,TravelTime()),length(envs))
 end
 # CRCBS.state_type(env::AbstractMetaEnv{S,A,T,C}) where {S,A,T,C} = State{S}
-function CRCBS.compute_heuristic_cost(env::MetaAgentCBS.AbstractMetaEnv,cost,sp) where {E<:AbstractLowLevelEnv}
+function CRCBS.compute_heuristic_cost(env::MetaAgentCBS.AbstractMetaEnv,cost,sp)
 # function compute_heuristic_cost(m::MetaCostModel,::AbstractCostModel,env::E,cost,sp) where {E<:AbstractLowLevelEnv}
     m = get_cost_model(env)
-    # h_cost = get_heuristic_cost(env,sp) 
+    # h_cost = get_heuristic_cost(env,sp)
     costs = map(i->CRCBS.compute_heuristic_cost(
         get_envs(env)[i],
         cost.independent_costs[i],
@@ -76,7 +76,7 @@ function construct_team_env(envs::Vector{E},idxs::Vector{Int},c_model::C) where 
     TeamMetaEnv{S,A,T,C,E}(envs=envs,agent_idxs=idxs,cost_model=model)
 end
 
-function split_meta_path_node(path_node::PathNode{State{S},Action{A}}) where {S,A,C}
+function split_meta_path_node(path_node::PathNode{State{S},Action{A}}) where {S,A}
     return map(args->PathNode(args...), zip(
         get_s(path_node).states,
         get_a(path_node).actions,

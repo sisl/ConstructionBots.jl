@@ -17,7 +17,7 @@ export
 Abstract type of a heuristic that returns cost of type `C`.
 """
 abstract type LowLevelSearchHeuristic{C} <: AbstractCostModel{C} end
-# function get_heuristic_cost(env::AbstractLowLevelEnv,m::AbstractCostModel,args...) 
+# function get_heuristic_cost(env::AbstractLowLevelEnv,m::AbstractCostModel,args...)
 #     get_heuristic_cost(m,args...)
 # end
 ################################################################################
@@ -131,8 +131,8 @@ export MultiStageEnvDistanceHeuristic
 """
     MultiStageEnvDistanceHeuristic <: LowLevelSearchHeuristic{Float64}
 
-`m.dists[i][stage]` stores the distance from that stage's goal to the final 
-stage's goal for agent `i`. 
+`m.dists[i][stage]` stores the distance from that stage's goal to the final
+stage's goal for agent `i`.
 The heuristic cost is computed as follows:
 
 `h = get_heuristic_cost(m.h,env,s) + cost_from_stage()`
@@ -182,7 +182,7 @@ HardConflictHeuristic(args...) = ConflictTableHeuristic(HardConflictTable(args..
 SoftConflictHeuristic(args...) = ConflictTableHeuristic(SoftConflictTable(args...))
 
 get_time_horizon(h::H) where {H<:ConflictTableHeuristic} = get_time_horizon(h.table)
-get_planned_vtx(h::H,args...) where {T<:HardConflictTable,H<:ConflictTableHeuristic}  = get_planned_vtx(h.table,args...)
+get_planned_vtx(h::H,args...) where {H<:ConflictTableHeuristic}  = get_planned_vtx(h.table,args...)
 reset_path!(h::H,args...) where {T<:HardConflictTable,H<:ConflictTableHeuristic{T}}   = reset_path!(h.table,args...)
 set_path!(h::H,args...) where {T<:HardConflictTable,H<:ConflictTableHeuristic{T}}     = set_path!(h.table,args...)
 set_path!(h::H,args...) where {H<:LowLevelSearchHeuristic} = nothing
