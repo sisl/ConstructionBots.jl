@@ -1,8 +1,6 @@
 include("full_demo.jl")
 include("project_params.jl")
 
-
-
 using Gurobi
 
 #                                    # parts      # assemblies      # estimated time (rvo+)
@@ -316,7 +314,6 @@ plt = GraphPlottingBFS.display_graph(
     ),
     pad=(0.0, 0.0)
 )
-display(plt)
 # draw(PDF("assembly_schedule.pdf"), plt)
 
 
@@ -330,7 +327,7 @@ staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scen
 )
 
 #### Plot the staging area ####
-plot_staging_area(
+ConstructionBots.plot_staging_area(
     sched, scene_tree, staging_circles;
     save_file_name="staging_area.pdf",
     save_image=false
@@ -376,4 +373,4 @@ plt = GraphPlottingBFS.display_graph(
             ) ? GraphPlottingBFS._title_text_scale(get_node(G,v)) : 0.45,
     )
 )
-display(plt)
+# display(plt)

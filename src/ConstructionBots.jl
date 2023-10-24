@@ -26,6 +26,10 @@ using LDrawParser
 using HierarchicalGeometry
 using TaskGraphs
 
+# only needed for plotting stuff
+using Measures
+using Compose
+
 import LibSpatialIndex
 
 
