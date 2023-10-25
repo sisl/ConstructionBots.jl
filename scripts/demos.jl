@@ -32,10 +32,12 @@ save_animation_at_end        = false
 anim_active_agents           = true
 anim_active_areas            = true
 
-rvo_flag                     = false
-tangent_bug_flag             = false
-dispersion_flag              = false
-assignment_mode              = :greedy # :milp :greedy :milp_w_greedy_warm_start
+rvo_flag                     = true
+tangent_bug_flag             = true
+dispersion_flag              = true
+# assignment_mode              = :greedy
+# assignment_mode              = :milp
+assignment_mode              = :milp_w_greedy_warm_start
 
 write_results                = false
 overwrite_results            = false
@@ -49,7 +51,7 @@ env, stats = run_lego_demo(;
 
     assignment_mode              = assignment_mode,
     milp_optimizer               = :gurobi, # :gurobi :highs
-    optimizer_time_limit         = 100,
+    optimizer_time_limit         = 20,
 
     rvo_flag                     = rvo_flag,
     tangent_bug_flag             = tangent_bug_flag,

@@ -21,16 +21,21 @@ using Colors
 
 using GraphPlottingBFS
 
+using SparseArrays
+using DataStructures
 
 using LDrawParser
 using HierarchicalGeometry
-using TaskGraphs
+# using TaskGraphs
 
 # only needed for plotting stuff
 using Measures
 using Compose
 
 import LibSpatialIndex
+
+
+include("essential_tg_coponents.jl")
 
 
 ################################################################################
@@ -44,7 +49,19 @@ import LibSpatialIndex
 export
     DuplicateIDGenerator,
     duplicate_subtree!,
-    construct_assembly_graph
+    construct_assembly_graph,
+    SparseAdjacencyMILP,
+    GreedyAssignment,
+    AssignmentMILP,
+    GreedyFinalTimeCost,
+    formulate_milp,
+    update_project_schedule!,
+    validate,
+    makespan,
+    set_default_milp_optimizer!,
+    clear_default_optimizer_attributes!,
+    set_default_optimizer_attributes!,
+    get_assignment_matrix
 
 """
     BuildStepID <: AbstractID

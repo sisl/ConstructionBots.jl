@@ -1,5 +1,5 @@
-TaskGraphs.duration_lower_bound(node::ConstructionPredicate) = 0.0
-function TaskGraphs.duration_lower_bound(node::ConstructionPredicate,start,goal,max_speed)
+duration_lower_bound(node::ConstructionPredicate) = 0.0
+function duration_lower_bound(node::ConstructionPredicate,start,goal,max_speed)
     env_dt = rvo_default_time_step()
     d = norm(goal-start)
     δd = max_speed * env_dt
@@ -11,17 +11,17 @@ function TaskGraphs.duration_lower_bound(node::ConstructionPredicate,start,goal,
     end
     return env_dt * num_steps
 end
-function TaskGraphs.duration_lower_bound(node::EntityGo)
+function duration_lower_bound(node::EntityGo)
     start = global_transform(start_config(node)).translation
     goal = global_transform(goal_config(node)).translation
-    TaskGraphs.duration_lower_bound(node,start,goal,get_rvo_max_speed(entity(node)))
+    duration_lower_bound(node,start,goal,get_rvo_max_speed(entity(node)))
 end
-function TaskGraphs.duration_lower_bound(node::Union{FormTransportUnit,DepositCargo})
+function duration_lower_bound(node::Union{FormTransportUnit,DepositCargo})
     start = global_transform(cargo_start_config(node)).translation
     goal = global_transform(cargo_goal_config(node)).translation
-    TaskGraphs.duration_lower_bound(node,start,goal,default_loading_speed())
+    duration_lower_bound(node,start,goal,default_loading_speed())
 end
-function TaskGraphs.duration_lower_bound(node::LiftIntoPlace)
+function duration_lower_bound(node::LiftIntoPlace)
     # Need to account for order of movement: rotate, then translate
     env_dt = rvo_default_time_step()
 
@@ -39,7 +39,7 @@ function TaskGraphs.duration_lower_bound(node::LiftIntoPlace)
         trans_dt = env_dt
     else
         vel = normalize(dx) * min(v_max, norm(dx) / env_dt)
-        trans_dt = TaskGraphs.duration_lower_bound(node, tf_error.translation[1:2], [0, 0], norm(vel))
+        trans_dt = duration_lower_bound(node, tf_error.translation[1:2], [0, 0], norm(vel))
     end
     # rotation error (estimate for time)
     r = RotationVec(tf_error.linear) # rotation vector
@@ -48,30 +48,30 @@ function TaskGraphs.duration_lower_bound(node::LiftIntoPlace)
         rot_dt = 0.0
     else
         ω = normalize(θ) * min(ω_max, norm(θ) / env_dt)
-        rot_dt = TaskGraphs.duration_lower_bound(node, θ, [0, 0, 0], norm(ω))
+        rot_dt = duration_lower_bound(node, θ, [0, 0, 0], norm(ω))
     end
     return trans_dt + rot_dt
 end
 
-TaskGraphs.is_tight(node::Union{TransportUnitGo,RobotGo}) = true
+is_tight(node::Union{TransportUnitGo,RobotGo}) = true
 
-TaskGraphs.needs_path(node::BuildPhasePredicate)    = false
-TaskGraphs.needs_path(node::ObjectStart)            = false
-TaskGraphs.needs_path(node::AssemblyComplete)       = false
-TaskGraphs.needs_path(node::AssemblyStart)          = false
-TaskGraphs.needs_path(node::ProjectComplete)        = false
+needs_path(node::BuildPhasePredicate)    = false
+needs_path(node::ObjectStart)            = false
+needs_path(node::AssemblyComplete)       = false
+needs_path(node::AssemblyStart)          = false
+needs_path(node::ProjectComplete)        = false
 
-function TaskGraphs.generate_path_spec(node::ConstructionPredicate)
+function generate_path_spec(node::ConstructionPredicate)
     PathSpec(
-        min_duration=TaskGraphs.duration_lower_bound(node),
-        tight=TaskGraphs.is_tight(node),
-        static=TaskGraphs.is_static(node),
-        free=TaskGraphs.is_free(node),
-        plan_path=TaskGraphs.needs_path(node)
+        min_duration=duration_lower_bound(node),
+        tight=is_tight(node),
+        static=is_static(node),
+        free=is_free(node),
+        plan_path=needs_path(node)
     )
 end
-TaskGraphs.generate_path_spec(::SceneTree,node) = generate_path_spec(node)
-TaskGraphs.generate_path_spec(::OperatingSchedule,scene_tree::SceneTree,node) = generate_path_spec(scene_tree,node)
+generate_path_spec(::SceneTree,node) = generate_path_spec(node)
+generate_path_spec(::OperatingSchedule,scene_tree::SceneTree,node) = generate_path_spec(scene_tree,node)
 
 function convert_to_operating_schedule(sched)
     tg_sched = OperatingSchedule()
@@ -98,23 +98,23 @@ function convert_from_operating_schedule(::Type{T},sched::OperatingSchedule) whe
     G
 end
 
-# CRCBS.is_valid(node::ConstructionPredicate) = CRCBS.is_valid(node_id(node))
-CRCBS.is_valid(node::SceneNode) = CRCBS.is_valid(node_id(node))
+# is_valid(node::ConstructionPredicate) = is_valid(node_id(node))
+is_valid(node::SceneNode) = is_valid(node_id(node))
 
-TaskGraphs.align_with_successor(node::ConstructionPredicate,succ::ConstructionPredicate) = node
-TaskGraphs.align_with_successor(node::RobotGo,succ::T) where {T<:RobotGo} = RobotGo(
-    TaskGraphs.first_valid(entity(node),entity(succ)),
+align_with_successor(node::ConstructionPredicate,succ::ConstructionPredicate) = node
+align_with_successor(node::RobotGo,succ::T) where {T<:RobotGo} = RobotGo(
+    first_valid(entity(node),entity(succ)),
     start_config(node),
     start_config(succ),
     node_id(node)
     )
-TaskGraphs.align_with_predecessor(node::RobotGo,pred::T) where {T<:Union{EntityConfigPredicate,EntityGo}} = RobotGo(
-    TaskGraphs.first_valid(entity(node),entity(pred)),
+align_with_predecessor(node::RobotGo,pred::T) where {T<:Union{EntityConfigPredicate,EntityGo}} = RobotGo(
+    first_valid(entity(node),entity(pred)),
     goal_config(pred),
     goal_config(node),
     node_id(node)
     )
-# TaskGraphs.align_with_successor(node::T,succ::S) where {C,T<:EntityConfigPredicate{C},S<:EntityGo{C}} = T(first_valid(node,succ),start_config(node))
+# align_with_successor(node::T,succ::S) where {C,T<:EntityConfigPredicate{C},S<:EntityGo{C}} = T(first_valid(node,succ),start_config(node))
 
 ALIGNMENT_CHECK_TOLERANCE = 1e-3
 
@@ -148,7 +148,7 @@ function get_matching_child_id(node::DepositCargo,succ::RobotGo)
     return nothing
 end
 
-function TaskGraphs.align_with_predecessor(node::FormTransportUnit,pred::RobotGo)
+function align_with_predecessor(node::FormTransportUnit,pred::RobotGo)
     matching_id = get_matching_child_id(node,pred)
     if !(matching_id === nothing)
         transport_unit = entity(node)
@@ -156,7 +156,7 @@ function TaskGraphs.align_with_predecessor(node::FormTransportUnit,pred::RobotGo
     end
 	node
 end
-function TaskGraphs.align_with_predecessor(sched::OperatingSchedule,node::RobotGo,pred::DepositCargo)
+function align_with_predecessor(sched::OperatingSchedule,node::RobotGo,pred::DepositCargo)
     matching_id = get_matching_child_id(pred,node)
     if !(matching_id === nothing)
         if valid_id(matching_id)
@@ -227,7 +227,7 @@ export GreedyOrderedAssignment
     schedule::OperatingSchedule = OperatingSchedule()
     problem_spec::P             = ProblemSpec()
     cost_model::C               = SumOfMakeSpans()
-    greedy_cost::M              = TaskGraphs.GreedyPathLengthCost()
+    greedy_cost::M              = GreedyPathLengthCost()
     # t0::Vector{Float64}         = get_tF(schedule)
     # ordering_graph::DiGraph     = get_graph(greedy_set_precedence_graph(schedule))
     # ordering_graph::DiGraph     = get_graph(construct_build_step_graph(schedule))
@@ -296,7 +296,7 @@ end
 #     build_step_graph
 # end
 
-function TaskGraphs.formulate_milp(
+function formulate_milp(
         milp_model::GreedyOrderedAssignment,
         sched,
         problem_spec;
@@ -311,18 +311,18 @@ function TaskGraphs.formulate_milp(
     )
 end
 function set_leaf_vtxs!(sched::OperatingSchedule,template=ProjectComplete)
-    empty!(TaskGraphs.get_terminal_vtxs(sched))
-    empty!(TaskGraphs.get_root_node_weights(sched))
+    empty!(get_terminal_vtxs(sched))
+    empty!(get_root_node_weights(sched))
     for v in Graphs.vertices(sched)
         if is_terminal_node(sched,v) && matches_template(template,get_node(sched,v))
-            push!(TaskGraphs.get_terminal_vtxs(sched),v)
-            TaskGraphs.get_root_node_weights(sched)[v] = 1.0
+            push!(get_terminal_vtxs(sched),v)
+            get_root_node_weights(sched)[v] = 1.0
         end
     end
     sched
 end
 function JuMP.optimize!(model::GreedyOrderedAssignment)
-    # TaskGraphs.greedy_assignment!(model)
+    # greedy_assignment!(model)
     assign_collaborative_tasks!(model)
     set_leaf_vtxs!(model.schedule, ProjectComplete)
 end
@@ -372,11 +372,11 @@ end
 Assign collaborative tasks in a greedy manner.
 """
 function assign_collaborative_tasks!(model,
-        # D = TaskGraphs.construct_schedule_distance_matrix(model.schedule,model.problem_spec)
+        # D = construct_schedule_distance_matrix(model.schedule,model.problem_spec)
     )
     sched       = model.schedule
     scene_tree  = model.problem_spec
-    # D = TaskGraphs.construct_schedule_distance_matrix(sched,scene_tree)
+    # D = construct_schedule_distance_matrix(sched,scene_tree)
     assembly_starts = Dict(node_id(n)=>n for n in get_nodes(sched) if matches_template(AssemblyStart,n))
     assemblies_completed = Set{AbstractID}()
     active_build_steps = Dict()
@@ -403,7 +403,7 @@ function assign_collaborative_tasks!(model,
     @info "Beginning task assignment"
     # initialize dependency graph to track and prevent cycles
     dependency_graph = build_step_dependency_graph(sched,scene_tree)
-    # cost_func = (v,v2)->TaskGraphs.get_edge_cost(model,D,v,v2)
+    # cost_func = (v,v2)->get_edge_cost(model,D,v,v2)
     distance_dict = Dict{Tuple{Int,Int},Float64}()
     cost_func = (v,v2)->begin
         if !haskey(distance_dict,(v,v2))
@@ -412,7 +412,7 @@ function assign_collaborative_tasks!(model,
         end
         return get_tF(sched,v) + distance_dict[(v,v2)]
         # return distance_dict[(v,v2)]
-        # TaskGraphs.get_edge_cost(model,D,v,v2)
+        # get_edge_cost(model,D,v,v2)
     end
     while !isempty(active_build_steps)
         # get best possible assignment of robots to a team task
@@ -436,7 +436,7 @@ function assign_collaborative_tasks!(model,
                 filt_func = (v,v2)->!GraphUtils.has_path(dependency_graph,get_vtx(sched,task),v)
                 cost = 0.0
                 while !isempty(team_slots)
-                    robot, slot, c = TaskGraphs.get_best_pair(robots, team_slots,
+                    robot, slot, c = get_best_pair(robots, team_slots,
                         cost_func,
                         filt_func,
                         )
@@ -490,7 +490,7 @@ function assign_collaborative_tasks!(model,
             end
         end
         # update schedule times
-        TaskGraphs.update_schedule_times!(sched)
+        update_schedule_times!(sched)
         # update active build step list
         delete!(active_build_steps[build_step_id], task_id)
         if isempty(active_build_steps[build_step_id])

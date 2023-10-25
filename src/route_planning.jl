@@ -307,10 +307,10 @@ function update_planning_cache!(env::PlannerEnv, time_stamp::Float64)
             # println("Node v: $v")
             node = get_node(sched, v)
             # println("\t node_type: $(typeof(node))")
-            if CRCBS.is_goal(node, env)
+            if is_goal(node, env)
                 close_node!(node, env)
                 @info "node $(summary(node_id(node))) finished."
-                TaskGraphs.update_planning_cache!(nothing, sched, cache, v, time_stamp)
+                update_planning_cache!(nothing, sched, cache, v, time_stamp)
                 # @info "active nodes $([get_vtx_id(sched,v) for v in cache.active_set])"
                 @assert !(v in cache.active_set) && (v in cache.closed_set)
                 push!(newly_updated, v)
@@ -323,7 +323,7 @@ function update_planning_cache!(env::PlannerEnv, time_stamp::Float64)
         end
     end
     if updated
-        TaskGraphs.process_schedule!(sched)
+        process_schedule!(sched)
         preprocess_env!(env)
         update_rvo_sim!(env)
     end
@@ -384,21 +384,20 @@ function project_complete(env::PlannerEnv)
     return true
 end
 
-# CRCBS.is_goal
-CRCBS.is_goal(n::ScheduleNode, env::PlannerEnv) = is_goal(n.node, env)
-CRCBS.is_goal(node::ConstructionPredicate, env::PlannerEnv) = true
-function CRCBS.is_goal(node::EntityGo, env::PlannerEnv)
+is_goal(n::ScheduleNode, env::PlannerEnv) = is_goal(n.node, env)
+is_goal(node::ConstructionPredicate, env::PlannerEnv) = true
+function is_goal(node::EntityGo, env::PlannerEnv)
     agent = entity(node)
     state = global_transform(agent)
     goal = global_transform(goal_config(node))
     return is_within_capture_distance(state,goal)
 end
 """
-    CRCBS.is_goal(node::RobotGo,sched,scene_tree)
+    is_goal(node::RobotGo,sched,scene_tree)
 
 If next node is FormTransportUnit, ensure that everybody else is in position.
 """
-function CRCBS.is_goal(node::Union{RobotGo,TransportUnitGo}, env::PlannerEnv)
+function is_goal(node::Union{RobotGo,TransportUnitGo}, env::PlannerEnv)
     @unpack sched, scene_tree, cache = env
     agent = entity(node)
     state = global_transform(agent)
@@ -432,14 +431,14 @@ function CRCBS.is_goal(node::Union{RobotGo,TransportUnitGo}, env::PlannerEnv)
     end
     return true
 end
-function CRCBS.is_goal(node::Union{FormTransportUnit,DepositCargo}, env::PlannerEnv)
+function is_goal(node::Union{FormTransportUnit,DepositCargo}, env::PlannerEnv)
     agent = entity(node)
     cargo = get_node(env.scene_tree,cargo_id(agent))
     state = global_transform(cargo)
     goal = global_transform(cargo_goal_config(node))
     return is_within_capture_distance(state,goal)
 end
-function CRCBS.is_goal(node::LiftIntoPlace, env::PlannerEnv)
+function is_goal(node::LiftIntoPlace, env::PlannerEnv)
     cargo = entity(node)
     state = global_transform(cargo)
     goal = global_transform(goal_config(node))
