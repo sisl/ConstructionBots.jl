@@ -69,5 +69,5 @@ The default demo is the a Tractor based on LEGO model 10708, Green Creativity Bo
 ## Functions
 
 ```@autodocs
-Modules = [ConstrutionBots]
+Modules = [ConstructionBots]
 ```
