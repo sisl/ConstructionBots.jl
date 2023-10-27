@@ -7,3 +7,4 @@ results/*
 loop_over_sims.jl
 process_results.jl
 sandbox.jl
+docs/build/*

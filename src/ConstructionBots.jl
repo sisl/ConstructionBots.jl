@@ -20,13 +20,27 @@ using Graphs
 using MetaGraphs
 using LDrawParser
 
+using Random
+using Dates
+using StatsBase
+using JLD2
+using ProgressMeter
+using TOML
+using PyCall
+using LDrawParser
+using Colors
+
+using HiGHS
+using Gurobi
+using ECOS
+using GLPK
+
+
 # only needed for plotting stuff
 using Measures
 using Compose
 using Colors
 
-
-# import LibSpatialIndex
 
 include("graph_utils_essentials.jl")
 include("essential_tg_coponents.jl")
@@ -37,7 +51,9 @@ include("task_assignment.jl")
 include("route_planning.jl")
 include("graph_plotting.jl")
 include("render_tools.jl")
-
+include("demo_utils.jl")
+include("project_params.jl")
+include("full_demo.jl")
 
 
 ################################################################################
@@ -49,65 +65,9 @@ include("render_tools.jl")
 # model_schedule - encodes the partial ordering of assembly operations.
 
 export
-    DuplicateIDGenerator,
-    duplicate_subtree!,
-    construct_assembly_graph,
-    SparseAdjacencyMILP,
-    GreedyAssignment,
-    AssignmentMILP,
-    GreedyFinalTimeCost,
-    formulate_milp,
-    update_project_schedule!,
-    validate,
-    makespan,
-    set_default_milp_optimizer!,
-    clear_default_milp_optimizer_attributes!,
-    set_default_milp_optimizer_attributes!,
-    clear_default_geom_optimizer_attributes!,
-    set_default_geom_optimizer_attributes!,
-    get_assignment_matrix,
-    AbstractID,
-    reset_all_id_counters!,
-    reset_all_invalid_id_counters!,
-    GeomNode,
-    ObjectNode,
-    RobotNode,
-    AssemblyNode,
-    TransportUnitNode,
-    set_default_robot_geom!,
-    default_robot_radius,
-    validate_graph,
-    ZonotopeKey,
-    HyperrectangleKey,
-    HypersphereKey,
-    CylinderKey,
-    CircleKey,
-    ConvexHullKey,
-    compute_approximate_geometries!,
-    default_geom_optimizer,
-    get_all_root_nodes,
-    get_node,
-    get_transform_node,
-    validate_tree,
-    validate_embedded_tree,
-    default_robot_geom,
-    get_nodes,
-    jump_to_final_configuration!,
-    matches_template,
-    node_id,
-    cargo_id,
-    AssemblyID,
-    get_base_geom,
-    node_iterator,
-    node_val,
-    get_cached_geom,
-    project_to_2d,
-    global_transform,
-    is_terminal_node,
-    identity_linear_map,
-    BaseGeomKey,
-    get_radius,
-    get_id
+    run_lego_demo,
+    list_projects,
+    get_project_params
 
 """
     BuildStepID <: AbstractID

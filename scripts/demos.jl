@@ -1,5 +1,4 @@
-include("full_demo.jl")
-include("project_params.jl")
+using ConstructionBots
 
 #                                    # parts      # assemblies      # estimated time (rvo+)
 #     1 => :colored_8x8                 33               1                   4 sec

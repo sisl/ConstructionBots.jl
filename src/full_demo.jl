@@ -1,33 +1,3 @@
-using Printf
-using Parameters
-using Random
-using StaticArrays
-using LinearAlgebra
-using Dates
-using StatsBase
-using JLD2
-using ProgressMeter
-using Logging
-using TOML
-using LazySets
-using GeometryBasics
-using CoordinateTransformations
-using Rotations
-using Graphs
-using JuMP
-using PyCall
-using MeshCat
-using SparseArrays
-using LDrawParser
-using Colors
-
-using ConstructionBots
-
-using HiGHS
-using Gurobi
-using ECOS
-
-include("demo_utils.jl")
 
 """
     run_lego_demo(;kwargs...)
@@ -74,7 +44,6 @@ Run the lego demo for model.
         - stop_after_task_assignment: whether to stop after task assignment (default: false)
         - ignore_rot_matrix_warning: whether to ignore the rotation matrix warning (default: true)
         - rng::Random.AbstractRNG: random number generator to use (default: MersenneTwister(1))
-
 """
 function run_lego_demo(;
     ldraw_file::String="tractor.mpd",

@@ -64,10 +64,13 @@ This repository comes with demos to demonstrate the functionality of Constructio
 ```julia
 julia> include("scripts/demos.jl")
 ```
-The default demo is the a Tractor based on LEGO model 10708, Green Creativity Box. The tractor model has a total of 20 individual pieces, which are organized into one final assembly (the tractor) and seven subassemblies. The demo is configured to use 10 robots to assemble the tractor. The collision avoidance algorithms are not used and it should open an interative visualization of the assembly process in your brower. The demo can b configured by changing the parameters in `demos.jl`.
+The default demo is the a Tractor based on LEGO model 10708, Green Creativity Box. The tractor model has a total of 20 individual pieces, which are organized into one final assembly (the tractor) and seven subassemblies. The demo is configured to use 10 robots to assemble the tractor. The collision avoidance algorithms are not used and it should open an interative visualization of the assembly process in your brower similar to [Tractor Demo](tractor_greedy_no-RVO_no_Dispersion_TagentBug_visualization.html). The demo can be configured by changing the parameters in `demos.jl`.
+
 
 ## Functions
 
-```@autodocs
-Modules = [ConstructionBots]
+```@docs
+    run_lego_demo()
+    list_projects()
+    get_project_params
 ```

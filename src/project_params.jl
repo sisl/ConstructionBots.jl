@@ -110,6 +110,11 @@ project_parameters = Dict(
     )
 )
 
+"""
+    list_projects()
+
+Prints a list of available projects.
+"""
 function list_projects()
     println("Available projects:")
     for ii in sort(collect(keys(projects)))
@@ -117,6 +122,17 @@ function list_projects()
     end
 end
 
+"""
+    get_project_params(project::Int)
+    get_project_params(project::Symbol)
+
+Returns the parameters for the project with the given number or symbol.
+Returns a Dict with the following fields:
+- `project_name` (String): The name of the project.
+- `file_name` (String): The name of the LDraw file.
+- `model_scale` (Float64): The default scale of the model.
+- `num_robots` (Int): The default number of robots to use.
+"""
 function get_project_params(project::Int)
     if !(project in keys(projects))
         list_projects()

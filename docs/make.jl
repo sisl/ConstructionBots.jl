@@ -1,4 +1,5 @@
-using Documenter, ConstructionBots
+using Documenter
+using ConstructionBots
 
 makedocs(
     modules = [ConstructionBots],
