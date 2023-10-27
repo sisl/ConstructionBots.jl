@@ -13,7 +13,7 @@ using Test
 using Logging
 
 # Set logging level
-global_logger(SimpleLogger(stderr, Logging.Debug))
+global_logger(SimpleLogger(stderr, Logging.Warn))
 
 @inline function array_isapprox(x::AbstractArray{F},
                   y::AbstractArray{F};

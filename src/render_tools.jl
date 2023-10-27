@@ -708,11 +708,11 @@ function render_model_spec_with_pictures(model_spec;
         counts[parent_name] = counts[parent_name] + 1
     end
     if use_original_coords
-        coords = GraphPlottingBFS.get_layout_coords(model_spec)
+        coords = get_layout_coords(model_spec)
         x = [coords[1][get_vtx(model_spec,id)] for id in get_vtx_ids(plt_spec)]
         y = [coords[2][get_vtx(model_spec,id)] for id in get_vtx_ids(plt_spec)]
     else
-        x,y = GraphPlottingBFS.get_layout_coords(plt_spec)
+        x,y = get_layout_coords(plt_spec)
     end
 
     _color_func = (v,c)->haskey(labels,get_vtx_id(plt_spec,v)) ? c : nothing
@@ -751,52 +751,52 @@ end
 
 get_id(s::String) = s
 # Rendering schedule nodes
-GraphPlottingBFS._title_string(n::S) where {S<:SceneNode} = split(string(typeof(n)),".")[end][1]
-GraphPlottingBFS._title_string(n::RobotNode)            = "R"
-GraphPlottingBFS._title_string(n::ObjectNode)           = "O"
-GraphPlottingBFS._title_string(n::AssemblyNode)         = "A"
-GraphPlottingBFS._title_string(n::TransportUnitNode)    = "T"
+_title_string(n::S) where {S<:SceneNode} = split(string(typeof(n)),".")[end][1]
+_title_string(n::RobotNode)            = "R"
+_title_string(n::ObjectNode)           = "O"
+_title_string(n::AssemblyNode)         = "A"
+_title_string(n::TransportUnitNode)    = "T"
 
-GraphPlottingBFS._title_string(::BuildingStep)          = "B"
-GraphPlottingBFS._title_string(::SubFileRef)            = "S"
-GraphPlottingBFS._title_string(::SubModelPlan)          = "M"
+_title_string(::BuildingStep)          = "B"
+_title_string(::SubFileRef)            = "S"
+_title_string(::SubModelPlan)          = "M"
 
-GraphPlottingBFS._title_string(n::ConstructionBots.EntityConfigPredicate) = _title_string(n.entity)
-GraphPlottingBFS._title_string(::ConstructionBots.RobotStart)        = "R"
-GraphPlottingBFS._title_string(n::ConstructionBots.ObjectStart)      = "O"
-GraphPlottingBFS._title_string(::ConstructionBots.AssemblyStart)     = "sA"
-GraphPlottingBFS._title_string(::ConstructionBots.AssemblyComplete)  = "cA"
-GraphPlottingBFS._title_string(::ConstructionBots.OpenBuildStep)     = "oB"
-GraphPlottingBFS._title_string(::ConstructionBots.CloseBuildStep)    = "cB"
-GraphPlottingBFS._title_string(::ConstructionBots.RobotGo)           = "G"
-GraphPlottingBFS._title_string(::ConstructionBots.FormTransportUnit) = "F"
-GraphPlottingBFS._title_string(::ConstructionBots.DepositCargo)      = "D"
-GraphPlottingBFS._title_string(::ConstructionBots.TransportUnitGo)   = "T"
-GraphPlottingBFS._title_string(::ConstructionBots.LiftIntoPlace)     = "L"
-GraphPlottingBFS._title_string(::ConstructionBots.ProjectComplete)   = "P"
+_title_string(n::ConstructionBots.EntityConfigPredicate) = _title_string(n.entity)
+_title_string(::ConstructionBots.RobotStart)        = "R"
+_title_string(n::ConstructionBots.ObjectStart)      = "O"
+_title_string(::ConstructionBots.AssemblyStart)     = "sA"
+_title_string(::ConstructionBots.AssemblyComplete)  = "cA"
+_title_string(::ConstructionBots.OpenBuildStep)     = "oB"
+_title_string(::ConstructionBots.CloseBuildStep)    = "cB"
+_title_string(::ConstructionBots.RobotGo)           = "G"
+_title_string(::ConstructionBots.FormTransportUnit) = "F"
+_title_string(::ConstructionBots.DepositCargo)      = "D"
+_title_string(::ConstructionBots.TransportUnitGo)   = "T"
+_title_string(::ConstructionBots.LiftIntoPlace)     = "L"
+_title_string(::ConstructionBots.ProjectComplete)   = "P"
 
 for op in (
-    :(GraphPlottingBFS._node_shape),
-    :(GraphPlottingBFS._node_color),
-    :(GraphPlottingBFS._title_string),
-    :(GraphPlottingBFS._subtitle_string),
-    :(GraphPlottingBFS._subtitle_text_scale),
-    :(GraphPlottingBFS._title_text_scale)
+    :(_node_shape),
+    :(_node_color),
+    :(_title_string),
+    :(_subtitle_string),
+    :(_subtitle_text_scale),
+    :(_title_text_scale)
     )
     @eval $op(n::CustomNode,args...) = $op(node_val(n),args...)
     @eval $op(n::ScheduleNode,args...) = $op(n.node,args...)
 end
 
-GraphPlottingBFS._subtitle_text_scale(n::Union{ConstructionPredicate,SceneNode}) = 0.28
-GraphPlottingBFS._title_text_scale(n::Union{ConstructionPredicate,SceneNode}) = 0.28
+_subtitle_text_scale(n::Union{ConstructionPredicate,SceneNode}) = 0.28
+_title_text_scale(n::Union{ConstructionPredicate,SceneNode}) = 0.28
 
-GraphPlottingBFS._subtitle_string(n::SceneNode) = "$(get_id(node_id(n)))"
-GraphPlottingBFS._subtitle_string(n::Union{EntityGo,EntityConfigPredicate,FormTransportUnit,DepositCargo}) = GraphPlottingBFS._subtitle_string(entity(n))
-GraphPlottingBFS._subtitle_string(n::BuildPhasePredicate) = GraphPlottingBFS._subtitle_string(n.assembly)
-GraphPlottingBFS._subtitle_string(n::ObjectNode) = "o$(get_id(node_id(n)))"
-GraphPlottingBFS._subtitle_string(n::RobotNode) = "r$(get_id(node_id(n)))"
-GraphPlottingBFS._subtitle_string(n::AssemblyNode) = "a$(get_id(node_id(n)))"
-GraphPlottingBFS._subtitle_string(n::TransportUnitNode) = cargo_type(n) == AssemblyNode ? "a$(get_id(node_id(n)))" : "o$(get_id(node_id(n)))"
+_subtitle_string(n::SceneNode) = "$(get_id(node_id(n)))"
+_subtitle_string(n::Union{EntityGo,EntityConfigPredicate,FormTransportUnit,DepositCargo}) = _subtitle_string(entity(n))
+_subtitle_string(n::BuildPhasePredicate) = _subtitle_string(n.assembly)
+_subtitle_string(n::ObjectNode) = "o$(get_id(node_id(n)))"
+_subtitle_string(n::RobotNode) = "r$(get_id(node_id(n)))"
+_subtitle_string(n::AssemblyNode) = "a$(get_id(node_id(n)))"
+_subtitle_string(n::TransportUnitNode) = cargo_type(n) == AssemblyNode ? "a$(get_id(node_id(n)))" : "o$(get_id(node_id(n)))"
 
 
 SPACE_GRAY = RGB(0.2,0.2,0.2)
@@ -805,31 +805,31 @@ LIGHT_BROWN = RGB(0.6,0.3,0.2)
 LIME_GREEN = RGB(0.2,0.6,0.2)
 BRIGHT_BLUE = RGB(0.0,0.4,1.0)
 
-GraphPlottingBFS._node_color(::RobotNode)                           = SPACE_GRAY
-GraphPlottingBFS._node_color(::ObjectNode)                          = SPACE_GRAY
-GraphPlottingBFS._node_color(::AssemblyNode)                        = BRIGHT_BLUE
-GraphPlottingBFS._node_color(::TransportUnitNode)                   = LIME_GREEN
+_node_color(::RobotNode)                           = SPACE_GRAY
+_node_color(::ObjectNode)                          = SPACE_GRAY
+_node_color(::AssemblyNode)                        = BRIGHT_BLUE
+_node_color(::TransportUnitNode)                   = LIME_GREEN
 
-GraphPlottingBFS._node_color(::BuildingStep)                        = LIGHT_BROWN
-GraphPlottingBFS._node_color(::SubFileRef)                          = BRIGHT_RED
-GraphPlottingBFS._node_color(::SubModelPlan)                        = SPACE_GRAY
+_node_color(::BuildingStep)                        = LIGHT_BROWN
+_node_color(::SubFileRef)                          = BRIGHT_RED
+_node_color(::SubModelPlan)                        = SPACE_GRAY
 
-GraphPlottingBFS._node_color(::ConstructionBots.EntityConfigPredicate) = _node_color(n.entity)
-GraphPlottingBFS._node_color(::ConstructionBots.RobotStart)         = SPACE_GRAY
-GraphPlottingBFS._node_color(::ConstructionBots.ObjectStart)        = SPACE_GRAY
-GraphPlottingBFS._node_color(::ConstructionBots.AssemblyStart)      = SPACE_GRAY
-GraphPlottingBFS._node_color(::ConstructionBots.AssemblyComplete)   = SPACE_GRAY
-GraphPlottingBFS._node_color(::ConstructionBots.OpenBuildStep)      = LIGHT_BROWN
-GraphPlottingBFS._node_color(::ConstructionBots.CloseBuildStep)     = LIGHT_BROWN
-GraphPlottingBFS._node_color(::ConstructionBots.ProjectComplete)    = SPACE_GRAY
-GraphPlottingBFS._node_color(::ConstructionBots.RobotGo)            = LIME_GREEN
-GraphPlottingBFS._node_color(::ConstructionBots.FormTransportUnit)  = LIME_GREEN
-GraphPlottingBFS._node_color(::ConstructionBots.TransportUnitGo)    = LIME_GREEN
-GraphPlottingBFS._node_color(::ConstructionBots.DepositCargo)       = LIME_GREEN
-GraphPlottingBFS._node_color(::ConstructionBots.LiftIntoPlace)      = BRIGHT_BLUE
+_node_color(::ConstructionBots.EntityConfigPredicate) = _node_color(n.entity)
+_node_color(::ConstructionBots.RobotStart)         = SPACE_GRAY
+_node_color(::ConstructionBots.ObjectStart)        = SPACE_GRAY
+_node_color(::ConstructionBots.AssemblyStart)      = SPACE_GRAY
+_node_color(::ConstructionBots.AssemblyComplete)   = SPACE_GRAY
+_node_color(::ConstructionBots.OpenBuildStep)      = LIGHT_BROWN
+_node_color(::ConstructionBots.CloseBuildStep)     = LIGHT_BROWN
+_node_color(::ConstructionBots.ProjectComplete)    = SPACE_GRAY
+_node_color(::ConstructionBots.RobotGo)            = LIME_GREEN
+_node_color(::ConstructionBots.FormTransportUnit)  = LIME_GREEN
+_node_color(::ConstructionBots.TransportUnitGo)    = LIME_GREEN
+_node_color(::ConstructionBots.DepositCargo)       = LIME_GREEN
+_node_color(::ConstructionBots.LiftIntoPlace)      = BRIGHT_BLUE
 
-function GraphPlottingBFS.draw_node(g::AbstractCustomNGraph,v,args...;kwargs...)
-    GraphPlottingBFS.draw_node(get_node(g,v),args...;kwargs...)
+function draw_node(g::AbstractCustomNGraph,v,args...;kwargs...)
+    draw_node(get_node(g,v),args...;kwargs...)
 end
 
 function plot_staging_area(

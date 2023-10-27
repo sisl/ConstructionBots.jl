@@ -2,17 +2,10 @@ import Pkg: Pkg, PackageSpec
 
 Pkg.activate(".")
 
-packages = [
-    PackageSpec(path="deps/GraphPlottingBFS.jl")
-]
-
-Pkg.develop(packages)
 
 Pkg.instantiate()
 Pkg.build()
 Pkg.precompile()
-
-# include("deps/GraphPlottingBFS.jl")
 
 # TODO: Check for RVO2 python access. If not, can we automate the build process here?
 # using PyCall

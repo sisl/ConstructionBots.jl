@@ -1,26 +1,36 @@
-include("full_demo.jl")
-include("project_params.jl")
 
+using Printf
+using Parameters
+using Random
+using StaticArrays
+using LinearAlgebra
+using Dates
+using StatsBase
+using JLD2
+using ProgressMeter
+using Logging
+using TOML
+using LazySets
+using GeometryBasics
+using CoordinateTransformations
+using Rotations
+using Graphs
+using JuMP
+using PyCall
+using MeshCat
+using SparseArrays
+using LDrawParser
+using Colors
+
+using ConstructionBots
+
+using HiGHS
 using Gurobi
+using ECOS
 
-#                                    # parts      # assemblies      # estimated time (rvo+)
-#     1 => :colored_8x8                 33               1                   4 sec
-#     2 => :quad_nested                 85              21                  26 sec
-#     3 => :heavily_nested              1757           508                  62 min
-#     4 => :tractor                     20               8                   2 sec
-#     5 => :tie_fighter                 44               4                   7 sec
-#     6 => :x_wing_mini                 61              12                   9 sec
-#     7 => :imperial_shuttle            84               5                  13 sec
-#     8 => :x_wing_tie_mini             105             17                  26 sec
-#     9 => :at_te_walker                100             22                  23 sec
-#     10 => :x_wing                     309             28                   3 min
-#     11 => :passenger_plane            326             28                   4 min
-#     12 => :imperial_star_destroyer    418             11                   5 min
-#     13 => :kings_castle               761             70                  21 min
-#     14 => :at_at                      1105             2                  ??
-#     15 => :saturn_v                   1845           306                 163 min
+include("../scripts/project_params.jl")
 
-project_params = get_project_params(4)
+project_params = get_project_params(4) # 4 = tractor
 
 
 open_animation_at_end        = false
@@ -32,7 +42,7 @@ anim_active_areas            = false
 rvo_flag                     = true
 tangent_bug_flag             = true
 dispersion_flag              = true
-assignment_mode              = :greedy # :milp :greedy :milp_w_greedy_warm_start
+assignment_mode              = :greedy
 
 write_results                = false
 overwrite_results            = false
@@ -274,7 +284,6 @@ xy_range = (-robot_start_box_side/2:robot_spacing:robot_start_box_side/2)
 vtxs = ConstructionBots.construct_vtx_array(; spacing=(1.0, 1.0, 0.0), ranges=(xy_range, xy_range, 0:0))
 
 robot_vtxs = StatsBase.sample(rng, vtxs, num_robots; replace=false)
-# robot_vtxs = draw_random_uniform(vtxs, num_robots)
 
 ConstructionBots.add_robots_to_scene!(scene_tree, robot_vtxs, [default_robot_geom()])
 
@@ -298,23 +307,20 @@ print("done!\n")
 ### Plot the schedule ###
 _node_type_check(n) = matches_template((ObjectStart,AssemblyStart,AssemblyComplete,FormTransportUnit,TransportUnitGo,DepositCargo,LiftIntoPlace),n)
 
-
 plt = ConstructionBots.display_graph(
     sched;
     grow_mode=:from_left,
     align_mode=:split_aligned,
-    draw_node_function=(G,v)->draw_node(get_node(G,v);
+    draw_node_function=(G,v)->ConstructionBots.draw_node(get_node(G,v);
         title_text= _node_type_check(get_node(G,v)
-            ) ? string(_title_string(get_node(G,v)),
+            ) ? string(ConstructionBots._title_string(get_node(G,v)),
                 "$(get_id(node_id(get_node(G,v))))") : ConstructionBots._title_string(get_node(G,v)),
         subtitle_text="",
         title_scale = _node_type_check(get_node(G,v)
             ) ? ConstructionBots._title_text_scale(get_node(G,v)) : 0.45,
     ),
     pad=(0.0, 0.0)
-)
-# draw(PDF("assembly_schedule.pdf"), plt)
-
+);
 
 
 ## Generate staging plan
@@ -330,7 +336,7 @@ ConstructionBots.plot_staging_area(
     sched, scene_tree, staging_circles;
     save_file_name="staging_area.pdf",
     save_image=false
-)
+);
 
 
 # Make sure all transforms line up
@@ -359,17 +365,16 @@ update_project_schedule!(nothing, milp_model, tg_sched, scene_tree)
 @assert validate(tg_sched)
 
 # Plot the schedule with robots assigned
-plt = display_graph(
+plt = ConstructionBots.display_graph(
     tg_sched;
     grow_mode=:from_left,
     align_mode=:split_aligned,
-    draw_node_function=(G,v)->draw_node(get_node(G,v);
+    draw_node_function=(G,v)->ConstructionBots.draw_node(get_node(G,v);
         title_text= _node_type_check(get_node(G,v)
-            ) ? string(_title_string(get_node(G,v)),
+            ) ? string(ConstructionBots._title_string(get_node(G,v)),
                 "$(get_id(node_id(get_node(G,v))))") : ConstructionBots._title_string(get_node(G,v)),
         subtitle_text="",
         title_scale = _node_type_check(get_node(G,v)
             ) ? ConstructionBots._title_text_scale(get_node(G,v)) : 0.45,
     )
-)
-# display(plt)
+);

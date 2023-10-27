@@ -18,14 +18,14 @@ using JuMP
 using PyCall
 using MeshCat
 using SparseArrays
-
 using LDrawParser
-
 using Colors
 
 using ConstructionBots
 
-using GraphPlottingBFS
+using HiGHS
+using Gurobi
+using ECOS
 
 
 # include("../src/render_tools.jl")
@@ -256,6 +256,10 @@ function run_lego_demo(;
     ConstructionBots.set_rvo_default_neighbor_distance!(16 * default_robot_radius())
     ConstructionBots.set_rvo_default_min_neighbor_distance!(10 * default_robot_radius())
 
+    # Setting default optimizer for staging layout
+    ConstructionBots.set_default_geom_optimizer!(ECOS.Optimizer)
+    ConstructionBots.set_default_geom_optimizer_attributes!(MOI.Silent()=>true)
+
 
     pre_execution_start_time = time()
     model = parse_ldraw_file(filename; ignore_rotation_determinant=ignore_rot_matrix_warning)
@@ -307,7 +311,6 @@ function run_lego_demo(;
     vtxs = ConstructionBots.construct_vtx_array(; spacing=(1.0, 1.0, 0.0), ranges=(xy_range, xy_range, 0:0))
 
     robot_vtxs = StatsBase.sample(rng, vtxs, num_robots; replace=false)
-    # robot_vtxs = draw_random_uniform(vtxs, num_robots)
 
     ConstructionBots.add_robots_to_scene!(scene_tree, robot_vtxs, [default_robot_geom()])
 

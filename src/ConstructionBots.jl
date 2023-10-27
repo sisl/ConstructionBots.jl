@@ -4,44 +4,40 @@ using Printf
 using Parameters
 using StaticArrays
 using JuMP
-using ECOS
 using MathOptInterface
 using LinearAlgebra
 using ForwardDiff
 using SpatialIndexing
 using Logging
-
 using MeshCat
-using Colors
-
-using GraphPlottingBFS
-
 using SparseArrays
 using DataStructures
-
-using LDrawParser
-# using HierarchicalGeometry
-# using TaskGraphs
-
-# only needed for plotting stuff
-using Measures
-using Compose
-
 using Rotations
 using CoordinateTransformations
 using LazySets
 using GeometryBasics
-
 using Graphs
+using MetaGraphs
+using LDrawParser
 
-import LibSpatialIndex
+# only needed for plotting stuff
+using Measures
+using Compose
+using Colors
+
+
+# import LibSpatialIndex
 
 include("graph_utils_essentials.jl")
 include("essential_tg_coponents.jl")
-
 include("hierarchical_geom_essentials.jl")
-set_default_geom_optimizer!(ECOS.Optimizer)
-set_default_geom_optimizer_attributes!(MOI.Silent()=>true)
+include("construction_schedule.jl")
+include("rvo_interface.jl")
+include("task_assignment.jl")
+include("route_planning.jl")
+include("graph_plotting.jl")
+include("render_tools.jl")
+
 
 
 ################################################################################
@@ -112,7 +108,6 @@ export
     BaseGeomKey,
     get_radius,
     get_id
-
 
 """
     BuildStepID <: AbstractID
@@ -549,12 +544,6 @@ function convert_to_scene_tree(assembly_tree;set_children::Bool=true)
     end
     return scene_tree
 end
-
-include("construction_schedule.jl")
-include("rvo_interface.jl")
-include("task_assignment.jl")
-include("route_planning.jl")
-include("render_tools.jl")
 
 """
     construct_spatial_index(scene_tree)
