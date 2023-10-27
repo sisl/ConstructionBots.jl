@@ -74,8 +74,8 @@ end
 #     # is_up_to_date::Bool
 #     # timestamp::Float64
 # end
-# GraphUtils.is_up_to_date(m::RVOSimWrapper) = m.is_up_to_date
-# GraphUtils.time_stamp(m::RVOSimWrapper) = m.timestamp
+# is_up_to_date(m::RVOSimWrapper) = m.is_up_to_date
+# time_stamp(m::RVOSimWrapper) = m.timestamp
 
 # global RVO_SIM_WRAPPER = RVOSimWrapper(nothing)
 global RVO_SIM_WRAPPER = CachedElement{Any}(nothing, false, time())
@@ -167,7 +167,7 @@ function rvo_add_agent!(agent::Union{RobotNode,TransportUnitNode}, sim)
     rad = get_rvo_radius(agent)
     max_speed = get_rvo_max_speed(agent)
     neighbor_dist = get_rvo_neighbor_distance(agent)
-    pt = HierarchicalGeometry.project_to_2d(global_transform(agent).translation)
+    pt = project_to_2d(global_transform(agent).translation)
     agent_idx = sim.addAgent((pt[1], pt[2]))
     set_rvo_id_map!(node_id(agent), agent_idx)
     sim.setAgentNeighborDist(agent_idx, neighbor_dist)

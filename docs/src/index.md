@@ -1,10 +1,5 @@
 # ConstructionBots.jl
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://sisl.github.io/ConstructionBots.jl/stable)
-[![Build Status](https://github.com/sisl/ConstructionBots.jl/workflows/CI/badge.svg)](https://github.com/sisl/ConstructionBots.jl/actions)
-
-![ConstructionBots.jl Overivew](media/constructionbots_overviw.png)
-
 ConstructionBots.jl is an open-source multi-robot manufacturing simulator and is designed to test algorithms for multi-robot assembly planning. This system approaches multi-robot assembly planning from a higher level of abstraction and addresses task planning and transit planning but abstracts away the kino-dynamic details of piecing together assemblies. Problems addressed and simulated:
 - **Trasport Team configuration:** How many robots are needed and how should robots be positioned when transporting a particular payload?
 - **Spatial layout of the construction site:** Where will each assembly be built, and where will the components of those assemblies be delivered?
@@ -13,6 +8,11 @@ ConstructionBots.jl is an open-source multi-robot manufacturing simulator and is
 
 ConstructionBots ueses LEGO models to evaluate algorithms. LEGO models offer a convenient framework for defining large assemblies that are often composed of smaller assemblies in addition to individual parts. ConstructionBots uses assemblies that are defined using the LDraw file specification, an open-source tool for describing LEGO bricks and models.
 
+
+## Manual Outline
+
+```@contents
+```
 
 ## Installation
 
@@ -66,14 +66,8 @@ julia> include("scripts/demos.jl")
 ```
 The default demo is the a Tractor based on LEGO model 10708, Green Creativity Box. The tractor model has a total of 20 individual pieces, which are organized into one final assembly (the tractor) and seven subassemblies. The demo is configured to use 10 robots to assemble the tractor. The collision avoidance algorithms are not used and it should open an interative visualization of the assembly process in your brower. The demo can b configured by changing the parameters in `demos.jl`.
 
-### Images from the Tractor Project
-![Tractor Project a](media/tractor_demo_a.png)
+## Functions
 
-![Tractor Project b](media/tractor_demo_b.png)
-
-![Tractor Project c](media/tractor_demo_c.png)
-
-![Tractor Project d](media/tractor_demo_d.png)
-
-## Citation
-Under review
+```@autodocs
+Modules = [ConstrutionBots]
+```

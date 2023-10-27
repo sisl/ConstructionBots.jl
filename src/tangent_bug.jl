@@ -20,9 +20,9 @@ end
 Return closest point of intersection of `circle` with line from `p1` to `p2`
 """
 function first_intersection_pt(circle,p1,p2)
-    c = HierarchicalGeometry.get_center(circle)
-    r = HierarchicalGeometry.get_radius(circle)
-    pt = HierarchicalGeometry.project_point_to_line(c,p1,p2)
+    c = get_center(circle)
+    r = get_radius(circle)
+    pt = project_point_to_line(c,p1,p2)
     b = norm(pt-c)
     if b > r
         return nothing
@@ -45,11 +45,11 @@ function get_closest_interfering_circle(policy,circles,pos,nominal_goal)
     circ = nothing
     pt = nominal_goal
     for (circ_id,c) in circles
-        x = HierarchicalGeometry.get_center(c)
-        r = HierarchicalGeometry.get_radius(c)
-        bloated_circle = Ball2(x,r+agent_radius+buffer)
-        if HierarchicalGeometry.circle_intersects_line(bloated_circle,pos,nominal_goal)
-            d = norm(x - pos) - HierarchicalGeometry.get_radius(bloated_circle) # penetration
+        x = get_center(c)
+        r = get_radius(c)
+        bloated_circle = LazySets.Ball2(x,r+agent_radius+buffer)
+        if circle_intersects_line(bloated_circle,pos,nominal_goal)
+            d = norm(x - pos) - get_radius(bloated_circle) # penetration
             if d < dmin
                 # penetration < 0 => pos is in circle
                 dmin = d
@@ -69,8 +69,8 @@ function set_policy_mode!(policy,circ,pos,nominal_goal)
     c = nothing
     r = nothing
     if !(circ === nothing)
-        c = HierarchicalGeometry.get_center(circ)
-        r = HierarchicalGeometry.get_radius(circ)
+        c = get_center(circ)
+        r = get_radius(circ)
         dmin = norm(c - pos) - r
     end
 
@@ -117,8 +117,8 @@ function tangent_bug_policy!(policy,circles,pos,nominal_goal)
     dmin = Inf
     id, circ, waypoint = get_closest_interfering_circle(policy,circles,pos,nominal_goal)
     if !(circ === nothing)
-        c = HierarchicalGeometry.get_center(circ)
-        r = HierarchicalGeometry.get_radius(circ)
+        c = get_center(circ)
+        r = get_radius(circ)
         dmin = norm(c - pos) - r
     end
     # select operating mode

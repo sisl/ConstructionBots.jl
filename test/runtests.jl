@@ -1,13 +1,19 @@
 using ConstructionBots
+
+using StaticArrays
+using CoordinateTransformations
+using GeometryBasics
+using Rotations
+
+using Graphs
+using LazySets
+using LinearAlgebra
+
 using Test
 using Logging
-using Random
 
 # Set logging level
-global_logger(SimpleLogger(stderr, Logging.Debug))
-
-# Fix randomness during tests
-Random.seed!(0)
+global_logger(SimpleLogger(stderr, Logging.Warn))
 
 @inline function array_isapprox(x::AbstractArray{F},
                   y::AbstractArray{F};
@@ -42,9 +48,18 @@ end
 end
 
 # Define package tests
-@time @testset "ConstructionBots Package Tests" begin
-    testdir = joinpath(dirname(@__DIR__), "test")
-    # @time @testset "ConstructionBots.Omnibots" begin
-    #     include(joinpath(testdir, "test_omnibots.jl"))
-    # end
+@testset "ConstructionBots Tests" begin
+    @testset "IDs" begin
+        include("test_ids.jl")
+    end
+    @testset "Potential Fields" begin
+        include("test_potential_fields.jl")
+    end
+    @testset "Twist" begin
+        include("test_twist.jl")
+    end
+
+    @testset "Demo" begin
+        include("test_demo.jl")
+    end
 end

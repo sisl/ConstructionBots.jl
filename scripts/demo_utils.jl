@@ -208,20 +208,20 @@ function save_animation!(visualizer, path)
 end
 
 function get_buildstep_circles(sched)
-    circles = Dict{AbstractID, Ball2}()
+    circles = Dict{AbstractID, LazySets.Ball2}()
     for n in node_iterator(sched, topological_sort_by_dfs(sched))
         if matches_template(OpenBuildStep, n)
             id = node_id(n)
             sphere = get_cached_geom(node_val(n).staging_circle)
-            ctr = HierarchicalGeometry.project_to_2d(sphere.center)
-            circles[id] = Ball2(ctr, sphere.radius)
+            ctr = project_to_2d(sphere.center)
+            circles[id] = LazySets.Ball2(ctr, sphere.radius)
         end
     end
     return circles
 end
 
-function shift_staging_circles(staging_circles::Dict{AbstractID, Ball2}, sched, scene_tree)
-    shifted_circles = Dict{AbstractID, Ball2}()
+function shift_staging_circles(staging_circles::Dict{AbstractID, LazySets.Ball2}, sched, scene_tree)
+    shifted_circles = Dict{AbstractID, LazySets.Ball2}()
     for (id, geom) in staging_circles
         node = get_node(scene_tree, id)
         cargo = get_node(scene_tree, id)
@@ -231,16 +231,16 @@ function shift_staging_circles(staging_circles::Dict{AbstractID, Ball2}, sched, 
             cargo_node = get_node!(sched, ObjectStart(cargo, TransformNode()))
         end
 
-        translate = HierarchicalGeometry.project_to_2d(global_transform(start_config(cargo_node)).translation)
+        translate = project_to_2d(global_transform(start_config(cargo_node)).translation)
         tform = CoordinateTransformations.Translation(translate)
         new_center = tform(geom.center)
-        shifted_circles[id] = Ball2(new_center, geom.radius)
+        shifted_circles[id] = LazySets.Ball2(new_center, geom.radius)
 
     end
     return shifted_circles
 end
 
-function remove_redundant(balls::Vector{Ball2}; ϵ=1e-4)
+function remove_redundant(balls::Vector{LazySets.Ball2}; ϵ=1e-4)
     redundant = falses(length(balls))
     for ii in 1:length(balls)
         for jj in 1:length(balls)
@@ -252,7 +252,7 @@ function remove_redundant(balls::Vector{Ball2}; ϵ=1e-4)
     return balls[.!redundant]
 end
 
-function contained_in(test_ball::Ball2, outer_ball::Ball2; ϵ=1e-4)
+function contained_in(test_ball::LazySets.Ball2, outer_ball::LazySets.Ball2; ϵ=1e-4)
     return norm(test_ball.center - outer_ball.center) + test_ball.radius <= outer_ball.radius + ϵ
 end
 
@@ -280,7 +280,7 @@ function get_object_vtx(scene_tree, obstacles, max_cargo_height, num_layers, rob
 
     inflated_obstacles = []
     for ob in obstacles
-        push!(inflated_obstacles, Ball2(ob.center, ob.radius + inflate_delta))
+        push!(inflated_obstacles, LazySets.Ball2(ob.center, ob.radius + inflate_delta))
     end
 
     num_objs_per_layer = ceil(num_objects / num_layers)

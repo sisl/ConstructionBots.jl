@@ -1,11 +1,6 @@
 include("full_demo.jl")
 include("project_params.jl")
 
-#! These need to be included based on the optimizer choice
-using Gurobi
-# using GLPK
-# using HiGHS
-
 #                                    # parts      # assemblies      # estimated time (rvo+)
 #     1 => :colored_8x8                 33               1                   4 sec
 #     2 => :quad_nested                 85              21                  26 sec
@@ -32,10 +27,12 @@ save_animation_at_end        = false
 anim_active_agents           = true
 anim_active_areas            = true
 
+tangent_bug_flag             = true
 rvo_flag                     = false
-tangent_bug_flag             = false
 dispersion_flag              = false
-assignment_mode              = :greedy # :milp :greedy :milp_w_greedy_warm_start
+assignment_mode              = :greedy
+# assignment_mode              = :milp
+# assignment_mode              = :milp_w_greedy_warm_start
 
 write_results                = false
 overwrite_results            = false
@@ -49,7 +46,7 @@ env, stats = run_lego_demo(;
 
     assignment_mode              = assignment_mode,
     milp_optimizer               = :gurobi, # :gurobi :highs
-    optimizer_time_limit         = 100,
+    optimizer_time_limit         = 30,
 
     rvo_flag                     = rvo_flag,
     tangent_bug_flag             = tangent_bug_flag,
@@ -64,9 +61,9 @@ env, stats = run_lego_demo(;
     write_results                = write_results,
     overwrite_results            = overwrite_results,
 
-    look_for_previous_milp_solution = true,
-    save_milp_solution              = true,
-    previous_found_optimizer_time   = 20,
+    look_for_previous_milp_solution = false,
+    save_milp_solution              = false,
+    previous_found_optimizer_time   = 30,
 
     stop_after_task_assignment = false
 );

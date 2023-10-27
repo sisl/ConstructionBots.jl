@@ -98,7 +98,7 @@ Contains the Environment state and definition.
     sched::OperatingSchedule    = OperatingSchedule()
     scene_tree::SceneTree       = SceneTree()
     cache::PlanningCache        = initialize_planning_cache(sched)
-    staging_circles::Dict{AbstractID,Ball2} = Dict{AbstractID,Ball2}()
+    staging_circles::Dict{AbstractID,LazySets.Ball2} = Dict{AbstractID,LazySets.Ball2}()
     active_build_steps::Set{AbstractID} = Set{AbstractID}()
     dt::Float64                 = rvo_default_time_step()
     agent_policies::Dict        = Dict()
@@ -307,10 +307,10 @@ function update_planning_cache!(env::PlannerEnv, time_stamp::Float64)
             # println("Node v: $v")
             node = get_node(sched, v)
             # println("\t node_type: $(typeof(node))")
-            if CRCBS.is_goal(node, env)
+            if is_goal(node, env)
                 close_node!(node, env)
                 @info "node $(summary(node_id(node))) finished."
-                TaskGraphs.update_planning_cache!(nothing, sched, cache, v, time_stamp)
+                update_planning_cache!(nothing, sched, cache, v, time_stamp)
                 # @info "active nodes $([get_vtx_id(sched,v) for v in cache.active_set])"
                 @assert !(v in cache.active_set) && (v in cache.closed_set)
                 push!(newly_updated, v)
@@ -323,7 +323,7 @@ function update_planning_cache!(env::PlannerEnv, time_stamp::Float64)
         end
     end
     if updated
-        TaskGraphs.process_schedule!(sched)
+        process_schedule!(sched)
         preprocess_env!(env)
         update_rvo_sim!(env)
     end
@@ -384,21 +384,20 @@ function project_complete(env::PlannerEnv)
     return true
 end
 
-# CRCBS.is_goal
-CRCBS.is_goal(n::ScheduleNode, env::PlannerEnv) = is_goal(n.node, env)
-CRCBS.is_goal(node::ConstructionPredicate, env::PlannerEnv) = true
-function CRCBS.is_goal(node::EntityGo, env::PlannerEnv)
+is_goal(n::ScheduleNode, env::PlannerEnv) = is_goal(n.node, env)
+is_goal(node::ConstructionPredicate, env::PlannerEnv) = true
+function is_goal(node::EntityGo, env::PlannerEnv)
     agent = entity(node)
     state = global_transform(agent)
     goal = global_transform(goal_config(node))
     return is_within_capture_distance(state,goal)
 end
 """
-    CRCBS.is_goal(node::RobotGo,sched,scene_tree)
+    is_goal(node::RobotGo,sched,scene_tree)
 
 If next node is FormTransportUnit, ensure that everybody else is in position.
 """
-function CRCBS.is_goal(node::Union{RobotGo,TransportUnitGo}, env::PlannerEnv)
+function is_goal(node::Union{RobotGo,TransportUnitGo}, env::PlannerEnv)
     @unpack sched, scene_tree, cache = env
     agent = entity(node)
     state = global_transform(agent)
@@ -432,14 +431,14 @@ function CRCBS.is_goal(node::Union{RobotGo,TransportUnitGo}, env::PlannerEnv)
     end
     return true
 end
-function CRCBS.is_goal(node::Union{FormTransportUnit,DepositCargo}, env::PlannerEnv)
+function is_goal(node::Union{FormTransportUnit,DepositCargo}, env::PlannerEnv)
     agent = entity(node)
     cargo = get_node(env.scene_tree,cargo_id(agent))
     state = global_transform(cargo)
     goal = global_transform(cargo_goal_config(node))
     return is_within_capture_distance(state,goal)
 end
-function CRCBS.is_goal(node::LiftIntoPlace, env::PlannerEnv)
+function is_goal(node::LiftIntoPlace, env::PlannerEnv)
     cargo = entity(node)
     state = global_transform(cargo)
     goal = global_transform(goal_config(node))
@@ -463,11 +462,11 @@ function swap_first_paralyzed_transport_unit!(env::PlannerEnv, pos_before_step::
                     continue
                 end
                 circ = get_cached_geom(transport_unit,HypersphereKey())
-                ctr = HierarchicalGeometry.get_center(circ)[1:2]
-                rad = HierarchicalGeometry.get_radius(circ)
+                ctr = get_center(circ)[1:2]
+                rad = get_radius(circ)
                 vel = rvo_get_agent_pref_velocity(agent)
                 pos = global_transform(agent).translation[1:2]
-                agent_radius = HierarchicalGeometry.get_radius(get_cached_geom(agent,HypersphereKey()))
+                agent_radius = get_radius(get_cached_geom(agent,HypersphereKey()))
                 if norm(pos .- ctr) < agent_radius + rad # within circle
                     swap = false
                     if norm([vel...]) < 1e-6 # stuck
@@ -585,10 +584,10 @@ function circle_avoidance_policy(circles, agent_radius, pos, nominal_goal;
     # Get the first circle to be intersected
     # for (i,c) in enumerate(circles)
     for (circ_id,c) in circles
-        x = HierarchicalGeometry.get_center(c)
-        r = HierarchicalGeometry.get_radius(c)
-        bloated_circle = Ball2(x,r+agent_radius+buffer)
-        if HierarchicalGeometry.circle_intersects_line(bloated_circle,pos,nominal_goal)
+        x = get_center(c)
+        r = get_radius(c)
+        bloated_circle = LazySets.(x,r+agent_radius+buffer)
+        if circle_intersects_line(bloated_circle,pos,nominal_goal)
             d = norm(x - pos) - (r + agent_radius) #- norm(x - pos) # penetration
             if d < dmin
                 # penetration < 0 => pos is in circle
@@ -604,8 +603,8 @@ function circle_avoidance_policy(circles, agent_radius, pos, nominal_goal;
         # nothing in the way
         return nominal_goal
     end
-    c = HierarchicalGeometry.get_center(circ)
-    r = HierarchicalGeometry.get_radius(circ)
+    c = get_center(circ)
+    r = get_radius(circ)
     if norm(nominal_goal - c) < r # nominal_goal is in circle
         # wait outside
         # how to scale buffer here?
@@ -626,7 +625,7 @@ function circle_avoidance_policy(circles, agent_radius, pos, nominal_goal;
                 goal = pos .+ [-dvec[2],dvec[1]]
             else
                 # Pick a tangent point to shoot for
-                pts = GraphUtils.nearest_points_between_circles(
+                pts = nearest_points_between_circles(
                     pos[1:2], c[1:2], norm(pos - c), r
                 )
                 goal = sort([pts...],by=p->norm(nominal_goal-[p...]))[1]
@@ -636,8 +635,8 @@ function circle_avoidance_policy(circles, agent_radius, pos, nominal_goal;
         end
     else
         # get goal points on the edge of the circle
-        pts = GraphUtils.nearest_points_between_circles(
-            pos[1:2],HierarchicalGeometry.get_center(circ)[1:2],planning_radius,HierarchicalGeometry.get_radius(circ),
+        pts = nearest_points_between_circles(
+            pos[1:2],get_center(circ)[1:2],planning_radius,get_radius(circ),
         )
         if pts === nothing
             goal = nominal_goal
@@ -647,7 +646,7 @@ function circle_avoidance_policy(circles, agent_radius, pos, nominal_goal;
         end
     end
     nominal_pt = pos + normalize(nominal_goal - pos) * min(planning_radius,norm(nominal_goal - pos))
-    f = g->HierarchicalGeometry.circle_intersection_with_line(circ,pos,g)
+    f = g->circle_intersection_with_line(circ,pos,g)
     # if norm(nominal_pt .- c) > norm(goal .- c)
     if f(nominal_pt) > f(goal)
         return nominal_goal
@@ -656,13 +655,13 @@ function circle_avoidance_policy(circles, agent_radius, pos, nominal_goal;
     end
 end
 
-inflate_circle(circ::Ball2,r::Float64) = Ball2(HierarchicalGeometry.get_center(circ),HierarchicalGeometry.get_radius(circ)+r)
-# inflate_circle(circ::GeometryBasics.HyperSphere,r::Float64) = GeometryBasics.HyperSphere(HierarchicalGeometry.get_center(circ),HierarchicalGeometry.get_radius(circ)+r)
+inflate_circle(circ::LazySets.Ball2,r::Float64) = LazySets.Ball2(get_center(circ),get_radius(circ)+r)
+# inflate_circle(circ::GeometryBasics.HyperSphere,r::Float64) = GeometryBasics.HyperSphere(get_center(circ),get_radius(circ)+r)
 
 function active_staging_circles(env, exclude_ids=Set())
     buffer = env.staging_buffers # to increase radius of staging circles when necessary
     node_iter = (get_node(env.sched,id).node for id in env.active_build_steps if !(id in exclude_ids))
-    circle_iter = (node_id(n)=>HierarchicalGeometry.project_to_2d(
+    circle_iter = (node_id(n)=>project_to_2d(
         inflate_circle(get_cached_geom(n.staging_circle), get(buffer,node_id(n),0.0)
         )) for n in node_iter)
 end
@@ -674,9 +673,9 @@ function inflate_staging_circle_buffers!(env, policy, agent, circle_ids;
     )
     @unpack staging_buffers, dt = env
     # desird change in position
-    desired_dx     = dt * HierarchicalGeometry.project_to_2d(policy.cmd.vel)
-    prev_pos       = HierarchicalGeometry.project_to_2d(policy.config.translation)
-    pos            = HierarchicalGeometry.project_to_2d(global_transform(agent).translation)
+    desired_dx     = dt * project_to_2d(policy.cmd.vel)
+    prev_pos       = project_to_2d(policy.config.translation)
+    pos            = project_to_2d(global_transform(agent).translation)
     # true change in position
     dx             = pos - prev_pos
     if norm(dx) < threshold * norm(desired_dx)
@@ -731,7 +730,7 @@ function get_twist_cmd(node, env::PlannerEnv)
     ############ TangentBugPolicy #############
     policy = agent_policies[node_id(agent)].nominal_policy
     if !(policy === nothing)
-        pos = HierarchicalGeometry.project_to_2d(global_transform(agent).translation)
+        pos = project_to_2d(global_transform(agent).translation)
         excluded_ids = Set{AbstractID}()
 
         #? Can we use the cached version here?
@@ -745,7 +744,7 @@ function get_twist_cmd(node, env::PlannerEnv)
         # update policy and get goal
         policy.config = global_transform(agent)
 
-        goal_pt = query_policy_for_goal!(policy, circles, pos, HierarchicalGeometry.project_to_2d(goal.translation))
+        goal_pt = query_policy_for_goal!(policy, circles, pos, project_to_2d(goal.translation))
         new_goal = CoordinateTransformations.Translation(goal_pt...,0.0) ∘ CoordinateTransformations.LinearMap(goal.linear)
 
         twist = compute_twist_from_goal(agent, new_goal, dt) # nominal twist
@@ -781,7 +780,7 @@ function get_twist_cmd(node, env::PlannerEnv)
             update_buffer_radius!(policy)
             # compute target position
             nominal_twist = twist
-            pos = HierarchicalGeometry.project_to_2d(global_transform(agent).translation)
+            pos = project_to_2d(global_transform(agent).translation)
             va = nominal_twist.vel[1:2]
             target_pos = pos .+ va * dt
             # commanded velocity from current position

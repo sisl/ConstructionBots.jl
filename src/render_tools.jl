@@ -40,7 +40,7 @@ end
     vis             = nothing
     scene_tree      = SceneTree()
     vis_nodes       = Dict{AbstractID,Any}() # Dict from AbstractID -> vis[string(id)]
-    geom_nodes      = Dict{HierarchicalGeometry.GeometryKey,Dict{AbstractID,Any}}() # Dict containing the overapproximation layers (HypersphereKey,etc.)
+    geom_nodes      = Dict{GeometryKey,Dict{AbstractID,Any}}() # Dict containing the overapproximation layers (HypersphereKey,etc.)
     active_flags    = Dict{AbstractID,Any}() # contains vis nodes for flagging agents as active or not
     staging_nodes   = Dict{AbstractID,Any}()
 end
@@ -110,12 +110,12 @@ function add_indicator_nodes!(factory_vis;
         if matches_template(Union{TransportUnitNode,RobotNode},n)
             vis_node = vis_nodes[node_id(n)]
             geom = get_base_geom(n,HypersphereKey())
-            mod_center_point = Vector(HierarchicalGeometry.get_center(geom))
+            mod_center_point = Vector(get_center(geom))
             mod_center_point[3] = 0.0
             cylinder = GeometryBasics.Cylinder(
                 Point(mod_center_point...),
                 Point((mod_center_point .- [0.0, 0.0, cylinder_depth])...),
-                HierarchicalGeometry.get_radius(geom)+cylinder_radius_pad,
+                get_radius(geom)+cylinder_radius_pad,
             )
             setobject!(vis_node["active"],
                 cylinder,
@@ -128,9 +128,8 @@ function add_indicator_nodes!(factory_vis;
 end
 
 convert_to_renderable(geom) = geom
-convert_to_renderable(geom::Ball2) = GeometryBasics.Sphere(geom)
+convert_to_renderable(geom::LazySets.Ball2) = GeometryBasics.Sphere(geom)
 convert_to_renderable(geom::Hyperrectangle) = GeometryBasics.HyperRectangle(geom)
-convert_to_renderable(geom::HierarchicalGeometry.BufferedPolygonPrism) = GeometryBasics.Mesh(coordinates(geom),faces(geom))
 
 function show_geometry_layer!(factory_vis,key=HypersphereKey();
         color=RGBA{Float32}(0, 1, 0, 0.3),
@@ -190,8 +189,8 @@ function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="st
     staging_vis = vis[root_key]
     for (id,geom) in staging_circles
         node = get_node(scene_tree,id)
-        sphere = Ball2([geom.center..., 0.0],geom.radius)
-        ctr = Point(HierarchicalGeometry.project_to_2d(sphere.center)..., 0.0)
+        sphere = LazySets.Ball2([geom.center..., 0.0],geom.radius)
+        ctr = Point(project_to_2d(sphere.center)..., 0.0)
         cylinder = Cylinder(ctr, Point((ctr.-[0.0,0.0,0.01])...),sphere.radius)
         setobject!(staging_vis[string(id)],
             cylinder,
@@ -204,7 +203,7 @@ function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="st
         else
             cargo_node = get_node!(sched,ObjectStart(cargo,TransformNode()))
         end
-        t = HierarchicalGeometry.project_to_3d(HierarchicalGeometry.project_to_2d(global_transform(start_config(cargo_node)).translation))
+        t = project_to_3d(project_to_2d(global_transform(start_config(cargo_node)).translation))
         tform = CoordinateTransformations.Translation(t) ∘ identity_linear_map()
         settransform!(staging_nodes[id],tform)
         # settransform!(staging_nodes[id],global_transform(start_config(cargo_node)))
@@ -213,7 +212,7 @@ function render_staging_areas!(vis,scene_tree,sched,staging_circles,root_key="st
         if matches_template(OpenBuildStep, n)
             id = node_id(n)
             sphere = get_cached_geom(node_val(n).staging_circle)
-            ctr = Point(HierarchicalGeometry.project_to_2d(sphere.center)..., -0.02)
+            ctr = Point(project_to_2d(sphere.center)..., -0.02)
             cylinder = Cylinder(ctr, Point((ctr.-[0.0,0.0,0.01])...),sphere.radius)
             setobject!(staging_vis[string(id)],
                 cylinder,
@@ -275,7 +274,7 @@ function visualize_staging_plan(vis,sched,scene_tree;
         else
             node = get_node(scene_tree,node_val(get_node(sched,id)).assembly)
         end
-        sphere = Ball2([geom.center..., 0.0],geom.radius)
+        sphere = LazySets.Ball2([geom.center..., 0.0],geom.radius)
         b_vis = bounding_vis[string(id)]
         setobject!(b_vis,
             convert_to_renderable(sphere),
@@ -298,7 +297,7 @@ function animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,nodes=get_
     objects=false,
     anim=nothing,
     )
-    # HierarchicalGeometry.jump_to_final_configuration!(scene_tree;set_edges=true)
+    # jump_to_final_configuration!(scene_tree;set_edges=true)
     graph = deepcopy(get_graph(scene_tree))
     # initialize goal sequences for each ObjectNode and AssemblyNode
     goals = Dict{AbstractID,Vector{CoordinateTransformations.AffineMap}}()
@@ -354,12 +353,12 @@ function animate_reverse_staging_plan!(vis,vis_nodes,scene_tree,sched,nodes=get_
                 isteps = interp_idxs[node_id(node)]
                 # @show summary(node_id(node)), goal_idxs[node_id(node)], goal, isteps
                 @assert isteps > 0
-                tform = HierarchicalGeometry.interpolate_transforms(global_transform(node),goal,1.0/isteps)
+                tform = interpolate_transforms(global_transform(node),goal,1.0/isteps)
                 interp_idxs[node_id(node)] -= 1
             else
                 tform = global_transform(node) ∘ integrate_twist(twist,dt)
             end
-            HierarchicalGeometry.set_desired_global_transform!(HierarchicalGeometry.get_transform_node(node), tform)
+            set_desired_global_transform!(get_transform_node(node), tform)
         end
         to_update = collect_descendants(graph,active_set,true)
         animate_update_visualizer!(scene_tree,vis_nodes,[get_node(scene_tree,v) for v in to_update];anim=anim)
@@ -377,8 +376,8 @@ function render_transport_unit_2d(scene_tree,tu,cvx_hull=[];
     robot_color=RGB(0.1,0.5,0.9),
     geom_fill_color=RGBA(0.9,0.9,0.9,0.3),
     geom_stroke_color=RGBA(0.0,0.0,0.0,1.0),
-    robot_radius = HierarchicalGeometry.default_robot_radius(),
-    rect2d = HierarchicalGeometry.project_to_2d(get_base_geom(tu,HyperrectangleKey())),
+    robot_radius = default_robot_radius(),
+    rect2d = project_to_2d(get_base_geom(tu,HyperrectangleKey())),
     xpad=(0,0),
     ypad=(0,0),
     bg_color=nothing,
@@ -386,7 +385,7 @@ function render_transport_unit_2d(scene_tree,tu,cvx_hull=[];
     )
     if length(robot_team(tu)) == 1 && overlay_for_single_robot
         robot_overlay = (context(),
-            [Compose.circle(HierarchicalGeometry.project_to_2d(tform.translation)...,ROBOT_RADIUS) for (id,tform) in robot_team(tu)]...,
+            [Compose.circle(project_to_2d(tform.translation)...,ROBOT_RADIUS) for (id,tform) in robot_team(tu)]...,
             Compose.fill(RGBA(robot_color,0.8)),
         )
     else
@@ -409,12 +408,12 @@ function render_transport_unit_2d(scene_tree,tu,cvx_hull=[];
             Compose.fill(nothing),
             ),
             (context(),
-                [Compose.circle(HierarchicalGeometry.project_to_2d(tform.translation)...,config_pt_radius*max(h,w)) for (id,tform) in robot_team(tu)]...,
+                [Compose.circle(project_to_2d(tform.translation)...,config_pt_radius*max(h,w)) for (id,tform) in robot_team(tu)]...,
                 Compose.fill(config_pt_color),
             ),
         ),
         (context(),
-            [Compose.circle(HierarchicalGeometry.project_to_2d(tform.translation)...,robot_radius) for (id,tform) in robot_team(tu)]...,
+            [Compose.circle(project_to_2d(tform.translation)...,robot_radius) for (id,tform) in robot_team(tu)]...,
             Compose.fill(robot_color),
         ),
         (context(),Compose.rectangle(),Compose.fill(bg_color))
@@ -507,7 +506,7 @@ function animate_preprocessing_steps!(
         end
         setvisible!(base_geom_nodes,true)
         setvisible!(rect_nodes,false)
-        HierarchicalGeometry.jump_to_final_configuration!(scene_tree;set_edges=true)
+        jump_to_final_configuration!(scene_tree;set_edges=true)
         update_visualizer!(scene_tree,vis_nodes)
     end
     step_animation!(anim)
@@ -695,7 +694,7 @@ function render_model_spec_with_pictures(model_spec;
         labels = Dict(),
         kwargs...
     )
-    plt_spec = GraphUtils.contract_by_predicate(model_spec,n->matches_template(BuildingStep,n))
+    plt_spec = contract_by_predicate(model_spec,n->matches_template(BuildingStep,n))
     plt = display_graph(plt_spec,scale=1) #,enforce_visited=true)
     # match pictures to assembly names
     counts = Dict()
@@ -709,11 +708,11 @@ function render_model_spec_with_pictures(model_spec;
         counts[parent_name] = counts[parent_name] + 1
     end
     if use_original_coords
-        coords = GraphPlottingBFS.get_layout_coords(model_spec)
+        coords = get_layout_coords(model_spec)
         x = [coords[1][get_vtx(model_spec,id)] for id in get_vtx_ids(plt_spec)]
         y = [coords[2][get_vtx(model_spec,id)] for id in get_vtx_ids(plt_spec)]
     else
-        x,y = GraphPlottingBFS.get_layout_coords(plt_spec)
+        x,y = get_layout_coords(plt_spec)
     end
 
     _color_func = (v,c)->haskey(labels,get_vtx_id(plt_spec,v)) ? c : nothing
@@ -750,54 +749,54 @@ function render_model_spec_with_pictures(model_spec;
     )
 end
 
-GraphUtils.get_id(s::String) = s
+get_id(s::String) = s
 # Rendering schedule nodes
-GraphPlottingBFS._title_string(n::S) where {S<:SceneNode} = split(string(typeof(n)),".")[end][1]
-GraphPlottingBFS._title_string(n::RobotNode)            = "R"
-GraphPlottingBFS._title_string(n::ObjectNode)           = "O"
-GraphPlottingBFS._title_string(n::AssemblyNode)         = "A"
-GraphPlottingBFS._title_string(n::TransportUnitNode)    = "T"
+_title_string(n::S) where {S<:SceneNode} = split(string(typeof(n)),".")[end][1]
+_title_string(n::RobotNode)            = "R"
+_title_string(n::ObjectNode)           = "O"
+_title_string(n::AssemblyNode)         = "A"
+_title_string(n::TransportUnitNode)    = "T"
 
-GraphPlottingBFS._title_string(::BuildingStep)          = "B"
-GraphPlottingBFS._title_string(::SubFileRef)            = "S"
-GraphPlottingBFS._title_string(::SubModelPlan)          = "M"
+_title_string(::BuildingStep)          = "B"
+_title_string(::SubFileRef)            = "S"
+_title_string(::SubModelPlan)          = "M"
 
-GraphPlottingBFS._title_string(n::ConstructionBots.EntityConfigPredicate) = _title_string(n.entity)
-GraphPlottingBFS._title_string(::ConstructionBots.RobotStart)        = "R"
-GraphPlottingBFS._title_string(n::ConstructionBots.ObjectStart)      = "O"
-GraphPlottingBFS._title_string(::ConstructionBots.AssemblyStart)     = "sA"
-GraphPlottingBFS._title_string(::ConstructionBots.AssemblyComplete)  = "cA"
-GraphPlottingBFS._title_string(::ConstructionBots.OpenBuildStep)     = "oB"
-GraphPlottingBFS._title_string(::ConstructionBots.CloseBuildStep)    = "cB"
-GraphPlottingBFS._title_string(::ConstructionBots.RobotGo)           = "G"
-GraphPlottingBFS._title_string(::ConstructionBots.FormTransportUnit) = "F"
-GraphPlottingBFS._title_string(::ConstructionBots.DepositCargo)      = "D"
-GraphPlottingBFS._title_string(::ConstructionBots.TransportUnitGo)   = "T"
-GraphPlottingBFS._title_string(::ConstructionBots.LiftIntoPlace)     = "L"
-GraphPlottingBFS._title_string(::ConstructionBots.ProjectComplete)   = "P"
+_title_string(n::ConstructionBots.EntityConfigPredicate) = _title_string(n.entity)
+_title_string(::ConstructionBots.RobotStart)        = "R"
+_title_string(n::ConstructionBots.ObjectStart)      = "O"
+_title_string(::ConstructionBots.AssemblyStart)     = "sA"
+_title_string(::ConstructionBots.AssemblyComplete)  = "cA"
+_title_string(::ConstructionBots.OpenBuildStep)     = "oB"
+_title_string(::ConstructionBots.CloseBuildStep)    = "cB"
+_title_string(::ConstructionBots.RobotGo)           = "G"
+_title_string(::ConstructionBots.FormTransportUnit) = "F"
+_title_string(::ConstructionBots.DepositCargo)      = "D"
+_title_string(::ConstructionBots.TransportUnitGo)   = "T"
+_title_string(::ConstructionBots.LiftIntoPlace)     = "L"
+_title_string(::ConstructionBots.ProjectComplete)   = "P"
 
 for op in (
-    :(GraphPlottingBFS._node_shape),
-    :(GraphPlottingBFS._node_color),
-    :(GraphPlottingBFS._title_string),
-    :(GraphPlottingBFS._subtitle_string),
-    :(GraphPlottingBFS._subtitle_text_scale),
-    :(GraphPlottingBFS._title_text_scale)
+    :(_node_shape),
+    :(_node_color),
+    :(_title_string),
+    :(_subtitle_string),
+    :(_subtitle_text_scale),
+    :(_title_text_scale)
     )
     @eval $op(n::CustomNode,args...) = $op(node_val(n),args...)
     @eval $op(n::ScheduleNode,args...) = $op(n.node,args...)
 end
 
-GraphPlottingBFS._subtitle_text_scale(n::Union{ConstructionPredicate,SceneNode}) = 0.28
-GraphPlottingBFS._title_text_scale(n::Union{ConstructionPredicate,SceneNode}) = 0.28
+_subtitle_text_scale(n::Union{ConstructionPredicate,SceneNode}) = 0.28
+_title_text_scale(n::Union{ConstructionPredicate,SceneNode}) = 0.28
 
-GraphPlottingBFS._subtitle_string(n::SceneNode) = "$(get_id(node_id(n)))"
-GraphPlottingBFS._subtitle_string(n::Union{EntityGo,EntityConfigPredicate,FormTransportUnit,DepositCargo}) = GraphPlottingBFS._subtitle_string(entity(n))
-GraphPlottingBFS._subtitle_string(n::BuildPhasePredicate) = GraphPlottingBFS._subtitle_string(n.assembly)
-GraphPlottingBFS._subtitle_string(n::ObjectNode) = "o$(get_id(node_id(n)))"
-GraphPlottingBFS._subtitle_string(n::RobotNode) = "r$(get_id(node_id(n)))"
-GraphPlottingBFS._subtitle_string(n::AssemblyNode) = "a$(get_id(node_id(n)))"
-GraphPlottingBFS._subtitle_string(n::TransportUnitNode) = cargo_type(n) == AssemblyNode ? "a$(get_id(node_id(n)))" : "o$(get_id(node_id(n)))"
+_subtitle_string(n::SceneNode) = "$(get_id(node_id(n)))"
+_subtitle_string(n::Union{EntityGo,EntityConfigPredicate,FormTransportUnit,DepositCargo}) = _subtitle_string(entity(n))
+_subtitle_string(n::BuildPhasePredicate) = _subtitle_string(n.assembly)
+_subtitle_string(n::ObjectNode) = "o$(get_id(node_id(n)))"
+_subtitle_string(n::RobotNode) = "r$(get_id(node_id(n)))"
+_subtitle_string(n::AssemblyNode) = "a$(get_id(node_id(n)))"
+_subtitle_string(n::TransportUnitNode) = cargo_type(n) == AssemblyNode ? "a$(get_id(node_id(n)))" : "o$(get_id(node_id(n)))"
 
 
 SPACE_GRAY = RGB(0.2,0.2,0.2)
@@ -806,31 +805,31 @@ LIGHT_BROWN = RGB(0.6,0.3,0.2)
 LIME_GREEN = RGB(0.2,0.6,0.2)
 BRIGHT_BLUE = RGB(0.0,0.4,1.0)
 
-GraphPlottingBFS._node_color(::RobotNode)                           = SPACE_GRAY
-GraphPlottingBFS._node_color(::ObjectNode)                          = SPACE_GRAY
-GraphPlottingBFS._node_color(::AssemblyNode)                        = BRIGHT_BLUE
-GraphPlottingBFS._node_color(::TransportUnitNode)                   = LIME_GREEN
+_node_color(::RobotNode)                           = SPACE_GRAY
+_node_color(::ObjectNode)                          = SPACE_GRAY
+_node_color(::AssemblyNode)                        = BRIGHT_BLUE
+_node_color(::TransportUnitNode)                   = LIME_GREEN
 
-GraphPlottingBFS._node_color(::BuildingStep)                        = LIGHT_BROWN
-GraphPlottingBFS._node_color(::SubFileRef)                          = BRIGHT_RED
-GraphPlottingBFS._node_color(::SubModelPlan)                        = SPACE_GRAY
+_node_color(::BuildingStep)                        = LIGHT_BROWN
+_node_color(::SubFileRef)                          = BRIGHT_RED
+_node_color(::SubModelPlan)                        = SPACE_GRAY
 
-GraphPlottingBFS._node_color(::ConstructionBots.EntityConfigPredicate) = _node_color(n.entity)
-GraphPlottingBFS._node_color(::ConstructionBots.RobotStart)         = SPACE_GRAY
-GraphPlottingBFS._node_color(::ConstructionBots.ObjectStart)        = SPACE_GRAY
-GraphPlottingBFS._node_color(::ConstructionBots.AssemblyStart)      = SPACE_GRAY
-GraphPlottingBFS._node_color(::ConstructionBots.AssemblyComplete)   = SPACE_GRAY
-GraphPlottingBFS._node_color(::ConstructionBots.OpenBuildStep)      = LIGHT_BROWN
-GraphPlottingBFS._node_color(::ConstructionBots.CloseBuildStep)     = LIGHT_BROWN
-GraphPlottingBFS._node_color(::ConstructionBots.ProjectComplete)    = SPACE_GRAY
-GraphPlottingBFS._node_color(::ConstructionBots.RobotGo)            = LIME_GREEN
-GraphPlottingBFS._node_color(::ConstructionBots.FormTransportUnit)  = LIME_GREEN
-GraphPlottingBFS._node_color(::ConstructionBots.TransportUnitGo)    = LIME_GREEN
-GraphPlottingBFS._node_color(::ConstructionBots.DepositCargo)       = LIME_GREEN
-GraphPlottingBFS._node_color(::ConstructionBots.LiftIntoPlace)      = BRIGHT_BLUE
+_node_color(::ConstructionBots.EntityConfigPredicate) = _node_color(n.entity)
+_node_color(::ConstructionBots.RobotStart)         = SPACE_GRAY
+_node_color(::ConstructionBots.ObjectStart)        = SPACE_GRAY
+_node_color(::ConstructionBots.AssemblyStart)      = SPACE_GRAY
+_node_color(::ConstructionBots.AssemblyComplete)   = SPACE_GRAY
+_node_color(::ConstructionBots.OpenBuildStep)      = LIGHT_BROWN
+_node_color(::ConstructionBots.CloseBuildStep)     = LIGHT_BROWN
+_node_color(::ConstructionBots.ProjectComplete)    = SPACE_GRAY
+_node_color(::ConstructionBots.RobotGo)            = LIME_GREEN
+_node_color(::ConstructionBots.FormTransportUnit)  = LIME_GREEN
+_node_color(::ConstructionBots.TransportUnitGo)    = LIME_GREEN
+_node_color(::ConstructionBots.DepositCargo)       = LIME_GREEN
+_node_color(::ConstructionBots.LiftIntoPlace)      = BRIGHT_BLUE
 
-function GraphPlottingBFS.draw_node(g::AbstractCustomNGraph,v,args...;kwargs...)
-    GraphPlottingBFS.draw_node(get_node(g,v),args...;kwargs...)
+function draw_node(g::AbstractCustomNGraph,v,args...;kwargs...)
+    draw_node(get_node(g,v),args...;kwargs...)
 end
 
 function plot_staging_area(
@@ -976,7 +975,7 @@ function transform_final_assembly_staging_circles(sched,scene_tree,staging_circl
         tform = global_transform(goal_config(get_node(sched,
             AssemblyComplete(get_node(scene_tree,k)))))
         # circ = LazySets.translate(v,tform.translation[1:2])
-        circ = Ball2(v.center + tform.translation[1:2], v.radius)
+        circ = LazySets.Ball2(v.center + tform.translation[1:2], v.radius)
         circs[k] = circ
     end
     circs
