@@ -3,8 +3,6 @@ import Pkg: Pkg, PackageSpec
 Pkg.activate(".")
 
 packages = [
-    PackageSpec(path="deps/GraphUtils.jl"),
-    PackageSpec(path="deps/HierarchicalGeometry.jl"),
     PackageSpec(path="deps/GraphPlottingBFS.jl")
 ]
 

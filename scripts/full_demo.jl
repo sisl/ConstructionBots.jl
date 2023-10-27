@@ -21,9 +21,6 @@ using SparseArrays
 
 using LDrawParser
 
-using HierarchicalGeometry
-using GraphUtils
-
 using Colors
 
 using ConstructionBots
@@ -184,8 +181,8 @@ function run_lego_demo(;
             @warn "No additional parameters for $milp_optimizer were set."
         end
         set_default_milp_optimizer!(default_milp_optimizer)
-        clear_default_optimizer_attributes!()
-        set_default_optimizer_attributes!(milp_optimizer_attribute_dict)
+        clear_default_milp_optimizer_attributes!()
+        set_default_milp_optimizer_attributes!(milp_optimizer_attribute_dict)
     end
 
     if rvo_flag
@@ -248,16 +245,16 @@ function run_lego_demo(;
     reset_all_id_counters!()
     reset_all_invalid_id_counters!()
 
-    HierarchicalGeometry.set_default_robot_geom!(
+    set_default_robot_geom!(
         Cylinder(Point(0.0, 0.0, 0.0), Point(0.0, 0.0, robot_height), robot_radius)
     )
 
     ConstructionBots.set_rvo_default_time_step!(1 / 40.0)
-    ConstructionBots.set_default_loading_speed!(50 * HierarchicalGeometry.default_robot_radius())
-    ConstructionBots.set_default_rotational_loading_speed!(50 * HierarchicalGeometry.default_robot_radius())
-    ConstructionBots.set_staging_buffer_radius!(HierarchicalGeometry.default_robot_radius()) # for tangent_bug policy
-    ConstructionBots.set_rvo_default_neighbor_distance!(16 * HierarchicalGeometry.default_robot_radius())
-    ConstructionBots.set_rvo_default_min_neighbor_distance!(10 * HierarchicalGeometry.default_robot_radius())
+    ConstructionBots.set_default_loading_speed!(50 * default_robot_radius())
+    ConstructionBots.set_default_rotational_loading_speed!(50 * default_robot_radius())
+    ConstructionBots.set_staging_buffer_radius!(default_robot_radius()) # for tangent_bug policy
+    ConstructionBots.set_rvo_default_neighbor_distance!(16 * default_robot_radius())
+    ConstructionBots.set_rvo_default_min_neighbor_distance!(10 * default_robot_radius())
 
 
     pre_execution_start_time = time()
@@ -271,7 +268,7 @@ function run_lego_demo(;
     model_spec = ConstructionBots.extract_single_model(spec)
     id_map = ConstructionBots.build_id_map(model, model_spec)
     color_map = ConstructionBots.construct_color_map(model_spec, id_map)
-    @assert GraphUtils.validate_graph(model_spec)
+    @assert validate_graph(model_spec)
     print("done!\n")
 
     ## CONSTRUCT SceneTree
@@ -284,8 +281,8 @@ function run_lego_demo(;
     # Compute Approximate Geometry
     print("Computing approximate geometry...")
     start_geom_approx = time()
-    HierarchicalGeometry.compute_approximate_geometries!(scene_tree, HypersphereKey())
-    HierarchicalGeometry.compute_approximate_geometries!(scene_tree, HyperrectangleKey())
+    compute_approximate_geometries!(scene_tree, HypersphereKey())
+    compute_approximate_geometries!(scene_tree, HyperrectangleKey())
     GEOM_APPROX_TIME = time() - start_geom_approx
     print("done!\n")
 
@@ -299,8 +296,8 @@ function run_lego_demo(;
     # validate SceneTree
     print("Validating scene tree...")
     root = get_node(scene_tree, collect(get_all_root_nodes(scene_tree))[1])
-    validate_tree(HierarchicalGeometry.get_transform_node(root))
-    validate_embedded_tree(scene_tree, v -> HierarchicalGeometry.get_transform_node(get_node(scene_tree, v)))
+    validate_tree(get_transform_node(root))
+    validate_embedded_tree(scene_tree, v -> get_transform_node(get_node(scene_tree, v)))
     print("done!\n")
 
     ## Add robots to scene tree
@@ -318,15 +315,15 @@ function run_lego_demo(;
     # Add temporary robots to the transport units and recalculate the bounding geometry
     # then remove them after the new geometries are calcualted
     ConstructionBots.add_temporary_invalid_robots!(scene_tree; with_edges=true)
-    HierarchicalGeometry.compute_approximate_geometries!(scene_tree, HypersphereKey())
+    compute_approximate_geometries!(scene_tree, HypersphereKey())
     @assert all(map(node -> has_vertex(node.geom_hierarchy, HypersphereKey()), get_nodes(scene_tree)))
-    HierarchicalGeometry.compute_approximate_geometries!(scene_tree, HyperrectangleKey())
+    compute_approximate_geometries!(scene_tree, HyperrectangleKey())
     @assert all(map(node -> has_vertex(node.geom_hierarchy, HyperrectangleKey()), get_nodes(scene_tree)))
     ConstructionBots.remove_temporary_invalid_robots!(scene_tree)
 
     ## Construct Partial Schedule (without robots assigned)
     print("Constructing partial schedule...")
-    HierarchicalGeometry.jump_to_final_configuration!(scene_tree; set_edges=true)
+    jump_to_final_configuration!(scene_tree; set_edges=true)
     sched = construct_partial_construction_schedule(model, model_spec, scene_tree, id_map)
     @assert validate_schedule_transform_tree(sched)
     print("done!\n")
@@ -337,7 +334,7 @@ function run_lego_demo(;
     staging_plan_time = time()
     staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree, sched;
         buffer_radius=staging_buffer_factor * max_object_transport_unit_radius,
-        build_step_buffer_radius=build_step_buffer_factor * HierarchicalGeometry.default_robot_radius()
+        build_step_buffer_radius=build_step_buffer_factor * default_robot_radius()
     )
     staging_plan_time = time() - staging_plan_time
     print("done!\n")
@@ -392,8 +389,8 @@ function run_lego_demo(;
     @assert validate_schedule_transform_tree(sched; post_staging=true)
 
     # Convert to OperatingSchedule
-    ConstructionBots.set_default_loading_speed!(50 * HierarchicalGeometry.default_robot_radius())
-    ConstructionBots.set_default_rotational_loading_speed!(50 * HierarchicalGeometry.default_robot_radius())
+    ConstructionBots.set_default_loading_speed!(50 * default_robot_radius())
+    ConstructionBots.set_default_rotational_loading_speed!(50 * default_robot_radius())
 
     tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 
@@ -414,8 +411,8 @@ function run_lego_demo(;
             soln_matrix = JLD2.load(solution_fname, "soln_matrix")
             soln_matrix = SparseArrays.SparseMatrixCSC(soln_matrix)
             milp_optimizer_attribute_dict[time_limit_key] = Float64(previous_found_optimizer_time)
-            clear_default_optimizer_attributes!()
-            set_default_optimizer_attributes!(milp_optimizer_attribute_dict)
+            clear_default_milp_optimizer_attributes!()
+            set_default_milp_optimizer_attributes!(milp_optimizer_attribute_dict)
         elseif isfile(no_solution_fname)
             println("Aborting based on finding $no_solution_fname")
             throw(NoSolutionError())
@@ -486,7 +483,7 @@ function run_lego_demo(;
         for (ii, n) in enumerate(go_nodes)
             vtx_x = min_assembly_1_xy[1] - ii * 5 * robot_radius
             vtx_y = min_assembly_1_xy[2]
-            HierarchicalGeometry.set_desired_global_transform!(goal_config(n),
+            set_desired_global_transform!(goal_config(n),
                 CoordinateTransformations.Translation(vtx_x, vtx_y, 0.0) ∘ identity_linear_map()
             )
         end
@@ -583,7 +580,7 @@ function run_lego_demo(;
     for node in get_nodes(env.sched)
         if matches_template(Union{RobotStart,FormTransportUnit}, node)
             n = entity(node)
-            agent_radius = HierarchicalGeometry.get_radius(get_base_geom(n, HypersphereKey()))
+            agent_radius = get_radius(get_base_geom(n, HypersphereKey()))
             vmax = ConstructionBots.get_rvo_max_speed(n)
 
             tagent_bug_pol = nothing
@@ -615,7 +612,7 @@ function run_lego_demo(;
         print("Animating preprocessing step...")
         anim = ConstructionBots.AnimationWrapper(0)
         atframe(anim, ConstructionBots.current_frame(anim)) do
-            HierarchicalGeometry.jump_to_final_configuration!(scene_tree; set_edges=true)
+            jump_to_final_configuration!(scene_tree; set_edges=true)
             ConstructionBots.update_visualizer!(factory_vis)
             setvisible!(factory_vis.geom_nodes[HyperrectangleKey()], false)
             setvisible!(factory_vis.staging_nodes, false)

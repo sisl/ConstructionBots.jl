@@ -149,8 +149,8 @@ if assignment_mode == :milp || assignment_mode == :milp_w_greedy_warm_start
         @warn "No additional parameters for $milp_optimizer were set."
     end
     set_default_milp_optimizer!(default_milp_optimizer)
-    TaskGraphs.clear_default_optimizer_attributes!()
-    TaskGraphs.set_default_optimizer_attributes!(milp_optimizer_attribute_dict)
+    clear_default_milp_optimizer_attributes!()
+    set_default_milp_optimizer_attributes!(milp_optimizer_attribute_dict)
 end
 
 if rvo_flag
@@ -218,11 +218,11 @@ set_default_robot_geom!(
 )
 
 ConstructionBots.set_rvo_default_time_step!(1 / 40.0)
-ConstructionBots.set_default_loading_speed!(50 * HierarchicalGeometry.default_robot_radius())
-ConstructionBots.set_default_rotational_loading_speed!(50 * HierarchicalGeometry.default_robot_radius())
-ConstructionBots.set_staging_buffer_radius!(HierarchicalGeometry.default_robot_radius()) # for tangent_bug policy
-ConstructionBots.set_rvo_default_neighbor_distance!(16 * HierarchicalGeometry.default_robot_radius())
-ConstructionBots.set_rvo_default_min_neighbor_distance!(10 * HierarchicalGeometry.default_robot_radius())
+ConstructionBots.set_default_loading_speed!(50 * default_robot_radius())
+ConstructionBots.set_default_rotational_loading_speed!(50 * default_robot_radius())
+ConstructionBots.set_staging_buffer_radius!(default_robot_radius()) # for tangent_bug policy
+ConstructionBots.set_rvo_default_neighbor_distance!(16 * default_robot_radius())
+ConstructionBots.set_rvo_default_min_neighbor_distance!(10 * default_robot_radius())
 
 
 pre_execution_start_time = time()
@@ -236,7 +236,7 @@ spec = ConstructionBots.construct_model_spec(model)
 model_spec = ConstructionBots.extract_single_model(spec)
 id_map = ConstructionBots.build_id_map(model, model_spec)
 color_map = ConstructionBots.construct_color_map(model_spec, id_map)
-@assert GraphUtils.validate_graph(model_spec)
+@assert validate_graph(model_spec)
 print("done!\n")
 
 ## CONSTRUCT SceneTree
@@ -249,8 +249,8 @@ print("done!\n")
 # Compute Approximate Geometry
 print("Computing approximate geometry...")
 start_geom_approx = time()
-HierarchicalGeometry.compute_approximate_geometries!(scene_tree, HypersphereKey())
-HierarchicalGeometry.compute_approximate_geometries!(scene_tree, HyperrectangleKey())
+compute_approximate_geometries!(scene_tree, HypersphereKey())
+compute_approximate_geometries!(scene_tree, HyperrectangleKey())
 GEOM_APPROX_TIME = time() - start_geom_approx
 print("done!\n")
 
@@ -264,8 +264,8 @@ print("done!\n")
 # validate SceneTree
 print("Validating scene tree...")
 root = get_node(scene_tree, collect(get_all_root_nodes(scene_tree))[1])
-validate_tree(HierarchicalGeometry.get_transform_node(root))
-validate_embedded_tree(scene_tree, v -> HierarchicalGeometry.get_transform_node(get_node(scene_tree, v)))
+validate_tree(get_transform_node(root))
+validate_embedded_tree(scene_tree, v -> get_transform_node(get_node(scene_tree, v)))
 print("done!\n")
 
 ## Add robots to scene tree
@@ -283,15 +283,15 @@ ConstructionBots.add_robots_to_scene!(scene_tree, robot_vtxs, [default_robot_geo
 # Add temporary robots to the transport units and recalculate the bounding geometry
 # then remove them after the new geometries are calcualted
 ConstructionBots.add_temporary_invalid_robots!(scene_tree; with_edges=true)
-HierarchicalGeometry.compute_approximate_geometries!(scene_tree, HypersphereKey())
+compute_approximate_geometries!(scene_tree, HypersphereKey())
 @assert all(map(node -> has_vertex(node.geom_hierarchy, HypersphereKey()), get_nodes(scene_tree)))
-HierarchicalGeometry.compute_approximate_geometries!(scene_tree, HyperrectangleKey())
+compute_approximate_geometries!(scene_tree, HyperrectangleKey())
 @assert all(map(node -> has_vertex(node.geom_hierarchy, HyperrectangleKey()), get_nodes(scene_tree)))
 ConstructionBots.remove_temporary_invalid_robots!(scene_tree)
 
 ## Construct Partial Schedule (without robots assigned)
 print("Constructing partial schedule...")
-HierarchicalGeometry.jump_to_final_configuration!(scene_tree; set_edges=true)
+jump_to_final_configuration!(scene_tree; set_edges=true)
 sched = construct_partial_construction_schedule(model, model_spec, scene_tree, id_map)
 @assert validate_schedule_transform_tree(sched)
 print("done!\n")
@@ -323,7 +323,7 @@ max_object_transport_unit_radius = ConstructionBots.get_max_object_transport_uni
 
 staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree, sched;
     buffer_radius=staging_buffer_factor * max_object_transport_unit_radius,
-    build_step_buffer_radius=build_step_buffer_factor * HierarchicalGeometry.default_robot_radius()
+    build_step_buffer_radius=build_step_buffer_factor * default_robot_radius()
 )
 
 #### Plot the staging area ####
@@ -342,8 +342,8 @@ ConstructionBots.calibrate_transport_tasks!(sched)
 ConstructionBots.add_dummy_robot_go_nodes!(sched)
 @assert validate_schedule_transform_tree(sched; post_staging=true)
 
-ConstructionBots.set_default_loading_speed!(50 * HierarchicalGeometry.default_robot_radius())
-ConstructionBots.set_default_rotational_loading_speed!(50 * HierarchicalGeometry.default_robot_radius())
+ConstructionBots.set_default_loading_speed!(50 * default_robot_radius())
+ConstructionBots.set_default_rotational_loading_speed!(50 * default_robot_radius())
 
 tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 

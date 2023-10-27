@@ -4,7 +4,7 @@ function duration_lower_bound(node::ConstructionPredicate,start,goal,max_speed)
     d = norm(goal-start)
     δd = max_speed * env_dt
     num_steps = floor(d / δd)
-    ϵ = HierarchicalGeometry.capture_distance_tolerance()
+    ϵ = capture_distance_tolerance()
     if abs(d - num_steps * δd) > ϵ # eps(Float64)
         num_add_steps = ceil(ϵ / δd)
         num_steps += num_add_steps
@@ -119,7 +119,7 @@ align_with_predecessor(node::RobotGo,pred::T) where {T<:Union{EntityConfigPredic
 ALIGNMENT_CHECK_TOLERANCE = 1e-3
 
 function get_matching_child_id(node::FormTransportUnit,pred::RobotGo)
-    t_rel = HierarchicalGeometry.relative_transform(
+    t_rel = relative_transform(
         global_transform(goal_config(node)),
         global_transform(goal_config(pred))
         )
@@ -134,7 +134,7 @@ function get_matching_child_id(node::FormTransportUnit,pred::RobotGo)
 end
 
 function get_matching_child_id(node::DepositCargo,succ::RobotGo)
-    t_rel = HierarchicalGeometry.relative_transform(
+    t_rel = relative_transform(
         global_transform(goal_config(node)),
         global_transform(start_config(succ))
         )
@@ -152,7 +152,7 @@ function align_with_predecessor(node::FormTransportUnit,pred::RobotGo)
     matching_id = get_matching_child_id(node,pred)
     if !(matching_id === nothing)
         transport_unit = entity(node)
-        HierarchicalGeometry.swap_robot_id!(transport_unit,matching_id,node_id(entity(pred)))
+        swap_robot_id!(transport_unit,matching_id,node_id(entity(pred)))
     end
 	node
 end
@@ -242,7 +242,7 @@ end
 # precedence (for assignment) between the tasks associated with each build phase.
 # """
 # function construct_build_step_graph(sched)
-#     build_step_graph = CustomNDiGraph{GraphUtils._node_type(sched),GraphUtils._id_type(sched)}()
+#     build_step_graph = CustomNDiGraph{_node_type(sched),_id_type(sched)}()
 #     # build step dependency graph
 #     for n in get_nodes(sched)
 #         add_node!(build_step_graph,n,node_id(n))
@@ -258,7 +258,7 @@ end
 #     for n in get_nodes(build_step_graph)
 #         val = n.node
 #         if matches_template(CloseBuildStep,n)
-#             blanket = GraphUtils.backward_cover(sched,get_vtx(sched,n),np->matches_template(CloseBuildStep,np))
+#             blanket = backward_cover(sched,get_vtx(sched,n),np->matches_template(CloseBuildStep,np))
 #             for np in blanket
 #                 if node_id(np) != node_id(n)
 #                     add_edge!(build_step_graph,np,OpenBuildStep(val))
@@ -423,8 +423,8 @@ function assign_collaborative_tasks!(model,
         for (step_id,tasks) in active_build_steps
             step_vtx = get_vtx(sched,step_id)
             # filter out robots that would cause a cycle
-            # filt_func = (v,v2)->!GraphUtils.has_path(dependency_graph,step_vtx,v)
-            # filt_func = (v,v2)->!GraphUtils.has_path(sched,step_vtx,v)
+            # filt_func = (v,v2)->!has_path(dependency_graph,step_vtx,v)
+            # filt_func = (v,v2)->!has_path(sched,step_vtx,v)
             for task in tasks
                 task_node = get_node(sched,task)
                 cargo = get_node(scene_tree,cargo_id(entity(task_node)))
@@ -433,7 +433,7 @@ function assign_collaborative_tasks!(model,
                 end
                 team_slots = Set(v for v in inneighbors(sched,task) if matches_template(RobotGo,get_node(sched,v)))
                 assignments = []
-                filt_func = (v,v2)->!GraphUtils.has_path(dependency_graph,get_vtx(sched,task),v)
+                filt_func = (v,v2)->!has_path(dependency_graph,get_vtx(sched,task),v)
                 cost = 0.0
                 while !isempty(team_slots)
                     robot, slot, c = get_best_pair(robots, team_slots,

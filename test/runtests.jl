@@ -4,10 +4,10 @@ using StaticArrays
 using CoordinateTransformations
 using GeometryBasics
 using Rotations
-using HierarchicalGeometry
 
 using Graphs
-using GraphUtils
+using LazySets
+using LinearAlgebra
 
 using Test
 using Logging

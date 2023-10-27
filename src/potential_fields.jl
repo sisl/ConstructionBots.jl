@@ -134,7 +134,7 @@ Combines a cone potential and a 1/||x|| barrier potential for pairwise
 repulsion.
 """
 function repulsion_potential(x,r,x2,r2;
-        dr = 2*HierarchicalGeometry.default_robot_radius(),
+        dr = 2*default_robot_radius(),
         # fillet_radius=0.5*default_robot_radius(),
     )
     dx = x .- x2
@@ -164,7 +164,7 @@ end
 function dist_to_nearest_active_agent(policy::PotentialFieldController, env::PlannerEnv)
     @unpack scene_tree, sched, cache = env
     agent = policy.agent
-    pos = HierarchicalGeometry.project_to_2d(global_transform(agent).translation)
+    pos = project_to_2d(global_transform(agent).translation)
     shortest_dist = Inf
     id = nothing
     for (other_id, other_p) in env.agent_policies
@@ -175,8 +175,8 @@ function dist_to_nearest_active_agent(policy::PotentialFieldController, env::Pla
             if (pbs_active && cargo_ready_for_pickup(other_node,env))
                 other_agent = other_policy.agent
                 other_rad = other_policy.agent_radius
-                other_pos = HierarchicalGeometry.project_to_2d(global_transform(other_agent).translation)
-                # other_rad = HierarchicalGeometry.get_radius(get_base_geom(other_agent,HypersphereKey()))
+                other_pos = project_to_2d(global_transform(other_agent).translation)
+                # other_rad = get_radius(get_base_geom(other_agent,HypersphereKey()))
                 dist = norm(pos - other_pos) - (other_rad + policy.agent_radius)
                 if dist < shortest_dist
                     shortest_dist = min(dist,shortest_dist)
@@ -193,7 +193,7 @@ function update_dist_to_nearest_active_agent!(policy::PotentialFieldController, 
 end
 function update_buffer_radius!(
         policy::PotentialFieldController,
-        r=min(policy.max_buffer_radius, HierarchicalGeometry.default_robot_radius()/policy.dist_to_nearest_active_agent),
+        r=min(policy.max_buffer_radius, default_robot_radius()/policy.dist_to_nearest_active_agent),
     )
     policy.buffer_radius = r
 end
@@ -242,9 +242,9 @@ function pairwise_potential_width(policy::PotentialFieldController,α1,α2)
     if α1 < α2
         return 0.0 # no push
     elseif α1 == 0
-        return HierarchicalGeometry.default_robot_radius()
+        return default_robot_radius()
     else
-        return 0.5*HierarchicalGeometry.default_robot_radius()
+        return 0.5*default_robot_radius()
     end
 end
 
@@ -262,7 +262,7 @@ function compute_potential_gradient!(policy::PotentialFieldController, env::Plan
             other_policy = env.agent_policies[node_id(other_agent)].dispersion_policy
             other_rad = other_policy.agent_radius
             scale = 1.0
-            other_pos = HierarchicalGeometry.project_to_2d(global_transform(other_agent).translation)
+            other_pos = project_to_2d(global_transform(other_agent).translation)
             if norm(pos - other_pos) <= policy.interaction_radius
                 dp = dp .+ scale*pairwise_potential_gradient(
                     policy,

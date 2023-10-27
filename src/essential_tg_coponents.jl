@@ -136,7 +136,7 @@ end
 # for op in predicate_accessor_interface
 #     @eval $op(node::ScheduleNode) = $op(node.node)
 # end
-for op in [:(GraphUtils.matches_template)]
+for op in [:(matches_template)]
     @eval $op(template::Type{T}, node::ScheduleNode) where {T} = $op(template, node.node)
 end
 Base.summary(n::ScheduleNode) = string(string(n.node), " [", summary(n.spec), "]")
@@ -173,7 +173,7 @@ function Base.copy(sched::OperatingSchedule)
     )
 end
 
-GraphUtils.get_vtx(sched::OperatingSchedule, node::ScheduleNode) = get_vtx(sched, node.id)
+get_vtx(sched::OperatingSchedule, node::ScheduleNode) = get_vtx(sched, node.id)
 get_node_from_id(sched::OperatingSchedule, id) = get_node(sched, id).node
 get_node_from_vtx(sched::OperatingSchedule, v) = get_node(sched, v).node
 
@@ -239,7 +239,7 @@ function replace_in_schedule!(sched::P, pred, id::ID) where {P<:OperatingSchedul
     replace_in_schedule!(sched, ProblemSpec(), pred, id)
 end
 
-GraphUtils.add_node!(sched::OperatingSchedule, node::ScheduleNode) = add_node!(sched, node, node.id)
+add_node!(sched::OperatingSchedule, node::ScheduleNode) = add_node!(sched, node, node.id)
 
 
 function validate(sched::OperatingSchedule)
@@ -737,7 +737,7 @@ function formulate_milp(milp_model::AssignmentMILP,
     # SETUP
     # Define optimization model
     model = Model(optimizer_with_attributes(optimizer))
-    set_optimizer_attributes(model, default_optimizer_attributes()...)
+    set_optimizer_attributes(model, default_milp_optimizer_attributes()...)
     milp = AssignmentMILP(model=model, sched=sched)
 
     @unpack robot_ics, object_ics, operations, robot_map, object_map, operation_map = milp
@@ -933,7 +933,7 @@ function formulate_milp(
     end
 
     model = Model(optimizer_with_attributes(optimizer))
-    set_optimizer_attributes(model, default_optimizer_attributes()...)
+    set_optimizer_attributes(model, default_milp_optimizer_attributes()...)
 
     G = get_graph(sched)
     (missing_successors, missing_predecessors, n_eligible_successors,
@@ -990,13 +990,6 @@ function formulate_milp(
                             if (val > 0 && val2 > 0)
                                 potential_match = true
                                 new_node = align_with_successor(node, node2)
-                                if !robot_ids_match(node, node2)
-                                    @log_info(-1, 0, "Edge $(string(node)) --> $(string(node2)) should be illegal, but is being allowed by SparseAdjacencyMILP")
-                                    @log_info(-1, 0, "inneighbors(sched,$(string(node))):   ", map(vp -> string(string(get_node_from_vtx(sched, vp)), ", "), inneighbors(sched, v))...)
-                                    @log_info(-1, 0, "outneighbors(sched,$(string(node))):  ", map(vp -> string(string(get_node_from_vtx(sched, vp)), ", "), outneighbors(sched, v))...)
-                                    @log_info(-1, 0, "inneighbors(sched,$(string(node2))):  ", map(vp -> string(string(get_node_from_vtx(sched, vp)), ", "), inneighbors(sched, v2))...)
-                                    @log_info(-1, 0, "outneighbors(sched,$(string(node2))): ", map(vp -> string(string(get_node_from_vtx(sched, vp)), ", "), outneighbors(sched, v2))...)
-                                end
 
                                 dt_min = generate_path_spec(sched, problem_spec, new_node).min_duration
                                 if warm_start
@@ -1218,13 +1211,6 @@ Returns `false` if the new edges cause cycles in the project graph.
 function update_project_schedule!(solver, sched::OperatingSchedule, problem_spec, adj_matrix)
     mtx = adjacency_matrix(sched)
     val = update_project_schedule!(sched, problem_spec, adj_matrix)
-    # @log_info(1, verbosity(solver), "Assignment: cost = $(best_cost(solver)). Adding edges \n",
-    #     map(idx -> string("\t",
-    #             string(get_node_from_vtx(sched, idx.I[1])), " → ",
-    #             string(get_node_from_vtx(sched, idx.I[2])), "\n"
-    #         ),
-    #         findall(adj_matrix .- mtx .!= 0))...
-    # )
     val
 end
 function update_project_schedule!(sched::OperatingSchedule, problem_spec, adj_matrix)
@@ -1386,15 +1372,13 @@ function update_planning_cache!(solver, sched::OperatingSchedule, cache::Plannin
     for v2 in active_set
         node_queue[v2] = isps_queue_cost(sched, v2)
     end
-    # @log_info(2, verbosity(solver), "moved ", v, " to closed set, moved ", activated_vtxs, " to active set")
-    # @log_info(3, verbosity(solver), string("get_tF(sched,v) = ", get_tF(sched, v)))
     return cache
 end
 
 #######################################
 
 global MILP_OPTIMIZER = nothing
-global DEFAULT_OPTIMIZER_ATTRIBUTES = Dict{Union{String,MOI.AbstractOptimizerAttribute},Any}()
+global DEFAULT_MILP_OPTIMIZER_ATTRIBUTES = Dict{Union{String,MOI.AbstractOptimizerAttribute},Any}()
 
 """
     default_milp_optimizer()
@@ -1413,32 +1397,32 @@ function set_default_milp_optimizer!(optimizer)
 end
 
 """
-    default_optimizer_attributes()
+    default_milp_optimizer_attributes()
 
 Return a dictionary of default optimizer attributes.
 """
-default_optimizer_attributes() = DEFAULT_OPTIMIZER_ATTRIBUTES
+default_milp_optimizer_attributes() = DEFAULT_MILP_OPTIMIZER_ATTRIBUTES
 
 """
-    set_default_optimizer_attributes!(vals)
+    set_default_milp_optimizer_attributes!(vals)
 
 Set default optimizer attributes.
-e.g. `set_default_optimizer_attributes!(Dict("PreSolve"=>-1))`
+e.g. `set_default_milp_optimizer_attributes!(Dict("PreSolve"=>-1))`
 """
-function set_default_optimizer_attributes!(pair::Pair, pairs...)
-    push!(DEFAULT_OPTIMIZER_ATTRIBUTES, pair)
-    set_default_optimizer_attributes!(pairs...)
+function set_default_milp_optimizer_attributes!(pair::Pair, pairs...)
+    push!(DEFAULT_MILP_OPTIMIZER_ATTRIBUTES, pair)
+    set_default_milp_optimizer_attributes!(pairs...)
 end
-set_default_optimizer_attributes!(d::Dict) = set_default_optimizer_attributes!(d...)
-set_default_optimizer_attributes!() = nothing
+set_default_milp_optimizer_attributes!(d::Dict) = set_default_milp_optimizer_attributes!(d...)
+set_default_milp_optimizer_attributes!() = nothing
 
 """
-    clear_default_optimizer_attributes!()
+    clear_default_milp_optimizer_attributes!()
 
 Clear the default optimizer attributes.
 """
-function clear_default_optimizer_attributes!()
-    empty!(DEFAULT_OPTIMIZER_ATTRIBUTES)
+function clear_default_milp_optimizer_attributes!()
+    empty!(DEFAULT_MILP_OPTIMIZER_ATTRIBUTES)
 end
 
 ########################

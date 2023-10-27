@@ -165,7 +165,7 @@ spec = ConstructionBots.construct_model_spec(model)
 model_spec = ConstructionBots.extract_single_model(spec)
 id_map = ConstructionBots.build_id_map(model,model_spec)
 color_map = ConstructionBots.construct_color_map(model_spec,id_map)
-@assert GraphUtils.validate_graph(model_spec)
+@assert validate_graph(model_spec)
 # plt = display_graph(model_spec,scale=1,aspect_stretch=(1.2,1.0)) #,enforce_visited=true)
 # display(plt)
 # draw(PDF(joinpath(graphics_path,"model_spec.pdf")),plt)
@@ -209,14 +209,14 @@ HG.compute_approximate_geometries!(scene_tree,HypersphereKey())
 HG.compute_approximate_geometries!(scene_tree,HyperrectangleKey())
 _, cvx_hulls = ConstructionBots.init_transport_units!(scene_tree;
     # robot_radius = ROBOT_RADIUS,
-    robot_radius = HG.get_radius(overapproximate(default_robot_geom(),Ball2{Float64,SVector{3,Float64}}))
+    robot_radius = HG.get_radius(overapproximate(default_robot_geom(),LazySets.Ball2{Float64,SVector{3,Float64}}))
     )
 
 # ConstructionBots.init_transport_units!(scene_tree)
 # validate SceneTree
 root = get_node(scene_tree,collect(get_all_root_nodes(scene_tree))[1])
-validate_tree(HierarchicalGeometry.get_transform_node(root))
-validate_embedded_tree(scene_tree,v->HierarchicalGeometry.get_transform_node(get_node(scene_tree,v)))
+validate_tree(get_transform_node(root))
+validate_embedded_tree(scene_tree,v->get_transform_node(get_node(scene_tree,v)))
 # visualize
 # display_graph(scene_tree,grow_mode=:from_top,align_mode=:root_aligned,aspect_stretch=(0.7,6.0))
 
@@ -554,7 +554,7 @@ ConstructionBots.set_default_rotational_loading_speed!(10*HG.default_robot_radiu
 tg_sched = ConstructionBots.convert_to_operating_schedule(sched)
 
 ## Black box MILP solver
-# TaskGraphs.set_default_optimizer_attributes!(
+# TaskGraphs.set_default_milp_optimizer_attributes!(
 #     "TimeLimit"=>75,
 #     MOI.Silent()=>false
 #     )
@@ -653,7 +653,7 @@ let
     # geom = recurse_child_geometry(a,scene_tree,BaseGeomKey())
     # P = overapproximate(geom,HG.BufferedPolygonPrism(HG.regular_buffered_polygon(8,1.0;buffer=0.1)),0.01)
     # C = overapproximate(geom,Cylinder)
-    # S = overapproximate(geom,Ball2{Float64,SVector{3,Float64}})
+    # S = overapproximate(geom,LazySets.Ball2{Float64,SVector{3,Float64}})
     # p_color = RGBA(1.0,0.7,0.0)
     # setobject!(vis[:prism_overapprox][:solid],GeometryBasics.Mesh(coordinates(P),faces(P)),MeshLambertMaterial(color=RGBA(RGB(p_color),0.05),depthWrite=false))
     # setobject!(vis[:prism_overapprox][:wireframe],HG.get_wireframe_mesh(P),MeshLambertMaterial(wireframe=true,color=p_color,wireframeLinewidth=15pt))
@@ -920,13 +920,13 @@ save("/scratch/Repositories/Sandbox/thesis_graphics/LEGO/potential_field_plot.te
 #     end
 #     geom=map(SVector,points)
 #     try
-#         support_pts = HierarchicalGeometry.select_support_locations(
+#         support_pts = select_support_locations(
 #             geom,transport_model)
 #         polygon = VPolygon(convex_hull(map(p->p[1:2],geom)))
 
 #         plt = plot(polygon,aspectratio=1,alpha=0.4)
 #         scatter!(plt,map(p->p[1],geom),map(p->p[2],geom),label=k) #,legend=false)
-#         plot!(plt,map(p->Ball2(p,transport_model.robot_radius),support_pts), aspectratio=1, alpha=0.4)
+#         plot!(plt,map(p->LazySets.Ball2(p,transport_model.robot_radius),support_pts), aspectratio=1, alpha=0.4)
 #         display(plt)
 #     catch e
 #         bt = catch_backtrace()

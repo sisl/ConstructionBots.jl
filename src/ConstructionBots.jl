@@ -3,11 +3,6 @@ module ConstructionBots
 using Printf
 using Parameters
 using StaticArrays
-using CoordinateTransformations
-using Rotations
-using Graphs
-using GraphUtils
-using GeometryBasics
 using JuMP
 using ECOS
 using MathOptInterface
@@ -25,17 +20,28 @@ using SparseArrays
 using DataStructures
 
 using LDrawParser
-using HierarchicalGeometry
+# using HierarchicalGeometry
 # using TaskGraphs
 
 # only needed for plotting stuff
 using Measures
 using Compose
 
+using Rotations
+using CoordinateTransformations
+using LazySets
+using GeometryBasics
+
+using Graphs
+
 import LibSpatialIndex
 
-
+include("graph_utils_essentials.jl")
 include("essential_tg_coponents.jl")
+
+include("hierarchical_geom_essentials.jl")
+set_default_geom_optimizer!(ECOS.Optimizer)
+set_default_geom_optimizer_attributes!(MOI.Silent()=>true)
 
 
 ################################################################################
@@ -59,9 +65,54 @@ export
     validate,
     makespan,
     set_default_milp_optimizer!,
-    clear_default_optimizer_attributes!,
-    set_default_optimizer_attributes!,
-    get_assignment_matrix
+    clear_default_milp_optimizer_attributes!,
+    set_default_milp_optimizer_attributes!,
+    clear_default_geom_optimizer_attributes!,
+    set_default_geom_optimizer_attributes!,
+    get_assignment_matrix,
+    AbstractID,
+    reset_all_id_counters!,
+    reset_all_invalid_id_counters!,
+    GeomNode,
+    ObjectNode,
+    RobotNode,
+    AssemblyNode,
+    TransportUnitNode,
+    set_default_robot_geom!,
+    default_robot_radius,
+    validate_graph,
+    ZonotopeKey,
+    HyperrectangleKey,
+    HypersphereKey,
+    CylinderKey,
+    CircleKey,
+    ConvexHullKey,
+    compute_approximate_geometries!,
+    default_geom_optimizer,
+    get_all_root_nodes,
+    get_node,
+    get_transform_node,
+    validate_tree,
+    validate_embedded_tree,
+    default_robot_geom,
+    get_nodes,
+    jump_to_final_configuration!,
+    matches_template,
+    node_id,
+    cargo_id,
+    AssemblyID,
+    get_base_geom,
+    node_iterator,
+    node_val,
+    get_cached_geom,
+    project_to_2d,
+    global_transform,
+    is_terminal_node,
+    identity_linear_map,
+    BaseGeomKey,
+    get_radius,
+    get_id
+
 
 """
     BuildStepID <: AbstractID
@@ -95,7 +146,7 @@ struct DuplicateIDGenerator{K}
         Dict{K,K}(),
     )
 end
-GraphUtils._id_type(::DuplicateIDGenerator{K}) where {K} = K
+_id_type(::DuplicateIDGenerator{K}) where {K} = K
 function (g::DuplicateIDGenerator)(id)
     k = get!(g.id_map,id,id)
     g.id_counts[k] = get(g.id_counts,k,0) + 1
@@ -106,7 +157,7 @@ end
 function duplicate_subtree!(g,old_root,d=:out)
     vtxs = [get_vtx(g,old_root)]
     append!(vtxs, collect(map(e->e.dst,edges(bfs_tree(g,old_root;dir=d)))))
-    new_ids = Dict{Int,GraphUtils._id_type(g)}()
+    new_ids = Dict{Int,_id_type(g)}()
     for v in vtxs
         old_node = get_node(g,v)
         new_node = add_node!(g,node_val(old_node))
@@ -143,7 +194,7 @@ end
 create_node_id(g,v::BuildingStep) = g.id_generator("BuildingStep")
 create_node_id(g,v::SubModelPlan) = has_vertex(g,model_name(v)) ? g.id_generator(model_name(v)) : model_name(v)
 create_node_id(g,v::SubFileRef)   = g.id_generator(model_name(v))
-function GraphUtils.add_node!(g::MPDModelGraph{N,ID},val::N) where {N,ID}
+function add_node!(g::MPDModelGraph{N,ID},val::N) where {N,ID}
     id = create_node_id(g,val)
     add_node!(g,val,id)
 end
@@ -270,7 +321,7 @@ From a model schedule with (potentially) multiple distinct models, extract just
 the model graph with root id `model_key`.
 """
 function extract_single_model(spec::S,
-        model_key=get_vtx_id(spec,GraphUtils.get_biggest_tree(spec))) where {S<:MPDModelGraph}
+        model_key=get_vtx_id(spec,get_biggest_tree(spec))) where {S<:MPDModelGraph}
     @assert has_vertex(spec,model_key)
     new_spec = S(id_generator=spec.id_generator)
     root = get_vtx(spec,model_key)
@@ -295,26 +346,26 @@ function extract_single_model(spec::S,
 end
 
 # Edges for Project Spec. TODO dispatch on graph type
-GraphUtils.validate_edge(::SubModelPlan,::SubFileRef) = true
-GraphUtils.validate_edge(::BuildingStep,::SubModelPlan) = true
-GraphUtils.validate_edge(::BuildingStep,::BuildingStep) = true
-GraphUtils.validate_edge(::BuildingStep,::SubFileRef) = true
-GraphUtils.validate_edge(::SubFileRef,::BuildingStep) = true
+validate_edge(::SubModelPlan,::SubFileRef) = true
+validate_edge(::BuildingStep,::SubModelPlan) = true
+validate_edge(::BuildingStep,::BuildingStep) = true
+validate_edge(::BuildingStep,::SubFileRef) = true
+validate_edge(::SubFileRef,::BuildingStep) = true
 
-GraphUtils.eligible_successors(::SubFileRef) = Dict(BuildingStep=>1)
-GraphUtils.eligible_predecessors(::SubFileRef) = Dict(BuildingStep=>1,SubModelPlan=>1)
-GraphUtils.required_successors(::SubFileRef) = Dict(BuildingStep=>1)
-GraphUtils.required_predecessors(::SubFileRef) = Dict()
+eligible_successors(::SubFileRef) = Dict(BuildingStep=>1)
+eligible_predecessors(::SubFileRef) = Dict(BuildingStep=>1,SubModelPlan=>1)
+required_successors(::SubFileRef) = Dict(BuildingStep=>1)
+required_predecessors(::SubFileRef) = Dict()
 
-GraphUtils.eligible_successors(::SubModelPlan) = Dict(SubFileRef=>1)
-GraphUtils.eligible_predecessors(::SubModelPlan) = Dict(BuildingStep=>1)
-GraphUtils.required_successors(::SubModelPlan) = Dict()
-GraphUtils.required_predecessors(::SubModelPlan) = Dict(BuildingStep=>1)
+eligible_successors(::SubModelPlan) = Dict(SubFileRef=>1)
+eligible_predecessors(::SubModelPlan) = Dict(BuildingStep=>1)
+required_successors(::SubModelPlan) = Dict()
+required_predecessors(::SubModelPlan) = Dict(BuildingStep=>1)
 
-GraphUtils.eligible_successors(::BuildingStep) = Dict(SubFileRef=>typemax(Int),SubModelPlan=>1,BuildingStep=>1)
-GraphUtils.eligible_predecessors(n::BuildingStep) = Dict(SubFileRef=>LDrawParser.n_lines(n),BuildingStep=>1)
-GraphUtils.required_successors(::BuildingStep) = Dict(Union{SubModelPlan,BuildingStep}=>1)
-GraphUtils.required_predecessors(n::BuildingStep) = Dict(SubFileRef=>LDrawParser.n_lines(n))
+eligible_successors(::BuildingStep) = Dict(SubFileRef=>typemax(Int),SubModelPlan=>1,BuildingStep=>1)
+eligible_predecessors(n::BuildingStep) = Dict(SubFileRef=>LDrawParser.n_lines(n),BuildingStep=>1)
+required_successors(::BuildingStep) = Dict(Union{SubModelPlan,BuildingStep}=>1)
+required_predecessors(n::BuildingStep) = Dict(SubFileRef=>LDrawParser.n_lines(n))
 
 
 
@@ -379,8 +430,8 @@ function build_id_map(model::MPDModel,spec::MPDModelGraph)
             new_id = get_unique_id(AssemblyID)
         end
         if !(new_id === nothing)
-            id_map[new_id] = GraphUtils.node_id(node)
-            id_map[GraphUtils.node_id(node)] = new_id
+            id_map[new_id] = node_id(node)
+            id_map[node_id(node)] = new_id
         end
     end
     id_map
@@ -513,9 +564,9 @@ Construct a `SpatialIndexing.RTree` for efficiently finding neighbors of an
 """
 function construct_spatial_index(scene_tree,frontier=get_all_root_nodes(scene_tree))
     rtree = RTree{Float64, 3}(Int, AbstractID, leaf_capacity = 10, branch_capacity = 10)
-    HierarchicalGeometry.jump_to_final_configuration!(scene_tree)
+    jump_to_final_configuration!(scene_tree)
     bounding_rects = Dict{AbstractID,SpatialIndexing.Rect}()
-    for v in GraphUtils.BFSIterator(scene_tree,frontier)
+    for v in BFSIterator(scene_tree,frontier)
         node = get_node(scene_tree,v)
         geom = get_cached_geom(node,BaseGeomKey())
         if geom === nothing
@@ -578,8 +629,8 @@ end
 Find the optimal separating hyperplane between two point sets
 """
 function compute_separating_hyperplane(ptsA,ptsB,dim=3)
-    model = JuMP.Model(HierarchicalGeometry.default_optimizer())
-    set_optimizer_attributes(model,HierarchicalGeometry.default_optimizer_attributes()...)
+    model = JuMP.Model(default_geom_optimizer())
+    set_optimizer_attributes(model,default_geom_optimizer_attributes()...)
     @variable(model,x[1:dim])
     @constraint(model, [1.0;x] in SecondOrderCone())
     @variable(model, a >= 0)
