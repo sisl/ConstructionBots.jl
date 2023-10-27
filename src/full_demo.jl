@@ -80,7 +80,7 @@ function run_lego_demo(;
     optimizer_time_limit::Int=600,
     look_for_previous_milp_solution::Bool=false,
     save_milp_solution::Bool=false,
-    previous_found_optimizer_time::int=30,
+    previous_found_optimizer_time::Int=30,
     stop_after_task_assignment::Bool=false,
     ignore_rot_matrix_warning::Bool=true,
     rng::Random.AbstractRNG=Random.MersenneTwister(1)
