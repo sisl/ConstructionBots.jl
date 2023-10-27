@@ -27,8 +27,6 @@ using HiGHS
 using Gurobi
 using ECOS
 
-
-# include("../src/render_tools.jl")
 include("demo_utils.jl")
 
 """
