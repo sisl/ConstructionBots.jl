@@ -4,3 +4,6 @@ Manifest.toml
 variable_dump/*
 results/*
 *.cov
+loop_over_sims.jl
+process_results.jl
+sandbox.jl
