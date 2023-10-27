@@ -27,9 +27,9 @@ save_animation_at_end        = false
 anim_active_agents           = true
 anim_active_areas            = true
 
-rvo_flag                     = true
 tangent_bug_flag             = true
-dispersion_flag              = true
+rvo_flag                     = false
+dispersion_flag              = false
 assignment_mode              = :greedy
 # assignment_mode              = :milp
 # assignment_mode              = :milp_w_greedy_warm_start
