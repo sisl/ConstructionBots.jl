@@ -6,44 +6,44 @@ Run the lego demo for model.
 
     Keyword arguments:
 
-        - ldraw_file::String: ldraw file
-        - project_name::String: project name (default: ldraw_file)
-        - model_scale::Float64: scale of the model (default: 0.008)
-        - num_robots::Int: number of robots to use (default: 12)
-        - robot_scale::Float64: scale of the robots (default: 0.7 * model_scale)
-        - robot_height::Float64: height of the robots (default: 10 * robot_scale)
-        - robot_radius::Float64: radius of the robots (default: 25 * robot_scale)
-        - num_object_layers::Int: number of layers to stack the legos (default: 1)
-        - max_steps::Int: maximum number of steps to run the simulation (default: 100000)
-        - staging_buffer_factor::Float64: factor to multiply the largest transport unit radius by to get the staging buffer (default: 1.2)
-        - build_step_buffer_factor::Float64: factor to multiply the robot radius by to get the build step buffer (default: 0.5)
-        - base_results_path::String: base path to save results to
-        - results_path::String: folder name to save the results to (inside base_results_path)
-        - assignment_mode::Symbol: assignment mode to use (default: :greedy, options: :greedy, :milp, :milp_w_greedy_warm_start)
-        - open_animation_at_end::Bool: open the animation in the browser at the end of the simulation (default: false)
-        - save_animation::Bool: save the animation at the end of the simulation (default: false)
-        - save_animation_along_the_way::Bool: save the animation at periodic intervals during the simulation (default: false)
-        - anim_active_agents::Bool: animate which agents are active (green circles) (default: false)
-        - anim_active_areas::Bool: animate which areas are active (purple circles) (default: false)
-        - process_updates_interval::Int: the interval to process animation updates (default: 25)
-        - save_anim_interval::Int: the interval of number of updates to save the animation if `save_animation_along_the_way=true` (default: 500)
-        - rvo_flag::Bool: whether to use RVO (default: true)
-        - tangent_bug_flag::Bool: whether to use tangent bug (default: true)
-        - dispersion_flag::Bool: whether to use dispersion (default: true)
-        - overwrite_results::Bool: whether to overwrite the stats.toml file or create a new one with a date-time filename (default: true)
-        - write_results::Bool: whether to write the results to disk (default: true)
-        - max_num_iters_no_progress::Int: maximum number of iterations to run without progress (default: 10000)
-        - sim_batch_size::Int: number of steps to run in a simulation before clearing some memory (default: 50)
-        - log_level::Logging.LogLevel: log level to use (default: Logging.Warn)
-        - milp_optimizer::Symbol: optimizer to use for the MILP (default: :highs, options: :gurobi, :glpk)
-        - milp_optimizer_attribute_dict::Dict: dictionary of attributes to set on the optimizer (default: Dict())
-        - optimizer_time_limit::Int: time limit for the optimizer (default: 600)
-        - look_for_previous_milp_solution::Bool: whether to look for a previous MILP solution (default: false)
-        - save_milp_solution::Bool: whether to save the MILP solution (default: false)
-        - previous_found_optimizer_time: time limit for the optimizer when looking for a previous solution (default: 30)
-        - stop_after_task_assignment: whether to stop after task assignment (default: false)
-        - ignore_rot_matrix_warning: whether to ignore the rotation matrix warning (default: true)
-        - rng::Random.AbstractRNG: random number generator to use (default: MersenneTwister(1))
+        - `ldraw_file::String`: ldraw file
+        - `project_name::String`: project name (default: ldraw_file)
+        - `model_scale::Float64`: scale of the model (default: 0.008)
+        - `num_robots::Int`: number of robots to use (default: 12)
+        - `robot_scale::Float64`: scale of the robots (default: 0.7 * model_scale)
+        - `robot_height::Float64`: height of the robots (default: 10 * robot_scale)
+        - `robot_radius::Float64`: radius of the robots (default: 25 * robot_scale)
+        - `num_object_layers::Int`: number of layers to stack the legos (default: 1)
+        - `max_steps::Int`: maximum number of steps to run the simulation (default: 100000)
+        - `staging_buffer_factor::Float64`: factor to multiply the largest transport unit radius by to get the staging buffer (default: 1.2)
+        - `build_step_buffer_factor::Float64`: factor to multiply the robot radius by to get the build step buffer (default: 0.5)
+        - `base_results_path::String`: base path to save results to
+        - `results_path::String`: folder name to save the results to (inside base_results_path)
+        - `assignment_mode::Symbol`: assignment mode to use (default: :greedy, options: :greedy, :milp, :milp_w_greedy_warm_start)
+        - `open_animation_at_end::Bool`: open the animation in the browser at the end of the simulation (default: false)
+        - `save_animation::Bool`: save the animation at the end of the simulation (default: false)
+        - `save_animation_along_the_way::Bool`: save the animation at periodic intervals during the simulation (default: false)
+        - `anim_active_agents::Bool`: animate which agents are active (green circles) (default: false)
+        - `anim_active_areas::Bool`: animate which areas are active (purple circles) (default: false)
+        - `process_updates_interval::Int`: the interval to process animation updates (default: 25)
+        - `save_anim_interval::Int`: the interval of number of updates to save the animation if `save_animation_along_the_way=true` (default: 500)
+        - `rvo_flag::Bool`: whether to use RVO (default: true)
+        - `tangent_bug_flag::Bool`: whether to use tangent bug (default: true)
+        - `dispersion_flag::Bool`: whether to use dispersion (default: true)
+        - `overwrite_results::Bool`: whether to overwrite the stats.toml file or create a new one with a date-time filename (default: true)
+        - `write_results::Bool`: whether to write the results to disk (default: true)
+        - `max_num_iters_no_progress::Int`: maximum number of iterations to run without progress (default: 10000)
+        - `sim_batch_size::Int`: number of steps to run in a simulation before clearing some memory (default: 50)
+        - `log_level::Logging.LogLevel`: log level to use (default: Logging.Warn)
+        - `milp_optimizer::Symbol`: optimizer to use for the MILP (default: :highs, options: :gurobi, :glpk)
+        - `milp_optimizer_attribute_dict::Dict`: dictionary of attributes to set on the optimizer (default: Dict())
+        - `optimizer_time_limit::Int`: time limit for the optimizer (default: 600)
+        - `look_for_previous_milp_solution::Bool`: whether to look for a previous MILP solution (default: false)
+        - `save_milp_solution::Bool`: whether to save the MILP solution (default: false)
+        - `previous_found_optimizer_time::Int`: time limit for the optimizer when looking for a previous solution (default: 30)
+        - `stop_after_task_assignment::Bool`: whether to stop after task assignment (default: false)
+        - `ignore_rot_matrix_warning::Bool`: whether to ignore the rotation matrix warning (default: true)
+        - `rng::Random.AbstractRNG`: random number generator to use (default: MersenneTwister(1))
 """
 function run_lego_demo(;
     ldraw_file::String="tractor.mpd",
@@ -80,9 +80,9 @@ function run_lego_demo(;
     optimizer_time_limit::Int=600,
     look_for_previous_milp_solution::Bool=false,
     save_milp_solution::Bool=false,
-    previous_found_optimizer_time=30,
-    stop_after_task_assignment=false,
-    ignore_rot_matrix_warning=true,
+    previous_found_optimizer_time::int=30,
+    stop_after_task_assignment::Bool=false,
+    ignore_rot_matrix_warning::Bool=true,
     rng::Random.AbstractRNG=Random.MersenneTwister(1)
 )
 
