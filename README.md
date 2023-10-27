@@ -1,7 +1,9 @@
-# ConstructionBots
+# ConstructionBots.jl
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://sisl.github.io/ConstructionBots.jl/stable)
 [![Build Status](https://github.com/sisl/ConstructionBots.jl/workflows/CI/badge.svg)](https://github.com/sisl/ConstructionBots.jl/actions)
+
+![ConstructionBots.jl Overivew](media/constructionbots_overviw.png)
 
 ConstructionBots.jl is an open-source multi-robot manufacturing simulator and is designed to test algorithms for multi-robot assembly planning. This system approaches multi-robot assembly planning from a higher level of abstraction and addresses task planning and transit planning but abstracts away the kino-dynamic details of piecing together assemblies. Problems addressed and simulated:
 - **Trasport Team configuration:** How many robots are needed and how should robots be positioned when transporting a particular payload?
@@ -58,7 +60,12 @@ julia> rvo = pyimport("rvo2")
 ```
 
 ## Usage
-This repository 
+This repository comes with demos to demonstrate the functionality of ConstructionBots. To run the demos, run the following in the Julia REPL:
+```julia
+julia> include("scripts/demos.jl")
+```
+The default demo is the a Tractor based on LEGO model 10708, Green Creativity Box. The tractor model has a total of 20 individual pieces, which are organized into one final assembly (the tractor) and seven subassemblies. 
+
 
 ## Citation
 Under review
