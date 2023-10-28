@@ -45,10 +45,11 @@ ForwardDiff = "0.10"
 Graphs = "1.7"
 JLD2 = "0.4"
 LDrawParser = "0.1.2"
-LazySets = "2"
 MeshCat = "0.16"
 Parameters = "0.12"
 PyCall = "1.96"
+Revise = "3"
+LazySets = "2"
 julia = "1.7"
 
 [extras]
