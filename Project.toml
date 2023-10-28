@@ -40,12 +40,18 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [compat]
+DataStructures = "0.18"
+ForwardDiff = "0.10"
 Graphs = "1.7"
+JLD2 = "0.4"
 LDrawParser = "0.1.2"
+Measures = "0.3"
 MeshCat = "0.16"
 Parameters = "0.12"
 ProgressMeter = "1"
 PyCall = "1.96"
+Revise = "3"
+LazySets = "2"
 julia = "1.7"
 
 [extras]
