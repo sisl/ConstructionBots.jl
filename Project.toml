@@ -41,11 +41,12 @@ TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [compat]
 Graphs = "1.7"
+Gurobi = "1"
 LDrawParser = "0.1.2"
-julia = "1.7"
-PyCall = "1.96"
 MeshCat = "0.16"
 Parameters = "0.12"
+PyCall = "1.96"
+julia = "1.7"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
