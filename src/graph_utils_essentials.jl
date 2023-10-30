@@ -248,6 +248,22 @@ function wrap_to_pi(θ₀)
     return θ
 end
 
+"""
+    wrap_idx(n,idx)
+
+Wrap index to a one-dimensional array of length `n`
+"""
+wrap_idx(n,idx) = mod(idx-1,n)+1
+
+"""
+    wrap_get
+
+Index into array `a` by first wrapping the indices `idx`.
+"""
+function wrap_get(a::A,idxs) where {R,N,A<:AbstractArray{R,N}}
+    a[map(i->wrap_idx(size(a,i),idxs[i]),1:N)...]
+end
+
 function get_unique_id(::Type{T}) where {T}
     global VALID_ID_COUNTERS
     id = get!(VALID_ID_COUNTERS, T, 1)
