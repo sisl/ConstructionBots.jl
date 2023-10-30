@@ -13,7 +13,16 @@ ConstructionBots.jl is an open-source multi-robot manufacturing simulator and is
 
 ConstructionBots ueses LEGO models to evaluate algorithms. LEGO models offer a convenient framework for defining large assemblies that are often composed of smaller assemblies in addition to individual parts. ConstructionBots uses assemblies that are defined using the LDraw file specification, an open-source tool for describing LEGO bricks and models.
 
-See the process in action [here](https://sisl.github.io/ConstructionBots.jl/stable/tractor_greedy_no-RVO_no_Dispersion_TagentBug_visualization.html). The collision avoidance algorithms are not used in this demonstration.
+## Hosted Demos to View the Functionality of ConstructionBots
+| Project | Allocation Algorithm | RVO | Dispersion  | Tangent Bug | Visualization |
+| --- | :---: | :---: | :---: | :---: | :---: |
+| Tractor | Greedy | No | No | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/tractor_greedy_no-RVO_no-Dispersion_TangentBug_visualization.html) |
+| X-Wing  | Greedy | No | No | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/x-wing_greedy_no-RVO_no-Dispersion_TangentBug_visualization.html) |
+| Kings Castle | Greedy | No | No | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/kings_castle_greedy_no-RVO_no-Dispersion_TangentBug_visualization.html) |
+
+<!-- | Tractor | MILP   | Yes | Yes | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/tractor_milp_RVO_Dispersion_TangentBug_visualization.html) | -->
+<!-- | AT-TE Walker | MILP | Yes | Yes | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/at-te_walker_milp_RVO_Dispersion_TangentBug_visualization.html) | -->
+<!-- | Kings Castle | Greedy | Yes | Yes | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/kings_castle_greedy_RVO_Dispersion_TangentBug_visualization.html) | -->
 
 ## Installation
 
@@ -66,7 +75,7 @@ This repository comes with demos to demonstrate the functionality of Constructio
 julia> include("scripts/demos.jl")
 ```
 The default demo is the a Tractor based on LEGO model 10708, Green Creativity Box. The tractor model has a total of 20 individual pieces, which are organized into one final assembly (the tractor) and seven subassemblies. The demo is configured to use 10 robots to assemble the tractor. The collision avoidance algorithms are not used and it should open an interative visualization of the assembly process in your brower. The demo can be configured by changing the parameters in [`demos.jl`](https://github.com/sisl/ConstructionBots.jl/blob/master/scripts/demos.jl). Examples of the simulation are shown below.
-You can interact with an example from the tractor simulation [here](https://sisl.github.io/ConstructionBots.jl/stable/tractor_greedy_no-RVO_no_Dispersion_TagentBug_visualization.html).
+You can interact with an example from the tractor simulation [here](https://sisl.github.io/ConstructionBots.jl/stable/tractor_greedy_no-RVO_no-Dispersion_TangentBug_visualization.html).
 The main function for the demo is [`run_tractor_demo`](https://github.com/sisl/ConstructionBots.jl/blob/c7dcb3baabc437cfccd12e8ccc777e1561e9bf3b/src/full_demo.jl#L48) in [`full_demo.jl`](https://github.com/sisl/ConstructionBots.jl/blob/master/src/full_demo.jl).
 
 ### Images from the Tractor Project
