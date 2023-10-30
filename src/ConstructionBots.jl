@@ -18,7 +18,6 @@ using LazySets
 using GeometryBasics
 using Graphs
 using MetaGraphs
-using LDrawParser
 
 using Random
 using Dates
@@ -39,7 +38,6 @@ using GLPK
 # only needed for plotting stuff
 using Measures
 using Compose
-using Colors
 
 
 include("graph_utils_essentials.jl")
