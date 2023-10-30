@@ -1,7 +1,3 @@
-include("../scripts/full_demo.jl")
-include("../scripts/project_params.jl")
-
-using Gurobi
 
 let
     project_params = get_project_params(4)
