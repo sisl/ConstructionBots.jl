@@ -1,6 +1,6 @@
 name = "ConstructionBots"
 uuid = "4b765774-8d51-4bd4-bd55-b242abcd0532"
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 Cairo = "159f3aea-2a34-519c-b102-8c37f9878175"
