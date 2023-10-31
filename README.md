@@ -17,12 +17,8 @@ ConstructionBots ueses LEGO models to evaluate algorithms. LEGO models offer a c
 | Project | Allocation Algorithm | RVO | Dispersion  | Tangent Bug | Visualization |
 | --- | :---: | :---: | :---: | :---: | :---: |
 | Tractor | Greedy | No | No | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/tractor_greedy_no-RVO_no-Dispersion_TangentBug_visualization.html) |
-| X-Wing  | Greedy | No | No | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/x-wing_greedy_no-RVO_no-Dispersion_TangentBug_visualization.html) |
-| Kings Castle | Greedy | No | No | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/kings_castle_greedy_no-RVO_no-Dispersion_TangentBug_visualization.html) |
-
-<!-- | Tractor | MILP   | Yes | Yes | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/tractor_milp_RVO_Dispersion_TangentBug_visualization.html) | -->
-<!-- | AT-TE Walker | MILP | Yes | Yes | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/at-te_walker_milp_RVO_Dispersion_TangentBug_visualization.html) | -->
-<!-- | Kings Castle | Greedy | Yes | Yes | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/kings_castle_greedy_RVO_Dispersion_TangentBug_visualization.html) | -->
+| X-Wing  | Greedy | No | No | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/x-wing_greedy_no-RVO_no-Dispersion_TagentBug_visualization.html) |
+| Kings Castle | Greedy | No | No | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/kings_castle_no-RVO_no-Dispersion_TangentBug_visualization.html) |
 
 ## Installation
 
