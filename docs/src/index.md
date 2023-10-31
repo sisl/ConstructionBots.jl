@@ -12,8 +12,9 @@ ConstructionBots ueses LEGO models to evaluate algorithms. LEGO models offer a c
 | Project | Allocation Algorithm | RVO | Dispersion  | Tangent Bug | Visualization |
 | --- | :---: | :---: | :---: | :---: | :---: |
 | Tractor | Greedy | No | No | Yes | [Link](tractor_greedy_no-RVO_no-Dispersion_TangentBug_visualization.html) |
-| X-Wing  | Greedy | No | No | Yes | [Link](x-wing_greedy_no-RVO_no-Dispersion_TagentBug_visualization.html) |
-| Kings Castle | Greedy | No | No | Yes | [Link](kings_castle_no-RVO_no-Dispersion_TangentBug_visualization.html) |
+| Tractor | MILP | No | No | Yes | [Link](tractor_milp_no-RVO_no-Dispersion_TangentBug_visualization.html) |
+| AT-TE Walker  | MILP + Greedy | No | No | Yes | [Link](atte-walker_milp-ws_no-RVO_no-Dispersion_TangentBug_visualization.html) |
+| X-Wing  | Greedy | No | No | Yes | [Link](x-wing_greedy_no-RVO_no-Dispersion_TangentBug_visualization.html) |
 
 ## Manual Outline
 
