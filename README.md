@@ -5,6 +5,8 @@
 
 ![ConstructionBots.jl Overivew](media/constructionbots_overviw.png)
 
+[arXiv paper](https://arxiv.org/abs/2311.00192)
+
 ConstructionBots.jl is an open-source multi-robot manufacturing simulator and is designed to test algorithms for multi-robot assembly planning. This system approaches multi-robot assembly planning from a higher level of abstraction and addresses task planning and transit planning but abstracts away the kino-dynamic details of piecing together assemblies. Problems addressed and simulated:
 - **Trasport Team configuration:** How many robots are needed and how should robots be positioned when transporting a particular payload?
 - **Spatial layout of the construction site:** Where will each assembly be built, and where will the components of those assemblies be delivered?
@@ -86,3 +88,13 @@ The main function for the demo is [`run_tractor_demo`](https://github.com/sisl/C
 
 ## Citation
 Under review
+
+[arXiv paper](https://arxiv.org/abs/2311.00192)
+
+```
+@article{Brown2023Assembly},
+title = {Large-Scale Multi-Robot Assembly Planning for Autonomous Manufacturing},
+author = {Kyle Brown and Dylan M. Asmar and Mac Schwager and Mykel J. Kochenderfer},
+journal = {arXiv preprint arXiv:2311.00192},
+year = {2023}
+```
