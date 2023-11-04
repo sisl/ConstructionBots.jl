@@ -1310,38 +1310,77 @@ function select_support_locations(polygon::LazySets.AbstractPolygon, r;
     if n == 1
         sphere = overapproximate(polygon,LazySets.Ball2{Float64,SVector{2,Float64}})
         support_pts = [LazySets.center(sphere)]
-    else
-        pts = vertices_list(polygon)
-        pts = reduce_to_valid_candidate_list(pts, r)
-        n = min(n, length(pts)) # Can cannot be greater than the number of valid points
-        reduced_polygon = VPolygon(pts)
-        @assert length(pts) >= n "length(pts) = $(length(pts)), but n = $n"
-
-        score_function=score_function_constructor(pts, n)
-        best_idxs, _ = spaced_neighbors(reduced_polygon, n, score_function)
-        if length(best_idxs) < n
-            @warn "$n support points requested, but only $(length(best_idxs)) returned for polygon with $(length(pts)) vertices"
-        end
-        support_pts = pts[best_idxs]
+        return support_pts
     end
-    support_pts
+    pts = vertices_list(polygon)
+    pts = reduce_to_valid_candidate_list(pts, r)
+
+    reduced_polygon = VPolygon(pts)
+
+    # The desired number of robots can't be more than the number of valid points
+    # We also use the vertices list of the reduced polygon so we are only considering the
+    # convex hull of the valid points``
+    n = min(n, length(vertices_list(reduced_polygon))) # Can cannot be greater than the number of valid points
+
+    if n == 1
+        sphere = overapproximate(polygon,LazySets.Ball2{Float64,SVector{2,Float64}})
+        support_pts = [LazySets.center(sphere)]
+        return support_pts
+    end
+
+    score_function = score_function_constructor(pts, n)
+    best_idxs, _ = spaced_neighbors(reduced_polygon, n, score_function)
+    if length(best_idxs) < n
+        @warn "$n support points requested, but only $(length(best_idxs)) returned for polygon with $(length(pts)) vertices"
+    end
+    support_pts = pts[best_idxs]
+    return support_pts
 end
 
-function reduce_to_valid_candidate_list(pts, r; ϵ=r)
-    pt_candidates = pts
-    for pt in pts
-        if !(pt in pt_candidates)
-            continue
-        end
-        dist_to_others = norm.([pt] .- pt_candidates)
-        bool_mask = dist_to_others .> (2 * r + ϵ)
-        self_idx = findfirst([pt] .== pt_candidates)
-        bool_mask[self_idx] = true
+"""
+    reduce_to_valid_candidate_list(pts, r; ϵ=0.5*r)
 
-        pt_candidates = pt_candidates[bool_mask]
-        @assert !isempty(pt_candidates) "Starting point should always be an option"
+Reduce the list of candidate points to those that are at least `2r+ϵ` away from each other.
+This selects points that are "far" away from each other.
+"""
+function reduce_to_valid_candidate_list(pts, r; ϵ=0.5*r)
+    pts_c = deepcopy(pts)
+    candidate_pts = Vector{Vector{Float64}}()
+
+    # The first candidate point is the point furthest from the origin
+    pts_dist = norm.(pts_c, 2)
+    first_candidate_idx = argmax(pts_dist)
+    push!(candidate_pts, pts_c[first_candidate_idx])
+    deleteat!(pts_c, first_candidate_idx)
+
+    while !isempty(pts_c)
+        dist_to_candidates = Matrix{Float64}(undef, length(candidate_pts), length(pts_c))
+        lp_dist_to_candidates = Matrix{Float64}(undef, length(candidate_pts), length(pts_c))
+        for (ii, c_pt) in enumerate(candidate_pts), (jj, pt) in enumerate(pts_c)
+            dist_to_candidates[ii, jj] = norm(c_pt - pt, 2)
+            lp_dist_to_candidates[ii, jj] = norm(c_pt - pt, 2)
+        end
+
+        # Determine feasible points
+        min_dist_to_candidates = minimum(dist_to_candidates, dims=1)
+        bool_mask = vec(min_dist_to_candidates .> (2 * r + ϵ))
+        pts_c = pts_c[bool_mask]
+
+        if isempty(pts_c)
+            break
+        end
+
+        # Select next candidate: feasible and furthest sum lp norm from candidates
+        sum_lp_dist = vec(sum(lp_dist_to_candidates, dims=1))
+        sum_lp_dist = sum_lp_dist[bool_mask]
+
+        next_candidate_idx = argmax(sum_lp_dist)
+        push!(candidate_pts, pts_c[next_candidate_idx])
+        deleteat!(pts_c, next_candidate_idx)
     end
-    return pt_candidates
+
+    @assert !isempty(candidate_pts) "Starting point should always be an option"
+    return candidate_pts
 end
 
 """
