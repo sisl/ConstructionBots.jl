@@ -304,6 +304,16 @@ sched = ConstructionBots.construct_partial_construction_schedule(model, model_sp
 @assert ConstructionBots.validate_schedule_transform_tree(sched)
 print("done!\n")
 
+### Plot the robot positions on the assemblies/objects ###
+for n in scene_tree.nodes
+    if ConstructionBots.matches_template(ConstructionBots.TransportUnitNode, n)
+        c_id = ConstructionBots.cargo_id(n)
+        plt = ConstructionBots.render_transport_unit_2d(scene_tree, n)
+        # display(plt)
+        push!(cargo_ids, c_id)
+    end
+end
+
 ### Plot the schedule ###
 _node_type_check(n) = ConstructionBots.matches_template((ObjectStart,AssemblyStart,AssemblyComplete,FormTransportUnit,TransportUnitGo,DepositCargo,LiftIntoPlace),n)
 
