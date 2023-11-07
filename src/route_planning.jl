@@ -140,12 +140,16 @@ function cargo_ready_for_pickup(n::Union{RobotStart,RobotGo}, env::PlannerEnv)
 end
 cargo_ready_for_pickup(n::ScheduleNode, env::PlannerEnv) = cargo_ready_for_pickup(n.node,env)
 
+# Ideally, we want to set the priority of agents only within a certain region. If we
+# can do this dynamically, we could also set one agent to have an α of 0, which would help
+# reduce grid lock (by forcing other agents to move around it)
 """
-    set_rvo_priority!(env,node)
+    set_rvo_priority!(env, node)
 
 Low alpha means higher priority
 """
-function set_rvo_priority!(env::PlannerEnv, node)
+function set_rvo_priority!(env::PlannerEnv, node) end
+function set_rvo_priority!(env::PlannerEnv, node::Union{RobotStart, RobotGo, FormTransportUnit, TransportUnitGo, DepositCargo})
     if matches_template(Union{FormTransportUnit, DepositCargo}, node)
         alpha = 0.0
     elseif matches_template(TransportUnitGo, node)
@@ -157,7 +161,7 @@ function set_rvo_priority!(env::PlannerEnv, node)
         end
     elseif parent_build_step_is_active(node, env)
         if cargo_ready_for_pickup(node, env)
-            alpha = 0.1
+            alpha = 0.0
         else
             alpha = 0.5
         end
@@ -285,13 +289,12 @@ end
 function update_rvo_sim!(env::PlannerEnv)
     @unpack sched, scene_tree, cache = env
     active_nodes = [get_node(sched,v) for v in cache.active_set]
-    rvo_nodes = filter(rvo_eligible_node, active_nodes)
-    if rvo_sim_needs_update(scene_tree,rvo_nodes)
+    if rvo_sim_needs_update(scene_tree)
         @info "New RVO simulation"
         rvo_set_new_sim!()
-        rvo_add_agents!(scene_tree,rvo_nodes)
-        for node in rvo_nodes
-            set_rvo_priority!(env,node)
+        rvo_add_agents!(scene_tree)
+        for node in active_nodes
+            set_rvo_priority!(env, node)
         end
     end
 end
@@ -727,6 +730,7 @@ function get_twist_cmd(node, env::PlannerEnv)
     @unpack sched, scene_tree, agent_policies, cache, dt = env
     agent = entity(node)
     goal = global_transform(goal_config(node))
+    mode = :not_set
     ############ TangentBugPolicy #############
     policy = agent_policies[node_id(agent)].nominal_policy
     if !(policy === nothing)
@@ -744,8 +748,13 @@ function get_twist_cmd(node, env::PlannerEnv)
         # update policy and get goal
         policy.config = global_transform(agent)
 
-        goal_pt = query_policy_for_goal!(policy, circles, pos, project_to_2d(goal.translation))
+        # TangentBug Policy
+        parent_step_is_active = parent_build_step_is_active(node, env)
+        goal_pt = query_policy_for_goal!(policy, circles, pos, project_to_2d(goal.translation), parent_step_is_active)
         new_goal = CoordinateTransformations.Translation(goal_pt...,0.0) ∘ CoordinateTransformations.LinearMap(goal.linear)
+
+        _, circ, _ = get_closest_interfering_circle(policy,circles,pos,project_to_2d(goal.translation); return_w_no_buffer=true)
+        mode = set_policy_mode!(policy,circ,pos,project_to_2d(goal.translation), parent_step_is_active)
 
         twist = compute_twist_from_goal(agent, new_goal, dt) # nominal twist
     else
@@ -758,7 +767,9 @@ function get_twist_cmd(node, env::PlannerEnv)
         if !(parent_step === nothing)
             countdown = active_build_step_countdown(parent_step.node, env)
             dist_to_goal = norm(goal.translation .- global_transform(agent).translation)
-            if dist_to_goal < 15*default_robot_radius()
+
+            unit_radius = get_base_geom(entity(node), HypersphereKey()).radius
+            if (mode != :EXIT_CIRCLE) && (dist_to_goal < 15*unit_radius)
                 # So the agent doesn't crowd its destination
                 if matches_template(TransportUnitGo,node) && countdown >= 1
                     twist = Twist(0.0*twist.vel,twist.ω)
@@ -819,6 +830,8 @@ function get_cmd(node::Union{TransportUnitGo,RobotGo}, env::PlannerEnv)
     if use_rvo()
         update_position_from_sim!(agent)
     end
+
+    set_rvo_priority!(env, node)
     if is_goal(node, env)
         twist = zero(Twist)
         max_speed = 0.0
@@ -826,9 +839,7 @@ function get_cmd(node::Union{TransportUnitGo,RobotGo}, env::PlannerEnv)
         twist = get_twist_cmd(node, env)
         max_speed = get_rvo_max_speed(agent)
     end
-    if isa(node,TransportUnitGo)
-        set_rvo_priority!(env,node)
-    end
+
     rvo_set_agent_max_speed!(agent, max_speed)
     rvo_set_agent_pref_velocity!(agent, twist.vel[1:2])
     return twist

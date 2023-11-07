@@ -37,7 +37,7 @@ end
 
 Returns the id and bloated (by policy.agent_radius+buffer) circle closest to pos
 """
-function get_closest_interfering_circle(policy,circles,pos,nominal_goal)
+function get_closest_interfering_circle(policy,circles,pos,nominal_goal; return_w_no_buffer=false)
     @unpack planning_radius, detour_horizon, proximity_tolerance, buffer,
         agent_radius, vmax, dt = policy
     dmin = Inf
@@ -54,7 +54,11 @@ function get_closest_interfering_circle(policy,circles,pos,nominal_goal)
                 # penetration < 0 => pos is in circle
                 dmin = d
                 id = circ_id
-                circ = bloated_circle
+                if return_w_no_buffer
+                    circ = c
+                else
+                    circ = bloated_circle
+                end
                 pt = first_intersection_pt(bloated_circle,pos,nominal_goal)
             end
         end
@@ -62,7 +66,7 @@ function get_closest_interfering_circle(policy,circles,pos,nominal_goal)
     return id, circ, pt
 end
 
-function set_policy_mode!(policy,circ,pos,nominal_goal)
+function set_policy_mode!(policy,circ,pos,nominal_goal, parent_step_active)
     @unpack planning_radius, detour_horizon, proximity_tolerance, buffer,
         agent_radius, vmax, dt = policy
     dmin = Inf
@@ -78,9 +82,16 @@ function set_policy_mode!(policy,circ,pos,nominal_goal)
     if circ === nothing
         mode = :MOVE_TOWARD_GOAL
     else
-        if norm(nominal_goal - c) < r
-            # nominal_goal is in circle
+        if norm(nominal_goal - c) < r # nominal_goal is in circle
             mode = :WAIT_OUTSIDE
+
+            # If we're in a circle and its not active, we need to get out
+            goal_in_circle = norm(nominal_goal - c) < r
+            robot_in_circle = norm(pos - c) < r
+            if !parent_step_active && goal_in_circle && robot_in_circle
+                mode = :EXIT_CIRCLE
+            end
+
         elseif dmin + proximity_tolerance >= 0
             # not currently in a circle, but on a course for intersection
             # if norm(nominal_goal - pos) + 30*proximity_tolerance < norm(nominal_goal - c)
@@ -107,7 +118,7 @@ function set_policy_mode!(policy,circ,pos,nominal_goal)
     policy.mode = mode
 end
 
-function tangent_bug_policy!(policy,circles,pos,nominal_goal)
+function tangent_bug_policy!(policy, circles, pos, nominal_goal, parent_step_active)
     @unpack planning_radius, detour_horizon, proximity_tolerance, buffer,
         agent_radius, vmax, dt = policy
 
@@ -122,7 +133,7 @@ function tangent_bug_policy!(policy,circles,pos,nominal_goal)
         dmin = norm(c - pos) - r
     end
     # select operating mode
-    mode = set_policy_mode!(policy,circ,pos,nominal_goal)
+    mode = set_policy_mode!(policy,circ,pos,nominal_goal, parent_step_active)
 
     # Select waypoint
     goal = nominal_goal
