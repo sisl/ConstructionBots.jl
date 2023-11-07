@@ -794,18 +794,21 @@ system, as well as the desired final configuration. The configuration of the
 system is defined by the topology of the tree (i.e., which nodes are connected
 by edges) and the configuration of each node (its transform relative to its
 parent node).
+
 There are four different concrete subtypes of `SceneNode`
 - `ObjectNode` refers to a single inanimate rigid body
 - `RobotNode` refers to a single rigid body robot
-- `AssemblyNode` refers to a rigid collection of multiple objects and/or
-subassemblies
+- `AssemblyNode` refers to a rigid collection of multiple objects and/or subassemblies
 - `TransportUnitNode` refers to a team of one or more robot that fit together as
 a transport team to move an assembly or object.
+
 The edges of the SceneTree are either `PermanentEdge` or `TemporaryEdge`.
+
 Temporary edges (removed after transport is complete)
 - TransportUnitNode → RobotNode
 - TransportUnitNode → ObjectNode
 - TransportUnitNode → AssemblyNode
+
 Permanent edges (cannot be broken after placement)
 - AssemblyNode → AssemblyNode
 - AssemblyNode → ObjectNode
