@@ -38,31 +38,34 @@ overwrite_results            = false
 
 
 env, stats = run_lego_demo(;
-    ldraw_file                   = project_params[:file_name],
-    project_name                 = project_params[:project_name],
-    model_scale                  = project_params[:model_scale],
-    num_robots                   = project_params[:num_robots],
+    ldraw_file                      = project_params[:file_name],
+    project_name                    = project_params[:project_name],
+    model_scale                     = project_params[:model_scale],
+    num_robots                      = project_params[:num_robots],
 
-    assignment_mode              = assignment_mode,
-    milp_optimizer               = :gurobi, # :gurobi :highs
-    optimizer_time_limit         = 30,
+    assignment_mode                 = assignment_mode,
+    milp_optimizer                  = :gurobi, # :gurobi :highs
+    optimizer_time_limit            = 30,
 
-    rvo_flag                     = rvo_flag,
-    tangent_bug_flag             = tangent_bug_flag,
-    dispersion_flag              = dispersion_flag,
+    rvo_flag                        = rvo_flag,
+    tangent_bug_flag                = tangent_bug_flag,
+    dispersion_flag                 = dispersion_flag,
 
-    open_animation_at_end        = open_animation_at_end,
-    save_animation               = save_animation_at_end,
-    save_animation_along_the_way = save_animation_along_the_way,
-    anim_active_agents           = anim_active_agents,
-    anim_active_areas            = anim_active_areas,
+    open_animation_at_end           = open_animation_at_end,
+    save_animation                  = save_animation_at_end,
+    save_animation_along_the_way    = save_animation_along_the_way,
+    anim_active_agents              = anim_active_agents,
+    anim_active_areas               = anim_active_areas,
+    update_anim_at_every_step       = false,
+    save_anim_interval              = 100,
 
-    write_results                = write_results,
-    overwrite_results            = overwrite_results,
+    write_results                   = write_results,
+    overwrite_results               = overwrite_results,
 
     look_for_previous_milp_solution = false,
     save_milp_solution              = false,
     previous_found_optimizer_time   = 30,
 
-    stop_after_task_assignment = false
+    max_num_iters_no_progress       = 2500,
+    stop_after_task_assignment      = false
 );
