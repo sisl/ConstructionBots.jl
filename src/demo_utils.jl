@@ -5,6 +5,7 @@ struct SimParameters
     process_animation_tasks::Bool
     save_anim_interval::Int
     process_updates_interval::Int
+    update_anim_at_every_step::Bool
     anim_active_agents::Bool
     anim_active_areas::Bool
     save_anim_prog_path::String
@@ -94,7 +95,7 @@ function simulate!(
         newly_updated = ConstructionBots.update_planning_cache!(env, 0.0)
 
         if !isnothing(factory_vis.vis)
-            if !isempty(newly_updated)
+            if !isempty(newly_updated) || sim_params.update_anim_at_every_step
                 scene_nodes, closed_steps_nodes, active_build_nodes, fac_active_flags_nodes = ConstructionBots.visualizer_update_function!(factory_vis, env, newly_updated)
                 sim_process_data.num_iters_since_anim_save += 1
                 if process_animation_tasks
