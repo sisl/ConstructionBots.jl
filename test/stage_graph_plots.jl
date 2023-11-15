@@ -38,6 +38,7 @@ save_animation_along_the_way = false
 save_animation_at_end        = false
 anim_active_agents           = false
 anim_active_areas            = false
+update_anim_at_every_step    = false
 
 rvo_flag                     = true
 tangent_bug_flag             = true
@@ -209,6 +210,7 @@ sim_params = ConstructionBots.SimParameters(
     process_animation_tasks,
     save_anim_interval,
     process_updates_interval,
+    update_anim_at_every_step,
     anim_active_agents,
     anim_active_areas,
     anim_prog_path,
