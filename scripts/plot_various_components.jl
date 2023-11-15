@@ -206,19 +206,19 @@ end
 
 
 #### Plot the schedule ####
-_node_type_check(n) = ConstructionBots.matches_template((ObjectStart,AssemblyStart,AssemblyComplete,FormTransportUnit,TransportUnitGo,DepositCargo,LiftIntoPlace),n)
+_node_type_check(n) = ConstructionBots.matches_template((ObjectStart, AssemblyStart, AssemblyComplete, FormTransportUnit, TransportUnitGo, DepositCargo, LiftIntoPlace), n)
 
 plt = ConstructionBots.display_graph(
     sched;
     grow_mode=:from_left,
     align_mode=:split_aligned,
-    draw_node_function=(G,v)->ConstructionBots.draw_node(ConstructionBots.get_node(G,v);
-        title_text= _node_type_check(ConstructionBots.get_node(G,v)
-            ) ? string(ConstructionBots._title_string(ConstructionBots.get_node(G,v)),
-                "$(ConstructionBots.get_id(ConstructionBots.node_id(ConstructionBots.get_node(G,v))))") : ConstructionBots._title_string(ConstructionBots.get_node(G,v)),
+    draw_node_function=(G, v) -> ConstructionBots.draw_node(ConstructionBots.get_node(G, v);
+        title_text=_node_type_check(ConstructionBots.get_node(G, v)
+        ) ? string(ConstructionBots._title_string(ConstructionBots.get_node(G, v)),
+            "$(ConstructionBots.get_id(ConstructionBots.node_id(ConstructionBots.get_node(G,v))))") : ConstructionBots._title_string(ConstructionBots.get_node(G, v)),
         subtitle_text="",
-        title_scale = _node_type_check(ConstructionBots.get_node(G,v)
-            ) ? ConstructionBots._title_text_scale(ConstructionBots.get_node(G,v)) : 0.45,
+        title_scale=_node_type_check(ConstructionBots.get_node(G, v)
+        ) ? ConstructionBots._title_text_scale(ConstructionBots.get_node(G, v)) : 0.45,
     ),
     pad=(0.0, 0.0)
 )
@@ -273,13 +273,13 @@ plt = ConstructionBots.display_graph(
     tg_sched;
     grow_mode=:from_left,
     align_mode=:split_aligned,
-    draw_node_function=(G,v)->ConstructionBots.draw_node(ConstructionBots.get_node(G,v);
-        title_text= _node_type_check(ConstructionBots.get_node(G,v)
-            ) ? string(ConstructionBots._title_string(ConstructionBots.get_node(G,v)),
-                "$(ConstructionBots.get_id(ConstructionBots.node_id(ConstructionBots.get_node(G,v))))") : ConstructionBots._title_string(ConstructionBots.get_node(G,v)),
+    draw_node_function=(G, v) -> ConstructionBots.draw_node(ConstructionBots.get_node(G, v);
+        title_text=_node_type_check(ConstructionBots.get_node(G, v)
+        ) ? string(ConstructionBots._title_string(ConstructionBots.get_node(G, v)),
+            "$(ConstructionBots.get_id(ConstructionBots.node_id(ConstructionBots.get_node(G,v))))") : ConstructionBots._title_string(ConstructionBots.get_node(G, v)),
         subtitle_text="",
-        title_scale = _node_type_check(ConstructionBots.get_node(G,v)
-            ) ? ConstructionBots._title_text_scale(ConstructionBots.get_node(G,v)) : 0.45,
+        title_scale=_node_type_check(ConstructionBots.get_node(G, v)
+        ) ? ConstructionBots._title_text_scale(ConstructionBots.get_node(G, v)) : 0.45,
     )
 )
 display(plt)

@@ -47,7 +47,7 @@ function run_simulation!(
 
     step_1_closed = length(env.cache.closed_set)
     total_nodes = nv(env.sched)
-    generate_showvalues(it, nc) = () -> [(:step_num,it), (:n_closed,nc), (:n_total,total_nodes)]
+    generate_showvalues(it, nc) = () -> [(:step_num, it), (:n_closed, nc), (:n_total, total_nodes)]
     prog = ProgressMeter.Progress(
         nv(env.sched) - step_1_closed;
         desc="Simulating...",
@@ -121,7 +121,7 @@ function simulate!(
         end
 
         if process_animation_tasks &&
-            (length(update_steps) >= process_updates_interval || project_stop_bool)
+           (length(update_steps) >= process_updates_interval || project_stop_bool)
 
             for step_k in update_steps
                 k_k = step_k[1]
@@ -209,7 +209,7 @@ function save_animation!(visualizer, path)
 end
 
 function get_buildstep_circles(sched)
-    circles = Dict{AbstractID, LazySets.Ball2}()
+    circles = Dict{AbstractID,LazySets.Ball2}()
     for n in node_iterator(sched, topological_sort_by_dfs(sched))
         if matches_template(OpenBuildStep, n)
             id = node_id(n)
@@ -221,8 +221,8 @@ function get_buildstep_circles(sched)
     return circles
 end
 
-function shift_staging_circles(staging_circles::Dict{AbstractID, LazySets.Ball2}, sched, scene_tree)
-    shifted_circles = Dict{AbstractID, LazySets.Ball2}()
+function shift_staging_circles(staging_circles::Dict{AbstractID,LazySets.Ball2}, sched, scene_tree)
+    shifted_circles = Dict{AbstractID,LazySets.Ball2}()
     for (id, geom) in staging_circles
         node = get_node(scene_tree, id)
         cargo = get_node(scene_tree, id)
@@ -286,7 +286,7 @@ function get_object_vtx(scene_tree, obstacles, max_cargo_height, num_layers, rob
 
     num_objs_per_layer = ceil(num_objects / num_layers)
 
-    init_width = sqrt(num_objs_per_layer * object_x_delta * object_y_delta)/2
+    init_width = sqrt(num_objs_per_layer * object_x_delta * object_y_delta) / 2
 
     x_range = -init_width:object_x_delta:init_width
     y_range = -init_width:object_y_delta:init_width
@@ -296,7 +296,7 @@ function get_object_vtx(scene_tree, obstacles, max_cargo_height, num_layers, rob
     cnt = 0
     while !found_size
         pts = ConstructionBots.construct_vtx_array(;
-            origin=SVector{3, Float64}(0.0, 0.0, 0.0),
+            origin=SVector{3,Float64}(0.0, 0.0, 0.0),
             obstacles=inflated_obstacles,
             ranges=sweep_ranges
         )
@@ -304,8 +304,8 @@ function get_object_vtx(scene_tree, obstacles, max_cargo_height, num_layers, rob
             found_size = true
         else
             cnt += 1
-            x_range = (-init_width - cnt * object_x_delta):object_x_delta:(init_width + cnt * object_x_delta)
-            y_range = (-init_width - cnt * object_y_delta):object_y_delta:(init_width + cnt * object_y_delta)
+            x_range = (-init_width-cnt*object_x_delta):object_x_delta:(init_width+cnt*object_x_delta)
+            y_range = (-init_width-cnt*object_y_delta):object_y_delta:(init_width+cnt*object_y_delta)
             sweep_ranges = (x_range, y_range, 0:0)
         end
     end
@@ -317,7 +317,7 @@ function get_object_vtx(scene_tree, obstacles, max_cargo_height, num_layers, rob
     )
 
     vtxs = ConstructionBots.construct_vtx_array(;
-        origin=SVector{3, Float64}(0.0, 0.0, max_cargo_height),
+        origin=SVector{3,Float64}(0.0, 0.0, max_cargo_height),
         obstacles=inflated_obstacles,
         ranges=object_vtx_range,
         spacing=(1.0, 1.0, max_object_h)

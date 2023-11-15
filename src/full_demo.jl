@@ -229,7 +229,7 @@ function run_lego_demo(;
 
     # Setting default optimizer for staging layout
     ConstructionBots.set_default_geom_optimizer!(ECOS.Optimizer)
-    ConstructionBots.set_default_geom_optimizer_attributes!(MOI.Silent()=>true)
+    ConstructionBots.set_default_geom_optimizer_attributes!(MOI.Silent() => true)
 
 
     pre_execution_start_time = time()

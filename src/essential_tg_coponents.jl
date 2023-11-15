@@ -38,10 +38,10 @@ Elements:
 - Δt_deposit::Dict{ObjectID,Int} # duration of DEPOSIT operations
 """
 @with_kw struct ProblemSpec{T,F}
-    D::T                            = zeros(0,0) # environment or distance matrix
-    cost_function::F                = SumOfMakeSpans()
-    Δt_collect::Dict{ObjectID,Int}  = Dict{ObjectID,Int}() # duration of COLLECT operations
-    Δt_deposit::Dict{ObjectID,Int}  = Dict{ObjectID,Int}() # duration of DELIVER operations
+    D::T = zeros(0, 0) # environment or distance matrix
+    cost_function::F = SumOfMakeSpans()
+    Δt_collect::Dict{ObjectID,Int} = Dict{ObjectID,Int}() # duration of COLLECT operations
+    Δt_deposit::Dict{ObjectID,Int} = Dict{ObjectID,Int}() # duration of DELIVER operations
 end
 
 """
@@ -421,7 +421,7 @@ function aggregate_costs end
 """
     a special version of aggregate_costs for the meta_env
 """
-aggregate_costs_meta(m::AbstractCostModel,args...) = aggregate_costs(m,args...)
+aggregate_costs_meta(m::AbstractCostModel, args...) = aggregate_costs(m, args...)
 
 abstract type AggregationFunction end
 struct MaxCost <: AggregationFunction end
@@ -485,7 +485,7 @@ abstract type LowLevelCostModel{T} <: AbstractCostModel{T} end
 
 Cost model that assigns cost equal to the duration of a path.
 """
-struct TravelTime       <: LowLevelCostModel{Float64} end
+struct TravelTime <: LowLevelCostModel{Float64} end
 
 
 abstract type AbstractDeadlineCost <: LowLevelCostModel{Float64} end
@@ -497,16 +497,16 @@ Identical to `TravelTime`, except for the behavior of
 
 add_heuristic_cost: `c = max(0.0, t + Δt - deadline)`
 """
-mutable struct DeadlineCost     <: AbstractDeadlineCost
+mutable struct DeadlineCost <: AbstractDeadlineCost
     deadline::Float64 # deadline
     m::TravelTime
 end
-DeadlineCost(deadline::R) where {R<:Real} = DeadlineCost(deadline,TravelTime())
-function set_deadline!(m::DeadlineCost,t_max)
+DeadlineCost(deadline::R) where {R<:Real} = DeadlineCost(deadline, TravelTime())
+function set_deadline!(m::DeadlineCost, t_max)
     m.deadline = minimum(t_max)
     return m
 end
-set_deadline!(m::C,args...) where {C<:AbstractCostModel} = nothing
+set_deadline!(m::C, args...) where {C<:AbstractCostModel} = nothing
 # set_deadline!(m::C,args...) where {C<:FullCostModel} = set_deadline!(m.model,args...)
 # set_deadline!(m::C,args...) where {C<:MetaCostModel} = set_deadline!(m.model,args...)
 # function set_deadline!(m::C,args...) where {C<:CompositeCostModel}
@@ -515,8 +515,8 @@ set_deadline!(m::C,args...) where {C<:AbstractCostModel} = nothing
 #     end
 # end
 add_heuristic_cost(m::C, cost, h_cost) where {C<:DeadlineCost} = max(0.0, cost + h_cost - m.deadline) # assumes heuristic is PerfectHeuristic
-for op in [:accumulate_cost,:get_initial_cost,:get_transition_cost,:compute_path_cost]
-    @eval $op(model::AbstractDeadlineCost,args...) = $op(model.m,args...)
+for op in [:accumulate_cost, :get_initial_cost, :get_transition_cost, :compute_path_cost]
+    @eval $op(model::AbstractDeadlineCost, args...) = $op(model.m, args...)
 end
 # FullDeadlineCost(model::DeadlineCost) = FullCostModel(costs->max(0.0, maximum(costs)),model)
 
@@ -535,17 +535,17 @@ struct MultiDeadlineCost{F} <: AbstractDeadlineCost
 end
 const SumOfMakeSpans = MultiDeadlineCost{SumCost}
 const MakeSpan = MultiDeadlineCost{MaxCost}
-SumOfMakeSpans(tF,root_nodes,weights,deadlines) = MultiDeadlineCost(SumCost(),Float64.(tF),root_nodes,Float64.(weights),Float64.(deadlines),TravelTime())
-SumOfMakeSpans() = MultiDeadlineCost(SumCost(),Float64[],Int[],Float64[],Float64[],TravelTime())
-MakeSpan(tF,root_nodes,weights,deadlines) = MultiDeadlineCost(MaxCost(),Float64.(tF),root_nodes,Float64.(weights),Float64.(deadlines),TravelTime())
-MakeSpan() = MultiDeadlineCost(MaxCost(),Float64[],Int[],Float64[],Float64[],TravelTime())
-function set_deadline!(m::M,t_max) where {M<:MultiDeadlineCost}
+SumOfMakeSpans(tF, root_nodes, weights, deadlines) = MultiDeadlineCost(SumCost(), Float64.(tF), root_nodes, Float64.(weights), Float64.(deadlines), TravelTime())
+SumOfMakeSpans() = MultiDeadlineCost(SumCost(), Float64[], Int[], Float64[], Float64[], TravelTime())
+MakeSpan(tF, root_nodes, weights, deadlines) = MultiDeadlineCost(MaxCost(), Float64.(tF), root_nodes, Float64.(weights), Float64.(deadlines), TravelTime())
+MakeSpan() = MultiDeadlineCost(MaxCost(), Float64[], Int[], Float64[], Float64[], TravelTime())
+function set_deadline!(m::M, t_max) where {M<:MultiDeadlineCost}
     m.deadlines .= t_max
     return m
 end
 add_heuristic_cost(m::C, cost, h_cost) where {C<:MultiDeadlineCost} = m.f(m.weights .* max.(0.0, cost .+ h_cost .- m.deadlines)) # assumes heuristic is PerfectHeuristic
-aggregate_costs(m::C, costs::Vector{T}) where {T,C<:MultiDeadlineCost}  = m.f(m.tF[m.root_nodes] .* m.weights)
-aggregate_costs_meta(m::C, costs::Vector{T}) where {T,C<:MultiDeadlineCost}  = maximum(costs)
+aggregate_costs(m::C, costs::Vector{T}) where {T,C<:MultiDeadlineCost} = m.f(m.tF[m.root_nodes] .* m.weights)
+aggregate_costs_meta(m::C, costs::Vector{T}) where {T,C<:MultiDeadlineCost} = maximum(costs)
 
 
 #################################################
@@ -1459,17 +1459,17 @@ state_type(p::PathNode{S,A}) where {S,A} = S
 action_type(p::PathNode{S,A}) where {S,A} = A
 Base.string(p::PathNode) = "$(string(get_s(p))) -- $(string(get_a(p))) -- $(string(get_sp(p)))"
 
-@with_kw struct Conflict{P1 <: PathNode,P2 <: PathNode}
-    conflict_type   ::Symbol    = :NullConflict
-    agent1_id       ::Int       = -1
-    agent2_id       ::Int       = -1
-    node1           ::P1        = P1()
-    node2           ::P2        = P2()
-    t               ::Int       = -1
+@with_kw struct Conflict{P1<:PathNode,P2<:PathNode}
+    conflict_type::Symbol = :NullConflict
+    agent1_id::Int = -1
+    agent2_id::Int = -1
+    node1::P1 = P1()
+    node2::P2 = P2()
+    t::Int = -1
 end
 
 """ Checks if a conflict is valid """
 is_valid(c::C) where {C<:Conflict} = ((is_state_conflict(c) || is_action_conflict(c))
-                                && (agent1_id(c) != agent2_id(c))
-                                && (agent1_id(c) != -1)
-                                && (agent2_id(c) != -1))
+                                      && (agent1_id(c) != agent2_id(c))
+                                      && (agent1_id(c) != -1)
+                                      && (agent2_id(c) != -1))
