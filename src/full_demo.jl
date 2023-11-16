@@ -250,7 +250,6 @@ function run_lego_demo(;
     print("Constructing scene tree...")
     assembly_tree = ConstructionBots.construct_assembly_tree(model, model_spec, id_map)
     scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
-    # @info print(scene_tree, v -> "$(summary(node_id(v))) : $(get(id_map,node_id(v),nothing))", "\t")
     print("done!\n")
 
     # Compute Approximate Geometry
@@ -565,8 +564,12 @@ function run_lego_demo(;
             end
             if dispersion_flag
                 dispersion_pol = ConstructionBots.PotentialFieldController(
-                    agent=n, node=node, agent_radius=agent_radius, vmax=vmax,
+                    agent=n,
+                    node=node,
+                    agent_radius=agent_radius,
+                    vmax=vmax,
                     max_buffer_radius=2.5 * agent_radius,
+                    interaction_radius=(15 * agent_radius),
                     static_potentials=static_potential_function,
                     pairwise_potentials=pairwise_potential_function
                 )
