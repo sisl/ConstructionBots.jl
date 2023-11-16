@@ -9,16 +9,14 @@ enabling you to step through the simuation or other debugging techniques.
 """
 
 dump_path = "variable_dump"
-dump_name = "var_dump_3535.jld2"
+dump_name = "var_dump_8850.jld2"
 file_dump_location = joinpath(dump_path, dump_name)
-
 
 # Load variables from file
 env = JLD2.load(file_dump_location, "env")
 factory_vis = JLD2.load(file_dump_location, "factory_vis")
 anim = JLD2.load(file_dump_location, "anim")
 sim_params = JLD2.load(file_dump_location, "sim_params")
-sim_process_data = JLD2.load(file_dump_location, "sim_process_data")
 
 # Recreate rvo_sim
 ConstructionBots.reset_rvo_python_module!()
