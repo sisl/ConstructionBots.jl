@@ -139,10 +139,10 @@ function repulsion_potential(x, r, x2, r2;
 )
     dx = x .- x2
     R = r + r2
-    # # # cone
+    # cone
     f1 = max(0.0, R + dr - norm(dx))
     # barrier
-    f2 = max(0, 1 / (norm(dx) - R) - 1 / (dr))
+    f2 = max(0, 1 / (norm(dx) - dr) - 1 / R)
     return f1 + f2
 end
 
@@ -153,8 +153,8 @@ end
     vmax = 1.0
     # for modifying potentials
     dist_to_nearest_active_agent = Inf               # track distance to closest agent
-    max_buffer_radius = 2.0 * agent_radius  # maximum buffer to add for potential
-    buffer_radius = max_buffer_radius # how much buffer to add for potential
+    max_buffer_radius = 2.5 * agent_radius  # maximum buffer to add for potential
+    buffer_radius = max_buffer_radius            # how much buffer to add for potential
     interaction_radius = 20 * ROBOT_RADIUS
     # potentials between all pairs of robots
     pairwise_potentials = (x, r, xp, rp) -> repulsion_potential(x, r, xp, rp)
@@ -191,12 +191,24 @@ function update_dist_to_nearest_active_agent!(policy::PotentialFieldController, 
     id, dist = dist_to_nearest_active_agent(policy, env)
     policy.dist_to_nearest_active_agent = dist
 end
+
 function update_buffer_radius!(
     policy::PotentialFieldController,
-    r=min(policy.max_buffer_radius, default_robot_radius() / policy.dist_to_nearest_active_agent),
+    node::Union{RobotGo, TransportUnitGo},
+    build_step_active::Bool,
+    cargo_ready_for_pickup::Bool
 )
-    policy.buffer_radius = r
+    r_j = min(policy.max_buffer_radius, policy.agent_radius / policy.dist_to_nearest_active_agent)
+    active_agent = (
+        (matches_template(TransportUnitGo, node) && build_step_active) ||
+        (matches_template(RobotGo, node) && build_step_active && cargo_ready_for_pickup)
+    )
+    if active_agent
+        r_j = policy.max_buffer_radius
+    end
+    policy.buffer_radius = r_j
 end
+
 # pairwise_potential_field(policy)
 function static_potential_gradient(c::PotentialFieldController, pos)
     ForwardDiff.gradient(x -> c.static_potentials(x, c.agent_radius), pos)

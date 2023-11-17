@@ -161,7 +161,7 @@ function set_rvo_priority!(env::PlannerEnv, node::Union{RobotStart,RobotGo,FormT
         end
     elseif parent_build_step_is_active(node, env)
         if cargo_ready_for_pickup(node, env)
-            alpha = 0.0
+            alpha = 0.1
         else
             alpha = 0.5
         end
@@ -262,7 +262,6 @@ function step_environment!(env::PlannerEnv, sim=rvo_global_sim())
             update_parent_build_status!(env, policy.dispersion_policy.node)
         end
     end
-
 
     # Step RVO
     if !isnothing(sim)
@@ -507,7 +506,7 @@ function find_best_swap_candidate(node::FormTransportUnit, agent_node::RobotGo, 
     end
     # find best swap
     closest_id = nothing
-    dist = Inf # norm(goal.translation .- state.translation)
+    dist = Inf
     agent_dist = norm(goal.translation .- state.translation)
     for (id, tform) in robot_team(transport_unit)
         if !(id == node_id(agent))
@@ -519,8 +518,6 @@ function find_best_swap_candidate(node::FormTransportUnit, agent_node::RobotGo, 
                     continue
                 end
                 d = norm(state.translation .- other_state.translation)
-                # d2 = norm(state.translation .- other_state.translation)
-                # d = d1+d2
                 if d < dist
                     dist = d
                     closest_id = id
@@ -784,32 +781,34 @@ function get_twist_cmd(node, env::PlannerEnv)
         ready_for_pickup = cargo_ready_for_pickup(node, env)
         #? Can we use the cached version here?
         build_step_active = parent_build_step_is_active(node, env)
-        if !(policy === nothing || (build_step_active && ready_for_pickup))
-            # update policy
-            policy.node = node
+        if !(policy === nothing)
             update_dist_to_nearest_active_agent!(policy, env)
-            update_buffer_radius!(policy)
-            # compute target position
-            nominal_twist = twist
-            pos = project_to_2d(global_transform(agent).translation)
-            va = nominal_twist.vel[1:2]
-            target_pos = pos .+ va * dt
-            # commanded velocity from current position
-            vb = -1.0 * compute_potential_gradient!(policy, env, pos)
-            # commanded velocity from current position
-            vc = -1.0 * compute_potential_gradient!(policy, env, target_pos)
-            # blend the three velocities
-            a = 1.0
-            b = 1.0
-            c = 0.0
-            v = (a * va + b * vb + c * vc)
-            vel = clip_velocity(v, policy.vmax)
-            # compute goal
-            goal_pt = pos + vel * dt
-            goal = CoordinateTransformations.Translation(goal_pt..., 0.0) ∘ CoordinateTransformations.LinearMap(goal.linear)
-            twist = compute_twist_from_goal(agent, goal, dt) # nominal twist
-        elseif !(policy === nothing)
-            policy.dist_to_nearest_active_agent = 0.0
+            update_buffer_radius!(policy, node, build_step_active, ready_for_pickup)
+            if !(build_step_active && ready_for_pickup)
+                # update policy
+                policy.node = node
+                # compute target position
+                nominal_twist = twist
+                pos = project_to_2d(global_transform(agent).translation)
+                va = nominal_twist.vel[1:2]
+                target_pos = pos .+ va * dt
+                # commanded velocity from current position
+                vb = -1.0 * compute_potential_gradient!(policy, env, pos)
+                # commanded velocity from current position
+                vc = -1.0 * compute_potential_gradient!(policy, env, target_pos)
+                # blend the three velocities
+                a = 1.0
+                b = 1.0
+                c = 0.0
+                v = (a * va + b * vb + c * vc)
+                vel = clip_velocity(v, policy.vmax)
+                # compute goal
+                goal_pt = pos + vel * dt
+                goal = CoordinateTransformations.Translation(goal_pt..., 0.0) ∘ CoordinateTransformations.LinearMap(goal.linear)
+                twist = compute_twist_from_goal(agent, goal, dt) # nominal twist
+            else !(policy === nothing)
+                policy.dist_to_nearest_active_agent = 0.0
+            end
         end
     end
     # return goal
@@ -832,12 +831,20 @@ function get_cmd(node::Union{TransportUnitGo,RobotGo}, env::PlannerEnv)
     end
 
     set_rvo_priority!(env, node)
+
+    #? Do we want to set the max speed to zero because its at its goal? I think we should
+    #? still have agents be able to move, albeit slower? 10% of normal max speed?
     if is_goal(node, env)
-        twist = zero(Twist)
-        max_speed = 0.0
+        twist = zero(Twist) # desired velocity it to stay still #? Could change this?
+        max_speed = 0.1 * get_rvo_max_speed(agent)
     else
         twist = get_twist_cmd(node, env)
-        max_speed = get_rvo_max_speed(agent)
+        twist_vel = norm(twist.vel[1:2])
+        if twist_vel > 0.0
+            max_speed = min(get_rvo_max_speed(agent), twist_vel)
+        else
+            max_speed = get_rvo_max_speed(agent)
+        end
     end
 
     rvo_set_agent_max_speed!(agent, max_speed)
