@@ -26,6 +26,7 @@ Keyword arguments:
 - `anim_active_agents::Bool`: animate which agents are active (green circles) (default: false)
 - `anim_active_areas::Bool`: animate which areas are active (purple circles) (default: false)
 - `process_updates_interval::Int`: the interval to process animation updates (default: 25)
+- `update_anim_at_every_step::Bool`: whether to update the animation at every step (default: false)
 - `save_anim_interval::Int`: the interval of number of updates to save the animation if `save_animation_along_the_way=true` (default: 500)
 - `rvo_flag::Bool`: whether to use RVO (default: true)
 - `tangent_bug_flag::Bool`: whether to use tangent bug (default: true)
@@ -66,6 +67,7 @@ function run_lego_demo(;
     anim_active_agents::Bool=false,
     anim_active_areas::Bool=false,
     process_updates_interval::Int=25,
+    update_anim_at_every_step::Bool=false,
     save_anim_interval::Int=500,
     rvo_flag::Bool=true,
     tangent_bug_flag::Bool=true,
@@ -202,6 +204,7 @@ function run_lego_demo(;
         process_animation_tasks,
         save_anim_interval,
         process_updates_interval,
+        update_anim_at_every_step,
         anim_active_agents,
         anim_active_areas,
         anim_prog_path,
@@ -220,12 +223,13 @@ function run_lego_demo(;
     ConstructionBots.set_default_loading_speed!(50 * default_robot_radius())
     ConstructionBots.set_default_rotational_loading_speed!(50 * default_robot_radius())
     ConstructionBots.set_staging_buffer_radius!(default_robot_radius()) # for tangent_bug policy
+
     ConstructionBots.set_rvo_default_neighbor_distance!(16 * default_robot_radius())
     ConstructionBots.set_rvo_default_min_neighbor_distance!(10 * default_robot_radius())
 
     # Setting default optimizer for staging layout
     ConstructionBots.set_default_geom_optimizer!(ECOS.Optimizer)
-    ConstructionBots.set_default_geom_optimizer_attributes!(MOI.Silent()=>true)
+    ConstructionBots.set_default_geom_optimizer_attributes!(MOI.Silent() => true)
 
 
     pre_execution_start_time = time()
@@ -246,7 +250,6 @@ function run_lego_demo(;
     print("Constructing scene tree...")
     assembly_tree = ConstructionBots.construct_assembly_tree(model, model_spec, id_map)
     scene_tree = ConstructionBots.convert_to_scene_tree(assembly_tree)
-    # @info print(scene_tree, v -> "$(summary(node_id(v))) : $(get(id_map,node_id(v),nothing))", "\t")
     print("done!\n")
 
     # Compute Approximate Geometry
@@ -525,7 +528,7 @@ function run_lego_demo(;
     # rvo
     if rvo_flag
         ConstructionBots.reset_rvo_python_module!()
-        ConstructionBots.rvo_set_new_sim!(ConstructionBots.rvo_new_sim(; horizon=2.0))
+        ConstructionBots.rvo_set_new_sim!(ConstructionBots.rvo_new_sim())
     end
 
 
@@ -539,10 +542,9 @@ function run_lego_demo(;
         max_robot_go_id=max_robot_go_id,
         max_cargo_id=max_cargo_id,
     )
-    active_nodes = (get_node(tg_sched, v) for v in env.cache.active_set)
 
     if rvo_flag
-        ConstructionBots.rvo_add_agents!(scene_tree, active_nodes)
+        ConstructionBots.rvo_add_agents!(scene_tree)
     end
 
     static_potential_function = (x, r) -> 0.0
@@ -562,8 +564,12 @@ function run_lego_demo(;
             end
             if dispersion_flag
                 dispersion_pol = ConstructionBots.PotentialFieldController(
-                    agent=n, node=node, agent_radius=agent_radius, vmax=vmax,
+                    agent=n,
+                    node=node,
+                    agent_radius=agent_radius,
+                    vmax=vmax,
                     max_buffer_radius=2.5 * agent_radius,
+                    interaction_radius=(15 * agent_radius),
                     static_potentials=static_potential_function,
                     pairwise_potentials=pairwise_potential_function
                 )

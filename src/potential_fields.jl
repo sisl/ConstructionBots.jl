@@ -1,8 +1,8 @@
 abstract type Potential end
-potential(v::Vector,x) = sum(potential(p,x) for p in v)
-potential_gradient(v,x) = ForwardDiff.gradient(x->potential(v,x),x)
-potential_gradient(v::Vector,x) = sum(potential_gradient(p,x) for p in v)
-(p::Potential)(x) = potential(p,x)
+potential(v::Vector, x) = sum(potential(p, x) for p in v)
+potential_gradient(v, x) = ForwardDiff.gradient(x -> potential(v, x), x)
+potential_gradient(v::Vector, x) = sum(potential_gradient(p, x) for p in v)
+(p::Potential)(x) = potential(p, x)
 
 """
     ConePotential <: Potential
@@ -14,7 +14,7 @@ mutable struct ConePotential <: Potential
     R # radius
     x # center
 end
-potential(p::ConePotential,x) = p.c*min(p.R,norm(p.x-x))
+potential(p::ConePotential, x) = p.c * min(p.R, norm(p.x - x))
 
 """
     HelicalPotential
@@ -24,9 +24,9 @@ mutable struct HelicalPotential
     x # center
     θ # desired angle
 end
-function potential(p::HelicalPotential,x)
-    ψ = atan(x[2],x[1])
-    Δθ = wrap_to_pi(angular_difference(θ,ψ))
+function potential(p::HelicalPotential, x)
+    ψ = atan(x[2], x[1])
+    Δθ = wrap_to_pi(angular_difference(θ, ψ))
     return p.c * Δθ
 end
 
@@ -41,14 +41,14 @@ mutable struct TentPotential <: Potential
     x # start
     g # goal
 end
-function potential(p::TentPotential,x)
+function potential(p::TentPotential, x)
     dx = x - p.x
     v = p.g - p.x
-    xp = dot(dx,v)*v / norm(v)^2
-    if 0.0 < dot(xp,normalize(v)) < norm(v)
-        return p.c*min(p.R,norm(dx-xp))
+    xp = dot(dx, v) * v / norm(v)^2
+    if 0.0 < dot(xp, normalize(v)) < norm(v)
+        return p.c * min(p.R, norm(dx - xp))
     else
-        return p.c*min(p.R,min(norm(x-p.x),norm(x-(p.g))))
+        return p.c * min(p.R, min(norm(x - p.x), norm(x - (p.g))))
     end
 end
 
@@ -56,18 +56,18 @@ mutable struct TransformPotential <: Potential
     p # potential
     f # function
 end
-potential(p::TransformPotential,x) = p.f(potential(p.p,x))
+potential(p::TransformPotential, x) = p.f(potential(p.p, x))
 
 mutable struct GenericPotential <: Potential
     f # function
 end
-potential(p::GenericPotential,x) = p.f(x)
+potential(p::GenericPotential, x) = p.f(x)
 
 mutable struct ScaledPotential
     p # potential
     c # scalar
 end
-potential(p::ScaledPotential,x) = p.c*potential(p.p,x)
+potential(p::ScaledPotential, x) = p.c * potential(p.p, x)
 
 """
     ClippedPotential
@@ -79,7 +79,7 @@ mutable struct ClippedPotential <: Potential
     c # coefficient
     R # radius
 end
-potential(p::ClippedPotential,x) = p.c * max(p.R,potential(p.p,x))
+potential(p::ClippedPotential, x) = p.c * max(p.R, potential(p.p, x))
 
 """
     BarrierPotential
@@ -92,7 +92,7 @@ mutable struct BarrierPotential <: Potential
     c # coefficient
     z # minimum denominator
 end
-potential(p::BarrierPotential,x) = p.c / (p.z + potential(p.p,x)^2)
+potential(p::BarrierPotential, x) = p.c / (p.z + potential(p.p, x)^2)
 
 """
     RotationalPotential
@@ -110,10 +110,10 @@ end
 #     @show z = cross(v,[dx...,0.0])[1:2]
 #     return p.c * dot(z,x)
 # end
-function potential_gradient(p::RotationalPotential,x)
-    dx = potential_gradient(p.p,x)
-    v = [0.0,0.0,1.0]
-    dz = cross(v,[dx...,0.0])[1:2]
+function potential_gradient(p::RotationalPotential, x)
+    dx = potential_gradient(p.p, x)
+    v = [0.0, 0.0, 1.0]
+    dz = cross(v, [dx..., 0.0])[1:2]
     if norm(dz) > p.zmax
         return p.zmax * normalize(dz)
     else
@@ -125,7 +125,7 @@ mutable struct PairwisePotential
     f
     scale
 end
-(p::PairwisePotential)(x1,x2,r1,r2) = p.f(x1,x2,r1,r2)
+(p::PairwisePotential)(x1, x2, r1, r2) = p.f(x1, x2, r1, r2)
 
 """
     repulsion_potential(x,r,x2,r2;
@@ -133,33 +133,33 @@ end
 Combines a cone potential and a 1/||x|| barrier potential for pairwise
 repulsion.
 """
-function repulsion_potential(x,r,x2,r2;
-        dr = 2*default_robot_radius(),
-        # fillet_radius=0.5*default_robot_radius(),
-    )
+function repulsion_potential(x, r, x2, r2;
+    dr=2 * default_robot_radius(),
+    # fillet_radius=0.5*default_robot_radius(),
+)
     dx = x .- x2
     R = r + r2
-    # # # cone
-    f1 = max(0.0,R+dr - norm(dx))
+    # cone
+    f1 = max(0.0, R + dr - norm(dx))
     # barrier
-    f2 = max(0,1/(norm(dx)-R) - 1/(dr))
-    return f1+f2
+    f2 = max(0, 1 / (norm(dx) - dr) - 1 / R)
+    return f1 + f2
 end
 
 @with_kw mutable struct PotentialFieldController
-    agent                           = nothing
-    node                            = nothing
-    agent_radius                    = 1.0
-    vmax                            = 1.0
+    agent = nothing
+    node = nothing
+    agent_radius = 1.0
+    vmax = 1.0
     # for modifying potentials
-    dist_to_nearest_active_agent    = Inf               # track distance to closest agent
-    max_buffer_radius               = 2.0*agent_radius  # maximum buffer to add for potential
-    buffer_radius                   = max_buffer_radius # how much buffer to add for potential
-    interaction_radius              = 20*ROBOT_RADIUS
+    dist_to_nearest_active_agent = Inf               # track distance to closest agent
+    max_buffer_radius = 2.5 * agent_radius  # maximum buffer to add for potential
+    buffer_radius = max_buffer_radius            # how much buffer to add for potential
+    interaction_radius = 20 * ROBOT_RADIUS
     # potentials between all pairs of robots
-    pairwise_potentials             = (x,r,xp,rp)->repulsion_potential(x,r,xp,rp)
+    pairwise_potentials = (x, r, xp, rp) -> repulsion_potential(x, r, xp, rp)
     # environment potentials (may depend on other agent's states)
-    static_potentials               = (x,r)->0.0
+    static_potentials = (x, r) -> 0.0
 end
 function dist_to_nearest_active_agent(policy::PotentialFieldController, env::PlannerEnv)
     @unpack scene_tree, sched, cache = env
@@ -172,14 +172,14 @@ function dist_to_nearest_active_agent(policy::PotentialFieldController, env::Pla
         if !(other_policy === policy)
             other_node = other_policy.node
             pbs_active = parent_build_step_is_active(node_id(entity(other_node)), env)
-            if (pbs_active && cargo_ready_for_pickup(other_node,env))
+            if (pbs_active && cargo_ready_for_pickup(other_node, env))
                 other_agent = other_policy.agent
                 other_rad = other_policy.agent_radius
                 other_pos = project_to_2d(global_transform(other_agent).translation)
                 # other_rad = get_radius(get_base_geom(other_agent,HypersphereKey()))
                 dist = norm(pos - other_pos) - (other_rad + policy.agent_radius)
                 if dist < shortest_dist
-                    shortest_dist = min(dist,shortest_dist)
+                    shortest_dist = min(dist, shortest_dist)
                     id = node_id(other_agent)
                 end
             end
@@ -191,43 +191,55 @@ function update_dist_to_nearest_active_agent!(policy::PotentialFieldController, 
     id, dist = dist_to_nearest_active_agent(policy, env)
     policy.dist_to_nearest_active_agent = dist
 end
+
 function update_buffer_radius!(
-        policy::PotentialFieldController,
-        r=min(policy.max_buffer_radius, default_robot_radius()/policy.dist_to_nearest_active_agent),
+    policy::PotentialFieldController,
+    node::Union{RobotGo, TransportUnitGo},
+    build_step_active::Bool,
+    cargo_ready_for_pickup::Bool
+)
+    r_j = min(policy.max_buffer_radius, policy.agent_radius / policy.dist_to_nearest_active_agent)
+    active_agent = (
+        (matches_template(TransportUnitGo, node) && build_step_active) ||
+        (matches_template(RobotGo, node) && build_step_active && cargo_ready_for_pickup)
     )
-    policy.buffer_radius = r
+    if active_agent
+        r_j = policy.max_buffer_radius
+    end
+    policy.buffer_radius = r_j
 end
+
 # pairwise_potential_field(policy)
-function static_potential_gradient(c::PotentialFieldController,pos)
-    ForwardDiff.gradient(x->c.static_potentials(x,c.agent_radius),pos)
+function static_potential_gradient(c::PotentialFieldController, pos)
+    ForwardDiff.gradient(x -> c.static_potentials(x, c.agent_radius), pos)
 end
-function pairwise_potential_gradient(c::PotentialFieldController,pos,other_pos,other_radius;dr=1.0)
+function pairwise_potential_gradient(c::PotentialFieldController, pos, other_pos, other_radius; dr=1.0)
     ForwardDiff.gradient(
-        x->c.pairwise_potentials(
+        x -> c.pairwise_potentials(
             x,
             c.agent_radius,
             other_pos,
             other_radius,
             ;
             dr=dr
-            ),
+        ),
         pos)
 end
 
-function clip_velocity(vel,vmax)
+function clip_velocity(vel, vmax)
     if norm(vel) > vmax
-        v = vmax*normalize(vel)
+        v = vmax * normalize(vel)
     else
         v = vel
     end
     return v
 end
 
-function pairwise_potential_scale(policy::PotentialFieldController,α1,α2)
+function pairwise_potential_scale(policy::PotentialFieldController, α1, α2)
     if α1 < α2
         return 0.0 # precedence--no push
     elseif α1 == 0
-        return α2 / (α1 + min(α2,0.05))
+        return α2 / (α1 + min(α2, 0.05))
     else
         return α2 / α1
     end
@@ -238,20 +250,20 @@ end
 
 How much extra width to add to pairwise potential.
 """
-function pairwise_potential_width(policy::PotentialFieldController,α1,α2)
+function pairwise_potential_width(policy::PotentialFieldController, α1, α2)
     if α1 < α2
         return 0.0 # no push
     elseif α1 == 0
         return default_robot_radius()
     else
-        return 0.5*default_robot_radius()
+        return 0.5 * default_robot_radius()
     end
 end
 
 function compute_potential_gradient!(policy::PotentialFieldController, env::PlannerEnv, pos)
     @unpack scene_tree, sched = env
     agent = policy.agent
-    dp = static_potential_gradient(policy,pos)
+    dp = static_potential_gradient(policy, pos)
     α1 = rvo_get_agent_alpha(agent)
     for other_agent in rvo_active_agents(scene_tree)
         if !(agent === other_agent)
@@ -264,13 +276,13 @@ function compute_potential_gradient!(policy::PotentialFieldController, env::Plan
             scale = 1.0
             other_pos = project_to_2d(global_transform(other_agent).translation)
             if norm(pos - other_pos) <= policy.interaction_radius
-                dp = dp .+ scale*pairwise_potential_gradient(
+                dp = dp .+ scale * pairwise_potential_gradient(
                     policy,
                     pos,
                     other_pos,
                     other_rad; # + dilate based on priority?
-                    dr = other_policy.buffer_radius,
-                    )
+                    dr=other_policy.buffer_radius,
+                )
             end
         end
     end
@@ -284,29 +296,29 @@ end
 
 
 @with_kw mutable struct PotentialController
-    x           = nothing # state
-    v           = nothing # velocity
-    circ_idx    = -1      # index of circle that robot may enter
-    goal        = nothing # goal position
-    p           = nothing # potential function
-    dp          = nothing # gradient of potential function
-    radius      = nothing # radius
-    vmax        = 1.0
+    x = nothing # state
+    v = nothing # velocity
+    circ_idx = -1      # index of circle that robot may enter
+    goal = nothing # goal position
+    p = nothing # potential function
+    dp = nothing # gradient of potential function
+    radius = nothing # radius
+    vmax = 1.0
 end
 ROBOT_RADIUS = 0.5
 
 @with_kw mutable struct GlobalPotentialController
-    robot_controllers       = Dict()
-    goal_potentials         = Dict()
-    circle_potentials       = Dict()
-    collision_potentials    = Dict()
-    path_potentials         = Dict()
-    INTERACTION_RANGE       = 5*ROBOT_RADIUS
+    robot_controllers = Dict()
+    goal_potentials = Dict()
+    circle_potentials = Dict()
+    collision_potentials = Dict()
+    path_potentials = Dict()
+    INTERACTION_RANGE = 5 * ROBOT_RADIUS
 end
 
 function update_potential_controllers!(controller)
-    for (k,robot) in controller.robot_controllers
-        update_potential_controller!(robot,k,controller)
+    for (k, robot) in controller.robot_controllers
+        update_potential_controller!(robot, k, controller)
     end
     controller
 end
@@ -315,28 +327,28 @@ function update_potential_controller!(robot, i, global_controller)
     potentials = []
     C = global_controller
     # pull robot toward its goal
-    push!(potentials,   C.goal_potentials[i])
+    push!(potentials, C.goal_potentials[i])
     # repel robot from circles in which it does not belong
     if robot.circ_idx > 0
-        push!(potentials,   C.circle_potentials[robot.circ_idx])
+        push!(potentials, C.circle_potentials[robot.circ_idx])
     end
     # allow higher priority robots to push robot out of the way
-    for (k,r) in C.robot_controllers
+    for (k, r) in C.robot_controllers
         p = C.path_potentials[k]
         if !(robot === r) && norm(r.x - robot.x) <= C.INTERACTION_RANGE
             if r.circ_idx < robot.circ_idx # replace with priority check
-                push!(potentials,p)
+                push!(potentials, p)
             end
         end
     end
     # set potentials
     robot.p = potentials
     # compute local gradient of potential fields
-    robot.dp = potential_gradient(robot.p,robot.x)
+    robot.dp = potential_gradient(robot.p, robot.x)
     # set velocity in direction of gradient descent
     vel = -1.0 * robot.dp
     if norm(vel) > robot.vmax
-        robot.v = robot.vmax*normalize(vel)
+        robot.v = robot.vmax * normalize(vel)
     else
         robot.v = vel
     end

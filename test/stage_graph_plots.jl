@@ -33,65 +33,66 @@ using ECOS
 project_params = get_project_params(4) # 4 = tractor
 
 
-open_animation_at_end        = false
+open_animation_at_end = false
 save_animation_along_the_way = false
-save_animation_at_end        = false
-anim_active_agents           = false
-anim_active_areas            = false
+save_animation_at_end = false
+anim_active_agents = false
+anim_active_areas = false
+update_anim_at_every_step = false
 
-rvo_flag                     = true
-tangent_bug_flag             = true
-dispersion_flag              = true
-assignment_mode              = :greedy
+rvo_flag = true
+tangent_bug_flag = true
+dispersion_flag = true
+assignment_mode = :greedy
 
-write_results                = false
-overwrite_results            = false
+write_results = false
+overwrite_results = false
 
-ldraw_file                   = project_params[:file_name]
-project_name                 = project_params[:project_name]
-model_scale                  = project_params[:model_scale]
-num_robots                   = project_params[:num_robots]
+ldraw_file = project_params[:file_name]
+project_name = project_params[:project_name]
+model_scale = project_params[:model_scale]
+num_robots = project_params[:num_robots]
 
-assignment_mode              = assignment_mode
-milp_optimizer               = :gurobi # :gurobi :highs
-optimizer_time_limit         = 100
+assignment_mode = assignment_mode
+milp_optimizer = :gurobi # :gurobi :highs
+optimizer_time_limit = 100
 
-rvo_flag                     = rvo_flag
-tangent_bug_flag             = tangent_bug_flag
-dispersion_flag              = dispersion_flag
+rvo_flag = rvo_flag
+tangent_bug_flag = tangent_bug_flag
+dispersion_flag = dispersion_flag
 
-open_animation_at_end        = open_animation_at_end
-save_animation               = save_animation_at_end
+open_animation_at_end = open_animation_at_end
+save_animation = save_animation_at_end
 save_animation_along_the_way = save_animation_along_the_way
-anim_active_agents           = anim_active_agents
-anim_active_areas            = anim_active_areas
+anim_active_agents = anim_active_agents
+anim_active_areas = anim_active_areas
 
-write_results                = write_results
-overwrite_results            = overwrite_results
+write_results = write_results
+overwrite_results = overwrite_results
 
 look_for_previous_milp_solution = false
-save_milp_solution              = false
-previous_found_optimizer_time   = 200
+save_milp_solution = false
+previous_found_optimizer_time = 200
 
-robot_scale::Float64                      =model_scale * 0.7
-robot_height::Float64                     =10 * robot_scale
-robot_radius::Float64                     =25 * robot_scale
-num_object_layers::Int                    =1
-max_steps::Int                            =100000
-staging_buffer_factor::Float64            =1.2
-build_step_buffer_factor::Float64         =0.5
-base_results_path::String                 =joinpath(dirname(pathof(ConstructionBots)), "..", "results")
-results_path::String                      =joinpath(base_results_path, project_name)
-process_updates_interval::Int             =25
-save_anim_interval::Int                   =500
-max_num_iters_no_progress::Int            =10000
-sim_batch_size::Int                       =50
-log_level::Logging.LogLevel               =Logging.Warn
-milp_optimizer_attribute_dict::Dict       =Dict()
+robot_scale::Float64 = model_scale * 0.7
+robot_height::Float64 = 10 * robot_scale
+robot_radius::Float64 = 25 * robot_scale
+num_object_layers::Int = 1
+max_steps::Int = 100000
+staging_buffer_factor::Float64 = 1.2
+build_step_buffer_factor::Float64 = 0.5
+base_results_path::String = joinpath(dirname(pathof(ConstructionBots)), "..", "results")
+results_path::String = joinpath(base_results_path, project_name)
+process_updates_interval::Int = 25
+save_anim_interval::Int = 500
+max_num_iters_no_progress::Int = 10000
+sim_batch_size::Int = 50
+log_level::Logging.LogLevel = Logging.Warn
+milp_optimizer_attribute_dict::Dict = Dict()
 
-ignore_rot_matrix_warning= true
+ignore_rot_matrix_warning = true
 
-rng::Random.AbstractRNG                   =Random.MersenneTwister(1)
+rng::Random.AbstractRNG = Random.MersenneTwister(1)
 
 process_animation_tasks = save_animation || save_animation_along_the_way || open_animation_at_end
 
@@ -135,12 +136,12 @@ if assignment_mode == :milp || assignment_mode == :milp_w_greedy_warm_start
     milp_optimizer_attribute_dict[MOI.Silent()] = false
     default_milp_optimizer = nothing
     if milp_optimizer == :glpk
-        default_milp_optimizer = ()->GLPK.Optimizer(;want_infeasibility_certificates=false)
+        default_milp_optimizer = () -> GLPK.Optimizer(; want_infeasibility_certificates=false)
         milp_optimizer_attribute_dict["tm_lim"] = optimizer_time_limit * 1000
         milp_optimizer_attribute_dict["msg_lev"] = GLPK.GLP_MSG_ALL
         time_limit_key = "tm_lim"
     elseif milp_optimizer == :gurobi
-        default_milp_optimizer = ()->Gurobi.Optimizer()
+        default_milp_optimizer = () -> Gurobi.Optimizer()
         # default_milp_optimizer = Gurobi.Optimizer
         milp_optimizer_attribute_dict["TimeLimit"] = optimizer_time_limit
         # MIPFocus: 1 -- feasible solutions, 2 -- optimal solutions, 3 -- bound
@@ -209,6 +210,7 @@ sim_params = ConstructionBots.SimParameters(
     process_animation_tasks,
     save_anim_interval,
     process_updates_interval,
+    update_anim_at_every_step,
     anim_active_agents,
     anim_active_areas,
     anim_prog_path,
@@ -232,7 +234,7 @@ ConstructionBots.set_rvo_default_min_neighbor_distance!(10 * ConstructionBots.de
 
 # Setting default optimizer for staging layout
 ConstructionBots.set_default_geom_optimizer!(ECOS.Optimizer)
-ConstructionBots.set_default_geom_optimizer_attributes!(MOI.Silent()=>true)
+ConstructionBots.set_default_geom_optimizer_attributes!(MOI.Silent() => true)
 
 pre_execution_start_time = time()
 model = parse_ldraw_file(filename; ignore_rotation_determinant=ignore_rot_matrix_warning)
@@ -304,20 +306,30 @@ sched = ConstructionBots.construct_partial_construction_schedule(model, model_sp
 @assert ConstructionBots.validate_schedule_transform_tree(sched)
 print("done!\n")
 
+### Plot the robot positions on the assemblies/objects ###
+for n in scene_tree.nodes
+    if ConstructionBots.matches_template(ConstructionBots.TransportUnitNode, n)
+        c_id = ConstructionBots.cargo_id(n)
+        plt = ConstructionBots.render_transport_unit_2d(scene_tree, n)
+        # display(plt)
+        push!(cargo_ids, c_id)
+    end
+end
+
 ### Plot the schedule ###
-_node_type_check(n) = ConstructionBots.matches_template((ObjectStart,AssemblyStart,AssemblyComplete,FormTransportUnit,TransportUnitGo,DepositCargo,LiftIntoPlace),n)
+_node_type_check(n) = ConstructionBots.matches_template((ObjectStart, AssemblyStart, AssemblyComplete, FormTransportUnit, TransportUnitGo, DepositCargo, LiftIntoPlace), n)
 
 plt = ConstructionBots.display_graph(
     sched;
     grow_mode=:from_left,
     align_mode=:split_aligned,
-    draw_node_function=(G,v)->ConstructionBots.draw_node(ConstructionBots.get_node(G,v);
-        title_text= _node_type_check(ConstructionBots.get_node(G,v)
-            ) ? string(ConstructionBots._title_string(ConstructionBots.get_node(G,v)),
-                "$(ConstructionBots.get_id(ConstructionBots.node_id(ConstructionBots.get_node(G,v))))") : ConstructionBots._title_string(ConstructionBots.get_node(G,v)),
+    draw_node_function=(G, v) -> ConstructionBots.draw_node(ConstructionBots.get_node(G, v);
+        title_text=_node_type_check(ConstructionBots.get_node(G, v)
+        ) ? string(ConstructionBots._title_string(ConstructionBots.get_node(G, v)),
+            "$(ConstructionBots.get_id(ConstructionBots.node_id(ConstructionBots.get_node(G,v))))") : ConstructionBots._title_string(ConstructionBots.get_node(G, v)),
         subtitle_text="",
-        title_scale = _node_type_check(ConstructionBots.get_node(G,v)
-            ) ? ConstructionBots._title_text_scale(ConstructionBots.get_node(G,v)) : 0.45,
+        title_scale=_node_type_check(ConstructionBots.get_node(G, v)
+        ) ? ConstructionBots._title_text_scale(ConstructionBots.get_node(G, v)) : 0.45,
     ),
     pad=(0.0, 0.0)
 );
@@ -372,12 +384,12 @@ plt = ConstructionBots.display_graph(
     tg_sched;
     grow_mode=:from_left,
     align_mode=:split_aligned,
-    draw_node_function=(G,v)->ConstructionBots.draw_node(ConstructionBots.get_node(G,v);
-        title_text= _node_type_check(ConstructionBots.get_node(G,v)
-            ) ? string(ConstructionBots._title_string(ConstructionBots.get_node(G,v)),
-                "$(ConstructionBots.get_id(ConstructionBots.node_id(ConstructionBots.get_node(G,v))))") : ConstructionBots._title_string(ConstructionBots.get_node(G,v)),
+    draw_node_function=(G, v) -> ConstructionBots.draw_node(ConstructionBots.get_node(G, v);
+        title_text=_node_type_check(ConstructionBots.get_node(G, v)
+        ) ? string(ConstructionBots._title_string(ConstructionBots.get_node(G, v)),
+            "$(ConstructionBots.get_id(ConstructionBots.node_id(ConstructionBots.get_node(G,v))))") : ConstructionBots._title_string(ConstructionBots.get_node(G, v)),
         subtitle_text="",
-        title_scale = _node_type_check(ConstructionBots.get_node(G,v)
-            ) ? ConstructionBots._title_text_scale(ConstructionBots.get_node(G,v)) : 0.45,
+        title_scale=_node_type_check(ConstructionBots.get_node(G, v)
+        ) ? ConstructionBots._title_text_scale(ConstructionBots.get_node(G, v)) : 0.45,
     )
 );
