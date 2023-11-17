@@ -3,7 +3,7 @@ export TangentBugPolicy
 @with_kw mutable struct TangentBugPolicy
     mode = :MOVE_TOWARD_GOAL
     vmax = 1.0
-    dt = 0.05
+    dt = 1/40.0
     proximity_tolerance = 1e-2
     agent_radius = 0.5
     planning_radius = 2 * agent_radius
@@ -47,18 +47,14 @@ function get_closest_interfering_circle(policy, circles, pos, nominal_goal; retu
     for (circ_id, c) in circles
         x = get_center(c)
         r = get_radius(c)
-        bloated_circle = LazySets.Ball2(x, r + agent_radius + buffer)
+        bloated_circle = LazySets.Ball2(x, r + agent_radius + buffer * (!return_w_no_buffer))
         if circle_intersects_line(bloated_circle, pos, nominal_goal)
             d = norm(x - pos) - get_radius(bloated_circle) # penetration
             if d < dmin
                 # penetration < 0 => pos is in circle
                 dmin = d
                 id = circ_id
-                if return_w_no_buffer
-                    circ = c
-                else
-                    circ = bloated_circle
-                end
+                circ = bloated_circle
                 pt = first_intersection_pt(bloated_circle, pos, nominal_goal)
             end
         end
@@ -94,7 +90,6 @@ function set_policy_mode!(policy, circ, pos, nominal_goal, parent_step_active)
 
         elseif dmin + proximity_tolerance >= 0
             # not currently in a circle, but on a course for intersection
-            # if norm(nominal_goal - pos) + 30*proximity_tolerance < norm(nominal_goal - c)
             if norm(nominal_goal - pos) + agent_radius / 2 < norm(nominal_goal - c)
                 # Just keep going toward goal (on the clear side)--this statement should never be reached
                 mode = :MOVE_TOWARD_GOAL
@@ -138,8 +133,11 @@ function tangent_bug_policy!(policy, circles, pos, nominal_goal, parent_step_act
     # Select waypoint
     goal = nominal_goal
     if mode == :WAIT_OUTSIDE
-        if norm(nominal_goal - c) > 1e-3
-            goal = c + normalize(nominal_goal - c) * r
+        if norm(nominal_goal - pos) + buffer > r
+            dvec = normalize(pos - c) * (r + proximity_tolerance)
+            dr = vmax * dt
+            dθ = 2 * sin(0.5 * dr / r)
+            goal = c + [cos(dθ) -sin(dθ); sin(dθ) cos(dθ)] * dvec
         else
             goal = c + normalize(pos - c) * r
         end
