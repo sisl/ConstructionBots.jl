@@ -18,10 +18,10 @@ ConstructionBots ueses LEGO models to evaluate algorithms. LEGO models offer a c
 ## Hosted Demos to View the Functionality of ConstructionBots
 | Project | Allocation Algorithm | RVO | Dispersion  | Tangent Bug | Visualization |
 | --- | :---: | :---: | :---: | :---: | :---: |
-| Tractor | Greedy | No | No | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/tractor_greedy_no-RVO_no-Dispersion_TangentBug_visualization.html) |
-| Tractor | MILP | No | No | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/tractor_milp_no-RVO_no-Dispersion_TangentBug_visualization.html) |
-| AT-TE Walker  | MILP + Greedy | No | No | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/atte-walker_milp-ws_no-RVO_no-Dispersion_TangentBug_visualization.html) |
-| X-Wing  | Greedy | No | No | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/x-wing_greedy_no-RVO_no-Dispersion_TangentBug_visualization.html) |
+| Tractor | Greedy | Yes | Yes | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/tractor_greedy_RVO_Dispersion_TangentBug_visualization.html) |
+| Tractor | MILP | Yes | Yes | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/tractor_milp_RVO_Dispersion_TangentBug_visualization.html) |
+| AT-TE Walker  | MILP + Greedy | Yes | Yes | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/atte-walker_milp-ws_RVO_Dispersion_TangentBug_visualization.html) |
+| X-Wing  | Greedy | No | No | No | [Link](https://sisl.github.io/ConstructionBots.jl/stable/x-wing_greedy_no-RVO_no-Dispersion_no-TangentBug_visualization.html) |
 
 ## Installation
 

@@ -11,10 +11,10 @@ ConstructionBots ueses LEGO models to evaluate algorithms. LEGO models offer a c
 ## Hosted Demos to View the Functionality of ConstructionBots
 | Project | Allocation Algorithm | RVO | Dispersion  | Tangent Bug | Visualization |
 | --- | :---: | :---: | :---: | :---: | :---: |
-| Tractor | Greedy | No | No | Yes | [Link](tractor_greedy_no-RVO_no-Dispersion_TangentBug_visualization.html) |
-| Tractor | MILP | No | No | Yes | [Link](tractor_milp_no-RVO_no-Dispersion_TangentBug_visualization.html) |
-| AT-TE Walker  | MILP + Greedy | No | No | Yes | [Link](atte-walker_milp-ws_no-RVO_no-Dispersion_TangentBug_visualization.html) |
-| X-Wing  | Greedy | No | No | Yes | [Link](x-wing_greedy_no-RVO_no-Dispersion_TangentBug_visualization.html) |
+| Tractor | Greedy | Yes | Yes | Yes | [Link](tractor_greedy_RVO_Dispersion_TangentBug_visualization.html) |
+| Tractor | MILP | Yes | Yes | Yes | [Link](tractor_milp_RVO_Dispersion_TangentBug_visualization.html) |
+| AT-TE Walker  | MILP + Greedy | Yes | Yes | Yes | [Link](atte-walker_milp-ws_RVO_Dispersion_TangentBug_visualization.html) |
+| X-Wing  | Greedy | No | No | No | [Link](x-wing_greedy_no-RVO_no-Dispersion_no-TangentBug_visualization.html) |
 
 ## Manual Outline
 
@@ -74,6 +74,19 @@ julia> include("scripts/demos.jl")
 The default demo is the a Tractor based on LEGO model 10708, Green Creativity Box. The tractor model has a total of 20 individual pieces, which are organized into one final assembly (the tractor) and seven subassemblies. The demo is configured to use 10 robots to assemble the tractor. The collision avoidance algorithms are not used and it should open an interative visualization of the assembly process in your brower similar to [Tractor Demo](tractor_greedy_no-RVO_no-Dispersion_TangentBug_visualization.html). The demo can be configured by changing the parameters in `demos.jl`.
 
 If the demo setting `update_anim_at_every_step` is not set to `true`, then the animation will only update at the completion of nodes in the schedule. This setting results in faster processing times for the animation, but results in entities taking straight paths between updates. Therefore, it appears that collisions occur between entities. If collision avoidance is enabled and you want to see the collision avoidance in action (with no missed steps), set `update_anim_at_every_step` to `true`. Note, this increases processing time quite a bit.
+
+## Citation
+Under review
+
+[arXiv paper](https://arxiv.org/abs/2311.00192)
+
+```
+@article{Brown2023Assembly},
+title = {Large-Scale Multi-Robot Assembly Planning for Autonomous Manufacturing},
+author = {Kyle Brown and Dylan M. Asmar and Mac Schwager and Mykel J. Kochenderfer},
+journal = {arXiv preprint arXiv:2311.00192},
+year = {2023}
+```
 
 ## Functions
 
