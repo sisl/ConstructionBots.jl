@@ -22,7 +22,9 @@ ConstructionBots ueses LEGO models to evaluate algorithms. LEGO models offer a c
 | Tractor | MILP | Yes | Yes | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/tractor_milp_RVO_Dispersion_TangentBug_visualization.html) |
 | AT-TE Walker  | MILP + Greedy | Yes | Yes | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/atte-walker_milp-ws_RVO_Dispersion_TangentBug_visualization.html) |
 | X-Wing  | Greedy | No | No | No | [Link](https://sisl.github.io/ConstructionBots.jl/stable/x-wing_greedy_no-RVO_no-Dispersion_no-TangentBug_visualization.html) |
+| Saturn V  | Greedy | Yes | Yes | Yes | [Link](https://www.youtube.com/watch?v=1hJD7NCfjZU) |
 
+#### Saturn V (RVO + Dispersion + Tangent Bug) Video
 [![Saturn V demo](https://img.youtube.com/vi/1hJD7NCfjZU/0.jpg)](https://www.youtube.com/watch?v=1hJD7NCfjZU)
 
 ## Installation
@@ -70,6 +72,8 @@ julia> using PyCall
 julia> rvo = pyimport("rvo2")
 ```
 
+Note: In the current build of ConstructionBots, this step is still required even if you do not plan to use RVO.
+
 ## Usage
 This repository comes with demos to demonstrate the functionality of ConstructionBots. To run the demos, run the following in the Julia REPL:
 ```julia
@@ -79,7 +83,7 @@ The default demo is the a Tractor based on LEGO model 10708, Green Creativity Bo
 You can interact with an example from the tractor simulation [here](https://sisl.github.io/ConstructionBots.jl/stable/tractor_greedy_RVO_Dispersion_TangentBug_visualization.html).
 The main function for the demo is [`run_tractor_demo`](https://github.com/sisl/ConstructionBots.jl/blob/c7dcb3baabc437cfccd12e8ccc777e1561e9bf3b/src/full_demo.jl#L48) in [`full_demo.jl`](https://github.com/sisl/ConstructionBots.jl/blob/master/src/full_demo.jl).
 
-If the demo setting `update_anim_at_every_step` is not set to `true`, then the animation will only update at the completion of nodes in the schedule. This setting results in faster processing times for the animation, but results in entities taking straight paths between updates. Therefore, it appears that collisions occur between entities. If collision avoidance is enabled and you want to see the collision avoidance in action (with no missed steps), set `update_anim_at_every_step` to `true`. Note, this increases processing time quite a bit.
+If the demo setting `update_anim_at_every_step` is not set to `true`, then the animation will only update at the completion of nodes in the schedule. This setting results in faster processing times for the animation, but results in entities taking straight paths between updates. Therefore, it appears that collisions occur between entities. If collision avoidance is enabled and you want to see the collision avoidance in action (with no missed steps), set `update_anim_at_every_step` to `true`. Changing this setting increases processing time quite a bit.
 
 ### Images from the Tractor Project
 ![Tractor Project a](media/tractor_demo_a.png)
