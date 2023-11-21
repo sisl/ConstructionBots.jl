@@ -26,6 +26,7 @@ Keyword arguments:
 - `anim_active_agents::Bool`: animate which agents are active (green circles) (default: false)
 - `anim_active_areas::Bool`: animate which areas are active (purple circles) (default: false)
 - `process_updates_interval::Int`: the interval to process animation updates (default: 25)
+- `block_save_anim::Bool`: whether to save the animation in blocks instead of incrementally. false = incrementall, true = save in blocks (default: false)
 - `update_anim_at_every_step::Bool`: whether to update the animation at every step (default: false)
 - `save_anim_interval::Int`: the interval of number of updates to save the animation if `save_animation_along_the_way=true` (default: 500)
 - `rvo_flag::Bool`: whether to use RVO (default: true)
@@ -66,7 +67,8 @@ function run_lego_demo(;
     save_animation_along_the_way::Bool=false,
     anim_active_agents::Bool=false,
     anim_active_areas::Bool=false,
-    process_updates_interval::Int=25,
+    process_updates_interval::Int=50,
+    block_save_anim::Bool=false,
     update_anim_at_every_step::Bool=false,
     save_anim_interval::Int=500,
     rvo_flag::Bool=true,
@@ -92,6 +94,15 @@ function run_lego_demo(;
 
     if rvo_flag && !dispersion_flag
         @warn "RVO is enabled but dispersion is disabled. This is not recommended."
+    end
+
+    if block_save_anim
+        if process_updates_interval != save_anim_interval
+            @warn "When block_save_anim is true, it is recommended to set save_anim_interval to the same value as process_updates_interval."
+        end
+        if !save_animation_along_the_way
+            @warn "block_save_anim is true but save_animation_along_the_way is false. Will save along the way anyway."
+        end
     end
 
     # record statistics
@@ -204,6 +215,7 @@ function run_lego_demo(;
         process_animation_tasks,
         save_anim_interval,
         process_updates_interval,
+        block_save_anim,
         update_anim_at_every_step,
         anim_active_agents,
         anim_active_areas,

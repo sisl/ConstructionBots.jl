@@ -5,6 +5,7 @@ struct SimParameters
     process_animation_tasks::Bool
     save_anim_interval::Int
     process_updates_interval::Int
+    block_save_anim::Bool
     update_anim_at_every_step::Bool
     anim_active_agents::Bool
     anim_active_areas::Bool
@@ -84,8 +85,9 @@ function simulate!(
 
     @unpack sched, cache = env
     @unpack sim_batch_size, max_time_steps = sim_params
-    @unpack process_animation_tasks, save_anim_interval, process_updates_interval = sim_params
-    @unpack anim_active_agents, anim_active_areas, max_num_iters_no_progress = sim_params
+    @unpack process_animation_tasks, save_anim_interval = sim_params
+    @unpack process_updates_interval, block_save_anim, anim_active_agents = sim_params
+    @unpack anim_active_areas, max_num_iters_no_progress = sim_params
     @unpack save_animation_along_the_way, save_anim_prog_path = sim_params
 
     for _ in 1:sim_batch_size
@@ -123,6 +125,14 @@ function simulate!(
         if process_animation_tasks &&
            (length(update_steps) >= process_updates_interval || project_stop_bool)
 
+            if block_save_anim
+                anim = ConstructionBots.AnimationWrapper(0)
+                update_visualizer!(factory_vis)
+                settransform!(factory_vis.vis["/Cameras/default"], CoordinateTransformations.Translation(0, 0, 0))
+                setprop!(factory_vis.vis["/Cameras/default/rotated/<object>"], "position", CoordinateTransformations.Translation(0, 10, 0).translation)
+            end
+
+            k_i = 0
             for step_k in update_steps
                 k_k = step_k[1]
                 vis_nodes_k = step_k[2]
@@ -131,7 +141,13 @@ function simulate!(
                 active_build_nodes_k = step_k[5]
                 fac_active_flags_nodes_k = step_k[6]
 
-                ConstructionBots.set_current_frame!(anim, k_k + sim_process_data.starting_frame)
+                current_frame = k_k + sim_process_data.starting_frame
+                if block_save_anim
+                    k_i += 1
+                    current_frame = k_i
+                end
+                ConstructionBots.set_current_frame!(anim, current_frame)
+
                 atframe(anim, ConstructionBots.current_frame(anim)) do
                     if anim_active_areas
                         for node_i in closed_steps_nodes_k
