@@ -23,9 +23,7 @@ ConstructionBots ueses LEGO models to evaluate algorithms. LEGO models offer a c
 | AT-TE Walker  | MILP + Greedy | Yes | Yes | Yes | [Link](https://sisl.github.io/ConstructionBots.jl/stable/atte-walker_milp-ws_RVO_Dispersion_TangentBug_visualization.html) |
 | X-Wing  | Greedy | No | No | No | [Link](https://sisl.github.io/ConstructionBots.jl/stable/x-wing_greedy_no-RVO_no-Dispersion_no-TangentBug_visualization.html) |
 
-<!-- YouTube Video Embed -->
-<iframe width="560" height="315" src="https://www.youtube.com/embed/1hJD7NCfjZU?si=E_G2hyam-WjPoSdh" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-<!-- End YouTube Video Embed -->
+[![Saturn V demo](https://img.youtube.com/vi/1hJD7NCfjZU/0.jpg)](https://www.youtube.com/watch?v=1hJD7NCfjZU)
 
 ## Installation
 
