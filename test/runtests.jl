@@ -1,46 +1,28 @@
 using ConstructionBots
-
-using StaticArrays
-using CoordinateTransformations
-using GeometryBasics
-using Rotations
-
-using Graphs
-using LazySets
-using LinearAlgebra
-
-using Test
-using Logging
+using CoordinateTransformations, GeometryBasics, Rotations, StaticArrays
+using Graphs, LazySets, LinearAlgebra
+using Logging, Test
 
 # Set logging level
 global_logger(SimpleLogger(stderr, Logging.Warn))
 
-@inline function array_isapprox(x::AbstractArray{F},
-                  y::AbstractArray{F};
-                  rtol::F=sqrt(eps(F)),
-                  atol::F=zero(F)) where {F<:AbstractFloat}
+# Check approximate equality between arrays, or array elements
+@inline function array_isapprox(x::Union{AbstractArray{F}, F},
+                                y::Union{AbstractArray{F}, F};
+                                rtol::F=sqrt(eps(F)),
+                                atol::F=zero(F)) where {F<:AbstractFloat}
+    # Check if x, y are single values and convert to array if needed
+    x_array = isa(x, AbstractArray) ? x : fill(x, length(y))
+    y_array = isa(y, AbstractArray) ? y : fill(y, length(x_array))
 
-    # Easy check on matching size
-    if length(x) != length(y)
+    # Check matching size
+    if length(x_array) != length(y_array)
         return false
     end
 
-    for (a,b) in zip(x,y)
-        if !isapprox(a,b, rtol=rtol, atol=atol)
-            return false
-        end
-    end
-    return true
-end
-
-# Check if array equals a single value
-@inline function array_isapprox(x::AbstractArray{F},
-                  y::F;
-                  rtol::F=sqrt(eps(F)),
-                  atol::F=zero(F)) where {F<:AbstractFloat}
-
-    for a in x
-        if !isapprox(a, y, rtol=rtol, atol=atol)
+    # Compare elements
+    for (a, b) in zip(x_array, y_array)
+        if !isapprox(a, b, rtol=rtol, atol=atol)
             return false
         end
     end
@@ -58,7 +40,6 @@ end
     @testset "Twist" begin
         include("test_twist.jl")
     end
-
     @testset "Demo" begin
         include("test_demo.jl")
     end
