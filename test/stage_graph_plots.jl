@@ -309,6 +309,8 @@ sched = ConstructionBots.construct_partial_construction_schedule(model, model_sp
 @assert ConstructionBots.validate_schedule_transform_tree(sched)
 print("done!\n")
 
+cargo_ids = Any[]
+
 ### Plot the robot positions on the assemblies/objects ###
 for n in scene_tree.nodes
     if ConstructionBots.matches_template(ConstructionBots.TransportUnitNode, n)
