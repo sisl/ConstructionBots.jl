@@ -33,6 +33,7 @@ using ECOS
 project_params = get_project_params(4) # 4 = tractor
 
 
+block_save_anim = false
 open_animation_at_end = false
 save_animation_along_the_way = false
 save_animation_at_end = false
@@ -61,6 +62,7 @@ rvo_flag = rvo_flag
 tangent_bug_flag = tangent_bug_flag
 dispersion_flag = dispersion_flag
 
+block_save_anim = block_save_anim
 open_animation_at_end = open_animation_at_end
 save_animation = save_animation_at_end
 save_animation_along_the_way = save_animation_along_the_way
@@ -210,6 +212,7 @@ sim_params = ConstructionBots.SimParameters(
     process_animation_tasks,
     save_anim_interval,
     process_updates_interval,
+    block_save_anim,
     update_anim_at_every_step,
     anim_active_agents,
     anim_active_areas,

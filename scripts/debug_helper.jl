@@ -30,6 +30,7 @@ max_time_steps = sim_params.max_time_steps
 process_animation_tasks = sim_params.process_animation_tasks
 save_anim_interval = sim_params.save_anim_interval
 process_updates_interval = sim_params.process_updates_interval
+block_save_anim = block_save_anim
 update_anim_at_every_step = sim_params.update_anim_at_every_step
 anim_active_agents = sim_params.anim_active_agents
 anim_active_areas = sim_params.anim_active_areas
@@ -43,6 +44,7 @@ sim_params = ConstructionBots.SimParameters(
     process_animation_tasks,
     save_anim_interval,
     process_updates_interval,
+    block_save_anim,
     update_anim_at_every_step,
     anim_active_agents,
     anim_active_areas,

@@ -23,6 +23,7 @@ Keyword arguments:
 - `open_animation_at_end::Bool`: open the animation in the browser at the end of the simulation (default: false)
 - `save_animation::Bool`: save the animation at the end of the simulation (default: false)
 - `save_animation_along_the_way::Bool`: save the animation at periodic intervals during the simulation (default: false)
+- `anim_prog_path::String`: the file path or directory where the animation progress files should be saved 
 - `anim_active_agents::Bool`: animate which agents are active (green circles) (default: false)
 - `anim_active_areas::Bool`: animate which areas are active (purple circles) (default: false)
 - `process_updates_interval::Int`: the interval to process animation updates (default: 25)

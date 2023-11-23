@@ -36,6 +36,7 @@ project_name = project_params[:project_name]
 model_scale = project_params[:model_scale]
 num_robots = project_params[:num_robots]
 
+block_save_anim = false
 open_animation_at_end = true
 save_animation_along_the_way = false
 save_animation = false
@@ -100,6 +101,7 @@ sim_params = ConstructionBots.SimParameters(
     process_animation_tasks,
     save_anim_interval,
     process_updates_interval,
+    block_save_anim,
     update_anim_at_every_step,
     anim_active_agents,
     anim_active_areas,
