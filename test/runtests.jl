@@ -1,7 +1,17 @@
 using ConstructionBots
-using CoordinateTransformations, GeometryBasics, Rotations, StaticArrays
-using Graphs, LazySets, LinearAlgebra
-using Logging, Test
+
+# Utility libraries
+using Logging
+using Test
+
+# Geometry, graphs, and mathematical operations
+using CoordinateTransformations
+using GeometryBasics
+using Graphs
+using LazySets
+using LinearAlgebra
+using Rotations
+using StaticArrays
 
 # Set logging level
 global_logger(SimpleLogger(stderr, Logging.Warn))

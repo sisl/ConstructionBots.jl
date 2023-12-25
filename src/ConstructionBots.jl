@@ -1,44 +1,41 @@
 module ConstructionBots
 
-using Printf
-using Parameters
-using StaticArrays
-using JuMP
-using MathOptInterface
-using LinearAlgebra
-using ForwardDiff
-using SpatialIndexing
-using Logging
-using MeshCat
-using SparseArrays
-using DataStructures
-using Rotations
-using CoordinateTransformations
-using LazySets
-using GeometryBasics
-using Graphs
-using MetaGraphs
-
-using Random
+# Utility libraries
 using Dates
-using StatsBase
-using JLD2
+using Logging
+using Parameters
+using Printf
 using ProgressMeter
+using Random
+using StatsBase
 using TOML
-using PyCall
-using LDrawParser
+
+# Handling arrays and mathematical operations
+using DataStructures
+using ForwardDiff
+using JuMP, MathOptInterface
+using LinearAlgebra
+using SparseArrays
+using StaticArrays
+
+# Handling geometric data and graph structures
+using CoordinateTransformations
+using GeometryBasics
+using Graphs, MetaGraphs
+using LazySets
+using Rotations
+using SpatialIndexing
+
+# Python interfacing, handling LDraw LEGO models
 using Colors
+using LDrawParser
+using PyCall
 
-using HiGHS
-using Gurobi
-using ECOS
-using GLPK
+# Optimization solvers
+using ECOS, GLPK, Gurobi,HiGHS
 
-
-# only needed for plotting stuff
-using Measures
-using Compose
-
+# Generating graphical plots
+using Compose, Measures, MeshCat
 
 include("graph_utils_essentials.jl")
 include("essential_tg_components.jl")

@@ -1,34 +1,22 @@
-
 using ConstructionBots
 
-using Printf
-using Parameters
-using Random
-using StaticArrays
-using LinearAlgebra
+# Utility libraries
 using Dates
-using StatsBase
-using JLD2
-using ProgressMeter
 using Logging
-using TOML
-using LazySets
-using GeometryBasics
-using CoordinateTransformations
-using Rotations
-using Graphs
+using Random
+using StatsBase
+
+# Handling mathematical operations
 using JuMP
-using PyCall
-using MeshCat
-using SparseArrays
+
+# Handling LDraw LEGO models
 using LDrawParser
-using Colors
 
-using HiGHS
-using Gurobi
-using ECOS
+# Optimization solvers
+using HiGHS, Gurobi, ECOS
 
-
+# Generating graphical plots
+using MeshCat
 
 project_params = get_project_params(4) # 4 = tractor
 
