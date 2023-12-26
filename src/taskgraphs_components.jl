@@ -1,5 +1,4 @@
 # TODO(#32): Consider replacing components with direct imports from TaskGraphs
-using TaskGraphs
 
 # Used components from TaskGraphs below
 const path_spec_accessor_interface = [
