@@ -38,7 +38,7 @@ using ECOS, GLPK, Gurobi,HiGHS
 using Compose, Measures, MeshCat
 
 include("graph_utils_essentials.jl")
-include("essential_tg_components.jl")
+include("taskgraphs_components.jl")
 include("hierarchical_geom_essentials.jl")
 include("construction_schedule.jl")
 include("rvo_interface.jl")

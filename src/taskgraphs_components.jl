@@ -1,112 +1,69 @@
-# Used components in TaskGraphs
+# TODO(#32): Consider replacing components with direct imports from TaskGraphs
+using TaskGraphs
 
+# Used components from TaskGraphs below
 const path_spec_accessor_interface = [
-    :get_t0,
-    :get_tF,
-    :get_slack,
-    :get_local_slack,
-    :get_min_duration,
-    :get_duration,
+    :get_t0, :get_tF, :get_slack, :get_local_slack, :get_min_duration, :get_duration,
 ]
 const path_spec_mutator_interface = [
-    :set_min_duration!,
-    :set_t0!,
-    :set_slack!,
-    :set_local_slack!,
-    :set_tF!,
+    :set_min_duration!, :set_t0!, :set_slack!, :set_local_slack!, :set_tF!,
 ]
-
 const schedule_node_accessor_interface = [
-    path_spec_accessor_interface...,
-    :get_path_spec
+    path_spec_accessor_interface..., :get_path_spec
 ]
 const schedule_node_mutator_interface = [
-    path_spec_mutator_interface...,
-    :set_path_spec!
+    path_spec_mutator_interface..., :set_path_spec!
 ]
 
 """
     ProblemSpec{G}
 
-Encodes the the relaxed PC-TAPF problem that ignores collision-avoidance
-constraints.
-
+Encodes the relaxed PC-TAPF problem that ignores collision-avoidance constraints.
+    
 Elements:
 - D::T - a distance matrix (or environment) that implements get_distance(D,x1,x2,args...)
 - cost_function::F - the optimization objective (default is SumOfMakeSpans)
 - Δt_collect::Dict{ObjectID,Int} # duration of COLLECT operations
 - Δt_deposit::Dict{ObjectID,Int} # duration of DEPOSIT operations
 """
-@with_kw struct ProblemSpec{T,F}
+@with_kw struct ProblemSpec{T, F}
     D::T = zeros(0, 0) # environment or distance matrix
     cost_function::F = SumOfMakeSpans()
-    Δt_collect::Dict{ObjectID,Int} = Dict{ObjectID,Int}() # duration of COLLECT operations
-    Δt_deposit::Dict{ObjectID,Int} = Dict{ObjectID,Int}() # duration of DELIVER operations
+    Δt_collect::Dict{ObjectID, Int} = Dict{ObjectID, Int}() # duration of COLLECT operations
+    Δt_deposit::Dict{ObjectID, Int} = Dict{ObjectID, Int}() # duration of DEPOSIT operations
 end
 
 """
     PathSpec
 
-Encodes information about the path that must be planned for a particular
-schedule node.
+Encodes information about the path that must be planned for a particular schedule node.
 
 Fields:
-* `node_type::Symbol = :EMPTY`
-* `start_vtx::Int = -1`
-* `final_vtx::Int = -1`
-* `min_duration::Int = 0`
-* `agent_id::Int = -1`
-* `object_id::Int = -1`
-* `plan_path::Bool = true` - flag indicating whether a path must be planned.
-    For example, `Operation` nodes do not require any path planning.
-* `tight::Bool = false` - if true, the path may not terminate prior to the
-    beginning of successors. If `tight == true`, local slack == 0. For example,
-    `GO` must not end before `COLLECT` can begin, because this would produce
-    empty time between planning phases.
-* `static::Bool = false` - if true, the robot must remain in place for this
-    planning phase (e.g., COLLECT, DEPOSIT).
-* `free::Bool = false` - if true, and if the node is a terminal node, the
-    planning must go on until all non-free nodes are completed.
-* `fixed::Bool = false` - if true, do not plan path because it is already fixed.
-    Instead, retrieve the portion of the path directly from the pre-existing
-    solution.
+- node_type::Symbol = :EMPTY
+- start_vtx::Int = -1
+- final_vtx::Int = -1
+- min_duration::Int = 0
+- agent_id::Int = -1
+- object_id::Int = -1
+- plan_path::Bool = true - flag indicating whether a path must be planned. For example, 'Operation' nodes do not require any path planning.
+- tight::Bool = false - if true, the path may not terminate prior to the beginning of successors. If 'tight == true', local slack == 0. For example, 'GO' must not end before 'COLLECT' can begin, because this would produce empty time between planning phases.
+- static::Bool = false - if true, the robot must remain in place for this planning phase (e.g., COLLECT, DEPOSIT).
+- free::Bool = false - if true, and if the node is a terminal node, the planning
+must go on until all non-free nodes are completed.
+- fixed::Bool = false - if true, do not plan path because it is already fixed. Instead, retrieve the portion of the path directly from the pre-existing solution.
 """
 @with_kw mutable struct PathSpec
-    # temporal
     t0::Float64 = 0
     min_duration::Float64 = 0
     tF::Float64 = t0 + min_duration
     slack::Vector{Float64} = Float64[]
     local_slack::Vector{Float64} = Float64[]
-    # instructions
     plan_path::Bool = true
     tight::Bool = false
     static::Bool = false
     free::Bool = false
     fixed::Bool = false
 end
-get_t0(spec::PathSpec) = spec.t0
-set_t0!(spec::PathSpec, val) = begin
-    spec.t0 = val
-end
-get_tF(spec::PathSpec) = spec.tF
-set_tF!(spec::PathSpec, val) = begin
-    spec.tF = val
-end
-get_min_duration(spec::PathSpec) = spec.min_duration
-set_min_duration!(spec::PathSpec, val) = begin
-    spec.min_duration = val
-end
-get_duration(spec::PathSpec) = get_tF(spec) - get_t0(spec)
-get_slack(spec::PathSpec) = spec.slack
-set_slack!(spec::PathSpec, val) = begin
-    spec.slack = val
-end
-get_local_slack(spec::PathSpec) = spec.local_slack
-set_local_slack!(spec::PathSpec, val) = begin
-    spec.local_slack = val
-end
-Base.summary(s::PathSpec) = string("t0=", s.t0, ", tF=", s.tF, ", fixed=", s.fixed)
 
 """
     ScheduleNode{I<:AbstractID,V<:AbstractPlanningPredicate}
@@ -120,9 +77,27 @@ mutable struct ScheduleNode{I<:AbstractID,V}
 end
 ScheduleNode(id, node) = ScheduleNode(id, node, PathSpec())
 
+for op in [:(matches_template)]
+    @eval $op(template::Type{T}, node::ScheduleNode) where {T} = $op(template, node.node)
+end
+Base.summary(n::ScheduleNode) = string(string(n.node), " [", summary(n.spec), "]")
+
+# Accessor and Mutator Methods for PathSpec and ScheduleNode
+get_t0(spec::PathSpec) = spec.t0
+set_t0!(spec::PathSpec, val) = begin spec.t0 = val end
+get_tF(spec::PathSpec) = spec.tF
+set_tF!(spec::PathSpec, val) = begin spec.tF = val end
+get_min_duration(spec::PathSpec) = spec.min_duration
+set_min_duration!(spec::PathSpec, val) = begin spec.min_duration = val end
+get_duration(spec::PathSpec) = get_tF(spec) - get_t0(spec)
+get_slack(spec::PathSpec) = spec.slack
+set_slack!(spec::PathSpec, val) = begin spec.slack = val end
+get_local_slack(spec::PathSpec) = spec.local_slack
+set_local_slack!(spec::PathSpec, val) = begin spec.local_slack = val end
+Base.summary(s::PathSpec) = string("t0=", s.t0, ", tF=", s.tF, ", fixed=", s.fixed)
+
 get_path_spec(node::ScheduleNode) = node.spec
 Base.copy(n::ScheduleNode) = ScheduleNode(n.id, copy(n.node), deepcopy(n.spec))
-
 function set_path_spec!(node::ScheduleNode, spec)
     node.spec = spec
 end
@@ -133,15 +108,6 @@ end
 for op in path_spec_mutator_interface
     @eval $op(node::ScheduleNode, val) = $op(get_path_spec(node), val)
 end
-# for op in predicate_accessor_interface
-#     @eval $op(node::ScheduleNode) = $op(node.node)
-# end
-for op in [:(matches_template)]
-    @eval $op(template::Type{T}, node::ScheduleNode) where {T} = $op(template, node.node)
-end
-Base.summary(n::ScheduleNode) = string(string(n.node), " [", summary(n.spec), "]")
-
-
 
 """
     OperatingSchedule
@@ -177,7 +143,7 @@ get_vtx(sched::OperatingSchedule, node::ScheduleNode) = get_vtx(sched, node.id)
 get_node_from_id(sched::OperatingSchedule, id) = get_node(sched, id).node
 get_node_from_vtx(sched::OperatingSchedule, v) = get_node(sched, v).node
 
-
+# Accessor and mutator interfaces for OperatingSchedule
 for op in schedule_node_accessor_interface
     @eval $op(sched::OperatingSchedule, v) = $op(get_node(sched, v))
     @eval $op(sched::OperatingSchedule) = map(v -> $op(get_node(sched, v)), Graphs.vertices(sched))
@@ -191,56 +157,33 @@ for op in schedule_node_mutator_interface
     end
 end
 
-# Defining default node parameters
+# Additional methods and criteria for ScheduleNode
 is_tight(p) = false
-# is_tight(::BOT_GO) = true
 is_free(p) = false
-# is_free(p::BOT_AT) = true
-
-# is_free(p::BOT_GO) = is_valid(get_destination_location_id(p))
-
 is_static(p) = false
-# is_static(p::Union{BOT_COLLECT,BOT_DEPOSIT}) = true
-# for op in [:is_free, :is_static, :is_tight]
-#     @eval $op(p::TEAM_ACTION) = $op(sub_nodes(p)[1])
-# end
 needs_path(p) = false
-# needs_path(p::Union{BOT_AT,AbstractRobotAction}) = true
 duration_lower_bound(args...) = 0
-# duration_lower_bound(op::Operation, spec) = duration(op)
-# duration_lower_bound(p::BOT_COLLECT, spec) = get(spec.Δt_collect, get_object_id(p), 0)
-# duration_lower_bound(p::BOT_DEPOSIT, spec) = get(spec.Δt_deposit, get_object_id(p), 0)
-# function duration_lower_bound(p::Union{BOT_AT,AbstractRobotAction}, spec)
-#     x1 = get_initial_location_id(p)
-#     x2 = get_destination_location_id(p)
-#     return get_distance(spec, x1, x2)
-# end
-# function duration_lower_bound(p::TEAM_ACTION, spec)
-#     x1 = get_initial_location_id(p.instructions[1])
-#     x2 = get_destination_location_id(p.instructions[1])
-#     return get_distance(spec, x1, x2, team_configuration(p))
-# end
-
 
 """
-    replace_in_schedule!(schedule::OperatingSchedule,path_spec::T,pred,id::ID) where {T<:PathSpec,ID<:AbstractID}
+    replace_in_schedule!(schedule::OperatingSchedule, path_spec::T, pred, id::ID) where {T <: PathSpec, ID <: AbstractID}
 
-Replace the `ScheduleNode` associated with `id` with the new node `pred`, and
-the accompanying `PathSpec` `path_spec`.
+Replace the `ScheduleNode` associated with `id` with the new node `pred`, and the accompanying `PathSpec` `path_spec`.
 """
-replace_in_schedule!(sched::OperatingSchedule, node::ScheduleNode, id::AbstractID=node.id) = replace_node!(sched, node, id)
-function replace_in_schedule!(sched::P, path_spec::T, pred, id::ID) where {P<:OperatingSchedule,T<:PathSpec,ID<:AbstractID}
+replace_in_schedule!(sched::OperatingSchedule, node::ScheduleNode, id::AbstractID = node.id) = replace_node!(sched, node, id)
+
+function replace_in_schedule!(sched::P, path_spec::T, pred, id::ID) where {P <: OperatingSchedule, T <: PathSpec, ID <: AbstractID}
     replace_in_schedule!(sched, ScheduleNode(id, pred, path_spec))
 end
-function replace_in_schedule!(sched::P, spec, pred, id::ID) where {P<:OperatingSchedule,ID<:AbstractID}
+
+function replace_in_schedule!(sched::P, spec, pred, id::ID) where {P <: OperatingSchedule, ID <: AbstractID}
     replace_in_schedule!(sched, generate_path_spec(sched, spec, pred), pred, id)
 end
-function replace_in_schedule!(sched::P, pred, id::ID) where {P<:OperatingSchedule,ID<:AbstractID}
+
+function replace_in_schedule!(sched::P, pred, id::ID) where {P <: OperatingSchedule, ID <: AbstractID}
     replace_in_schedule!(sched, ProblemSpec(), pred, id)
 end
 
 add_node!(sched::OperatingSchedule, node::ScheduleNode) = add_node!(sched, node, node.id)
-
 
 function validate(sched::OperatingSchedule)
     try
@@ -328,9 +271,7 @@ end
 
 makespan(sched::OperatingSchedule) = maximum(get_tF(sched))
 
-
 #################################################
-
 abstract type AbstractPlanningPredicate end
 abstract type AbstractRobotAction{R<:AbstractRobotType} <: AbstractPlanningPredicate end
 abstract type AbstractSingleRobotAction{R<:AbstractRobotType} <: AbstractRobotAction{R} end
@@ -341,7 +282,7 @@ Base.copy(p::AbstractPlanningPredicate) = deepcopy(p)
 robot_type(a::AbstractRobotAction{R}) where {R} = R
 robot_type(a) = Nothing
 
-#! Do we need this here? Better someplace else? Probably...
+# Do we need this here? Better someplace else?
 graph_key() = Symbol(DefaultRobotType)
 function graph_key(a)
     if robot_type(a) == Nothing
@@ -386,7 +327,6 @@ after assignments (or re-assignments) have been made.
 """
 align_with_successor(node, succ) = node
 
-
 is_valid(id::A) where {A<:AbstractID} = valid_id(id) #get_id(id) != -1
 first_valid(a, b) = is_valid(a) ? a : b
 
@@ -400,9 +340,7 @@ Returns true if {A <: B}
 """
 matches_node_type(::A, ::Type{B}) where {A,B} = A <: B
 
-
-#####################
-
+#################################################
 """
     AbstractCostModel{T}
 """
@@ -429,36 +367,6 @@ struct MaxCost <: AggregationFunction end
 struct SumCost <: AggregationFunction end
 (f::SumCost)(costs...) = sum(costs...)
 
-# """
-#     FullCostModel{F,T,M<:AbstractCostModel{T}} <: AbstractCostModel{T}
-
-# The `FullCostModel` defines all the behavior required for running CBS-based
-# algorithms.
-
-# Elements:
-# - f::F must be callable, and defines how a vector of path costs (e.g., the
-#     paths of a solution) should be combined into a single cost that reflects
-#     the cost of the entire path group together
-# - model::M<:AbstractCostModel{T} defines how the cost is computed during low
-# level search (when individual paths are being compared against each other).
-# """
-# struct FullCostModel{F,T,M<:AbstractCostModel{T}} <: AbstractCostModel{T}
-#     f::F        # the aggregation function
-#     model::M    # the low level cost model
-# end
-# get_aggregation_function(m::FullCostModel)  = m.f
-# aggregate_costs(m::FullCostModel, costs)    = m.f(costs)
-# get_cost_model(m::FullCostModel)            = m.model
-# for op in [:accumulate_cost,:get_initial_cost,:compute_path_cost,
-#     :get_infeasible_cost,:add_heuristic_cost,:get_transition_cost]
-#     @eval $op(model::FullCostModel,args...) = $op(model.model,args...)
-# end
-# for T in [:FullCostModel]
-#     @eval begin
-#         add_heuristic_cost(m::$T, h::H, env::E, args...) where {H<:AbstractCostModel,E<:AbstractLowLevelEnv} = add_heuristic_cost(m.model, h, env, args...)
-#     end
-# end
-
 """
     LowLevelCostModel{C}
 
@@ -466,16 +374,16 @@ The low level cost model defines the objective to be optimized by the
 solver at the low level. An optimal low level solver will return a path if a
 feasible path exists) of minimal cost under the objective specified by the
 associated LowLevelCostModel.
-The parameter `C` defines the `cost_type` of the objective. The following
-functions must be implemented for a `LowLevelCostModel` to be used:
-* `get_initial_cost(model::LowLevelCostModel,env)` - returns
+The parameter 'C' defines the cost_type of the objective. The following
+functions must be implemented for a 'LowLevelCostModel' to be used:
+- get_initial_cost(model::LowLevelCostModel,env) - returns
 the initial_cost for a path
-* `get_transition_cost(model::LowLevelCostModel{C},path::Path,s::S,a::A,
-    sp::S) where {S,A,C}` - defines the cost associated with taking action
-    `a` from state `s` to arrive in state `sp` according to the objective
-    defined by `model` given that `s` is the "tip" of `path`.
-* `accumulate_cost(model::LowLevelCostModel{C}, current_cost::C,
-    transition_cost::C)` - defines how cost accumulates as new `PathNode`s
+- get_transition_cost(model::LowLevelCostModel{C},path::Path,s::S,a::A,
+    sp::S) where {S,A,C}' - defines the cost associated with taking action
+    'a' from state 's' to arrive in state 'sp' according to the objective
+    defined by 'model' given that 's' is the "tip" of 'path'.
+- accumulate_cost(model::LowLevelCostModel{C}, current_cost::C,
+    transition_cost::C) - defines how cost accumulates as new PathNodes
     are added to a Path.
 """
 abstract type LowLevelCostModel{T} <: AbstractCostModel{T} end
@@ -486,7 +394,6 @@ abstract type LowLevelCostModel{T} <: AbstractCostModel{T} end
 Cost model that assigns cost equal to the duration of a path.
 """
 struct TravelTime <: LowLevelCostModel{Float64} end
-
 
 abstract type AbstractDeadlineCost <: LowLevelCostModel{Float64} end
 """
@@ -501,24 +408,18 @@ mutable struct DeadlineCost <: AbstractDeadlineCost
     deadline::Float64 # deadline
     m::TravelTime
 end
+
 DeadlineCost(deadline::R) where {R<:Real} = DeadlineCost(deadline, TravelTime())
 function set_deadline!(m::DeadlineCost, t_max)
     m.deadline = minimum(t_max)
     return m
 end
+
 set_deadline!(m::C, args...) where {C<:AbstractCostModel} = nothing
-# set_deadline!(m::C,args...) where {C<:FullCostModel} = set_deadline!(m.model,args...)
-# set_deadline!(m::C,args...) where {C<:MetaCostModel} = set_deadline!(m.model,args...)
-# function set_deadline!(m::C,args...) where {C<:CompositeCostModel}
-#     for model in m.cost_models
-#         set_deadline!(model,args...)
-#     end
-# end
 add_heuristic_cost(m::C, cost, h_cost) where {C<:DeadlineCost} = max(0.0, cost + h_cost - m.deadline) # assumes heuristic is PerfectHeuristic
 for op in [:accumulate_cost, :get_initial_cost, :get_transition_cost, :compute_path_cost]
     @eval $op(model::AbstractDeadlineCost, args...) = $op(model.m, args...)
 end
-# FullDeadlineCost(model::DeadlineCost) = FullCostModel(costs->max(0.0, maximum(costs)),model)
 
 """
     MultiDeadlineCost
@@ -533,12 +434,14 @@ struct MultiDeadlineCost{F} <: AbstractDeadlineCost
     deadlines::Vector{Float64}
     m::TravelTime
 end
+
 const SumOfMakeSpans = MultiDeadlineCost{SumCost}
 const MakeSpan = MultiDeadlineCost{MaxCost}
 SumOfMakeSpans(tF, root_nodes, weights, deadlines) = MultiDeadlineCost(SumCost(), Float64.(tF), root_nodes, Float64.(weights), Float64.(deadlines), TravelTime())
 SumOfMakeSpans() = MultiDeadlineCost(SumCost(), Float64[], Int[], Float64[], Float64[], TravelTime())
 MakeSpan(tF, root_nodes, weights, deadlines) = MultiDeadlineCost(MaxCost(), Float64.(tF), root_nodes, Float64.(weights), Float64.(deadlines), TravelTime())
 MakeSpan() = MultiDeadlineCost(MaxCost(), Float64[], Int[], Float64[], Float64[], TravelTime())
+
 function set_deadline!(m::M, t_max) where {M<:MultiDeadlineCost}
     m.deadlines .= t_max
     return m
@@ -547,9 +450,7 @@ add_heuristic_cost(m::C, cost, h_cost) where {C<:MultiDeadlineCost} = m.f(m.weig
 aggregate_costs(m::C, costs::Vector{T}) where {T,C<:MultiDeadlineCost} = m.f(m.tF[m.root_nodes] .* m.weights)
 aggregate_costs_meta(m::C, costs::Vector{T}) where {T,C<:MultiDeadlineCost} = maximum(costs)
 
-
 #################################################
-
 """
     TaskGraphsMILP
 
@@ -620,7 +521,6 @@ function get_assignment_matrix(model::M) where {M<:JuMP.Model}
     Matrix{Int}(min.(1, round.(value.(model[:X])))) # guarantees binary matrix
 end
 get_assignment_matrix(model::TaskGraphsMILP) = get_assignment_matrix(model.model)
-
 
 """
     preprocess_project_schedule(sched)
@@ -695,13 +595,11 @@ function preprocess_project_schedule(sched)
     end
     @assert(!any(n_eligible_predecessors .< n_required_predecessors))
     @assert(!any(n_eligible_successors .< n_required_successors))
-
     upstream_vertices = map(v -> [v, map(e -> e.dst, collect(edges(bfs_tree(G, v; dir=:in))))...], Graphs.vertices(G))
     non_upstream_vertices = map(v -> collect(setdiff(collect(Graphs.vertices(G)), upstream_vertices[v])), Graphs.vertices(G))
 
     return missing_successors, missing_predecessors, n_eligible_successors, n_eligible_predecessors, n_required_successors, n_required_predecessors, upstream_vertices, non_upstream_vertices
 end
-
 
 """
     formulate_milp(milp_model::AssignmentMILP,sched,problem_spec;kwargs...)
@@ -733,15 +631,12 @@ function formulate_milp(milp_model::AssignmentMILP,
     cost_model=problem_spec.cost_function,
     Mm=10000,
     kwargs...)
-
     # SETUP
     # Define optimization model
     model = Model(optimizer_with_attributes(optimizer))
     set_optimizer_attributes(model, default_milp_optimizer_attributes()...)
     milp = AssignmentMILP(model=model, sched=sched)
-
     @unpack robot_ics, object_ics, operations, robot_map, object_map, operation_map = milp
-
     N = length(robot_ics) # number of robots
     M = length(object_ics) # number of delivery tasks
     Δt_collect = zeros(Int, M)
@@ -759,24 +654,22 @@ function formulate_milp(milp_model::AssignmentMILP,
     end
     # from ProblemSpec
     D = (x, y) -> get_distance(problem_spec, x, y)
-
     @variable(model, to0[1:M] >= 0.0) # object availability time
     @variable(model, tor[1:M] >= 0.0) # object robot arrival time
     @variable(model, toc[1:M] >= 0.0) # object collection complete time
     @variable(model, tod[1:M] >= 0.0) # object deliver begin time
     @variable(model, tof[1:M] >= 0.0) # object termination time
     @variable(model, tr0[1:N+M] >= 0.0) # robot availability time
-
     # Assignment matrix x
-    @variable(model, X[1:N+M, 1:M], binary = true) # X[i,j] ∈ {0,1}
-    @constraint(model, X * ones(M) .<= 1)         # each robot may have no more than 1 task
-    @constraint(model, X' * ones(N + M) .== 1)     # each task must have exactly 1 assignment
-    for (id, node) in robot_ics # robot start times
+    @variable(model, X[1:N+M, 1:M], binary = true)  # X[i,j] ∈ {0,1}
+    @constraint(model, X * ones(M) .<= 1)  # each robot may have no more than 1 task
+    @constraint(model, X' * ones(N + M) .== 1)  # each task must have exactly 1 assignment
+    for (id, node) in robot_ics  # robot start times
         # @constraint(model, tr0[robot_map[id]] == get_t0(node))
         @constraint(model, tr0[robot_map[id]] == get_tF(node))
     end
-    for (id, node) in object_ics # task start times
-        if is_root_node(sched, id) # only applies to root tasks (with no prereqs)
+    for (id, node) in object_ics  # task start times
+        if is_root_node(sched, id)  # only applies to root tasks (with no prereqs)
             # @constraint(model, to0[object_map[id]] == get_t0(node))
             @constraint(model, to0[object_map[id]] == get_tF(node))
         end
@@ -785,7 +678,7 @@ function formulate_milp(milp_model::AssignmentMILP,
     for (id, _) in object_ics
         add_node!(precedence_graph, nothing, id)
     end
-    for (op_id, node) in operations #get_operations(sched) # precedence constraints on task start time
+    for (op_id, node) in operations  #get_operations(sched) # precedence constraints on task start time
         op = node.node
         for (_, input) in preconditions(op)
             i = object_map[get_object_id(input)]
@@ -822,14 +715,8 @@ function formulate_milp(milp_model::AssignmentMILP,
         @constraint(model, toc[j] == tor[j] + Δt_collect[j])
         @constraint(model, tod[j] == toc[j] + D(s0[j], sF[j]))
         @constraint(model, tof[j] == tod[j] + Δt_deposit[j])
-        """ "Job-shop" constraints specifying that no station may be double-booked. A station
-        can only support a single COLLECT or DEPOSIT operation at a time, meaning that all
-        the windows for these operations cannot overlap. In the constraints below, t1 and t2
-        represent the intervals for the COLLECT or DEPOSIT operations of tasks j and j2,
-        respectively. If eny of the operations for these two tasks require use of the same
-        station, we introduce a 2D binary variable y. if y = [1,0], the operation for task
-        j must occur before the operation for task j2. The opposite is true for y == [0,1].
-        We use the big M method here as well to tightly enforce the binary constraints.
+        """ "Job-shop" constraints specifying that no station may be double-booked. A station can only support a single COLLECT or DEPOSIT operation at a time, meaning that all the windows for these operations cannot overlap. In the constraints below, t1 and t2 represent the intervals for the COLLECT or DEPOSIT operations of tasks j and j2,
+        respectively. If eny of the operations for these two tasks require use of the same station, we introduce a 2D binary variable y. if y = [1,0], the operation for task j must occur before the operation for task j2. The opposite is true for y == [0,1]. We use the big M method here as well to tightly enforce the binary constraints.
         """
         for j2 in j+1:M
             if (s0[j] == s0[j2]) || (s0[j] == sF[j2]) || (sF[j] == s0[j2]) || (sF[j] == sF[j2])
@@ -912,40 +799,33 @@ function adj_mat_from_assignment_mat(model::AssignmentMILP, sched::OperatingSche
     return adj_matrix
 end
 
-
 function formulate_milp(
     milp_model::SparseAdjacencyMILP,
     sched,
     problem_spec;
     warm_start_soln::Union{SparseMatrixCSC,Nothing}=nothing,
     optimizer=default_milp_optimizer(),
-    t0_=Dict{AbstractID,Float64}(), # dictionary of initial times. Default is empty
-    tF_=Dict{AbstractID,Float64}(), # dictionary of initial times. Default is empty
-    Mm=10000, # for big M constraints
+    t0_=Dict{AbstractID,Float64}(),  # dictionary of initial times. Default is empty
+    tF_=Dict{AbstractID,Float64}(),  # dictionary of initial times. Default is empty
+    Mm=10000,  # for big M constraints
     cost_model=SumOfMakeSpans(),
     job_shop=milp_model.job_shop,
     kwargs...
 )
-
     warm_start = false
     if !isnothing(warm_start_soln)
         warm_start = true
     end
-
     model = Model(optimizer_with_attributes(optimizer))
     set_optimizer_attributes(model, default_milp_optimizer_attributes()...)
-
     G = get_graph(sched)
     (missing_successors, missing_predecessors, n_eligible_successors,
         n_eligible_predecessors, n_required_successors, n_required_predecessors,
         upstream_vertices, non_upstream_vertices
     ) = preprocess_project_schedule(sched)
-
     Δt = get_min_duration(sched)
-
     @variable(model, t0[1:nv(sched)] >= 0.0) # initial times for all nodes
     @variable(model, tF[1:nv(sched)] >= 0.0) # final times for all nodes
-
     # Precedence relationships
     Xa = SparseMatrixCSC{VariableRef,Int}(nv(sched), nv(sched), ones(Int, nv(sched) + 1), Int[], VariableRef[])
     # set all initial times that are provided
@@ -975,16 +855,16 @@ function formulate_milp(
     for v in Graphs.vertices(sched)
         node = get_node_from_id(sched, get_vtx_id(sched, v))
         potential_match = false
-        if outdegree(sched, v) < n_eligible_successors[v] # NOTE: Trying this out to save time on formulation
-            for v2 in non_upstream_vertices[v] # for v2 in Graphs.vertices(sched)
+        if outdegree(sched, v) < n_eligible_successors[v]  # NOTE: Trying this out to save time on formulation
+            for v2 in non_upstream_vertices[v]  # for v2 in Graphs.vertices(sched)
                 if indegree(sched, v2) < n_eligible_predecessors[v2]
                     node2 = get_node_from_id(sched, get_vtx_id(sched, v2))
                     for (template, val) in missing_successors[v]
-                        if !matches_template(template, typeof(node2)) # possible to add an edge
+                        if !matches_template(template, typeof(node2))  # possible to add an edge
                             continue
                         end
                         for (template2, val2) in missing_predecessors[v2]
-                            if !matches_template(template2, typeof(node)) # possible to add an edge
+                            if !matches_template(template2, typeof(node))  # possible to add an edge
                                 continue
                             end
                             if (val > 0 && val2 > 0)
@@ -1007,7 +887,7 @@ function formulate_milp(
             end
         end
         if potential_match == false && job_shop == false
-            @constraint(model, tF[v] == t0[v] + Δt[v]) # adding this constraint may provide some speedup
+            @constraint(model, tF[v] == t0[v] + Δt[v])  # adding this constraint may provide some speedup
         end
     end
 
@@ -1024,15 +904,10 @@ function formulate_milp(
     end
 
     """
-    "Job-shop" constraints specifying that no station may be double-booked. A station
-    can only support a single COLLECT or DEPOSIT operation at a time, meaning that all
-    the windows for these operations cannot overlap. In the constraints below, t1 and t2
-    represent the intervals for the COLLECT or DEPOSIT operations of tasks j and j2,
-    respectively. If eny of the operations for these two tasks require use of the same
-    station, we introduce a 2D binary variable y. if y = [1,0], the operation for task
-    j must occur before the operation for task j2. The opposite is true for y == [0,1].
-    We use the big M method here as well to tightly enforce the binary constraints.
-    job_shop_variables = Dict{Tuple{Int,Int},JuMP.VariableRef}();
+    "Job-shop" constraints specifying that no station may be double-booked. A station can only support a single COLLECT or DEPOSIT operation at a time, meaning that all the windows for these operations cannot overlap. In the constraints below, t1 and t2 represent the intervals for the COLLECT or DEPOSIT operations of tasks j and j2, respectively. If eny of the operations for these two tasks require use of the same station, we introduce a 2D binary variable y. if y = [1,0], the operation for task
+    j must occur before the operation for task j2. The opposite is true for y == [0,1]. We use the big M method here as well to tightly enforce the binary constraints. 
+    
+    Example: job_shop_variables = Dict{Tuple{Int,Int},JuMP.VariableRef}();
     """
     Xj = SparseMatrixCSC{VariableRef,Int}(nv(sched), nv(sched), ones(Int, nv(sched) + 1), Int[], VariableRef[])
     if job_shop
@@ -1056,10 +931,8 @@ function formulate_milp(
             end
         end
     end
-
     # Full adjacency matrix
     @expression(model, X, Xa .+ Xj) # Make X an expression rather than a variable
-
     milp = SparseAdjacencyMILP(model, Xa, Xj, milp_model.job_shop) #, job_shop_variables
     cost1 = get_objective_expr(milp, cost_model, milp.model, sched, tF)
     @objective(milp.model, Min, cost1)
@@ -1080,7 +953,6 @@ function get_objective_expr(milp, f::SumOfMakeSpans, model, sched, tF)
     end
     cost1 = @expression(model, sum(map(v -> tF[v] * get(sched.weights, v, 1.0), terminal_vtxs)))
 end
-
 
 abstract type AbstractGreedyAssignment <: TaskGraphsMILP end
 abstract type GreedyCost end
@@ -1170,7 +1042,6 @@ function greedy_assignment!(model)
 end
 JuMP.optimize!(model::AbstractGreedyAssignment) = greedy_assignment!(model)
 
-
 function propagate_valid_ids!(sched::OperatingSchedule, problem_spec)
     @assert(is_cyclic(sched) == false, "is_cyclic(sched)") # string(sparse(adj_matrix))
     # Propagate valid IDs through the schedule
@@ -1193,7 +1064,6 @@ function propagate_valid_ids!(sched::OperatingSchedule, problem_spec)
     return true
 end
 
-
 """
     update_project_schedule!
 
@@ -1213,6 +1083,7 @@ function update_project_schedule!(solver, sched::OperatingSchedule, problem_spec
     val = update_project_schedule!(sched, problem_spec, adj_matrix)
     val
 end
+
 function update_project_schedule!(sched::OperatingSchedule, problem_spec, adj_matrix)
     # Add all new edges to project sched
     G = get_graph(sched)
@@ -1264,6 +1135,7 @@ function update_project_schedule!(solver, model::TaskGraphsMILP, sched, prob_spe
 )
     update_project_schedule!(solver, sched, prob_spec, adj_matrix)
 end
+
 function update_project_schedule!(solver, model::AssignmentMILP, sched, prob_spec,
     assignment_matrix=get_assignment_matrix(model),
 )
@@ -1271,13 +1143,51 @@ function update_project_schedule!(solver, model::AssignmentMILP, sched, prob_spe
     update_project_schedule!(solver, sched, prob_spec, adj_matrix)
 end
 
-
 #################################################
+# Structs for PathNode and Conflict
+"""
+    PathNode{S,A}
 
+Includes current state `s`, action `a`, next state `sp`.
+"""
+@with_kw struct PathNode{S,A}
+    s::S = S() # state
+    a::A = A() # action
+    sp::S = S() # next state
+end
+
+"""
+    Conflict{P1<:PathNode,P2<:PathNode}
+
+Represents a conflict between two path nodes.
+"""
+@with_kw struct Conflict{P1<:PathNode,P2<:PathNode}
+    conflict_type::Symbol = :NullConflict
+    agent1_id::Int = -1
+    agent2_id::Int = -1
+    node1::P1 = P1()
+    node2::P2 = P2()
+    t::Int = -1
+end
+
+# Accessor Methods for PathNode and Conflict
+get_s(p::P) where {P<:PathNode} = p.s
+get_a(p::P) where {P<:PathNode} = p.a
+get_sp(p::P) where {P<:PathNode} = p.sp
+state_type(p::PathNode{S,A}) where {S,A} = S
+action_type(p::PathNode{S,A}) where {S,A} = A
+Base.string(p::PathNode) = "$(string(get_s(p))) -- $(string(get_a(p))) -- $(string(get_sp(p)))"
+is_valid(c::C) where {C<:Conflict} = (agent1_id(c) != agent2_id(c)) && (agent1_id(c) != -1) && (agent2_id(c) != -1)
+
+"""
+    PlanningCache
+
+Cache used during planning to store information about processed and active nodes.
+"""
 @with_kw_noshow struct PlanningCache
-    closed_set::Set{Int} = Set{Int}()    # nodes that are completed
-    active_set::Set{Int} = Set{Int}()    # active nodes
-    node_queue::PriorityQueue{Int,Tuple{Int,Float64}} = PriorityQueue{Int,Tuple{Int,Float64}}() # active nodes prioritized by slack
+    closed_set::Set{Int} = Set{Int}()  # nodes that are completed
+    active_set::Set{Int} = Set{Int}()  # active nodes
+    node_queue::PriorityQueue{Int, Tuple{Int, Float64}} = PriorityQueue{Int, Tuple{Int, Float64}}()  # active nodes prioritized by slack
 end
 
 function sprint_cache(io::IO, cache::PlanningCache; label_pad=14, pad=5)
@@ -1303,7 +1213,7 @@ function initialize_planning_cache(sched::OperatingSchedule)
     cache = PlanningCache()
     for v in get_all_root_nodes(sched)
         push!(cache.active_set, v)
-        enqueue!(cache.node_queue, v => isps_queue_cost(sched, v)) # need to store slack
+        enqueue!(cache.node_queue, v => isps_queue_cost(sched, v))  # need to store slack
     end
     cache
 end
@@ -1311,9 +1221,7 @@ end
 """
     `reset_cache!(cache,sched)`
 
-    Resets the cache so that a solution can be repaired (otherwise calling
-    low_level_search!() will return immediately because the cache says it's
-    complete)
+Resets the cache so that a solution can be repaired (otherwise calling low_level_search!() will return immediately because the cache says it's complete)
 """
 function reset_cache!(cache::PlanningCache, sched::OperatingSchedule)
     process_schedule!(sched)
@@ -1329,7 +1237,6 @@ function reset_cache!(cache::PlanningCache, sched::OperatingSchedule)
     cache
 end
 
-
 """
 update_planning_cache!
 
@@ -1337,8 +1244,7 @@ Update cache continually. After a call to this function, the start and end times
 of all schedule nodes will be updated to reflect the progress of active schedule
 nodes (i.e., if a robot had not yet completed a GO task, the predicted final
 time for that task will be updated based on the robot's current state and
-distance to the goal).
-All active nodes that don't require planning will be automatically marked as
+distance to the goal). All active nodes that don't require planning will be automatically marked as
 complete.
 """
 function update_planning_cache!(solver, sched::OperatingSchedule, cache::PlanningCache, v::Int, t=-1)
@@ -1375,8 +1281,8 @@ function update_planning_cache!(solver, sched::OperatingSchedule, cache::Plannin
     return cache
 end
 
-#######################################
-
+#################################################
+# Functions Related to MILP Optimization
 global MILP_OPTIMIZER = nothing
 global DEFAULT_MILP_OPTIMIZER_ATTRIBUTES = Dict{Union{String,MOI.AbstractOptimizerAttribute},Any}()
 
@@ -1424,52 +1330,3 @@ Clear the default optimizer attributes.
 function clear_default_milp_optimizer_attributes!()
     empty!(DEFAULT_MILP_OPTIMIZER_ATTRIBUTES)
 end
-
-########################
-
-"""
-    PathNode{S,A}
-
-Includes current state `s`, action `a`, next state `sp`
-"""
-@with_kw struct PathNode{S,A}
-    s::S = S() # state
-    a::A = A() # action
-    sp::S = S() # next state
-end
-"""
-    get_s
-
-Get the first state in a `PathNode`.
-"""
-get_s(p::P) where {P<:PathNode} = p.s
-"""
-    get_a
-
-Get the action in a `PathNode`.
-"""
-get_a(p::P) where {P<:PathNode} = p.a
-"""
-    get_sp
-
-Get the next state in a `PathNode`.
-"""
-get_sp(p::P) where {P<:PathNode} = p.sp
-state_type(p::PathNode{S,A}) where {S,A} = S
-action_type(p::PathNode{S,A}) where {S,A} = A
-Base.string(p::PathNode) = "$(string(get_s(p))) -- $(string(get_a(p))) -- $(string(get_sp(p)))"
-
-@with_kw struct Conflict{P1<:PathNode,P2<:PathNode}
-    conflict_type::Symbol = :NullConflict
-    agent1_id::Int = -1
-    agent2_id::Int = -1
-    node1::P1 = P1()
-    node2::P2 = P2()
-    t::Int = -1
-end
-
-""" Checks if a conflict is valid """
-is_valid(c::C) where {C<:Conflict} = ((is_state_conflict(c) || is_action_conflict(c))
-                                      && (agent1_id(c) != agent2_id(c))
-                                      && (agent1_id(c) != -1)
-                                      && (agent2_id(c) != -1))
