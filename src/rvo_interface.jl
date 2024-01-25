@@ -4,9 +4,16 @@ struct IntWrapper
     idx::Int
 end
 
+function ensure_rvo_python_module_loaded!()
+    if rvo_python_module() === nothing
+        reset_rvo_python_module!()
+    end
+end
+
 const RVOAgentMap = NGraph{DiGraph,IntWrapper,AbstractID}
 rvo_map_num_agents(m::RVOAgentMap) = nv(m)
 function set_rvo_id_map!(m::RVOAgentMap, id::AbstractID, idx::Int)
+    ensure_rvo_python_module_loaded!()
     @assert nv(m) == idx "RVOAgentMap shows $(nv(m)) agents, but this index is $idx"
     @assert !has_vertex(m, id) "Agent with id $(id) has already been added to schedule"
     add_node!(m, IntWrapper(idx), id)
@@ -67,6 +74,7 @@ end
 global RVO_SIM_WRAPPER = CachedElement{Any}(nothing, false, time())
 rvo_global_sim_wrapper() = RVO_SIM_WRAPPER
 function rvo_set_new_sim!(sim=rvo_new_sim())
+    ensure_rvo_python_module_loaded!()
     set_element!(rvo_global_sim_wrapper(), sim)
     # rvo_global_sim_wrapper().sim = sim
 end
@@ -99,6 +107,7 @@ end
 """ get_rvo_max_speed(node) """
 get_rvo_max_speed(::RobotNode) = rvo_default_max_speed()
 function get_rvo_max_speed(node)
+    ensure_rvo_python_module_loaded!()
     rect = get_base_geom(node, HyperrectangleKey())
     vol = LazySets.volume(rect)
     # Speed limited by volume
@@ -143,6 +152,7 @@ function set_rvo_default_neighborhood_velocity_scale_factor!(val)
 end
 
 function get_rvo_neighbor_distance(node)
+    ensure_rvo_python_module_loaded!()
     d = rvo_default_neighbor_distance()
     v_ratio = get_rvo_max_speed(node) / rvo_default_max_speed()
     delta_d = v_ratio * rvo_default_neighborhood_velocity_scale_factor()
@@ -150,6 +160,7 @@ function get_rvo_neighbor_distance(node)
 end
 
 function rvo_add_agent!(agent::Union{RobotNode,TransportUnitNode}, sim)
+    ensure_rvo_python_module_loaded!()
     rad = get_rvo_radius(agent) * 1.05 # Add a little bit of padding for visualization
     max_speed = get_rvo_max_speed(agent)
     neighbor_dist = get_rvo_neighbor_distance(agent)
@@ -213,6 +224,7 @@ end
 rvo_eligible_node(n) = false
 
 function rvo_add_agents!(scene_tree, sim=rvo_global_sim())
+    ensure_rvo_python_module_loaded!()
     for node in get_nodes(scene_tree)
         if matches_template(RobotNode, node)
             if is_root_node(scene_tree, node)
@@ -227,6 +239,7 @@ function rvo_add_agents!(scene_tree, sim=rvo_global_sim())
 end
 
 function rvo_sim_needs_update(scene_tree)
+    ensure_rvo_python_module_loaded!()
     for node in get_nodes(scene_tree)
         if matches_template(RobotNode, node)
             if is_root_node(scene_tree, node)
