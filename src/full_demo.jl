@@ -542,7 +542,7 @@ function run_lego_demo(;
     # rvo
     if rvo_flag
         ConstructionBots.reset_rvo_python_module!()
-        ConstructionBots.rvo_set_new_sim!(ConstructionBots.rvo_new_sim())
+        ConstructionBots.rvo_set_new_sim!()
     end
 
 
