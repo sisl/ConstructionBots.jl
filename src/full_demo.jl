@@ -237,8 +237,10 @@ function run_lego_demo(;
     ConstructionBots.set_default_rotational_loading_speed!(50 * default_robot_radius())
     ConstructionBots.set_staging_buffer_radius!(default_robot_radius()) # for tangent_bug policy
 
-    ConstructionBots.set_rvo_default_neighbor_distance!(16 * default_robot_radius())
-    ConstructionBots.set_rvo_default_min_neighbor_distance!(10 * default_robot_radius())
+    if rvo_flag
+        ConstructionBots.set_rvo_default_neighbor_distance!(16 * default_robot_radius())
+        ConstructionBots.set_rvo_default_min_neighbor_distance!(10 * default_robot_radius())
+    end
 
     # Setting default optimizer for staging layout
     ConstructionBots.set_default_geom_optimizer!(ECOS.Optimizer)
@@ -566,7 +568,8 @@ function run_lego_demo(;
         if matches_template(Union{RobotStart,FormTransportUnit}, node)
             n = entity(node)
             agent_radius = get_radius(get_base_geom(n, HypersphereKey()))
-            vmax = ConstructionBots.get_rvo_max_speed(n)
+            # TODO(tashakim): enable computing vmax without RVO interface
+            vmax = ConstructionBots.get_rvo_max_speed(n)  
 
             tagent_bug_pol = nothing
             dispersion_pol = nothing
@@ -623,6 +626,7 @@ function run_lego_demo(;
 
     end
 
+    # Configure RVO in route planning
     set_use_rvo!(rvo_flag)
     set_avoid_staging_areas!(true)
 
