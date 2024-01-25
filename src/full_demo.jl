@@ -540,10 +540,7 @@ function run_lego_demo(;
 
 
     # rvo
-    if rvo_flag
-        ConstructionBots.reset_rvo_python_module!()
-        ConstructionBots.rvo_set_new_sim!()
-    end
+    update_simulation_environment("rvo")
 
 
     max_robot_go_id = maximum([n.id.id for n in get_nodes(tg_sched) if matches_template(RobotGo, n)])
@@ -557,9 +554,7 @@ function run_lego_demo(;
         max_cargo_id=max_cargo_id,
     )
 
-    if rvo_flag
-        ConstructionBots.rvo_add_agents!(scene_tree)
-    end
+    add_agents_to_simulation!(scent_tree, "rvo")
 
     static_potential_function = (x, r) -> 0.0
     pairwise_potential_function = ConstructionBots.repulsion_potential
@@ -568,7 +563,7 @@ function run_lego_demo(;
             n = entity(node)
             agent_radius = get_radius(get_base_geom(n, HypersphereKey()))
             # TODO(tashakim): enable computing vmax without RVO interface
-            vmax = ConstructionBots.get_rvo_max_speed(n)  
+            vmax = get_vmax(n, "rvo")
 
             tagent_bug_pol = nothing
             dispersion_pol = nothing
@@ -626,6 +621,8 @@ function run_lego_demo(;
     end
 
     # Configure RVO in route planning
+    # TODO(tashakim): Route planning should eventually take in 
+    # DeconflictionType instead of `rvo_flag`.
     set_use_rvo!(rvo_flag)
     set_avoid_staging_areas!(true)
 
