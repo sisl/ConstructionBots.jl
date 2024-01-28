@@ -7,6 +7,7 @@ let
     anim_active_agents           = true
     anim_active_areas            = true
 
+    deconfliction_type           = nothing
     rvo_flag                     = true
     tangent_bug_flag             = true
     dispersion_flag              = true
@@ -24,6 +25,7 @@ let
 
         assignment_mode              = assignment_mode,
 
+        deconfliction_type           = deconfliction_type,
         rvo_flag                     = rvo_flag,
         tangent_bug_flag             = tangent_bug_flag,
         dispersion_flag              = dispersion_flag,
@@ -50,6 +52,7 @@ let
     anim_active_agents           = false
     anim_active_areas            = false
 
+    deconfliction_type           = nothing
     rvo_flag                     = false
     tangent_bug_flag             = false
     dispersion_flag              = false
@@ -69,7 +72,7 @@ let
         milp_optimizer               = :gurobi, # :gurobi :highs
         optimizer_time_limit         = 30,
 
-
+        deconfliction_type           = deconfliction_type,
         rvo_flag                     = rvo_flag,
         tangent_bug_flag             = tangent_bug_flag,
         dispersion_flag              = dispersion_flag,
@@ -99,6 +102,7 @@ let
     anim_active_agents           = false
     anim_active_areas            = false
 
+    deconfliction_type           = nothing
     rvo_flag                     = false
     tangent_bug_flag             = false
     dispersion_flag              = false
@@ -118,7 +122,7 @@ let
         milp_optimizer               = :gurobi, # :gurobi :highs
         optimizer_time_limit         = 30,
 
-
+        deconfliction_type           = deconfliction_type,
         rvo_flag                     = rvo_flag,
         tangent_bug_flag             = tangent_bug_flag,
         dispersion_flag              = dispersion_flag,

@@ -31,6 +31,7 @@ save_anim_interval = 100
 process_updates_interval = 100
 block_save_anim = false
 
+deconfliction_type = nothing
 tangent_bug_flag = true
 rvo_flag = true
 dispersion_flag = true
@@ -47,6 +48,7 @@ env, stats = run_lego_demo(;
     assignment_mode=assignment_mode,
     milp_optimizer=milp_optimizer,
     optimizer_time_limit=optimizer_time_limit,
+    deconfliction_type=deconfliction_type,
     rvo_flag=rvo_flag,
     tangent_bug_flag=tangent_bug_flag,
     dispersion_flag=dispersion_flag,

@@ -30,6 +30,7 @@ Keyword arguments:
 - `block_save_anim::Bool`: whether to save the animation in blocks instead of incrementally. false = incrementall, true = save in blocks (default: false)
 - `update_anim_at_every_step::Bool`: whether to update the animation at every step (default: false)
 - `save_anim_interval::Int`: the interval of number of updates to save the animation if `save_animation_along_the_way=true` (default: 500)
+- `deconfliction_type::DeconflictStrategy`: algorithm used for decentralized collision avoidance
 - `rvo_flag::Bool`: whether to use RVO (default: true)
 - `tangent_bug_flag::Bool`: whether to use tangent bug (default: true)
 - `dispersion_flag::Bool`: whether to use dispersion (default: true)
@@ -72,9 +73,10 @@ function run_lego_demo(;
     block_save_anim::Bool=false,
     update_anim_at_every_step::Bool=false,
     save_anim_interval::Int=500,
-    rvo_flag::Bool=true,
-    tangent_bug_flag::Bool=true,
-    dispersion_flag::Bool=true,
+    deconfliction_type::DeconflictStrategy=nothing,
+    rvo_flag::Bool=true,  # TODO(tashakim): remove after inheriting from DeconflictStrategy
+    tangent_bug_flag::Bool=true,  # TODO(tashakim): remove after inheriting from DeconflictStrategy
+    dispersion_flag::Bool=true,  # TODO(tashakim): remove after inheriting from DeconflictStrategy
     overwrite_results::Bool=false,
     write_results::Bool=true,
     max_num_iters_no_progress::Int=10000,
