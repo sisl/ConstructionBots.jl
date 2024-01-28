@@ -1,17 +1,17 @@
 export TangentBugPolicy
 
-@with_kw mutable struct TangentBugPolicy
-    mode = :MOVE_TOWARD_GOAL
-    vmax = 1.0
-    dt = 1/40.0
-    proximity_tolerance = 1e-2
-    agent_radius = 0.5
-    planning_radius = 2 * agent_radius
-    detour_horizon = 2 * planning_radius
-    buffer = staging_buffer_radius()
-    # store config and command
-    config = identity_linear_map()
-    cmd = Twist(SVector(0.0, 0.0, 0.0), SVector(0.0, 0.0, 0.0))
+@with_kw mutable struct TangentBugPolicy <: DeconflictStrategy
+    mode::Symbol = :MOVE_TOWARD_GOAL,
+    vmax::Float64 = 1.0,
+    dt::Float64 = 1/40.0,
+    proximity_tolerance::Float64 = 1e-2,
+    agent_radius::Float64 = 0.5,
+    planning_radius::Float64 = 2 * agent_radius,
+    detour_horizon::Float64 = 2 * planning_radius,
+    buffer::Float64 = staging_buffer_radius(), 
+    # Store config and command 
+    config::Any = identity_linear_map(),
+    cmd::Twist = Twist(SVector(0.0, 0.0, 0.0), SVector(0.0, 0.0, 0.0))
 end
 
 """

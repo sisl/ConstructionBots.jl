@@ -3,6 +3,8 @@
 
 # TODO(tashakim): Define DeconflictionType enum to pass in
 
+abstract type DeconflictStrategy end
+
 # Update the simulation environment by specifying new agent properties.
 function update_simulation_environment(deconfliction_type)
     if deconfliction_type == "rvo"
