@@ -31,7 +31,7 @@ save_anim_interval = 100
 process_updates_interval = 100
 block_save_anim = false
 
-deconfliction_type = :RVO
+deconfliction_type = [:RVO, :TangentBugPolicy, :Dispersion]
 tangent_bug_flag = true
 dispersion_flag = true
 assignment_mode = :greedy # :milp :milp_w_greedy_warm_start

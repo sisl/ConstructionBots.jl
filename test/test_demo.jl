@@ -7,7 +7,7 @@ let
     anim_active_agents           = true
     anim_active_areas            = true
 
-    deconfliction_type           = :RVO
+    deconfliction_type           = [:RVO, :TangentBugPolicy, :Dispersion]
     tangent_bug_flag             = true
     dispersion_flag              = true
     assignment_mode              = :greedy # :milp :greedy :milp_w_greedy_warm_start
@@ -50,7 +50,7 @@ let
     anim_active_agents           = false
     anim_active_areas            = false
 
-    deconfliction_type           = :None  # :None :RVO :TangentBug
+    deconfliction_type           = [:None]
     tangent_bug_flag             = false
     dispersion_flag              = false
     assignment_mode              = :milp  # :greedy :milp_w_greedy_warm_start
@@ -98,7 +98,7 @@ let
     anim_active_agents           = false
     anim_active_areas            = false
 
-    deconfliction_type           = :None  # :None :RVO :TangentBug
+    deconfliction_type           = [:None]
     tangent_bug_flag             = false
     dispersion_flag              = false
     assignment_mode              = :milp_w_greedy_warm_start
