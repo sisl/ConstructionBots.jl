@@ -41,8 +41,8 @@ function update_simulation_environment(deconfliction_type)
     if in(:RVO, deconfliction_type)
         return rvo_set_new_sim!()
     else
-        println("No simulation update required for deconfliction
-         strategy: $deconfliction_type")
+        println("No simulation update required for deconfliction strategy: ",
+            join(symbols_array, ", "))
     end
 end
 
@@ -51,8 +51,8 @@ function add_agents_to_simulation!(scene_tree, deconfliction_type)
     if in(:RVO, deconfliction_type)
         return rvo_add_agents!(scene_tree)
     else
-        println("No new agents to add for deconfliction strategy:
-         $deconfliction_type")
+        println("No new agents to add for deconfliction strategy: ", 
+            join(symbols_array, ", "))
     end
 end
 
@@ -64,8 +64,8 @@ function set_agent_priority(env::PlannerEnv, node)
     if in(:RVO, deconfliction_type)
         return set_rvo_priority!(env, node)
     else
-        println("No agent priority to update for deconfliction strategy:
-         $deconfliction_type")
+        println("No agent priority to update for deconfliction strategy: ", 
+            join(symbols_array, ", "))
     end
 end
 
