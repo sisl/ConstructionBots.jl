@@ -7,8 +7,7 @@ let
     anim_active_agents           = true
     anim_active_areas            = true
 
-    deconfliction_type           = nothing
-    rvo_flag                     = true
+    deconfliction_type           = :RVO
     tangent_bug_flag             = true
     dispersion_flag              = true
     assignment_mode              = :greedy # :milp :greedy :milp_w_greedy_warm_start
@@ -26,7 +25,6 @@ let
         assignment_mode              = assignment_mode,
 
         deconfliction_type           = deconfliction_type,
-        rvo_flag                     = rvo_flag,
         tangent_bug_flag             = tangent_bug_flag,
         dispersion_flag              = dispersion_flag,
 
@@ -52,8 +50,7 @@ let
     anim_active_agents           = false
     anim_active_areas            = false
 
-    deconfliction_type           = nothing
-    rvo_flag                     = false
+    deconfliction_type           = :None  # :None :RVO :TangentBug
     tangent_bug_flag             = false
     dispersion_flag              = false
     assignment_mode              = :milp  # :greedy :milp_w_greedy_warm_start
@@ -73,7 +70,6 @@ let
         optimizer_time_limit         = 30,
 
         deconfliction_type           = deconfliction_type,
-        rvo_flag                     = rvo_flag,
         tangent_bug_flag             = tangent_bug_flag,
         dispersion_flag              = dispersion_flag,
 
@@ -102,8 +98,7 @@ let
     anim_active_agents           = false
     anim_active_areas            = false
 
-    deconfliction_type           = nothing
-    rvo_flag                     = false
+    deconfliction_type           = :None  # :None :RVO :TangentBug
     tangent_bug_flag             = false
     dispersion_flag              = false
     assignment_mode              = :milp_w_greedy_warm_start
@@ -123,7 +118,6 @@ let
         optimizer_time_limit         = 30,
 
         deconfliction_type           = deconfliction_type,
-        rvo_flag                     = rvo_flag,
         tangent_bug_flag             = tangent_bug_flag,
         dispersion_flag              = dispersion_flag,
 

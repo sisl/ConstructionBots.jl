@@ -44,7 +44,7 @@ anim_active_agents = false
 anim_active_areas = false
 update_anim_at_every_step = false
 
-rvo_flag = true
+deconfliction_type = :RVO
 tangent_bug_flag = true
 dispersion_flag = true
 

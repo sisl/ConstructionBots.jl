@@ -30,8 +30,7 @@ Keyword arguments:
 - `block_save_anim::Bool`: whether to save the animation in blocks instead of incrementally. false = incrementall, true = save in blocks (default: false)
 - `update_anim_at_every_step::Bool`: whether to update the animation at every step (default: false)
 - `save_anim_interval::Int`: the interval of number of updates to save the animation if `save_animation_along_the_way=true` (default: 500)
-- `deconfliction_type::DeconflictStrategy`: algorithm used for decentralized collision avoidance
-- `rvo_flag::Bool`: whether to use RVO (default: true)
+- `deconfliction_type::Symbol`: algorithm used for decentralized collision avoidance
 - `tangent_bug_flag::Bool`: whether to use tangent bug (default: true)
 - `dispersion_flag::Bool`: whether to use dispersion (default: true)
 - `overwrite_results::Bool`: whether to overwrite the stats.toml file or create a new one with a date-time filename (default: true)
@@ -73,8 +72,7 @@ function run_lego_demo(;
     block_save_anim::Bool=false,
     update_anim_at_every_step::Bool=false,
     save_anim_interval::Int=500,
-    deconfliction_type::Union{DeconflictStrategy, Nothing},
-    rvo_flag::Bool=true,  # TODO(tashakim): remove after inheriting from DeconflictStrategy
+    deconfliction_type::Symbol=:RVO,
     tangent_bug_flag::Bool=true,  # TODO(tashakim): remove after inheriting from DeconflictStrategy
     dispersion_flag::Bool=true,  # TODO(tashakim): remove after inheriting from DeconflictStrategy
     overwrite_results::Bool=false,
@@ -95,7 +93,7 @@ function run_lego_demo(;
 
     process_animation_tasks = save_animation || save_animation_along_the_way || open_animation_at_end
 
-    if rvo_flag && !dispersion_flag
+    if deconfliction_type == :RVO && !dispersion_flag
         @warn "RVO is enabled but dispersion is disabled. This is not recommended."
     end
 
@@ -114,7 +112,7 @@ function run_lego_demo(;
     stats[:modelscale] = model_scale
     stats[:robotscale] = robot_scale
     stats[:assignment_mode] = string(assignment_mode)
-    stats[:rvo_flag] = rvo_flag
+    stats[:deconfliction_type] = string(deconfliction_type)
     stats[:tangent_bug_flag] = tangent_bug_flag
     stats[:dispersion_flag] = dispersion_flag
     stats[:OptimizerTimeLimit] = optimizer_time_limit
@@ -168,7 +166,7 @@ function run_lego_demo(;
         set_default_milp_optimizer_attributes!(milp_optimizer_attribute_dict)
     end
 
-    if rvo_flag
+    if deconfliction_type == :RVO
         prefix = "RVO"
     else
         prefix = "no-RVO"
@@ -238,7 +236,7 @@ function run_lego_demo(;
     ConstructionBots.set_default_rotational_loading_speed!(50 * default_robot_radius())
     ConstructionBots.set_staging_buffer_radius!(default_robot_radius()) # for tangent_bug policy
 
-    if rvo_flag
+    if deconfliction_type == :RVO
         ConstructionBots.set_rvo_default_neighbor_distance!(16 * default_robot_radius())
         ConstructionBots.set_rvo_default_min_neighbor_distance!(10 * default_robot_radius())
     end
@@ -542,7 +540,7 @@ function run_lego_demo(;
 
 
     # rvo
-    update_simulation_environment("rvo")
+    update_simulation_environment(deconfliction_type)
 
 
     max_robot_go_id = maximum([n.id.id for n in get_nodes(tg_sched) if matches_template(RobotGo, n)])
@@ -556,7 +554,7 @@ function run_lego_demo(;
         max_cargo_id=max_cargo_id,
     )
 
-    add_agents_to_simulation!(scene_tree, "rvo")
+    add_agents_to_simulation!(scene_tree, deconfliction_type)
 
     static_potential_function = (x, r) -> 0.0
     pairwise_potential_function = ConstructionBots.repulsion_potential
@@ -565,7 +563,7 @@ function run_lego_demo(;
             n = entity(node)
             agent_radius = get_radius(get_base_geom(n, HypersphereKey()))
             # TODO(tashakim): enable computing vmax without RVO interface
-            vmax = get_vmax(n, "rvo")
+            vmax = get_vmax(n, deconfliction_type)
 
             tagent_bug_pol = nothing
             dispersion_pol = nothing
@@ -623,9 +621,8 @@ function run_lego_demo(;
     end
 
     # Configure RVO in route planning
-    # TODO(tashakim): Route planning should eventually take in 
-    # DeconflictionType instead of `rvo_flag`.
-    set_use_rvo!(rvo_flag)
+    # TODO(tashakim): Update route planning to use DeconflictionStrategy 
+    set_use_rvo!(deconfliction_type == :RVO)
     set_avoid_staging_areas!(true)
 
     execution_start_time = time()

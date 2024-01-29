@@ -29,7 +29,7 @@ anim_active_agents = false
 anim_active_areas = false
 update_anim_at_every_step = false
 
-rvo_flag = true
+deconfliction_type = :RVO
 tangent_bug_flag = true
 dispersion_flag = true
 assignment_mode = :greedy
@@ -46,7 +46,7 @@ assignment_mode = assignment_mode
 milp_optimizer = :gurobi # :gurobi :highs
 optimizer_time_limit = 100
 
-rvo_flag = rvo_flag
+deconfliction_type = deconfliction_type
 tangent_bug_flag = tangent_bug_flag
 dispersion_flag = dispersion_flag
 
@@ -86,7 +86,7 @@ rng::Random.AbstractRNG = Random.MersenneTwister(1)
 
 process_animation_tasks = save_animation || save_animation_along_the_way || open_animation_at_end
 
-if rvo_flag && !dispersion_flag
+if deconfliction_type == :RVO && !dispersion_flag
     @warn "RVO is enabled but dispersion is disabled. This is not recommended."
 end
 
@@ -96,7 +96,7 @@ stats[:rng] = "$rng"
 stats[:modelscale] = model_scale
 stats[:robotscale] = robot_scale
 stats[:assignment_mode] = string(assignment_mode)
-stats[:rvo_flag] = rvo_flag
+stats[:deconfliction_type] = string(deconfliction_type)
 stats[:tangent_bug_flag] = tangent_bug_flag
 stats[:dispersion_flag] = dispersion_flag
 stats[:OptimizerTimeLimit] = optimizer_time_limit
@@ -150,7 +150,7 @@ if assignment_mode == :milp || assignment_mode == :milp_w_greedy_warm_start
     ConstructionBots.set_default_milp_optimizer_attributes!(milp_optimizer_attribute_dict)
 end
 
-if rvo_flag
+if deconfliction_type == :RVO
     prefix = "RVO"
 else
     prefix = "no-RVO"
