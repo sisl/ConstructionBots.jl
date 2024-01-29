@@ -7,6 +7,7 @@
 
 abstract type DeconflictStrategy end
 
+# TODO(tashakim): take in AgentType parameter to update velocity
 function update_velocity(env, deconflict_strategies)
     for node in get_nodes(env.sched)
         if matches_template(Union{RobotStart,FormTransportUnit}, node)
