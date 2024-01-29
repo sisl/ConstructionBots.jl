@@ -160,49 +160,39 @@ function run_lego_demo(;
         set_default_milp_optimizer_attributes!(milp_optimizer_attribute_dict)
     end
 
-    if in(:RVO, deconflict_strategies)
-        prefix = "RVO"
-    else
-        prefix = "no-RVO"
+    # Generate file name and paths based on the specified strategies and modes
+    function generate_prefix(strategy_symbol, positive_prefix, negative_prefix, strategies)
+        return in(strategy_symbol, strategies) ? positive_prefix : negative_prefix
     end
-    if in(:Dispersion, deconflict_strategies)
-        prefix = string(prefix, "_Dispersion")
-    else
-        prefix = string(prefix, "_no-Dispersion")
+    
+    function get_solution_prefix(mode)
+        if mode == :milp
+            return "milp_"
+        elseif mode == :greedy
+            return "greedy_"
+        elseif mode == :milp_w_greedy_warm_start
+            return "milp-ws_"
+        else
+            error("Unknown assignment mode: $(mode)")
+        end
     end
-    if in(:TangentBugPolicy, deconflict_strategies)
-        prefix = string(prefix, "_TangentBug")
-    else
-        prefix = string(prefix, "_no-TangentBug")
+    
+    function generate_file_name(base_name, overwrite_results)
+        return overwrite_results ? base_name : string(Dates.format(Dates.now(), "yyyymmdd_HHMMSS"), "_", base_name)
     end
-    soln_str_pre = ""
-    if assignment_mode == :milp
-        soln_str_pre = "milp_"
-        prefix = string(soln_str_pre, prefix)
-    elseif assignment_mode == :greedy
-        soln_str_pre = "greedy_"
-        prefix = string(soln_str_pre, prefix)
-    elseif assignment_mode == :milp_w_greedy_warm_start
-        soln_str_pre = "milp-ws_"
-        prefix = string(soln_str_pre, prefix)
-    else
-        error("Unknown assignment mode: $(assignment_mode)")
-    end
+    
+    prefix = string(
+        generate_prefix(:RVO, "RVO", "no-RVO", deconflict_strategies),
+        "_", generate_prefix(:Dispersion, "Dispersion", "no-Dispersion", deconflict_strategies),
+        "_", generate_prefix(:TangentBugPolicy, "TangentBug", "no-TangentBug", deconflict_strategies)
+    )
+    soln_str_pre = get_solution_prefix(assignment_mode)
+    prefix = string(soln_str_pre, prefix)
+
     mkpath(joinpath(results_path, prefix))
-
-    name_augment = ""
-    if !overwrite_results
-        name_augment = string(Dates.format(Dates.now(), "yyyymmdd_HHMMSS"), "_")
-    end
-
-    stats_file_name = string(name_augment, "stats", ".toml")
-    anim_file_name = string(name_augment, "visualization.html")
-    anim_prog_file_name = string(name_augment, "visualization_")
-
-    stats_path = joinpath(results_path, prefix, stats_file_name)
-    anim_path = joinpath(results_path, prefix, anim_file_name)
-    anim_prog_path = joinpath(results_path, prefix, anim_prog_file_name)
-
+    stats_path = joinpath(results_path, prefix, generate_file_name("stats.toml", overwrite_results))
+    anim_path = joinpath(results_path, prefix, generate_file_name("visualization.html", overwrite_results))
+    anim_prog_path = joinpath(results_path, prefix, generate_file_name("visualization_", overwrite_results))
 
     sim_params = SimParameters(
         sim_batch_size,
