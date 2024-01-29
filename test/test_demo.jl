@@ -7,7 +7,7 @@ let
     anim_active_agents           = true
     anim_active_areas            = true
 
-    deconfliction_type           = [:RVO, :TangentBugPolicy, :Dispersion]
+    deconflict_strategies           = [:RVO, :TangentBugPolicy, :Dispersion]
     assignment_mode              = :greedy # :milp :greedy :milp_w_greedy_warm_start
 
     write_results                = false
@@ -22,7 +22,7 @@ let
 
         assignment_mode              = assignment_mode,
 
-        deconfliction_type           = deconfliction_type,
+        deconflict_strategies           = deconflict_strategies,
 
         open_animation_at_end        = open_animation_at_end,
         save_animation               = save_animation_at_end,
@@ -46,7 +46,7 @@ let
     anim_active_agents           = false
     anim_active_areas            = false
 
-    deconfliction_type           = [:None]
+    deconflict_strategies           = [:None]
     assignment_mode              = :milp  # :greedy :milp_w_greedy_warm_start
 
     write_results                = true
@@ -63,7 +63,7 @@ let
         milp_optimizer               = :gurobi, # :gurobi :highs
         optimizer_time_limit         = 30,
 
-        deconfliction_type           = deconfliction_type,
+        deconflict_strategies           = deconflict_strategies,
 
         open_animation_at_end        = open_animation_at_end,
         save_animation               = save_animation_at_end,
@@ -90,7 +90,7 @@ let
     anim_active_agents           = false
     anim_active_areas            = false
 
-    deconfliction_type           = [:None]
+    deconflict_strategies           = [:None]
     assignment_mode              = :milp_w_greedy_warm_start
 
     write_results                = true
@@ -107,7 +107,7 @@ let
         milp_optimizer               = :gurobi, # :gurobi :highs
         optimizer_time_limit         = 30,
 
-        deconfliction_type           = deconfliction_type,
+        deconflict_strategies           = deconflict_strategies,
 
         open_animation_at_end        = open_animation_at_end,
         save_animation               = save_animation_at_end,

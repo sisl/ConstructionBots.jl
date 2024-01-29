@@ -44,7 +44,7 @@ anim_active_agents = false
 anim_active_areas = false
 update_anim_at_every_step = false
 
-deconfliction_type = [:RVO, :TangentBugPolicy, :Dispersion]
+deconflict_strategies = [:RVO, :TangentBugPolicy, :Dispersion]
 
 assignment_mode = :greedy
 milp_optimizer = :highs

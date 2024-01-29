@@ -29,7 +29,7 @@ anim_active_agents = false
 anim_active_areas = false
 update_anim_at_every_step = false
 
-deconfliction_type = [:RVO, :TangentBugPolicy, :Dispersion]
+deconflict_strategies = [:RVO, :TangentBugPolicy, :Dispersion]
 assignment_mode = :greedy
 
 write_results = false
@@ -44,7 +44,7 @@ assignment_mode = assignment_mode
 milp_optimizer = :gurobi # :gurobi :highs
 optimizer_time_limit = 100
 
-deconfliction_type = deconfliction_type
+deconflict_strategies = deconflict_strategies
 
 block_save_anim = block_save_anim
 open_animation_at_end = open_animation_at_end
@@ -82,7 +82,7 @@ rng::Random.AbstractRNG = Random.MersenneTwister(1)
 
 process_animation_tasks = save_animation || save_animation_along_the_way || open_animation_at_end
 
-if in(:RVO, deconfliction_type) && !in(:Dispersion, deconfliction_type)
+if in(:RVO, deconflict_strategies) && !in(:Dispersion, deconflict_strategies)
     @warn "RVO is enabled but dispersion is disabled. This is not recommended."
 end
 
@@ -92,7 +92,7 @@ stats[:rng] = "$rng"
 stats[:modelscale] = model_scale
 stats[:robotscale] = robot_scale
 stats[:assignment_mode] = string(assignment_mode)
-stats[:deconfliction_type] = string(deconfliction_type)
+stats[:deconflict_strategies] = string(deconflict_strategies)
 stats[:OptimizerTimeLimit] = optimizer_time_limit
 
 if assignment_mode == :milp
@@ -144,17 +144,17 @@ if assignment_mode == :milp || assignment_mode == :milp_w_greedy_warm_start
     ConstructionBots.set_default_milp_optimizer_attributes!(milp_optimizer_attribute_dict)
 end
 
-if in(:RVO, deconfliction_type)
+if in(:RVO, deconflict_strategies)
     prefix = "RVO"
 else
     prefix = "no-RVO"
 end
-if in(:TangentBugPolicy, deconfliction_type)
+if in(:TangentBugPolicy, deconflict_strategies)
     prefix = string(prefix, "_TangentBug")
 else
     prefix = string(prefix, "_no-TangentBug")
 end
-if in(:Dispersion, deconfliction_type)
+if in(:Dispersion, deconflict_strategies)
     prefix = string(prefix, "_Dispersion")
 else
     prefix = string(prefix, "_no-Dispersion")
