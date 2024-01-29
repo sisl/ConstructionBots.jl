@@ -30,7 +30,6 @@ anim_active_areas = false
 update_anim_at_every_step = false
 
 deconfliction_type = [:RVO, :TangentBugPolicy, :Dispersion]
-tangent_bug_flag = true
 dispersion_flag = true
 assignment_mode = :greedy
 
@@ -47,7 +46,6 @@ milp_optimizer = :gurobi # :gurobi :highs
 optimizer_time_limit = 100
 
 deconfliction_type = deconfliction_type
-tangent_bug_flag = tangent_bug_flag
 dispersion_flag = dispersion_flag
 
 block_save_anim = block_save_anim
@@ -97,7 +95,6 @@ stats[:modelscale] = model_scale
 stats[:robotscale] = robot_scale
 stats[:assignment_mode] = string(assignment_mode)
 stats[:deconfliction_type] = string(deconfliction_type)
-stats[:tangent_bug_flag] = tangent_bug_flag
 stats[:dispersion_flag] = dispersion_flag
 stats[:OptimizerTimeLimit] = optimizer_time_limit
 
@@ -160,7 +157,7 @@ if dispersion_flag
 else
     prefix = string(prefix, "_no-Dispersion")
 end
-if tangent_bug_flag
+if in(:TangentBugPolicy, deconfliction_type)
     prefix = string(prefix, "_TangentBug")
 else
     prefix = string(prefix, "_no-TangentBug")

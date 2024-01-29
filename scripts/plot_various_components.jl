@@ -45,7 +45,6 @@ anim_active_areas = false
 update_anim_at_every_step = false
 
 deconfliction_type = [:RVO, :TangentBugPolicy, :Dispersion]
-tangent_bug_flag = true
 dispersion_flag = true
 
 assignment_mode = :greedy

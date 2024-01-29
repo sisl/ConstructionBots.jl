@@ -31,7 +31,6 @@ Keyword arguments:
 - `update_anim_at_every_step::Bool`: whether to update the animation at every step (default: false)
 - `save_anim_interval::Int`: the interval of number of updates to save the animation if `save_animation_along_the_way=true` (default: 500)
 - `deconfliction_type::Vector{Symbol}`: algorithm used for decentralized collision avoidance
-- `tangent_bug_flag::Bool`: whether to use tangent bug (default: true)
 - `dispersion_flag::Bool`: whether to use dispersion (default: true)
 - `overwrite_results::Bool`: whether to overwrite the stats.toml file or create a new one with a date-time filename (default: true)
 - `write_results::Bool`: whether to write the results to disk (default: true)
@@ -72,8 +71,7 @@ function run_lego_demo(;
     block_save_anim::Bool=false,
     update_anim_at_every_step::Bool=false,
     save_anim_interval::Int=500,
-    deconfliction_type::Vector{Symbol}=[:RVO],
-    tangent_bug_flag::Bool=true,  # TODO(tashakim): remove after inheriting from DeconflictStrategy
+    deconfliction_type::Vector{Symbol}=[:RVO, :TangentBugPolicy],
     dispersion_flag::Bool=true,  # TODO(tashakim): remove after inheriting from DeconflictStrategy
     overwrite_results::Bool=false,
     write_results::Bool=true,
@@ -113,7 +111,6 @@ function run_lego_demo(;
     stats[:robotscale] = robot_scale
     stats[:assignment_mode] = string(assignment_mode)
     stats[:deconfliction_type] = string(deconfliction_type)
-    stats[:tangent_bug_flag] = tangent_bug_flag
     stats[:dispersion_flag] = dispersion_flag
     stats[:OptimizerTimeLimit] = optimizer_time_limit
 
@@ -176,7 +173,7 @@ function run_lego_demo(;
     else
         prefix = string(prefix, "_no-Dispersion")
     end
-    if tangent_bug_flag
+    if in(:TangentBugPolicy, deconfliction_type)
         prefix = string(prefix, "_TangentBug")
     else
         prefix = string(prefix, "_no-TangentBug")

@@ -8,7 +8,6 @@ let
     anim_active_areas            = true
 
     deconfliction_type           = [:RVO, :TangentBugPolicy, :Dispersion]
-    tangent_bug_flag             = true
     dispersion_flag              = true
     assignment_mode              = :greedy # :milp :greedy :milp_w_greedy_warm_start
 
@@ -25,7 +24,6 @@ let
         assignment_mode              = assignment_mode,
 
         deconfliction_type           = deconfliction_type,
-        tangent_bug_flag             = tangent_bug_flag,
         dispersion_flag              = dispersion_flag,
 
         open_animation_at_end        = open_animation_at_end,
@@ -51,7 +49,6 @@ let
     anim_active_areas            = false
 
     deconfliction_type           = [:None]
-    tangent_bug_flag             = false
     dispersion_flag              = false
     assignment_mode              = :milp  # :greedy :milp_w_greedy_warm_start
 
@@ -70,7 +67,6 @@ let
         optimizer_time_limit         = 30,
 
         deconfliction_type           = deconfliction_type,
-        tangent_bug_flag             = tangent_bug_flag,
         dispersion_flag              = dispersion_flag,
 
         open_animation_at_end        = open_animation_at_end,
@@ -99,7 +95,6 @@ let
     anim_active_areas            = false
 
     deconfliction_type           = [:None]
-    tangent_bug_flag             = false
     dispersion_flag              = false
     assignment_mode              = :milp_w_greedy_warm_start
 
@@ -118,7 +113,6 @@ let
         optimizer_time_limit         = 30,
 
         deconfliction_type           = deconfliction_type,
-        tangent_bug_flag             = tangent_bug_flag,
         dispersion_flag              = dispersion_flag,
 
         open_animation_at_end        = open_animation_at_end,

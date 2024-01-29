@@ -32,7 +32,6 @@ process_updates_interval = 100
 block_save_anim = false
 
 deconfliction_type = [:RVO, :TangentBugPolicy, :Dispersion]
-tangent_bug_flag = true
 dispersion_flag = true
 assignment_mode = :greedy # :milp :milp_w_greedy_warm_start
 milp_optimizer = :highs # :gurobi :highs
@@ -48,7 +47,6 @@ env, stats = run_lego_demo(;
     milp_optimizer=milp_optimizer,
     optimizer_time_limit=optimizer_time_limit,
     deconfliction_type=deconfliction_type,
-    tangent_bug_flag=tangent_bug_flag,
     dispersion_flag=dispersion_flag,
     open_animation_at_end=open_animation_at_end,
     save_animation=save_animation_at_end,
