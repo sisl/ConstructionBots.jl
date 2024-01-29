@@ -73,7 +73,7 @@ function run_lego_demo(;
     block_save_anim::Bool=false,
     update_anim_at_every_step::Bool=false,
     save_anim_interval::Int=500,
-    deconfliction_type::DeconflictStrategy=nothing,
+    deconfliction_type::Union{DeconflictStrategy, Nothing},
     rvo_flag::Bool=true,  # TODO(tashakim): remove after inheriting from DeconflictStrategy
     tangent_bug_flag::Bool=true,  # TODO(tashakim): remove after inheriting from DeconflictStrategy
     dispersion_flag::Bool=true,  # TODO(tashakim): remove after inheriting from DeconflictStrategy
@@ -556,7 +556,7 @@ function run_lego_demo(;
         max_cargo_id=max_cargo_id,
     )
 
-    add_agents_to_simulation!(scent_tree, "rvo")
+    add_agents_to_simulation!(scene_tree, "rvo")
 
     static_potential_function = (x, r) -> 0.0
     pairwise_potential_function = ConstructionBots.repulsion_potential

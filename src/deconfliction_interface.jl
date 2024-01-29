@@ -15,7 +15,7 @@ function update_simulation_environment(deconfliction_type)
 end
 
 # Add agents to simulation based on the deconfliction algorithm used.
-function add_agents_to_simulation(scene_tree, deconfliction_type)
+function add_agents_to_simulation!(scene_tree, deconfliction_type)
     if deconfliction_type == "rvo"
         return rvo_add_agents!(scene_tree)
     else
