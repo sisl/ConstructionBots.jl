@@ -7,6 +7,22 @@
 
 abstract type DeconflictStrategy end
 
+# TODO(tashakim): refine method to set default agent properties 
+# that are dependent on the type of deconflict strategies used. 
+# I.e., this method should replace rvo_default_neighbor_distance,
+# rvo_default_min_neighbor_distance etc.
+function set_agent_properties(deconflict_strategies)
+    if in(:RVO, deconflict_strategies)
+        # TODO(tashakim): figure out if these fields should be part of AgentType
+        # or DeconflictStrategy type, then update accordingly.
+        set_rvo_default_neighbor_distance!(16 * default_robot_radius())
+        set_rvo_default_min_neighbor_distance!(10 * default_robot_radius())
+    else
+        println("No agent properties set for deconfliction strategies: ",
+        join(deconflict_strategies, ", "))
+    end
+end
+
 # TODO(tashakim): take in AgentType parameter to update velocity
 function update_velocity(env, deconflict_strategies)
     for node in get_nodes(env.sched)
@@ -40,7 +56,7 @@ end
 # Update the simulation environment by specifying new agent properties.
 function update_simulation_environment(deconflict_strategies)
     if in(:RVO, deconflict_strategies)
-        return rvo_set_new_sim!()
+        rvo_set_new_sim!()
     else
         println("No simulation update required for deconfliction strategy: ",
             join(deconflict_strategies, ", "))

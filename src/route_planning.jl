@@ -12,16 +12,28 @@ export
 
 
 export
+    set_use_deconfliction,
     use_rvo,
-    set_use_rvo!,
     avoid_staging_areas,
     set_avoid_staging_areas!
 
+function set_use_deconfliction(deconflict_strategies)
+    if in(:RVO, deconflict_strategies)
+        global USE_RVO = true
+    else
+        global USE_RVO = false
+        println("No configuration required in route planning for 
+        deconfliction strategy: ", join(deconflict_strategies, ", "))
+    end
+end
+
+# TODO(tashakim): eliminate reliance on this global variable, and replace
+# instances in route planning that depend on this boolean indicator.
+# Figure out why USE_RVO needs to be set `true` as default here. This
+# shouldn't be the case. 
 global USE_RVO = true
 use_rvo() = USE_RVO
-function set_use_rvo!(val)
-    global USE_RVO = val
-end
+
 global AVOID_STAGING_AREAS = false
 avoid_staging_areas() = AVOID_STAGING_AREAS
 function set_avoid_staging_areas!(val)

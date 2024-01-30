@@ -216,19 +216,16 @@ function run_lego_demo(;
         Cylinder(Point(0.0, 0.0, 0.0), Point(0.0, 0.0, robot_height), robot_radius)
     )
 
+    # TODO(tashakim): move logic below into deconfliction interface.
     ConstructionBots.set_default_loading_speed!(50 * default_robot_radius())
     ConstructionBots.set_default_rotational_loading_speed!(50 * default_robot_radius())
     ConstructionBots.set_staging_buffer_radius!(default_robot_radius()) # for tangent_bug policy
 
-    if in(:RVO, deconflict_strategies)
-        ConstructionBots.set_rvo_default_neighbor_distance!(16 * default_robot_radius())
-        ConstructionBots.set_rvo_default_min_neighbor_distance!(10 * default_robot_radius())
-    end
+    set_agent_properties(deconflict_strategies)
 
     # Setting default optimizer for staging layout
     ConstructionBots.set_default_geom_optimizer!(ECOS.Optimizer)
     ConstructionBots.set_default_geom_optimizer_attributes!(MOI.Silent() => true)
-
 
     pre_execution_start_time = time()
     model = parse_ldraw_file(filename; ignore_rotation_determinant=ignore_rot_matrix_warning)
@@ -522,7 +519,7 @@ function run_lego_demo(;
 
     set_scene_tree_to_initial_condition!(scene_tree, sched; remove_all_edges=true)
 
-    # rvo
+    # Apply deconfliction strategies in simulation
     update_simulation_environment(deconflict_strategies)
     env = PlannerEnv(
         sched=tg_sched,
@@ -533,10 +530,10 @@ function run_lego_demo(;
     )
     add_agents_to_simulation!(scene_tree, deconflict_strategies)
     update_velocity(env, deconflict_strategies)
-    # Configure RVO in route planning
-    # TODO(tashakim): Update route planning to use DeconflictionStrategy 
-    set_use_rvo!(in(:RVO, deconflict_strategies))
-    
+    # TODO(tashakim): Update route planning to use DeconflictionStrategy
+
+    # Configure collision avoidance strategies for route planning 
+    set_use_deconfliction(deconflict_strategies)
     anim = nothing
     if process_animation_tasks
         print("Animating preprocessing step...")
