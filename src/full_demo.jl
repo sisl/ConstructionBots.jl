@@ -558,7 +558,6 @@ function run_lego_demo(;
             save_animation!(visualizer, "$(anim_prog_path)preprocessing.html")
         end
     end
-    set_avoid_staging_areas!(true)
 
     execution_start_time = time()
     status, time_steps = run_simulation!(env, factory_vis, anim, sim_params)

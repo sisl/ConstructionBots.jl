@@ -13,9 +13,7 @@ export
 
 export
     set_use_deconfliction,
-    use_rvo,
-    avoid_staging_areas,
-    set_avoid_staging_areas!
+    use_rvo
 
 function set_use_deconfliction(deconflict_strategies)
     if in(:RVO, deconflict_strategies)
@@ -34,11 +32,6 @@ end
 global USE_RVO = true
 use_rvo() = USE_RVO
 
-global AVOID_STAGING_AREAS = false
-avoid_staging_areas() = AVOID_STAGING_AREAS
-function set_avoid_staging_areas!(val)
-    global AVOID_STAGING_AREAS = val
-end
 global STAGING_BUFFER_RADIUS = 0.0
 staging_buffer_radius() = STAGING_BUFFER_RADIUS
 function set_staging_buffer_radius!(val)
