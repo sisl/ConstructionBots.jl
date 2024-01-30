@@ -522,24 +522,20 @@ function run_lego_demo(;
 
     set_scene_tree_to_initial_condition!(scene_tree, sched; remove_all_edges=true)
 
-
     # rvo
     update_simulation_environment(deconflict_strategies)
-
-
-    max_robot_go_id = maximum([n.id.id for n in get_nodes(tg_sched) if matches_template(RobotGo, n)])
-    max_cargo_id = maximum([cargo_id(entity(n)).id for n in get_nodes(tg_sched) if matches_template(TransportUnitGo, n)])
-
     env = PlannerEnv(
         sched=tg_sched,
         scene_tree=scene_tree,
         staging_circles=staging_circles,
-        max_robot_go_id=max_robot_go_id,
-        max_cargo_id=max_cargo_id,
+        max_robot_go_id=maximum([n.id.id for n in get_nodes(tg_sched) if matches_template(RobotGo, n)]),
+        max_cargo_id=maximum([cargo_id(entity(n)).id for n in get_nodes(tg_sched) if matches_template(TransportUnitGo, n)]),
     )
-
     add_agents_to_simulation!(scene_tree, deconflict_strategies)
     update_velocity(env, deconflict_strategies)
+    # Configure RVO in route planning
+    # TODO(tashakim): Update route planning to use DeconflictionStrategy 
+    set_use_rvo!(in(:RVO, deconflict_strategies))
     
     anim = nothing
     if process_animation_tasks
@@ -561,22 +557,14 @@ function run_lego_demo(;
         )
         setanimation!(visualizer, anim.anim, play=false)
         print("done\n")
-
         if save_animation_along_the_way
             save_animation!(visualizer, "$(anim_prog_path)preprocessing.html")
         end
-
     end
-
-    # Configure RVO in route planning
-    # TODO(tashakim): Update route planning to use DeconflictionStrategy 
-    set_use_rvo!(in(:RVO, deconflict_strategies))
     set_avoid_staging_areas!(true)
 
     execution_start_time = time()
-
     status, time_steps = run_simulation!(env, factory_vis, anim, sim_params)
-
     if status == true
         execution_time = time() - execution_start_time
     else
