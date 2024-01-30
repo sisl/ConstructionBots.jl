@@ -376,7 +376,7 @@ function run_lego_demo(;
         end
         if isfile(solution_fname)
             println("\n\tFound previous MILP solution at $solution_fname")
-            soln_matrix = JLD2.load(solution_fname, "soln_matrix")
+            soln_matrix = jld2.load(solution_fname, "soln_matrix")
             soln_matrix = SparseArrays.SparseMatrixCSC(soln_matrix)
             milp_optimizer_attribute_dict[time_limit_key] = Float64(previous_found_optimizer_time)
             clear_default_milp_optimizer_attributes!()
@@ -463,10 +463,10 @@ function run_lego_demo(;
     # If valid milp solution found, save if option was passed
     if valid_milp_solution && save_milp_solution && (assignment_mode != :greedy)
         println("Saving MILP solution to $solution_fname")
-        JLD2.save(solution_fname, "soln_matrix", get_assignment_matrix(milp_model))
+        jld2.save(solution_fname, "soln_matrix", get_assignment_matrix(milp_model))
     elseif save_milp_solution && (assignment_mode != :greedy)
         println("Saving a no soltuion file to $no_solution_fname")
-        JLD2.save(no_solution_fname, "soln_matrix", false)
+        jld2.save(no_solution_fname, "soln_matrix", false)
     end
 
     # compile pre execution statistics
