@@ -32,7 +32,7 @@ using LDrawParser
 using PyCall
 
 # Optimization solvers
-using ECOS, GLPK, Gurobi,HiGHS
+using ECOS, GLPK, Gurobi, HiGHS
 
 # Generating graphical plots
 using Compose, Measures, MeshCat
@@ -62,10 +62,7 @@ include("full_demo.jl")
 # assembly_tree::AssemblyTree - stored transforms of all parts and submodels
 # model_schedule - encodes the partial ordering of assembly operations.
 
-export
-    run_lego_demo,
-    list_projects,
-    get_project_params
+export run_lego_demo, list_projects, get_project_params
 
 """
     BuildStepID <: AbstractID
@@ -94,10 +91,7 @@ Generates duplicate IDs.
 struct DuplicateIDGenerator{K}
     id_counts::Dict{K,Int}
     id_map::Dict{K,K}
-    DuplicateIDGenerator{K}() where {K} = new{K}(
-        Dict{K,Int}(),
-        Dict{K,K}(),
-    )
+    DuplicateIDGenerator{K}() where {K} = new{K}(Dict{K,Int}(), Dict{K,K}())
 end
 _id_type(::DuplicateIDGenerator{K}) where {K} = K
 function (g::DuplicateIDGenerator)(id)
@@ -107,9 +101,9 @@ function (g::DuplicateIDGenerator)(id)
     g.id_map[new_id] = id
     new_id
 end
-function duplicate_subtree!(g, old_root, d=:out)
+function duplicate_subtree!(g, old_root, d = :out)
     vtxs = [get_vtx(g, old_root)]
-    append!(vtxs, collect(map(e -> e.dst, edges(bfs_tree(g, old_root; dir=d)))))
+    append!(vtxs, collect(map(e -> e.dst, edges(bfs_tree(g, old_root; dir = d)))))
     new_ids = Dict{Int,_id_type(g)}()
     for v in vtxs
         old_node = get_node(g, v)
@@ -145,7 +139,8 @@ ancestors are the operations building up thereto.
     id_generator::DuplicateIDGenerator{ID} = DuplicateIDGenerator{ID}()
 end
 create_node_id(g, v::BuildingStep) = g.id_generator("BuildingStep")
-create_node_id(g, v::SubModelPlan) = has_vertex(g, model_name(v)) ? g.id_generator(model_name(v)) : model_name(v)
+create_node_id(g, v::SubModelPlan) =
+    has_vertex(g, model_name(v)) ? g.id_generator(model_name(v)) : model_name(v)
 create_node_id(g, v::SubFileRef) = g.id_generator(model_name(v))
 function add_node!(g::MPDModelGraph{N,ID}, val::N) where {N,ID}
     id = create_node_id(g, val)
@@ -166,7 +161,7 @@ parent step to the child.
            |           |
         [    build_step   ]
 """
-function add_build_step!(model_graph, build_step::BuildingStep, preceding_step=-1)
+function add_build_step!(model_graph, build_step::BuildingStep, preceding_step = -1)
     node = add_node!(model_graph, build_step)
     for line in build_step.lines
         input = add_node!(model_graph, line)
@@ -174,7 +169,8 @@ function add_build_step!(model_graph, build_step::BuildingStep, preceding_step=-
         add_edge!(model_graph, preceding_step, input)
     end
     # if is_root_node(model_graph,node)
-    if has_vertex(model_graph, preceding_step) && is_terminal_node(model_graph, preceding_step)
+    if has_vertex(model_graph, preceding_step) &&
+       is_terminal_node(model_graph, preceding_step)
         add_edge!(model_graph, preceding_step, node) # Do I want this or not?
     end
     node
@@ -235,14 +231,14 @@ end
 Ensure that all `BuildingStep` nodes have the correct parent (submodel) name.
 """
 function update_build_step_parents!(model_spec)
-    descendant_map = backup_descendants(model_spec,
-        n -> matches_template(SubModelPlan, n))
+    descendant_map = backup_descendants(model_spec, n -> matches_template(SubModelPlan, n))
     for v in Graphs.vertices(model_spec)
         node = get_node(model_spec, v)
         if matches_template(BuildingStep, node)
-            node = replace_node!(model_spec,
+            node = replace_node!(
+                model_spec,
                 BuildingStep(node_val(node), descendant_map[node_id(node)]),
-                node_id(node)
+                node_id(node),
             )
             @assert node_val(node).parent == descendant_map[node_id(node)]
         end
@@ -273,10 +269,12 @@ end
 From a model schedule with (potentially) multiple distinct models, extract just
 the model graph with root id `model_key`.
 """
-function extract_single_model(spec::S,
-    model_key=get_vtx_id(spec, get_biggest_tree(spec))) where {S<:MPDModelGraph}
+function extract_single_model(
+    spec::S,
+    model_key = get_vtx_id(spec, get_biggest_tree(spec)),
+) where {S<:MPDModelGraph}
     @assert has_vertex(spec, model_key)
-    new_spec = S(id_generator=spec.id_generator)
+    new_spec = S(id_generator = spec.id_generator)
     root = get_vtx(spec, model_key)
     add_node!(new_spec, get_node(spec, root), get_vtx_id(spec, root))
     for v in reverse(topological_sort_by_dfs(spec))
@@ -315,8 +313,10 @@ eligible_predecessors(::SubModelPlan) = Dict(BuildingStep => 1)
 required_successors(::SubModelPlan) = Dict()
 required_predecessors(::SubModelPlan) = Dict(BuildingStep => 1)
 
-eligible_successors(::BuildingStep) = Dict(SubFileRef => typemax(Int), SubModelPlan => 1, BuildingStep => 1)
-eligible_predecessors(n::BuildingStep) = Dict(SubFileRef => LDrawParser.n_lines(n), BuildingStep => 1)
+eligible_successors(::BuildingStep) =
+    Dict(SubFileRef => typemax(Int), SubModelPlan => 1, BuildingStep => 1)
+eligible_predecessors(n::BuildingStep) =
+    Dict(SubFileRef => LDrawParser.n_lines(n), BuildingStep => 1)
 required_successors(::BuildingStep) = Dict(Union{SubModelPlan,BuildingStep} => 1)
 required_predecessors(n::BuildingStep) = Dict(SubFileRef => LDrawParser.n_lines(n))
 
@@ -423,8 +423,7 @@ function get_build_step_components(model_spec, id_map, step)
     for v in inneighbors(model_spec, step)
         child = get_node(model_spec, v)
         if matches_template(SubFileRef, child)
-            push!(part_ids,
-                get_referenced_component(model_spec, id_map, child))
+            push!(part_ids, get_referenced_component(model_spec, id_map, child))
         end
     end
     return part_ids
@@ -436,8 +435,10 @@ end
 Construct an assembly_tree::NTree{SceneNode,AbstractID}, a precursor to
 SceneTree.
 """
-function construct_assembly_tree(model::MPDModel, spec::MPDModelGraph,
-    id_map=build_id_map(model, spec),
+function construct_assembly_tree(
+    model::MPDModel,
+    spec::MPDModelGraph,
+    id_map = build_id_map(model, spec),
 )
     assembly_tree = NTree{SceneNode,AbstractID}()
     parent_map = backup_descendants(spec, n -> matches_template(SubModelPlan, n))
@@ -488,7 +489,7 @@ end
 
 Convert an assembly tree to a `SceneTree`.
 """
-function convert_to_scene_tree(assembly_tree; set_children::Bool=true)
+function convert_to_scene_tree(assembly_tree; set_children::Bool = true)
     scene_tree = SceneTree()
     for n in get_nodes(assembly_tree)
         add_node!(scene_tree, node_val(n))
@@ -510,8 +511,8 @@ end
 Construct a `SpatialIndexing.RTree` for efficiently finding neighbors of an
     object in the assembly.
 """
-function construct_spatial_index(scene_tree, frontier=get_all_root_nodes(scene_tree))
-    rtree = RTree{Float64,3}(Int, AbstractID, leaf_capacity=10, branch_capacity=10)
+function construct_spatial_index(scene_tree, frontier = get_all_root_nodes(scene_tree))
+    rtree = RTree{Float64,3}(Int, AbstractID, leaf_capacity = 10, branch_capacity = 10)
     jump_to_final_configuration!(scene_tree)
     bounding_rects = Dict{AbstractID,SpatialIndexing.Rect}()
     for v in BFSIterator(scene_tree, frontier)
@@ -523,7 +524,7 @@ function construct_spatial_index(scene_tree, frontier=get_all_root_nodes(scene_t
         pt_min = [1.0, 1.0, 1.0]
         pt_max = -1 * pt_min
         for pt in coordinates(geom)
-            for i in 1:3
+            for i = 1:3
                 pt_min[i] = min(pt[i], pt_min[i])
                 pt_max[i] = max(pt[i], pt_max[i])
             end
@@ -576,7 +577,7 @@ end
 
 Find the optimal separating hyperplane between two point sets
 """
-function compute_separating_hyperplane(ptsA, ptsB, dim=3)
+function compute_separating_hyperplane(ptsA, ptsB, dim = 3)
     model = JuMP.Model(default_geom_optimizer())
     set_optimizer_attributes(model, default_geom_optimizer_attributes()...)
     @variable(model, x[1:dim])
@@ -600,29 +601,29 @@ end
 
 function GeometryBasics.decompose(
     ::Type{TriangleFace{Int}},
-    n::GeometryBasics.Ngon{3,Float64,N,Point{3,Float64}}) where {N}
-    return SVector{N - 1,TriangleFace{Int}}(
-        TriangleFace{Int}(1, i, i + 1) for i in 1:N-1
-    )
+    n::GeometryBasics.Ngon{3,Float64,N,Point{3,Float64}},
+) where {N}
+    return SVector{N - 1,TriangleFace{Int}}(TriangleFace{Int}(1, i, i + 1) for i = 1:N-1)
 end
-function GeometryBasics.decompose(
-    ::Type{Point{3,Float64}},
-    n::GeometryBasics.Ngon)
+function GeometryBasics.decompose(::Type{Point{3,Float64}}, n::GeometryBasics.Ngon)
     return n.points
 end
-GeometryBasics.faces(n::GeometryBasics.Ngon{3,Float64,4,Point{3,Float64}}) = [
-    TriangleFace{Int}(1, 2, 3), TriangleFace{Int}(1, 3, 4)
-]
-GeometryBasics.faces(n::GeometryBasics.Ngon{3,Float64,3,Point{3,Float64}}) = [
-    TriangleFace{Int}(1, 2, 3)
-]
+GeometryBasics.faces(n::GeometryBasics.Ngon{3,Float64,4,Point{3,Float64}}) =
+    [TriangleFace{Int}(1, 2, 3), TriangleFace{Int}(1, 3, 4)]
+GeometryBasics.faces(n::GeometryBasics.Ngon{3,Float64,3,Point{3,Float64}}) =
+    [TriangleFace{Int}(1, 2, 3)]
 
-GeometryBasics.coordinates(v::AbstractVector) = collect(Base.Iterators.flatten(map(coordinates, v)))
+GeometryBasics.coordinates(v::AbstractVector) =
+    collect(Base.Iterators.flatten(map(coordinates, v)))
 
-function GeometryBasics.coordinates(v::AbstractVector{G}) where {N,G<:GeometryBasics.Ngon{3,Float64,N,Point{3,Float64}}}
+function GeometryBasics.coordinates(
+    v::AbstractVector{G},
+) where {N,G<:GeometryBasics.Ngon{3,Float64,N,Point{3,Float64}}}
     vcat(map(coordinates, v)...)
 end
-function GeometryBasics.faces(v::AbstractVector{G}) where {N,G<:GeometryBasics.Ngon{3,Float64,N,Point{3,Float64}}}
+function GeometryBasics.faces(
+    v::AbstractVector{G},
+) where {N,G<:GeometryBasics.Ngon{3,Float64,N,Point{3,Float64}}}
     vcat(map(i -> map(f -> f .+ ((i - 1) * N), faces(v[i])), 1:length(v))...)
 end
 function GeometryBasics.faces(v::AbstractVector{G}) where {G<:GeometryBasics.Ngon}

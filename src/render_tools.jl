@@ -5,8 +5,9 @@ end
 AnimationWrapper(step::Int) = AnimationWrapper(MeshCat.Animation(), Counter(step))
 current_frame(a::AnimationWrapper) = get_counter_status(a.step)
 current_frame(::Nothing) = 0
-step_animation!(::Nothing, step=1) = nothing
-step_animation!(a::AnimationWrapper, step=1) = set_counter_status!(a.step, current_frame(a) + step)
+step_animation!(::Nothing, step = 1) = nothing
+step_animation!(a::AnimationWrapper, step = 1) =
+    set_counter_status!(a.step, current_frame(a) + step)
 set_current_frame!(a::AnimationWrapper, val) = set_counter_status!(a.step, val)
 
 MeshCat.atframe(f, anim::AnimationWrapper, frame::Integer) = atframe(f, anim.anim, frame)
@@ -50,11 +51,13 @@ end
 
 Populate the geometry (and transforms) of a MeshCat visualizer.
 """
-function populate_visualizer!(scene_tree, vis;
-    color_map=Dict(),
-    material_type=nothing,
-    wireframe=false,
-    kwargs...
+function populate_visualizer!(
+    scene_tree,
+    vis;
+    color_map = Dict(),
+    material_type = nothing,
+    wireframe = false,
+    kwargs...,
 )
     vis_root = vis["root"]
     vis_nodes = Dict{AbstractID,Any}()
@@ -73,13 +76,10 @@ function populate_visualizer!(scene_tree, vis;
                 M = geom
             else
                 filtered_geom = filter(m -> !isa(m, GeometryBasics.Line), geom)
-                M = GeometryBasics.Mesh(
-                    coordinates(filtered_geom),
-                    faces(filtered_geom)
-                )
+                M = GeometryBasics.Mesh(coordinates(filtered_geom), faces(filtered_geom))
             end
             if !(material_type === nothing)
-                mat = material_type(; wireframe=wireframe, kwargs...)
+                mat = material_type(; wireframe = wireframe, kwargs...)
                 mat.color = get(color_map, id, mat.color)
                 setobject!(geom_vis_node, M, mat)
             else
@@ -89,20 +89,18 @@ function populate_visualizer!(scene_tree, vis;
         # settransform!(vis_node,local_transform(node))
         settransform!(vis_node, global_transform(node))
     end
-    factory_vis = FactoryVisualizer(
-        vis=vis,
-        scene_tree=scene_tree,
-        vis_nodes=vis_nodes
-    )
+    factory_vis =
+        FactoryVisualizer(vis = vis, scene_tree = scene_tree, vis_nodes = vis_nodes)
     factory_vis.geom_nodes[BaseGeomKey()] = base_geom_nodes
     factory_vis
 end
 
-function add_indicator_nodes!(factory_vis;
-    cylinder_depth=0.0025,
-    cylinder_radius_pad=0.02,
-    active_color=RGB(0.0, 1.0, 0.0),
-    kwargs...
+function add_indicator_nodes!(
+    factory_vis;
+    cylinder_depth = 0.0025,
+    cylinder_radius_pad = 0.02,
+    active_color = RGB(0.0, 1.0, 0.0),
+    kwargs...,
 )
     @unpack vis, vis_nodes, scene_tree = factory_vis
     active_flags = Dict{AbstractID,Any}()
@@ -117,9 +115,11 @@ function add_indicator_nodes!(factory_vis;
                 Point((mod_center_point .- [0.0, 0.0, cylinder_depth])...),
                 get_radius(geom) + cylinder_radius_pad,
             )
-            setobject!(vis_node["active"],
+            setobject!(
+                vis_node["active"],
                 cylinder,
-                MeshLambertMaterial(color=active_color, kwargs...))
+                MeshLambertMaterial(color = active_color, kwargs...),
+            )
             active_flags[node_id(n)] = vis_node["active"]
         end
     end
@@ -131,10 +131,12 @@ convert_to_renderable(geom) = geom
 convert_to_renderable(geom::LazySets.Ball2) = GeometryBasics.Sphere(geom)
 convert_to_renderable(geom::Hyperrectangle) = GeometryBasics.HyperRectangle(geom)
 
-function show_geometry_layer!(factory_vis, key=HypersphereKey();
-    color=RGBA{Float32}(0, 1, 0, 0.3),
-    wireframe=true,
-    material=MeshLambertMaterial(color=color, wireframe=wireframe),
+function show_geometry_layer!(
+    factory_vis,
+    key = HypersphereKey();
+    color = RGBA{Float32}(0, 1, 0, 0.3),
+    wireframe = true,
+    material = MeshLambertMaterial(color = color, wireframe = wireframe),
 )
     @unpack vis_nodes, scene_tree = factory_vis
     geom_nodes = Dict{AbstractID,Any}()
@@ -154,36 +156,50 @@ end
 
 Rotate camera at fixed angular rate while keeping focus on a given point
 """
-function rotate_camera!(vis, anim;
-    rc=10,
-    dθ=0.005,
-    hc=2,
-    θ_start=0,
-    k_start=0,
-    k_final=current_frame(anim),
-    radial_decay_factor=0.0,
-    origin=[0.0, 0.0, 0.0],
+function rotate_camera!(
+    vis,
+    anim;
+    rc = 10,
+    dθ = 0.005,
+    hc = 2,
+    θ_start = 0,
+    k_start = 0,
+    k_final = current_frame(anim),
+    radial_decay_factor = 0.0,
+    origin = [0.0, 0.0, 0.0],
 )
     θ = θ_start
-    for k in k_start:k_final
+    for k = k_start:k_final
         rc -= k * radial_decay_factor # spiral
         # Y-coord is up for camera
         camera_tform = CoordinateTransformations.Translation(rc * cos(θ), hc, -rc * sin(θ))
         θ = wrap_to_pi(θ + dθ)
         atframe(anim, k) do
-            setprop!(vis["/Cameras/default/rotated/<object>"], "position", camera_tform.translation)
-            settransform!(vis["/Cameras/default"], CoordinateTransformations.Translation(origin...))
+            setprop!(
+                vis["/Cameras/default/rotated/<object>"],
+                "position",
+                camera_tform.translation,
+            )
+            settransform!(
+                vis["/Cameras/default"],
+                CoordinateTransformations.Translation(origin...),
+            )
         end
     end
     anim
 end
 
-function render_staging_areas!(vis, scene_tree, sched, staging_circles, root_key="staging_circles";
-    color=RGBA{Float32}(1, 0, 1, 0.1),
-    wireframe=false,
-    material=MeshLambertMaterial(color=color, wireframe=wireframe),
-    include_build_steps=true,
-    dz=0.0,
+function render_staging_areas!(
+    vis,
+    scene_tree,
+    sched,
+    staging_circles,
+    root_key = "staging_circles";
+    color = RGBA{Float32}(1, 0, 1, 0.1),
+    wireframe = false,
+    material = MeshLambertMaterial(color = color, wireframe = wireframe),
+    include_build_steps = true,
+    dz = 0.0,
 )
     staging_nodes = Dict{AbstractID,Any}()
     staging_vis = vis[root_key]
@@ -192,10 +208,7 @@ function render_staging_areas!(vis, scene_tree, sched, staging_circles, root_key
         sphere = LazySets.Ball2([geom.center..., 0.0], geom.radius)
         ctr = Point(project_to_2d(sphere.center)..., 0.0)
         cylinder = Cylinder(ctr, Point((ctr .- [0.0, 0.0, 0.01])...), sphere.radius)
-        setobject!(staging_vis[string(id)],
-            cylinder,
-            material,
-        )
+        setobject!(staging_vis[string(id)], cylinder, material)
         staging_nodes[id] = staging_vis[string(id)]
         cargo = get_node(scene_tree, id)
         if isa(cargo, AssemblyNode)
@@ -203,7 +216,9 @@ function render_staging_areas!(vis, scene_tree, sched, staging_circles, root_key
         else
             cargo_node = get_node!(sched, ObjectStart(cargo, TransformNode()))
         end
-        t = project_to_3d(project_to_2d(global_transform(start_config(cargo_node)).translation))
+        t = project_to_3d(
+            project_to_2d(global_transform(start_config(cargo_node)).translation),
+        )
         tform = CoordinateTransformations.Translation(t) ∘ identity_linear_map()
         settransform!(staging_nodes[id], tform)
         # settransform!(staging_nodes[id],global_transform(start_config(cargo_node)))
@@ -214,10 +229,7 @@ function render_staging_areas!(vis, scene_tree, sched, staging_circles, root_key
             sphere = get_cached_geom(node_val(n).staging_circle)
             ctr = Point(project_to_2d(sphere.center)..., -0.02)
             cylinder = Cylinder(ctr, Point((ctr .- [0.0, 0.0, 0.01])...), sphere.radius)
-            setobject!(staging_vis[string(id)],
-                cylinder,
-                material,
-            )
+            setobject!(staging_vis[string(id)], cylinder, material)
             staging_nodes[id] = staging_vis[string(id)]
         end
     end
@@ -229,9 +241,7 @@ end
 
 Render arrows pointing from start->goal for LiftIntoPlace nodes.
 """
-function visualize_staging_plan(vis, sched, scene_tree;
-    objects=false
-)
+function visualize_staging_plan(vis, sched, scene_tree; objects = false)
     vis_arrows = vis["arrows"]
     vis_triads = vis["triads"]
     bounding_vis = vis["bounding_circles"]
@@ -244,7 +254,7 @@ function visualize_staging_plan(vis, sched, scene_tree;
             p1 = Point(global_transform(start_config(n)).translation...)
             p2 = Point(global_transform(goal_config(n)).translation...)
             lift_vis = ArrowVisualizer(vis_arrows[string(node_id(n))])
-            setobject!(lift_vis, MeshPhongMaterial(color=RGBA{Float32}(0, 1, 0, 1.0)))
+            setobject!(lift_vis, MeshPhongMaterial(color = RGBA{Float32}(0, 1, 0, 1.0)))
             settransform!(lift_vis, p1, p2)
             # Transport path
             cargo = entity(n)
@@ -260,7 +270,7 @@ function visualize_staging_plan(vis, sched, scene_tree;
             end
             p3 = Point(global_transform(start_config(c)).translation...)
             transport_vis = ArrowVisualizer(vis_arrows[string(node_id(c))])
-            setobject!(transport_vis, MeshPhongMaterial(color=color))
+            setobject!(transport_vis, MeshPhongMaterial(color = color))
             settransform!(transport_vis, p3, p1)
         elseif matches_template(AssemblyComplete, n)
             triad_vis = vis_triads[string(node_id(n))]
@@ -276,9 +286,10 @@ function visualize_staging_plan(vis, sched, scene_tree;
         end
         sphere = LazySets.Ball2([geom.center..., 0.0], geom.radius)
         b_vis = bounding_vis[string(id)]
-        setobject!(b_vis,
+        setobject!(
+            b_vis,
             convert_to_renderable(sphere),
-            MeshPhongMaterial(color=RGBA{Float32}(1, 0, 1, 0.1)),
+            MeshPhongMaterial(color = RGBA{Float32}(1, 0, 1, 0.1)),
         )
         cargo_node = get_node(sched, AssemblyComplete(node))
         settransform!(b_vis, global_transform(start_config(cargo_node)))
@@ -286,16 +297,21 @@ function visualize_staging_plan(vis, sched, scene_tree;
     return vis_triads, vis_arrows, bounding_vis
 end
 
-function animate_reverse_staging_plan!(vis, vis_nodes, scene_tree, sched, nodes=get_nodes(scene_tree);
-    v_max=1.0,
-    ω_max=1.0,
-    ϵ_v=1e-4,
-    ϵ_ω=1e-4,
-    dt=0.1,
-    interp=false,
-    interp_steps=10,
-    objects=false,
-    anim=nothing,
+function animate_reverse_staging_plan!(
+    vis,
+    vis_nodes,
+    scene_tree,
+    sched,
+    nodes = get_nodes(scene_tree);
+    v_max = 1.0,
+    ω_max = 1.0,
+    ϵ_v = 1e-4,
+    ϵ_ω = 1e-4,
+    dt = 0.1,
+    interp = false,
+    interp_steps = 10,
+    objects = false,
+    anim = nothing,
 )
     # jump_to_final_configuration!(scene_tree;set_edges=true)
     graph = deepcopy(get_graph(scene_tree))
@@ -345,7 +361,8 @@ function animate_reverse_staging_plan!(vis, vis_nodes, scene_tree, sched, nodes=
             tf_error = relative_transform(global_transform(node), goal)
             twist = optimal_twist(tf_error, v_max, ω_max, dt)
             # @show tf_error, twist
-            if norm(twist.vel) <= ϵ_v && norm(twist.ω) <= ϵ_ω || interp_idxs[node_id(node)] == 0
+            if norm(twist.vel) <= ϵ_v && norm(twist.ω) <= ϵ_ω ||
+               interp_idxs[node_id(node)] == 0
                 goal_idxs[node_id(node)] += 1
                 interp_idxs[node_id(node)] = interp_steps
             end
@@ -361,31 +378,43 @@ function animate_reverse_staging_plan!(vis, vis_nodes, scene_tree, sched, nodes=
             set_desired_global_transform!(get_transform_node(node), tform)
         end
         to_update = collect_descendants(graph, active_set, true)
-        animate_update_visualizer!(scene_tree, vis_nodes, [get_node(scene_tree, v) for v in to_update]; anim=anim)
+        animate_update_visualizer!(
+            scene_tree,
+            vis_nodes,
+            [get_node(scene_tree, v) for v in to_update];
+            anim = anim,
+        )
         render(vis)
     end
 end
 
-function render_transport_unit_2d(scene_tree, tu, cvx_hull=[];
-    scale=4cm,
-    hull_thickness=0.01,
-    line_thickness=0.0025,
-    hull_color=RGB(0.0, 1.0, 0.0),
-    config_pt_radius=2 * hull_thickness,
-    config_pt_color=RGB(1.0, 0.5, 0.2),
-    robot_color=RGB(0.1, 0.5, 0.9),
-    geom_fill_color=RGBA(0.9, 0.9, 0.9, 0.3),
-    geom_stroke_color=RGBA(0.0, 0.0, 0.0, 1.0),
-    robot_radius=default_robot_radius(),
-    rect2d=project_to_2d(get_base_geom(tu, HyperrectangleKey())),
-    xpad=(0, 0),
-    ypad=(0, 0),
-    bg_color=nothing,
-    overlay_for_single_robot=false,
+function render_transport_unit_2d(
+    scene_tree,
+    tu,
+    cvx_hull = [];
+    scale = 4cm,
+    hull_thickness = 0.01,
+    line_thickness = 0.0025,
+    hull_color = RGB(0.0, 1.0, 0.0),
+    config_pt_radius = 2 * hull_thickness,
+    config_pt_color = RGB(1.0, 0.5, 0.2),
+    robot_color = RGB(0.1, 0.5, 0.9),
+    geom_fill_color = RGBA(0.9, 0.9, 0.9, 0.3),
+    geom_stroke_color = RGBA(0.0, 0.0, 0.0, 1.0),
+    robot_radius = default_robot_radius(),
+    rect2d = project_to_2d(get_base_geom(tu, HyperrectangleKey())),
+    xpad = (0, 0),
+    ypad = (0, 0),
+    bg_color = nothing,
+    overlay_for_single_robot = false,
 )
     if length(robot_team(tu)) == 1 && overlay_for_single_robot
-        robot_overlay = (context(),
-            [Compose.circle(project_to_2d(tform.translation)..., ROBOT_RADIUS) for (id, tform) in robot_team(tu)]...,
+        robot_overlay = (
+            context(),
+            [
+                Compose.circle(project_to_2d(tform.translation)..., ROBOT_RADIUS) for
+                (id, tform) in robot_team(tu)
+            ]...,
             Compose.fill(RGBA(robot_color, 0.8)),
         )
     else
@@ -393,42 +422,58 @@ function render_transport_unit_2d(scene_tree, tu, cvx_hull=[];
     end
     set_default_graphic_size(rect2d.radius[1] * scale, rect2d.radius[2] * scale)
     Compose.compose(
-        context(units=unit_box_from_rect(rect2d, xpad=xpad, ypad=ypad)),
-        (context(),
+        context(units = unit_box_from_rect(rect2d, xpad = xpad, ypad = ypad)),
+        (
+            context(),
             robot_overlay,
-            plot_base_geom_2d(get_node(scene_tree, cargo_id(tu)), scene_tree;
-                fill_color=geom_fill_color,
-                stroke_color=geom_stroke_color,
+            plot_base_geom_2d(
+                get_node(scene_tree, cargo_id(tu)),
+                scene_tree;
+                fill_color = geom_fill_color,
+                stroke_color = geom_stroke_color,
             ),
             Compose.linewidth(line_thickness * max(h, w)),
-            (context(),
+            (
+                context(),
                 Compose.polygon([(p[1], p[2]) for p in cvx_hull]),
                 Compose.stroke(hull_color),
                 Compose.linewidth(hull_thickness * max(h, w)),
                 Compose.fill(nothing),
             ),
-            (context(),
-                [Compose.circle(project_to_2d(tform.translation)..., config_pt_radius * max(h, w)) for (id, tform) in robot_team(tu)]...,
+            (
+                context(),
+                [
+                    Compose.circle(
+                        project_to_2d(tform.translation)...,
+                        config_pt_radius * max(h, w),
+                    ) for (id, tform) in robot_team(tu)
+                ]...,
                 Compose.fill(config_pt_color),
             ),
         ),
-        (context(),
-            [Compose.circle(project_to_2d(tform.translation)..., robot_radius) for (id, tform) in robot_team(tu)]...,
+        (
+            context(),
+            [
+                Compose.circle(project_to_2d(tform.translation)..., robot_radius) for
+                (id, tform) in robot_team(tu)
+            ]...,
             Compose.fill(robot_color),
         ),
-        (context(), Compose.rectangle(), Compose.fill(bg_color))
+        (context(), Compose.rectangle(), Compose.fill(bg_color)),
     )
 end
 
-function plot_base_geom_2d(node, scene_tree;
-    fill_color=RGBA(1.0, 0.0, 0.0, 0.5),
-    stroke_color=RGBA(0.0, 0.0, 0.0, 1.0),
-    _show_lines=false,
-    _show_triangles=false,
-    _show_quadrilaterals=true,
-    _use_unit_box=false,
-    tform=identity_linear_map(),
-    geom_key=BaseGeomKey(),
+function plot_base_geom_2d(
+    node,
+    scene_tree;
+    fill_color = RGBA(1.0, 0.0, 0.0, 0.5),
+    stroke_color = RGBA(0.0, 0.0, 0.0, 1.0),
+    _show_lines = false,
+    _show_triangles = false,
+    _show_quadrilaterals = true,
+    _use_unit_box = false,
+    tform = identity_linear_map(),
+    geom_key = BaseGeomKey(),
 )
     polygon_pts = []
     for geom_element in recurse_child_geometry(node, scene_tree, geom_key)
@@ -444,18 +489,21 @@ function plot_base_geom_2d(node, scene_tree;
             end
         elseif isa(geom_key, HyperrectangleKey)
             r = tform(geom_element)
-            push!(polygon_pts, [
-                (r.center[1] - r.radius[1], r.center[2] - r.radius[2]),
-                (r.center[1] - r.radius[1], r.center[2] + r.radius[2]),
-                (r.center[1] + r.radius[1], r.center[2] + r.radius[2]),
-                (r.center[1] + r.radius[1], r.center[2] - r.radius[2]),
-            ])
+            push!(
+                polygon_pts,
+                [
+                    (r.center[1] - r.radius[1], r.center[2] - r.radius[2]),
+                    (r.center[1] - r.radius[1], r.center[2] + r.radius[2]),
+                    (r.center[1] + r.radius[1], r.center[2] + r.radius[2]),
+                    (r.center[1] + r.radius[1], r.center[2] - r.radius[2]),
+                ],
+            )
         end
     end
     if _use_unit_box
         r = get_base_geom(node, HyperrectangleKey())
         unit_box = unit_box_from_rect(r)
-        ctx = context(units=unit_box)
+        ctx = context(units = unit_box)
     else
         ctx = context()
     end
@@ -467,11 +515,7 @@ function plot_base_geom_2d(node, scene_tree;
     )
 end
 
-function unit_box_from_rect(r;
-    pad=0.0,
-    xpad=(pad, pad),
-    ypad=(pad, pad),
-)
+function unit_box_from_rect(r; pad = 0.0, xpad = (pad, pad), ypad = (pad, pad))
     unit_box = UnitBox(
         r.center[1] - r.radius[1] - xpad[1],
         r.center[2] - r.radius[2] - ypad[1],
@@ -488,9 +532,9 @@ Step through the different phases of preprocessing
 function animate_preprocessing_steps!(
     factory_vis,
     sched;
-    anim=nothing,
-    dt=0.0,
-    interp_steps=80,
+    anim = nothing,
+    dt = 0.0,
+    interp_steps = 80,
     kwargs...,
 )
     @unpack vis, vis_nodes, scene_tree, geom_nodes = factory_vis
@@ -506,7 +550,7 @@ function animate_preprocessing_steps!(
         end
         setvisible!(base_geom_nodes, true)
         setvisible!(rect_nodes, false)
-        jump_to_final_configuration!(scene_tree; set_edges=true)
+        jump_to_final_configuration!(scene_tree; set_edges = true)
         update_visualizer!(scene_tree, vis_nodes)
     end
     step_animation!(anim)
@@ -525,9 +569,16 @@ function animate_preprocessing_steps!(
     end
     # Show objects moving to the staging/building locations
     animate_reverse_staging_plan!(
-        vis, vis_nodes, scene_tree, sched,
+        vis,
+        vis_nodes,
+        scene_tree,
+        sched,
         filter(n -> isa(n, AssemblyNode), get_nodes(scene_tree));
-        anim=anim, interp=true, dt=dt, interp_steps=interp_steps, kwargs...
+        anim = anim,
+        interp = true,
+        dt = dt,
+        interp_steps = interp_steps,
+        kwargs...,
     )
 
     # Go from hyperectangles back to the full geometries (legos)
@@ -543,9 +594,17 @@ function animate_preprocessing_steps!(
     set_current_frame!(anim, current_frame(anim) + 10)
 
     # Show the legos going to the starting locations
-    animate_reverse_staging_plan!(vis, vis_nodes, scene_tree, sched,
-        filter(n -> isa(n, ObjectNode), get_nodes(scene_tree)); dt=dt, interp=true,
-        interp_steps=interp_steps, anim=anim, kwargs...
+    animate_reverse_staging_plan!(
+        vis,
+        vis_nodes,
+        scene_tree,
+        sched,
+        filter(n -> isa(n, ObjectNode), get_nodes(scene_tree));
+        dt = dt,
+        interp = true,
+        interp_steps = interp_steps,
+        anim = anim,
+        kwargs...,
     )
     atframe(anim, current_frame(anim)) do
         setvisible!(rect_nodes, false)
@@ -563,7 +622,7 @@ function animate_preprocessing_steps!(
     end
     step_animation!(anim)
     atframe(anim, current_frame(anim)) do
-        set_scene_tree_to_initial_condition!(scene_tree, sched; remove_all_edges=true)
+        set_scene_tree_to_initial_condition!(scene_tree, sched; remove_all_edges = true)
         update_visualizer!(scene_tree, vis_nodes)
     end
     set_current_frame!(anim, current_frame(anim) + 10)
@@ -593,14 +652,14 @@ function update_visualizer!(scene_tree::SceneTree, vis_nodes, nodes)
     end
     return vis_nodes
 end
-function update_visualizer!(scene_tree::SceneTree, vis_nodes; nodes=get_nodes(scene_tree))
+function update_visualizer!(scene_tree::SceneTree, vis_nodes; nodes = get_nodes(scene_tree))
     update_visualizer!(scene_tree, vis_nodes, nodes)
 end
 function update_visualizer!(factory_vis::FactoryVisualizer, args...)
     update_visualizer!(factory_vis.scene_tree, factory_vis.vis_nodes, args...)
 end
 
-function animate_update_visualizer!(args...; anim=nothing, step=1)
+function animate_update_visualizer!(args...; anim = nothing, step = 1)
     if anim === nothing
         return update_visualizer!(args...)
     else
@@ -612,7 +671,9 @@ function animate_update_visualizer!(args...; anim=nothing, step=1)
 end
 
 function visualizer_update_function!(
-    factory_vis, env, newly_updated=Set{Int}();
+    factory_vis,
+    env,
+    newly_updated = Set{Int}();
     # render_stages=true
 )
     @unpack vis, vis_nodes, staging_nodes = factory_vis
@@ -678,24 +739,25 @@ function call_update!(scene_tree, vis_nodes, nodes, dt)
     render(vis)
 end
 
-function render_model_spec_with_pictures(model_spec;
-    base_image_path="",
-    bg_color="white",
-    stroke_color="black",
-    use_original_coords=true,
-    picture_scale=2.0,
-    scale=1,
-    aspect_stretch=(1.0, 1.0),
-    label_pos=(0.0, 0.0),
-    label_fontsize=14pt,
-    label_radius=1cm,
-    label_bg_color=nothing,
-    label_stroke_color=nothing,
-    labels=Dict(),
-    kwargs...
+function render_model_spec_with_pictures(
+    model_spec;
+    base_image_path = "",
+    bg_color = "white",
+    stroke_color = "black",
+    use_original_coords = true,
+    picture_scale = 2.0,
+    scale = 1,
+    aspect_stretch = (1.0, 1.0),
+    label_pos = (0.0, 0.0),
+    label_fontsize = 14pt,
+    label_radius = 1cm,
+    label_bg_color = nothing,
+    label_stroke_color = nothing,
+    labels = Dict(),
+    kwargs...,
 )
     plt_spec = contract_by_predicate(model_spec, n -> matches_template(BuildingStep, n))
-    plt = display_graph(plt_spec, scale=1) #,enforce_visited=true)
+    plt = display_graph(plt_spec, scale = 1) #,enforce_visited=true)
     # match pictures to assembly names
     counts = Dict()
     file_names = Dict()
@@ -703,7 +765,8 @@ function render_model_spec_with_pictures(model_spec;
         parent_name = node_val(n).parent
         count = get!(counts, parent_name, 1)
         name_string = split(node_val(n).parent, ".")[1]
-        filename = joinpath(base_image_path, string(name_string, @sprintf("%02i", count), ".png"))
+        filename =
+            joinpath(base_image_path, string(name_string, @sprintf("%02i", count), ".png"))
         file_names[node_id(n)] = filename
         counts[parent_name] = counts[parent_name] + 1
     end
@@ -717,11 +780,15 @@ function render_model_spec_with_pictures(model_spec;
 
     _color_func = (v, c) -> haskey(labels, get_vtx_id(plt_spec, v)) ? c : nothing
 
-    plt = display_graph(plt_spec, (x, y),
-        draw_node_function=(G, v) -> Compose.compose(
+    plt = display_graph(
+        plt_spec,
+        (x, y),
+        draw_node_function = (G, v) -> Compose.compose(
             Compose.context(),
-            (Compose.context(),
-                (context(),
+            (
+                Compose.context(),
+                (
+                    context(),
                     Compose.text(
                         label_pos...,
                         get(labels, get_vtx_id(plt_spec, v), ""),
@@ -730,22 +797,28 @@ function render_model_spec_with_pictures(model_spec;
                     ),
                     Compose.fontsize(label_fontsize),
                 ),
-                (context(),
+                (
+                    context(),
                     Compose.circle(label_pos..., label_radius),
                     Compose.fill(_color_func(v, label_bg_color)),
                     Compose.stroke(_color_func(v, label_stroke_color)),
                 ),
             ),
-            (Compose.context(), bitmap("image/png", read(file_names[get_vtx_id(G, v)]),
-                -(picture_scale - 1.0) / 2,
-                -(picture_scale - 1.0) / 2,
-                picture_scale,
-                picture_scale,
-            )),
+            (
+                Compose.context(),
+                bitmap(
+                    "image/png",
+                    read(file_names[get_vtx_id(G, v)]),
+                    -(picture_scale - 1.0) / 2,
+                    -(picture_scale - 1.0) / 2,
+                    picture_scale,
+                    picture_scale,
+                ),
+            ),
             (Compose.context(), circle(), fill(bg_color), Compose.stroke(stroke_color)),
         ),
-        scale=scale,
-        aspect_stretch=aspect_stretch,
+        scale = scale,
+        aspect_stretch = aspect_stretch,
     )
 end
 
@@ -781,7 +854,7 @@ for op in (
     :(_title_string),
     :(_subtitle_string),
     :(_subtitle_text_scale),
-    :(_title_text_scale)
+    :(_title_text_scale),
 )
     @eval $op(n::CustomNode, args...) = $op(node_val(n), args...)
     @eval $op(n::ScheduleNode, args...) = $op(n.node, args...)
@@ -791,12 +864,14 @@ _subtitle_text_scale(n::Union{ConstructionPredicate,SceneNode}) = 0.28
 _title_text_scale(n::Union{ConstructionPredicate,SceneNode}) = 0.28
 
 _subtitle_string(n::SceneNode) = "$(get_id(node_id(n)))"
-_subtitle_string(n::Union{EntityGo,EntityConfigPredicate,FormTransportUnit,DepositCargo}) = _subtitle_string(entity(n))
+_subtitle_string(n::Union{EntityGo,EntityConfigPredicate,FormTransportUnit,DepositCargo}) =
+    _subtitle_string(entity(n))
 _subtitle_string(n::BuildPhasePredicate) = _subtitle_string(n.assembly)
 _subtitle_string(n::ObjectNode) = "o$(get_id(node_id(n)))"
 _subtitle_string(n::RobotNode) = "r$(get_id(node_id(n)))"
 _subtitle_string(n::AssemblyNode) = "a$(get_id(node_id(n)))"
-_subtitle_string(n::TransportUnitNode) = cargo_type(n) == AssemblyNode ? "a$(get_id(node_id(n)))" : "o$(get_id(node_id(n)))"
+_subtitle_string(n::TransportUnitNode) =
+    cargo_type(n) == AssemblyNode ? "a$(get_id(node_id(n)))" : "o$(get_id(node_id(n)))"
 
 
 SPACE_GRAY = RGB(0.2, 0.2, 0.2)
@@ -833,12 +908,14 @@ function draw_node(g::AbstractCustomNGraph, v, args...; kwargs...)
 end
 
 function plot_staging_area(
-    sched, scene_tree, staging_circles;
-    save_file_name="staging_area.pdf",
-    save_image=true,
-    nominal_width=30cm,
-    node_list=node_iterator(sched, topological_sort_by_dfs(sched)),
-    show_intermediate_stages=false,
+    sched,
+    scene_tree,
+    staging_circles;
+    save_file_name = "staging_area.pdf",
+    save_image = true,
+    nominal_width = 30cm,
+    node_list = node_iterator(sched, topological_sort_by_dfs(sched)),
+    show_intermediate_stages = false,
 )
 
     _final_stage_stroke_color = "red"
@@ -857,10 +934,13 @@ function plot_staging_area(
     base_geom_layer = Compose.compose(
         context(),
         Compose.linewidth(0.02pt),
-        plot_assemblies(sched, scene_tree,
-            fill_color=RGBA(0.5, 0.5, 0.5, 0.9),
-            stroke_color=nothing,
-        ))
+        plot_assemblies(
+            sched,
+            scene_tree,
+            fill_color = RGBA(0.5, 0.5, 0.5, 0.9),
+            stroke_color = nothing,
+        ),
+    )
 
     bg_color = nothing
 
@@ -875,7 +955,10 @@ function plot_staging_area(
 
             push!(staging_circs, node_id(n) => get_cached_geom(node_val(n).staging_circle))
 
-            push!(bounding_circs, node_id(n) => get_cached_geom(node_val(n).bounding_circle))
+            push!(
+                bounding_circs,
+                node_id(n) => get_cached_geom(node_val(n).bounding_circle),
+            )
 
             is_terminal_build_step = true
             for v in outneighbors(sched, n)
@@ -884,7 +967,10 @@ function plot_staging_area(
                 end
             end
             is_terminal_build_step ? nothing : continue
-            push!(final_staging_circs, node_id(n) => get_cached_geom(node_val(n).staging_circle))
+            push!(
+                final_staging_circs,
+                node_id(n) => get_cached_geom(node_val(n).staging_circle),
+            )
 
         elseif matches_template(DepositCargo, n)
             tu = entity(n)
@@ -897,52 +983,73 @@ function plot_staging_area(
     bbox = staging_plan_bbox(staging_circs)
     bg_ctx = (context(), Compose.rectangle(), Compose.fill(bg_color))
 
-    Compose.set_default_graphic_size(nominal_width, (bbox.widths[2] / bbox.widths[1]) * nominal_width)
+    Compose.set_default_graphic_size(
+        nominal_width,
+        (bbox.widths[2] / bbox.widths[1]) * nominal_width,
+    )
 
 
-    circles_ctx = (context(),
-        (context(),
-            [Compose.circle(c.center[1], c.center[2], c.radius) for (k, c) in final_staging_circs]...,
+    circles_ctx = (
+        context(),
+        (
+            context(),
+            [
+                Compose.circle(c.center[1], c.center[2], c.radius) for
+                (k, c) in final_staging_circs
+            ]...,
             Compose.stroke(_final_stage_stroke_color),
             Compose.fill(_final_stage_bg_color),
         ),
-        (context(),
-            [Compose.circle(c.center[1], c.center[2], c.radius) for (k, c) in staging_circs if show_intermediate_stages]...,
+        (
+            context(),
+            [
+                Compose.circle(c.center[1], c.center[2], c.radius) for
+                (k, c) in staging_circs if show_intermediate_stages
+            ]...,
             Compose.stroke(_stage_stroke_color),
             Compose.fill(_stage_bg_color),
         ),
-        (context(),
-            [Compose.circle(c.center[1], c.center[2], c.radius) for (k, c) in dropoff_circs]...,
+        (
+            context(),
+            [
+                Compose.circle(c.center[1], c.center[2], c.radius) for
+                (k, c) in dropoff_circs
+            ]...,
             Compose.stroke(_dropoff_stroke_color),
             Compose.fill(_dropoff_bg_color),
         ),
-        (context(),
-            [Compose.circle(c.center[1], c.center[2], c.radius) for (k, c) in bounding_circs]...,
+        (
+            context(),
+            [
+                Compose.circle(c.center[1], c.center[2], c.radius) for
+                (k, c) in bounding_circs
+            ]...,
             Compose.stroke(_bounding_stroke_color),
             Compose.fill(_bounding_bg_color),
         ),
     )
 
     plt = Compose.compose(
-        context(units=UnitBox(bbox.origin..., bbox.widths...)),
+        context(units = UnitBox(bbox.origin..., bbox.widths...)),
         base_geom_layer,
         circles_ctx,
-        bg_ctx
+        bg_ctx,
     )
 
     circs = transform_final_assembly_staging_circles(sched, scene_tree, staging_circles)
 
 
     forms = [Compose.circle(v.center..., v.radius) for v in values(circs)]
-    stage_plt = Compose.compose(context(), plt,
-        (context(units=UnitBox(bbox.origin..., bbox.widths...)),
+    stage_plt = Compose.compose(
+        context(),
+        plt,
+        (
+            context(units = UnitBox(bbox.origin..., bbox.widths...)),
             forms...,
             Compose.fill(nothing),
             Compose.stroke(RGBA(0.5, 0.5, 0.5, 1.0)),
         ),
-        (context(), Compose.rectangle(),
-            Compose.fill(RGB(0.25, 0.25, 0.25)),
-        )
+        (context(), Compose.rectangle(), Compose.fill(RGB(0.25, 0.25, 0.25))),
     )
     if save_image
         draw(PDF(save_file_name), stage_plt)
@@ -957,7 +1064,8 @@ function staging_plan_bbox(staging_circs)
     yhi = maximum(c.center[2] + c.radius for (k, c) in staging_circs)
     GeometryBasics.Rect2D(xlo, ylo, xhi - xlo, yhi - ylo)
 end
-staging_plan_bbox(sched::AbstractGraph) = staging_plan_bbox(extract_build_step_staging_circles(sched))
+staging_plan_bbox(sched::AbstractGraph) =
+    staging_plan_bbox(extract_build_step_staging_circles(sched))
 
 function extract_build_step_staging_circles(sched)
     circs = Dict()
@@ -972,8 +1080,9 @@ end
 function transform_final_assembly_staging_circles(sched, scene_tree, staging_circles)
     circs = Dict()
     for (k, v) in staging_circles
-        tform = global_transform(goal_config(get_node(sched,
-            AssemblyComplete(get_node(scene_tree, k)))))
+        tform = global_transform(
+            goal_config(get_node(sched, AssemblyComplete(get_node(scene_tree, k)))),
+        )
         # circ = LazySets.translate(v,tform.translation[1:2])
         circ = LazySets.Ball2(v.center + tform.translation[1:2], v.radius)
         circs[k] = circ
@@ -981,15 +1090,12 @@ function transform_final_assembly_staging_circles(sched, scene_tree, staging_cir
     circs
 end
 
-function plot_assemblies(sched, scene_tree;
-    base_ctx=context(),
-    kwargs...,
-)
+function plot_assemblies(sched, scene_tree; base_ctx = context(), kwargs...)
     ctxs = []
     for n in get_nodes(sched)
         if matches_template(AssemblyComplete, n)
             tform = global_transform(goal_config(n))
-            push!(ctxs, plot_base_geom_2d(entity(n), scene_tree; tform=tform, kwargs...))
+            push!(ctxs, plot_base_geom_2d(entity(n), scene_tree; tform = tform, kwargs...))
         end
     end
     Compose.compose(base_ctx, ctxs...)

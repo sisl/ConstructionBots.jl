@@ -18,8 +18,10 @@ function set_agent_properties(deconflict_strategies)
         set_rvo_default_neighbor_distance!(16 * default_robot_radius())
         set_rvo_default_min_neighbor_distance!(10 * default_robot_radius())
     else
-        println("No agent properties set for deconfliction strategies: ",
-        join(deconflict_strategies, ", "))
+        println(
+            "No agent properties set for deconfliction strategies: ",
+            join(deconflict_strategies, ", "),
+        )
     end
 end
 
@@ -31,23 +33,23 @@ function update_velocity(env, deconflict_strategies)
             agent_radius = get_radius(get_base_geom(n, HypersphereKey()))
             vmax = get_vmax(n, deconflict_strategies)
             env.agent_policies[node_id(n)] = ConstructionBots.VelocityController(
-                nominal_policy = in(:TangentBugPolicy, deconflict_strategies) ? 
-                    TangentBugPolicy(
-                        dt = env.dt, 
-                        vmax = vmax, 
-                        agent_radius = agent_radius
-                    ) : nothing,
-                dispersion_policy = in(:Dispersion, deconflict_strategies) ? 
-                    ConstructionBots.PotentialFieldController(
-                        agent = n,
-                        node = node,
-                        agent_radius = agent_radius,
-                        vmax = vmax,
-                        max_buffer_radius = 2.5 * agent_radius,
-                        interaction_radius = 15 * agent_radius,
-                        static_potentials = (x, r) -> 0.0,
-                        pairwise_potentials = ConstructionBots.repulsion_potential
-                    ) : nothing
+                nominal_policy = in(:TangentBugPolicy, deconflict_strategies) ?
+                                 TangentBugPolicy(
+                    dt = env.dt,
+                    vmax = vmax,
+                    agent_radius = agent_radius,
+                ) : nothing,
+                dispersion_policy = in(:Dispersion, deconflict_strategies) ?
+                                    ConstructionBots.PotentialFieldController(
+                    agent = n,
+                    node = node,
+                    agent_radius = agent_radius,
+                    vmax = vmax,
+                    max_buffer_radius = 2.5 * agent_radius,
+                    interaction_radius = 15 * agent_radius,
+                    static_potentials = (x, r) -> 0.0,
+                    pairwise_potentials = ConstructionBots.repulsion_potential,
+                ) : nothing,
             )
         end
     end
@@ -58,8 +60,10 @@ function update_simulation_environment(deconflict_strategies)
     if in(:RVO, deconflict_strategies)
         rvo_set_new_sim!()
     else
-        println("No simulation update required for deconfliction strategy: ",
-            join(deconflict_strategies, ", "))
+        println(
+            "No simulation update required for deconfliction strategy: ",
+            join(deconflict_strategies, ", "),
+        )
     end
 end
 
@@ -68,8 +72,10 @@ function add_agents_to_simulation!(scene_tree, deconflict_strategies)
     if in(:RVO, deconflict_strategies)
         return rvo_add_agents!(scene_tree)
     else
-        println("No new agents to add for deconfliction strategy: ", 
-            join(deconflict_strategies, ", "))
+        println(
+            "No new agents to add for deconfliction strategy: ",
+            join(deconflict_strategies, ", "),
+        )
     end
 end
 
@@ -81,8 +87,10 @@ function set_agent_priority(env::PlannerEnv, node)
     if in(:RVO, deconflict_strategies)
         return set_rvo_priority!(env, node)
     else
-        println("No agent priority to update for deconfliction strategy: ", 
-            join(deconflict_strategies, ", "))
+        println(
+            "No agent priority to update for deconfliction strategy: ",
+            join(deconflict_strategies, ", "),
+        )
     end
 end
 

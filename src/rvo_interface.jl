@@ -38,7 +38,8 @@ function rvo_reset_agent_map!()
     global RVO_ID_GLOBAL_MAP = RVOAgentMap()
 end
 
-rvo_active_agents(scene_tree) = (get_node(scene_tree, node_id(n)) for n in get_nodes(rvo_global_id_map()))
+rvo_active_agents(scene_tree) =
+    (get_node(scene_tree, node_id(n)) for n in get_nodes(rvo_global_id_map()))
 
 global RVO_PYTHON_MODULE = nothing
 function rvo_python_module()
@@ -54,26 +55,33 @@ function reset_rvo_python_module!()
 end
 
 function rvo_new_sim(;
-    dt::Float64=1 / 40.0,
-    neighbor_dist::Float64=2.0,
-    max_neighbors::Int=5,
-    horizon::Float64=2.0,
-    horizon_obst::Float64=1.0,
-    radius::Float64=0.5,
-    max_speed::Float64=rvo_default_max_speed(),
-    default_vel=(0.0, 0.0)
+    dt::Float64 = 1 / 40.0,
+    neighbor_dist::Float64 = 2.0,
+    max_neighbors::Int = 5,
+    horizon::Float64 = 2.0,
+    horizon_obst::Float64 = 1.0,
+    radius::Float64 = 0.5,
+    max_speed::Float64 = rvo_default_max_speed(),
+    default_vel = (0.0, 0.0),
 )
     reset_rvo_python_module!()
     rvo_reset_agent_map!()
     rvo_python_module().PyRVOSimulator(
-        dt, neighbor_dist, max_neighbors, horizon, horizon_obst, radius, max_speed, default_vel
+        dt,
+        neighbor_dist,
+        max_neighbors,
+        horizon,
+        horizon_obst,
+        radius,
+        max_speed,
+        default_vel,
     )
 end
 
 # global RVO_SIM_WRAPPER = RVOSimWrapper(nothing)
 global RVO_SIM_WRAPPER = CachedElement{Any}(nothing, false, time())
 rvo_global_sim_wrapper() = RVO_SIM_WRAPPER
-function rvo_set_new_sim!(sim=rvo_new_sim())
+function rvo_set_new_sim!(sim = rvo_new_sim())
     ensure_rvo_python_module_loaded!()
     set_element!(rvo_global_sim_wrapper(), sim)
     # rvo_global_sim_wrapper().sim = sim
@@ -197,11 +205,11 @@ function rvo_get_agent_velocity(node)
     rvo_global_sim().getAgentVelocity(idx)
 end
 
-function rvo_set_agent_max_speed!(node, speed=get_rvo_max_speed(node))
+function rvo_set_agent_max_speed!(node, speed = get_rvo_max_speed(node))
     idx = rvo_get_agent_idx(node)
     rvo_global_sim().setAgentMaxSpeed(idx, speed)
 end
-function rvo_set_agent_alpha!(node, alpha=0.5)
+function rvo_set_agent_alpha!(node, alpha = 0.5)
     idx = rvo_get_agent_idx(node)
     rvo_global_sim().setAgentAlpha(idx, alpha)
 end
@@ -210,20 +218,14 @@ function rvo_get_agent_alpha(node)
     rvo_global_sim().getAgentAlpha(idx)
 end
 
-for T in (
-    :RobotStart,
-    :RobotGo,
-    :FormTransportUnit,
-    :TransportUnitGo,
-    :DepositCargo
-)
+for T in (:RobotStart, :RobotGo, :FormTransportUnit, :TransportUnitGo, :DepositCargo)
     @eval begin
         rvo_eligible_node(n::$T) = true
     end
 end
 rvo_eligible_node(n) = false
 
-function rvo_add_agents!(scene_tree, sim=rvo_global_sim())
+function rvo_add_agents!(scene_tree, sim = rvo_global_sim())
     ensure_rvo_python_module_loaded!()
     for node in get_nodes(scene_tree)
         if matches_template(RobotNode, node)

@@ -5,10 +5,10 @@ makedocs(
     modules = [ConstructionBots],
     format = Documenter.HTML(),
     sitename = "ConstructionBots.jl",
-    checkdocs = :none
+    checkdocs = :none,
 )
 
 deploydocs(
     repo = "github.com/sisl/ConstructionBots.jl",
-    versions = ["stable" => "v^", "v#.#"]
+    versions = ["stable" => "v^", "v#.#"],
 )

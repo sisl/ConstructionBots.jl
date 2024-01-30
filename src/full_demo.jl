@@ -47,47 +47,52 @@ Keyword arguments:
 - `rng::Random.AbstractRNG`: random number generator to use (default: MersenneTwister(1))
 """
 function run_lego_demo(;
-    ldraw_file::String="tractor.mpd",
-    project_name::String=ldraw_file,
-    model_scale::Float64=0.008,
-    num_robots::Int=12,
-    robot_scale::Float64=model_scale * 0.7,
-    robot_height::Float64=10 * robot_scale,
-    robot_radius::Float64=25 * robot_scale,
-    num_object_layers::Int=1,
-    max_steps::Int=100000,
-    staging_buffer_factor::Float64=1.2,
-    build_step_buffer_factor::Float64=0.5,
-    base_results_path::String=joinpath(dirname(pathof(ConstructionBots)), "..", "results"),
-    results_path::String=joinpath(base_results_path, project_name),
-    assignment_mode::Symbol=:greedy,
-    open_animation_at_end::Bool=false,
-    save_animation::Bool=false,
-    save_animation_along_the_way::Bool=false,
-    anim_active_agents::Bool=false,
-    anim_active_areas::Bool=false,
-    process_updates_interval::Int=50,
-    block_save_anim::Bool=false,
-    update_anim_at_every_step::Bool=false,
-    save_anim_interval::Int=500,
-    deconflict_strategies::Vector{Symbol}=[:RVO, :TangentBugPolicy, :Dispersion],
-    overwrite_results::Bool=false,
-    write_results::Bool=true,
-    max_num_iters_no_progress::Int=10000,
-    sim_batch_size::Int=50,
-    log_level::Logging.LogLevel=Logging.Warn,
-    milp_optimizer::Symbol=:highs,
-    milp_optimizer_attribute_dict::Dict=Dict(),
-    optimizer_time_limit::Int=600,
-    look_for_previous_milp_solution::Bool=false,
-    save_milp_solution::Bool=false,
-    previous_found_optimizer_time::Int=30,
-    stop_after_task_assignment::Bool=false,
-    ignore_rot_matrix_warning::Bool=true,
-    rng::Random.AbstractRNG=Random.MersenneTwister(1)
+    ldraw_file::String = "tractor.mpd",
+    project_name::String = ldraw_file,
+    model_scale::Float64 = 0.008,
+    num_robots::Int = 12,
+    robot_scale::Float64 = model_scale * 0.7,
+    robot_height::Float64 = 10 * robot_scale,
+    robot_radius::Float64 = 25 * robot_scale,
+    num_object_layers::Int = 1,
+    max_steps::Int = 100000,
+    staging_buffer_factor::Float64 = 1.2,
+    build_step_buffer_factor::Float64 = 0.5,
+    base_results_path::String = joinpath(
+        dirname(pathof(ConstructionBots)),
+        "..",
+        "results",
+    ),
+    results_path::String = joinpath(base_results_path, project_name),
+    assignment_mode::Symbol = :greedy,
+    open_animation_at_end::Bool = false,
+    save_animation::Bool = false,
+    save_animation_along_the_way::Bool = false,
+    anim_active_agents::Bool = false,
+    anim_active_areas::Bool = false,
+    process_updates_interval::Int = 50,
+    block_save_anim::Bool = false,
+    update_anim_at_every_step::Bool = false,
+    save_anim_interval::Int = 500,
+    deconflict_strategies::Vector{Symbol} = [:RVO, :TangentBugPolicy, :Dispersion],
+    overwrite_results::Bool = false,
+    write_results::Bool = true,
+    max_num_iters_no_progress::Int = 10000,
+    sim_batch_size::Int = 50,
+    log_level::Logging.LogLevel = Logging.Warn,
+    milp_optimizer::Symbol = :highs,
+    milp_optimizer_attribute_dict::Dict = Dict(),
+    optimizer_time_limit::Int = 600,
+    look_for_previous_milp_solution::Bool = false,
+    save_milp_solution::Bool = false,
+    previous_found_optimizer_time::Int = 30,
+    stop_after_task_assignment::Bool = false,
+    ignore_rot_matrix_warning::Bool = true,
+    rng::Random.AbstractRNG = Random.MersenneTwister(1),
 )
 
-    process_animation_tasks = save_animation || save_animation_along_the_way || open_animation_at_end
+    process_animation_tasks =
+        save_animation || save_animation_along_the_way || open_animation_at_end
 
     if in(:RVO, deconflict_strategies) && !in(:Dispersion, deconflict_strategies)
         @warn "RVO is enabled but dispersion is disabled. This is not recommended."
@@ -136,7 +141,8 @@ function run_lego_demo(;
         milp_optimizer_attribute_dict[MOI.Silent()] = false
         default_milp_optimizer = nothing
         if milp_optimizer == :glpk
-            default_milp_optimizer = () -> GLPK.Optimizer(; want_infeasibility_certificates=false)
+            default_milp_optimizer =
+                () -> GLPK.Optimizer(; want_infeasibility_certificates = false)
             milp_optimizer_attribute_dict["tm_lim"] = optimizer_time_limit * 1000
             milp_optimizer_attribute_dict["msg_lev"] = GLPK.GLP_MSG_ALL
             time_limit_key = "tm_lim"
@@ -164,7 +170,7 @@ function run_lego_demo(;
     function generate_prefix(strategy_symbol, positive_prefix, negative_prefix, strategies)
         return in(strategy_symbol, strategies) ? positive_prefix : negative_prefix
     end
-    
+
     function get_solution_prefix(mode)
         if mode == :milp
             return "milp_"
@@ -176,23 +182,40 @@ function run_lego_demo(;
             error("Unknown assignment mode: $(mode)")
         end
     end
-    
+
     function generate_file_name(base_name, overwrite_results)
-        return overwrite_results ? base_name : string(Dates.format(Dates.now(), "yyyymmdd_HHMMSS"), "_", base_name)
+        return overwrite_results ? base_name :
+               string(Dates.format(Dates.now(), "yyyymmdd_HHMMSS"), "_", base_name)
     end
-    
+
     prefix = string(
         generate_prefix(:RVO, "RVO", "no-RVO", deconflict_strategies),
-        "_", generate_prefix(:Dispersion, "Dispersion", "no-Dispersion", deconflict_strategies),
-        "_", generate_prefix(:TangentBugPolicy, "TangentBug", "no-TangentBug", deconflict_strategies)
+        "_",
+        generate_prefix(:Dispersion, "Dispersion", "no-Dispersion", deconflict_strategies),
+        "_",
+        generate_prefix(
+            :TangentBugPolicy,
+            "TangentBug",
+            "no-TangentBug",
+            deconflict_strategies,
+        ),
     )
     soln_str_pre = get_solution_prefix(assignment_mode)
     prefix = string(soln_str_pre, prefix)
 
     mkpath(joinpath(results_path, prefix))
-    stats_path = joinpath(results_path, prefix, generate_file_name("stats.toml", overwrite_results))
-    anim_path = joinpath(results_path, prefix, generate_file_name("visualization.html", overwrite_results))
-    anim_prog_path = joinpath(results_path, prefix, generate_file_name("visualization_", overwrite_results))
+    stats_path =
+        joinpath(results_path, prefix, generate_file_name("stats.toml", overwrite_results))
+    anim_path = joinpath(
+        results_path,
+        prefix,
+        generate_file_name("visualization.html", overwrite_results),
+    )
+    anim_prog_path = joinpath(
+        results_path,
+        prefix,
+        generate_file_name("visualization_", overwrite_results),
+    )
 
     sim_params = SimParameters(
         sim_batch_size,
@@ -206,14 +229,14 @@ function run_lego_demo(;
         anim_active_areas,
         anim_prog_path,
         save_animation_along_the_way,
-        max_num_iters_no_progress
+        max_num_iters_no_progress,
     )
 
     reset_all_id_counters!()
     reset_all_invalid_id_counters!()
 
     set_default_robot_geom!(
-        Cylinder(Point(0.0, 0.0, 0.0), Point(0.0, 0.0, robot_height), robot_radius)
+        Cylinder(Point(0.0, 0.0, 0.0), Point(0.0, 0.0, robot_height), robot_radius),
     )
 
     # TODO(tashakim): move logic below into deconfliction interface.
@@ -228,9 +251,15 @@ function run_lego_demo(;
     ConstructionBots.set_default_geom_optimizer_attributes!(MOI.Silent() => true)
 
     pre_execution_start_time = time()
-    model = parse_ldraw_file(filename; ignore_rotation_determinant=ignore_rot_matrix_warning)
-    populate_part_geometry!(model; ignore_rotation_determinant=ignore_rot_matrix_warning)
-    LDrawParser.change_coordinate_system!(model, ldraw_base_transform(), model_scale; ignore_rotation_determinant=ignore_rot_matrix_warning)
+    model =
+        parse_ldraw_file(filename; ignore_rotation_determinant = ignore_rot_matrix_warning)
+    populate_part_geometry!(model; ignore_rotation_determinant = ignore_rot_matrix_warning)
+    LDrawParser.change_coordinate_system!(
+        model,
+        ldraw_base_transform(),
+        model_scale;
+        ignore_rotation_determinant = ignore_rot_matrix_warning,
+    )
 
     ## CONSTRUCT MODEL SPEC
     print("Constructing model spec...")
@@ -258,7 +287,7 @@ function run_lego_demo(;
     # Define TransportUnit configurations
     print("Configuring transport units...")
     config_transport_units_time = time()
-    ConstructionBots.init_transport_units!(scene_tree; robot_radius=robot_radius)
+    ConstructionBots.init_transport_units!(scene_tree; robot_radius = robot_radius)
     config_transport_units_time = time() - config_transport_units_time
     print("done!\n")
 
@@ -273,44 +302,66 @@ function run_lego_demo(;
     robot_spacing = 5 * robot_radius
     robot_start_box_side = ceil(sqrt(num_robots)) * robot_spacing
     xy_range = (-robot_start_box_side/2:robot_spacing:robot_start_box_side/2)
-    vtxs = ConstructionBots.construct_vtx_array(; spacing=(1.0, 1.0, 0.0), ranges=(xy_range, xy_range, 0:0))
+    vtxs = ConstructionBots.construct_vtx_array(;
+        spacing = (1.0, 1.0, 0.0),
+        ranges = (xy_range, xy_range, 0:0),
+    )
 
-    robot_vtxs = StatsBase.sample(rng, vtxs, num_robots; replace=false)
+    robot_vtxs = StatsBase.sample(rng, vtxs, num_robots; replace = false)
 
     ConstructionBots.add_robots_to_scene!(scene_tree, robot_vtxs, [default_robot_geom()])
 
     ## Recompute approximate geometry for when the robot is transporting it
     # Add temporary robots to the transport units and recalculate the bounding geometry
     # then remove them after the new geometries are calcualted
-    ConstructionBots.add_temporary_invalid_robots!(scene_tree; with_edges=true)
+    ConstructionBots.add_temporary_invalid_robots!(scene_tree; with_edges = true)
     compute_approximate_geometries!(scene_tree, HypersphereKey())
-    @assert all(map(node -> has_vertex(node.geom_hierarchy, HypersphereKey()), get_nodes(scene_tree)))
+    @assert all(
+        map(
+            node -> has_vertex(node.geom_hierarchy, HypersphereKey()),
+            get_nodes(scene_tree),
+        ),
+    )
     compute_approximate_geometries!(scene_tree, HyperrectangleKey())
-    @assert all(map(node -> has_vertex(node.geom_hierarchy, HyperrectangleKey()), get_nodes(scene_tree)))
+    @assert all(
+        map(
+            node -> has_vertex(node.geom_hierarchy, HyperrectangleKey()),
+            get_nodes(scene_tree),
+        ),
+    )
     ConstructionBots.remove_temporary_invalid_robots!(scene_tree)
 
     ## Construct Partial Schedule (without robots assigned)
     print("Constructing partial schedule...")
-    jump_to_final_configuration!(scene_tree; set_edges=true)
+    jump_to_final_configuration!(scene_tree; set_edges = true)
     sched = construct_partial_construction_schedule(model, model_spec, scene_tree, id_map)
     @assert validate_schedule_transform_tree(sched)
     print("done!\n")
 
     ## Generate staging plan
     print("Generating staging plan...")
-    max_object_transport_unit_radius = ConstructionBots.get_max_object_transport_unit_radius(scene_tree)
+    max_object_transport_unit_radius =
+        ConstructionBots.get_max_object_transport_unit_radius(scene_tree)
     staging_plan_time = time()
-    staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(scene_tree, sched;
-        buffer_radius=staging_buffer_factor * max_object_transport_unit_radius,
-        build_step_buffer_radius=build_step_buffer_factor * default_robot_radius()
+    staging_circles, bounding_circles = ConstructionBots.generate_staging_plan!(
+        scene_tree,
+        sched;
+        buffer_radius = staging_buffer_factor * max_object_transport_unit_radius,
+        build_step_buffer_radius = build_step_buffer_factor * default_robot_radius(),
     )
     staging_plan_time = time() - staging_plan_time
     print("done!\n")
 
     # record statistics
-    stats[:numobjects] = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(ObjectNode, n)])
-    stats[:numassemblies] = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(AssemblyNode, n)])
-    stats[:numrobots] = length([node_id(n) for n in get_nodes(scene_tree) if matches_template(RobotNode, n)])
+    stats[:numobjects] = length([
+        node_id(n) for n in get_nodes(scene_tree) if matches_template(ObjectNode, n)
+    ])
+    stats[:numassemblies] = length([
+        node_id(n) for n in get_nodes(scene_tree) if matches_template(AssemblyNode, n)
+    ])
+    stats[:numrobots] = length([
+        node_id(n) for n in get_nodes(scene_tree) if matches_template(RobotNode, n)
+    ])
     stats[:ConfigTransportUnitsTime] = config_transport_units_time
     stats[:StagingPlanTime] = staging_plan_time
     if write_results
@@ -323,13 +374,26 @@ function run_lego_demo(;
     # all objects are placed while not putting obhects in building locations.
     print("Placing objects at starting locations ...")
     # Max height of cargo (excluding the final assembly)
-    max_cargo_height = maximum(map(n -> get_base_geom(n, HyperrectangleKey()).radius[3] * 2,
-        filter(n -> (matches_template(TransportUnitNode, n) && cargo_id(n) != AssemblyID(1)),
-            get_nodes(scene_tree))))
+    max_cargo_height = maximum(
+        map(
+            n -> get_base_geom(n, HyperrectangleKey()).radius[3] * 2,
+            filter(
+                n -> (
+                    matches_template(TransportUnitNode, n) && cargo_id(n) != AssemblyID(1)
+                ),
+                get_nodes(scene_tree),
+            ),
+        ),
+    )
     other_circles = get_buildstep_circles(sched)
-    build_circles = remove_redundant(collect(values(other_circles)); ϵ=robot_radius)
-    object_vtxs = get_object_vtx(scene_tree, build_circles, max_cargo_height,
-        num_object_layers, 2 * robot_radius)
+    build_circles = remove_redundant(collect(values(other_circles)); ϵ = robot_radius)
+    object_vtxs = get_object_vtx(
+        scene_tree,
+        build_circles,
+        max_cargo_height,
+        num_object_layers,
+        2 * robot_radius,
+    )
     ConstructionBots.select_initial_object_grid_locations!(sched, object_vtxs)
 
     # Move assemblies up so they float above the robots
@@ -342,19 +406,20 @@ function run_lego_demo(;
             dh = max_cargo_height - (rect.center.-rect.radius)[3]
             set_desired_global_transform_without_affecting_children!(
                 start_config(start_node),
-                CoordinateTransformations.Translation(current.translation[1:2]..., dh) ∘ CoordinateTransformations.LinearMap(current.linear)
+                CoordinateTransformations.Translation(current.translation[1:2]..., dh) ∘
+                CoordinateTransformations.LinearMap(current.linear),
             )
         end
     end
     # Make sure all transforms line up
     ConstructionBots.calibrate_transport_tasks!(sched)
-    @assert validate_schedule_transform_tree(sched; post_staging=true)
+    @assert validate_schedule_transform_tree(sched; post_staging = true)
     print("done!\n")
 
     # Task Assignments
     print("Assigning robots...")
     ConstructionBots.add_dummy_robot_go_nodes!(sched)
-    @assert validate_schedule_transform_tree(sched; post_staging=true)
+    @assert validate_schedule_transform_tree(sched; post_staging = true)
 
     # Convert to OperatingSchedule
     ConstructionBots.set_default_loading_speed!(50 * default_robot_radius())
@@ -366,7 +431,8 @@ function run_lego_demo(;
     ## MILP solver
 
     solution_fname = joinpath(results_path, string(soln_str_pre, "$(num_robots).jld2"))
-    no_solution_fname = joinpath(results_path, string(soln_str_pre, "$(num_robots)_NO-SOLN.jld2"))
+    no_solution_fname =
+        joinpath(results_path, string(soln_str_pre, "$(num_robots)_NO-SOLN.jld2"))
 
     soln_matrix = nothing
     if look_for_previous_milp_solution && (assignment_mode != :greedy)
@@ -378,7 +444,8 @@ function run_lego_demo(;
             println("\n\tFound previous MILP solution at $solution_fname")
             soln_matrix = jld2.load(solution_fname, "soln_matrix")
             soln_matrix = SparseArrays.SparseMatrixCSC(soln_matrix)
-            milp_optimizer_attribute_dict[time_limit_key] = Float64(previous_found_optimizer_time)
+            milp_optimizer_attribute_dict[time_limit_key] =
+                Float64(previous_found_optimizer_time)
             clear_default_milp_optimizer_attributes!()
             set_default_milp_optimizer_attributes!(milp_optimizer_attribute_dict)
         elseif isfile(no_solution_fname)
@@ -393,7 +460,12 @@ function run_lego_demo(;
     milp_model = SparseAdjacencyMILP()
     if assignment_mode == :milp
         if !isnothing(soln_matrix)
-            milp_model = formulate_milp(milp_model, tg_sched, scene_tree; warm_start_soln=soln_matrix)
+            milp_model = formulate_milp(
+                milp_model,
+                tg_sched,
+                scene_tree;
+                warm_start_soln = soln_matrix,
+            )
         else
             milp_model = formulate_milp(milp_model, tg_sched, scene_tree)
         end
@@ -404,9 +476,8 @@ function run_lego_demo(;
         end
     elseif assignment_mode == :greedy
         ## Greedy Assignment with enforced build-step ordering
-        milp_model = ConstructionBots.GreedyOrderedAssignment(
-            greedy_cost=GreedyFinalTimeCost(),
-        )
+        milp_model =
+            ConstructionBots.GreedyOrderedAssignment(greedy_cost = GreedyFinalTimeCost())
         milp_model = formulate_milp(milp_model, tg_sched, scene_tree)
         optimize!(milp_model)
     elseif assignment_mode == :milp_w_greedy_warm_start
@@ -416,18 +487,28 @@ function run_lego_demo(;
                        Recommend using HiGHS (:highs) or Gurobi (:gurobi)."""
         end
         if !isnothing(soln_matrix)
-            milp_model = formulate_milp(milp_model, tg_sched, scene_tree; warm_start_soln=soln_matrix)
+            milp_model = formulate_milp(
+                milp_model,
+                tg_sched,
+                scene_tree;
+                warm_start_soln = soln_matrix,
+            )
         else
             greedy_sched = deepcopy(tg_sched)
             greedy_model = ConstructionBots.GreedyOrderedAssignment(
-                greedy_cost=GreedyFinalTimeCost(),
+                greedy_cost = GreedyFinalTimeCost(),
             )
             greedy_model = formulate_milp(greedy_model, greedy_sched, scene_tree)
             optimize!(greedy_model)
             greedy_assignmnet_matrix = get_assignment_matrix(greedy_model)
 
             milp_model = SparseAdjacencyMILP()
-            milp_model = formulate_milp(milp_model, tg_sched, scene_tree; warm_start_soln=greedy_assignmnet_matrix)
+            milp_model = formulate_milp(
+                milp_model,
+                tg_sched,
+                scene_tree;
+                warm_start_soln = greedy_assignmnet_matrix,
+            )
         end
         optimize!(milp_model)
         if primal_status(milp_model) == MOI.NO_SOLUTION
@@ -440,19 +521,26 @@ function run_lego_demo(;
     post_assignment_makespan = Inf
     if valid_milp_solution
         validate_schedule_transform_tree(
-            ConstructionBots.convert_from_operating_schedule(typeof(sched), tg_sched)
-            ; post_staging=true)
+            ConstructionBots.convert_from_operating_schedule(typeof(sched), tg_sched);
+            post_staging = true,
+        )
         update_project_schedule!(nothing, milp_model, tg_sched, scene_tree)
         @assert validate(tg_sched)
 
         # Assign robots to "home" locations so they don't sit around in each others' way
-        go_nodes = [n for n in get_nodes(tg_sched) if matches_template(RobotGo, n) && is_terminal_node(tg_sched, n)]
-        min_assembly_1_xy = (staging_circles[AssemblyID(1)].center.-staging_circles[AssemblyID(1)].radius)[1:2]
+        go_nodes = [
+            n for n in get_nodes(tg_sched) if
+            matches_template(RobotGo, n) && is_terminal_node(tg_sched, n)
+        ]
+        min_assembly_1_xy =
+            (staging_circles[AssemblyID(1)].center.-staging_circles[AssemblyID(1)].radius)[1:2]
         for (ii, n) in enumerate(go_nodes)
             vtx_x = min_assembly_1_xy[1] - ii * 5 * robot_radius
             vtx_y = min_assembly_1_xy[2]
-            set_desired_global_transform!(goal_config(n),
-                CoordinateTransformations.Translation(vtx_x, vtx_y, 0.0) ∘ identity_linear_map()
+            set_desired_global_transform!(
+                goal_config(n),
+                CoordinateTransformations.Translation(vtx_x, vtx_y, 0.0) ∘
+                identity_linear_map(),
             )
         end
         post_assignment_makespan = makespan(tg_sched)
@@ -488,45 +576,57 @@ function run_lego_demo(;
         return nothing, stats
     end
 
-    factory_vis = ConstructionBots.FactoryVisualizer(vis=visualizer)
+    factory_vis = ConstructionBots.FactoryVisualizer(vis = visualizer)
     if !isnothing(visualizer)
         delete!(visualizer)
 
         # Visualize assembly
-        factory_vis = ConstructionBots.populate_visualizer!(scene_tree, visualizer;
-            color_map=color_map,
-            color=RGB(0.3, 0.3, 0.3),
-            material_type=MeshLambertMaterial
+        factory_vis = ConstructionBots.populate_visualizer!(
+            scene_tree,
+            visualizer;
+            color_map = color_map,
+            color = RGB(0.3, 0.3, 0.3),
+            material_type = MeshLambertMaterial,
         )
         ConstructionBots.add_indicator_nodes!(factory_vis)
-        factory_vis.staging_nodes = ConstructionBots.render_staging_areas!(visualizer, scene_tree,
-            sched, staging_circles;
-            dz=0.00, color=RGBA(0.4, 0.0, 0.4, 0.5))
+        factory_vis.staging_nodes = ConstructionBots.render_staging_areas!(
+            visualizer,
+            scene_tree,
+            sched,
+            staging_circles;
+            dz = 0.00,
+            color = RGBA(0.4, 0.0, 0.4, 0.5),
+        )
         for (k, color) in [
             (HypersphereKey() => RGBA(0.0, 1.0, 0.0, 0.3)),
-            (HyperrectangleKey() => RGBA(1.0, 0.0, 0.0, 0.3))
+            (HyperrectangleKey() => RGBA(1.0, 0.0, 0.0, 0.3)),
         ]
-            ConstructionBots.show_geometry_layer!(factory_vis, k; color=color)
+            ConstructionBots.show_geometry_layer!(factory_vis, k; color = color)
         end
         for (k, nodes) in factory_vis.geom_nodes
             setvisible!(nodes, false)
         end
         setvisible!(factory_vis.geom_nodes[BaseGeomKey()], true)
         setvisible!(factory_vis.active_flags, false)
-        set_scene_tree_to_initial_condition!(scene_tree, sched; remove_all_edges=true)
+        set_scene_tree_to_initial_condition!(scene_tree, sched; remove_all_edges = true)
         ConstructionBots.update_visualizer!(factory_vis)
     end
 
-    set_scene_tree_to_initial_condition!(scene_tree, sched; remove_all_edges=true)
+    set_scene_tree_to_initial_condition!(scene_tree, sched; remove_all_edges = true)
 
     # Apply deconfliction strategies in simulation
     update_simulation_environment(deconflict_strategies)
     env = PlannerEnv(
-        sched=tg_sched,
-        scene_tree=scene_tree,
-        staging_circles=staging_circles,
-        max_robot_go_id=maximum([n.id.id for n in get_nodes(tg_sched) if matches_template(RobotGo, n)]),
-        max_cargo_id=maximum([cargo_id(entity(n)).id for n in get_nodes(tg_sched) if matches_template(TransportUnitGo, n)]),
+        sched = tg_sched,
+        scene_tree = scene_tree,
+        staging_circles = staging_circles,
+        max_robot_go_id = maximum([
+            n.id.id for n in get_nodes(tg_sched) if matches_template(RobotGo, n)
+        ]),
+        max_cargo_id = maximum([
+            cargo_id(entity(n)).id for
+            n in get_nodes(tg_sched) if matches_template(TransportUnitGo, n)
+        ]),
     )
     add_agents_to_simulation!(scene_tree, deconflict_strategies)
     update_velocity(env, deconflict_strategies)
@@ -539,7 +639,7 @@ function run_lego_demo(;
         print("Animating preprocessing step...")
         anim = ConstructionBots.AnimationWrapper(0)
         atframe(anim, ConstructionBots.current_frame(anim)) do
-            jump_to_final_configuration!(scene_tree; set_edges=true)
+            jump_to_final_configuration!(scene_tree; set_edges = true)
             ConstructionBots.update_visualizer!(factory_vis)
             setvisible!(factory_vis.geom_nodes[HyperrectangleKey()], false)
             setvisible!(factory_vis.staging_nodes, false)
@@ -548,11 +648,11 @@ function run_lego_demo(;
         ConstructionBots.animate_preprocessing_steps!(
             factory_vis,
             sched;
-            dt=0.0,
-            anim=anim,
-            interp_steps=40
+            dt = 0.0,
+            anim = anim,
+            interp_steps = 40,
         )
-        setanimation!(visualizer, anim.anim, play=false)
+        setanimation!(visualizer, anim.anim, play = false)
         print("done\n")
         if save_animation_along_the_way
             save_animation!(visualizer, "$(anim_prog_path)preprocessing.html")

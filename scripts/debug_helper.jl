@@ -50,7 +50,7 @@ sim_params = ConstructionBots.SimParameters(
     anim_active_areas,
     save_anim_prog_path,
     save_animation_along_the_way,
-    max_num_iters_no_progress
+    max_num_iters_no_progress,
 )
 
 # Add debug options as desired. E.g. @run

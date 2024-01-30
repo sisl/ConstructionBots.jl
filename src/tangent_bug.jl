@@ -5,7 +5,7 @@ export TangentBugPolicy
 @with_kw mutable struct TangentBugPolicy <: DeconflictStrategy
     mode::Symbol = :MOVE_TOWARD_GOAL
     vmax::Float64 = 1.0
-    dt::Float64 = 1/40.0
+    dt::Float64 = 1 / 40.0
     proximity_tolerance::Float64 = 1e-2
     agent_radius::Float64 = 0.5
     planning_radius::Float64 = 2 * agent_radius
@@ -38,9 +38,20 @@ end
 
 Returns the id and bloated (by policy.agent_radius+buffer) circle closest to pos
 """
-function get_closest_interfering_circle(policy, circles, pos, nominal_goal; return_w_no_buffer=false)
-    @unpack planning_radius, detour_horizon, proximity_tolerance, buffer,
-    agent_radius, vmax, dt = policy
+function get_closest_interfering_circle(
+    policy,
+    circles,
+    pos,
+    nominal_goal;
+    return_w_no_buffer = false,
+)
+    @unpack planning_radius,
+    detour_horizon,
+    proximity_tolerance,
+    buffer,
+    agent_radius,
+    vmax,
+    dt = policy
     dmin = Inf
     id = nothing
     circ = nothing
@@ -48,7 +59,8 @@ function get_closest_interfering_circle(policy, circles, pos, nominal_goal; retu
     for (circ_id, c) in circles
         x = get_center(c)
         r = get_radius(c)
-        bloated_circle = LazySets.Ball2(x, r + agent_radius + buffer * (!return_w_no_buffer))
+        bloated_circle =
+            LazySets.Ball2(x, r + agent_radius + buffer * (!return_w_no_buffer))
         if circle_intersects_line(bloated_circle, pos, nominal_goal)
             d = norm(x - pos) - get_radius(bloated_circle) # penetration
             if d < dmin
@@ -64,8 +76,13 @@ function get_closest_interfering_circle(policy, circles, pos, nominal_goal; retu
 end
 
 function set_policy_mode!(policy, circ, pos, nominal_goal, parent_step_active)
-    @unpack planning_radius, detour_horizon, proximity_tolerance, buffer,
-    agent_radius, vmax, dt = policy
+    @unpack planning_radius,
+    detour_horizon,
+    proximity_tolerance,
+    buffer,
+    agent_radius,
+    vmax,
+    dt = policy
     dmin = Inf
     c = nothing
     r = nothing
@@ -115,8 +132,13 @@ function set_policy_mode!(policy, circ, pos, nominal_goal, parent_step_active)
 end
 
 function tangent_bug_policy!(policy, circles, pos, nominal_goal, parent_step_active)
-    @unpack planning_radius, detour_horizon, proximity_tolerance, buffer,
-    agent_radius, vmax, dt = policy
+    @unpack planning_radius,
+    detour_horizon,
+    proximity_tolerance,
+    buffer,
+    agent_radius,
+    vmax,
+    dt = policy
 
     c = nothing
     r = nothing
@@ -184,4 +206,5 @@ function tangent_bug_policy!(policy, circles, pos, nominal_goal, parent_step_act
     return goal
 end
 
-query_policy_for_goal!(policy::TangentBugPolicy, args...) = tangent_bug_policy!(policy, args...)
+query_policy_for_goal!(policy::TangentBugPolicy, args...) =
+    tangent_bug_policy!(policy, args...)

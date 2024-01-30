@@ -1,6 +1,7 @@
 
 global DEFAULT_GEOM_OPTIMIZER = nothing
-global DEFAULT_GEOM_OPTIMIZER_ATTRIBUTES = Dict{Union{String,MOI.AbstractOptimizerAttribute},Any}()
+global DEFAULT_GEOM_OPTIMIZER_ATTRIBUTES =
+    Dict{Union{String,MOI.AbstractOptimizerAttribute},Any}()
 
 """
     default_geom_optimizer()
@@ -36,7 +37,8 @@ function set_default_geom_optimizer_attributes!(pair::Pair, pairs...)
     push!(DEFAULT_GEOM_OPTIMIZER_ATTRIBUTES, pair)
     set_default_geom_optimizer_attributes!(pairs...)
 end
-set_default_geom_optimizer_attributes!(d::Dict) = set_default_geom_optimizer_attributes!(d...)
+set_default_geom_optimizer_attributes!(d::Dict) =
+    set_default_geom_optimizer_attributes!(d...)
 set_default_geom_optimizer_attributes!() = nothing
 
 """
@@ -54,18 +56,23 @@ get_center(s::LazySets.Ball2) = LazySets.center(s)
 get_radius(s::LazySets.Ball2) = s.radius
 get_center(s::GeometryBasics.HyperSphere) = s.center
 get_radius(s::GeometryBasics.HyperSphere) = s.r
-GeometryBasics.Sphere(s::LazySets.Ball2) = GeometryBasics.Sphere(GeometryBasics.Point(s.center...), s.radius)
-Base.convert(::Type{S}, s::LazySets.Ball2) where {S<:GeometryBasics.HyperSphere} = S(GeometryBasics.Point(s.center...), s.radius)
+GeometryBasics.Sphere(s::LazySets.Ball2) =
+    GeometryBasics.Sphere(GeometryBasics.Point(s.center...), s.radius)
+Base.convert(::Type{S}, s::LazySets.Ball2) where {S<:GeometryBasics.HyperSphere} =
+    S(GeometryBasics.Point(s.center...), s.radius)
 const RectType = Hyperrectangle
 get_center(s::Hyperrectangle) = s.center
 get_radius(s::Hyperrectangle) = s.radius
-GeometryBasics.HyperRectangle(s::Hyperrectangle) = GeometryBasics.HyperRectangle(GeometryBasics.Vec((s.center .- s.radius)...), 2 * GeometryBasics.Vec(s.radius...))
+GeometryBasics.HyperRectangle(s::Hyperrectangle) = GeometryBasics.HyperRectangle(
+    GeometryBasics.Vec((s.center .- s.radius)...),
+    2 * GeometryBasics.Vec(s.radius...),
+)
 
 
 global DEFAULT_ROBOT_GEOM = GeometryBasics.Cylinder(
     GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.0),
     GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.25),
-    0.5
+    0.5,
 )
 """
     default_robot_geom()
@@ -104,12 +111,13 @@ const Z_PROJECTION_MAT = SMatrix{2,3,Float64}(1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
 """
     project_to_2d(geom,t=CoordinateTransformations.LinearMap(Z_PROJECTION_MAT)) = t(geom)
 """
-project_to_2d(geom, t=CoordinateTransformations.LinearMap(Z_PROJECTION_MAT)) = t(geom)
+project_to_2d(geom, t = CoordinateTransformations.LinearMap(Z_PROJECTION_MAT)) = t(geom)
 
 """
     project_to_3d(geom,t=CoordinateTransformations.LinearMap(transpose(Z_PROJECTION_MAT))) = t(geom)
 """
-project_to_3d(geom, t=CoordinateTransformations.LinearMap(transpose(Z_PROJECTION_MAT))) = t(geom)
+project_to_3d(geom, t = CoordinateTransformations.LinearMap(transpose(Z_PROJECTION_MAT))) =
+    t(geom)
 
 """
     transform(geom,t)
@@ -117,7 +125,8 @@ project_to_3d(geom, t=CoordinateTransformations.LinearMap(transpose(Z_PROJECTION
 Transform geometry `geom` according to the transformation `t`.
 """
 transform(v, t) = t(v)
-(t::CoordinateTransformations.Translation)(g::BaseGeometry) = LazySets.translate(g, Vector(t.translation))
+(t::CoordinateTransformations.Translation)(g::BaseGeometry) =
+    LazySets.translate(g, Vector(t.translation))
 
 """
     (t::CoordinateTransformations.LinearMap)(g::Hyperrectangle)
@@ -125,16 +134,18 @@ transform(v, t) = t(v)
 "rotating" a Hyperrectangle `g` results in a new Hyperrectangle that bounds the
 transformed version `g`.
 """
-(t::CoordinateTransformations.LinearMap)(g::Hyperrectangle) = overapproximate(t(convert(LazySets.VPolytope, g)), Hyperrectangle)
-(t::CoordinateTransformations.AffineMap)(g::Hyperrectangle) = overapproximate(t(convert(LazySets.VPolytope, g)), Hyperrectangle)
-(t::CoordinateTransformations.Translation)(g::Hyperrectangle) = Hyperrectangle(t(g.center), g.radius)
+(t::CoordinateTransformations.LinearMap)(g::Hyperrectangle) =
+    overapproximate(t(convert(LazySets.VPolytope, g)), Hyperrectangle)
+(t::CoordinateTransformations.AffineMap)(g::Hyperrectangle) =
+    overapproximate(t(convert(LazySets.VPolytope, g)), Hyperrectangle)
+(t::CoordinateTransformations.Translation)(g::Hyperrectangle) =
+    Hyperrectangle(t(g.center), g.radius)
 
-for T in (
-    :(CoordinateTransformations.AffineMap),
-)
+for T in (:(CoordinateTransformations.AffineMap),)
     @eval begin
         (t::$T)(v::V) where {N<:GeometryBasics.Ngon,V<:AbstractVector{N}} = V(map(t, v))
-        (t::$T)(g::C) where {C<:GeometryBasics.Cylinder} = C(t(g.origin), t(g.extremity), g.r)
+        (t::$T)(g::C) where {C<:GeometryBasics.Cylinder} =
+            C(t(g.origin), t(g.extremity), g.r)
         (t::$T)(g::VPolytope) = VPolytope(map(t, vertices_list(g)))
         (t::$T)(g::HPolytope) = HPolytope(map(t, constraints_list(g)))
         (t::$T)(g::VPolygon) = VPolytope(map(t, vertices_list(g)))
@@ -146,14 +157,12 @@ for T in (
     end
 end
 
-for T in (
-    :(CoordinateTransformations.LinearMap),
-    :(CoordinateTransformations.Translation),
-)
+for T in (:(CoordinateTransformations.LinearMap), :(CoordinateTransformations.Translation))
     @eval begin
         (t::$T)(v::V) where {N<:GeometryBasics.Ngon,V<:AbstractVector{N}} = V(map(t, v))
         (t::$T)(g::G) where {G<:GeometryBasics.Ngon} = G(map(t, g.points))
-        (t::$T)(g::C) where {C<:GeometryBasics.Cylinder} = C(t(g.origin), t(g.extremity), g.r)
+        (t::$T)(g::C) where {C<:GeometryBasics.Cylinder} =
+            C(t(g.origin), t(g.extremity), g.r)
         (t::$T)(g::VPolytope) = VPolytope(map(t, vertices_list(g)))
         (t::$T)(g::HPolytope) = HPolytope(map(t, constraints_list(g)))
         (t::$T)(g::VPolygon) = VPolytope(map(t, vertices_list(g)))
@@ -165,11 +174,20 @@ for T in (
     end
 end
 
-identity_linear_map3() = CoordinateTransformations.compose(CoordinateTransformations.Translation(zero(SVector{3,Float64})), CoordinateTransformations.LinearMap(one(SMatrix{3,3,Float64})))
-identity_linear_map2() = CoordinateTransformations.compose(CoordinateTransformations.Translation(zero(SVector{3,Float64})), CoordinateTransformations.LinearMap(one(SMatrix{3,3,Float64})))
+identity_linear_map3() = CoordinateTransformations.compose(
+    CoordinateTransformations.Translation(zero(SVector{3,Float64})),
+    CoordinateTransformations.LinearMap(one(SMatrix{3,3,Float64})),
+)
+identity_linear_map2() = CoordinateTransformations.compose(
+    CoordinateTransformations.Translation(zero(SVector{3,Float64})),
+    CoordinateTransformations.LinearMap(one(SMatrix{3,3,Float64})),
+)
 identity_linear_map() = identity_linear_map3()
-scaled_linear_map(scale) = CoordinateTransformations.LinearMap(scale * one(SMatrix{3,3,Float64})) ∘ identity_linear_map()
-Base.convert(::Type{Hyperrectangle{Float64,T,T}}, rect::Hyperrectangle) where {T} = Hyperrectangle(T(rect.center), T(rect.radius))
+scaled_linear_map(scale) =
+    CoordinateTransformations.LinearMap(scale * one(SMatrix{3,3,Float64})) ∘
+    identity_linear_map()
+Base.convert(::Type{Hyperrectangle{Float64,T,T}}, rect::Hyperrectangle) where {T} =
+    Hyperrectangle(T(rect.center), T(rect.radius))
 
 """
     relative_transform(a::AffineMap,b::AffineMap)
@@ -181,27 +199,30 @@ compute the relative transform `t` between two frames, `a`, and `b` such that
 
     i.e. (a ∘ t)(p) == a(t(p)) == b(p)
 """
-relative_transform(a::A, b::B) where {A<:CoordinateTransformations.Transformation,B<:CoordinateTransformations.Transformation} = inv(a) ∘ b
+relative_transform(
+    a::A,
+    b::B,
+) where {
+    A<:CoordinateTransformations.Transformation,
+    B<:CoordinateTransformations.Transformation,
+} = inv(a) ∘ b
 
 function Rotations.rotation_error(
     a::CoordinateTransformations.AffineMap,
     b::CoordinateTransformations.AffineMap,
-    error_map=MRPMap())
+    error_map = MRPMap(),
+)
     rot_err = Rotations.rotation_error(
         Rotations.QuatRotation(a.linear),
-        Rotations.QuatRotation(b.linear), error_map)
+        Rotations.QuatRotation(b.linear),
+        error_map,
+    )
 end
 for op in (:relative_transform, :(Rotations.rotation_error))
-    @eval $op(tree::AbstractCustomTree, parent, child, args...) = $op(
-        global_transform(tree, parent),
-        global_transform(tree, child),
-        args...
-    )
-    @eval $op(parent, child, args...) = $op(
-        global_transform(parent),
-        global_transform(child),
-        args...
-    )
+    @eval $op(tree::AbstractCustomTree, parent, child, args...) =
+        $op(global_transform(tree, parent), global_transform(tree, child), args...)
+    @eval $op(parent, child, args...) =
+        $op(global_transform(parent), global_transform(child), args...)
 end
 
 """
@@ -212,12 +233,12 @@ compute a rotation matrix `ΔR` such that `Ra*ΔR` is c/1.0 of the way to `Rb`.
     θ = axis + magnitude representation
     ΔR = exp(cross_product_operator(θ)*c)
 """
-function interpolate_rotation(Ra, Rb, c=0.5)
+function interpolate_rotation(Ra, Rb, c = 0.5)
     R = inv(Ra) * Rb
     r = Rotations.RotationVec(R) # rotation vector
     Rotations.RotationVec(r.sx * c, r.sy * c, r.sz * c)
 end
-function interpolate_transforms(Ta, Tb, c=0.5)
+function interpolate_transforms(Ta, Tb, c = 0.5)
     R = interpolate_rotation(Ta.linear, Tb.linear, c)
     t = (1 - c) * Ta.translation + c * Tb.translation
     CoordinateTransformations.Translation(t) ∘ CoordinateTransformations.LinearMap(R)
@@ -238,9 +259,7 @@ mutable struct TransformNode <: CachedTreeNode{TransformNodeID}
     global_transform::CachedElement{CoordinateTransformations.Transformation}
     parent::TransformNode # parent node
     children::Dict{AbstractID,CachedTreeNode}
-    function TransformNode(
-        a::CoordinateTransformations.Transformation,
-        b::CachedElement)
+    function TransformNode(a::CoordinateTransformations.Transformation, b::CachedElement)
         t = new()
         t.id = get_unique_id(TransformNodeID)
         t.local_transform = a
@@ -255,18 +274,30 @@ function TransformNode()
 end
 
 Base.show(io::IO, ::MIME"text/plain", m::TransformNode) = print(
-    io, "TransformNode(", get_id(node_id(m)), ")\n",
-    "  local:  ", local_transform(m), "\n",
-    "  global: ", global_transform(m), "\n",
-    "  parent: ", string(node_id(m.parent)), "\n",
-    "  children: ", map(k -> string("\n    ", string(k)), collect(keys(get_children(m))))..., "\n",
+    io,
+    "TransformNode(",
+    get_id(node_id(m)),
+    ")\n",
+    "  local:  ",
+    local_transform(m),
+    "\n",
+    "  global: ",
+    global_transform(m),
+    "\n",
+    "  parent: ",
+    string(node_id(m.parent)),
+    "\n",
+    "  children: ",
+    map(k -> string("\n    ", string(k)), collect(keys(get_children(m))))...,
+    "\n",
 )
-Base.show(io::IO, m::TransformNode) = print(io, "TransformNode(", get_id(node_id(m)), ") - ", m.global_transform)
+Base.show(io::IO, m::TransformNode) =
+    print(io, "TransformNode(", get_id(node_id(m)), ") - ", m.global_transform)
 
 # Cached Tree interface
 cached_element(n::TransformNode) = n.global_transform
 tf_up_to_date(n::TransformNode) = cached_node_up_to_date(n)
-set_tf_up_to_date!(n::TransformNode, val=true) = set_cached_node_up_to_date!(n, val)
+set_tf_up_to_date!(n::TransformNode, val = true) = set_cached_node_up_to_date!(n, val)
 local_transform(n::TransformNode) = n.local_transform
 set_global_transform!(n::TransformNode, t, args...) = update_element!(n, t, args...)
 global_transform(n::TransformNode) = get_cached_value!(n)
@@ -278,7 +309,7 @@ function propagate_forward!(parent::TransformNode, child::TransformNode)
     end
     global_transform(child)
 end
-function set_local_transform!(n::TransformNode, t, update=false)
+function set_local_transform!(n::TransformNode, t, update = false)
     n.local_transform = t ∘ identity_linear_map() # guarantee AffineMap?
     set_tf_up_to_date!(n, false)
     if update
@@ -307,14 +338,25 @@ function set_desired_global_transform!(n::TransformNode, t, args...)
         set_local_transform!(n, tform)
     end
 end
-const transform_node_accessor_interface = [:tf_up_to_date, :local_transform, :global_transform]
-const transform_node_mutator_interface = [:set_tf_up_to_date!, :set_local_transform!, :set_global_transform!, :set_local_transform_in_global_frame!, :set_desired_global_transform!]
+const transform_node_accessor_interface =
+    [:tf_up_to_date, :local_transform, :global_transform]
+const transform_node_mutator_interface = [
+    :set_tf_up_to_date!,
+    :set_local_transform!,
+    :set_global_transform!,
+    :set_local_transform_in_global_frame!,
+    :set_desired_global_transform!,
+]
 
 export set_desired_global_transform_without_affecting_children!
 """
     set_desired_global_transform_without_affecting_children!()
 """
-function set_desired_global_transform_without_affecting_children!(n::TransformNode, t, args...)
+function set_desired_global_transform_without_affecting_children!(
+    n::TransformNode,
+    t,
+    args...,
+)
     tf_dict = Dict{TransformNodeID,CoordinateTransformations.AffineMap}()
     child_dict = get_children(n)
     for (id, c) in child_dict
@@ -355,9 +397,12 @@ end
 Replace existing edge `old_parent` → `child` with new edge `parent` → `child`.
 Set the `child.local_transform` to `new_local_transform`.
 """
-function set_child!(tree::AbstractCustomTree, parent, child,
-    t=relative_transform(tree, parent, child),
-    edge=nothing
+function set_child!(
+    tree::AbstractCustomTree,
+    parent,
+    child,
+    t = relative_transform(tree, parent, child),
+    edge = nothing,
 )
     Graphs.rem_edge!(tree, get_parent(tree, child), child)
     if Graphs.add_edge!(tree, parent, child, edge)
@@ -433,7 +478,7 @@ Base.copy(n::GeomNode) = GeomNode(
     get_unique_id(GeomID),
     n.base_geom,
     copy(get_transform_node(n)),
-    copy(n.cached_geom)
+    copy(n.cached_geom),
 )
 
 abstract type GeometryKey end
@@ -464,13 +509,30 @@ struct CylinderKey <: GeometryKey end
 struct CircleKey <: GeometryKey end
 struct ConvexHullKey <: GeometryKey end
 
-construct_child_approximation(::PolyhedronKey, geom, args...) = LazySets.overapproximate(geom, equatorial_overapprox_model(), args...)
-construct_child_approximation(::HypersphereKey, geom, args...) = LazySets.overapproximate(geom, LazySets.Ball2{Float64,SVector{3,Float64}}, args...)
-construct_child_approximation(::HyperrectangleKey, geom, args...) = LazySets.overapproximate(geom, Hyperrectangle{Float64,SVector{3,Float64},SVector{3,Float64}}, args...)
-construct_child_approximation(::PolygonKey, geom, args...) = LazySets.overapproximate(geom, ngon_overapprox_model(8), args...)
-construct_child_approximation(::CircleKey, geom, args...) = LazySets.overapproximate(geom, LazySets.Ball2{Float64,SVector{2,Float64}}, args...)
-construct_child_approximation(::CylinderKey, geom, args...) = LazySets.overapproximate(geom, GeometryBasics.Cylinder, args...)
-construct_child_approximation(::OctagonalPrismKey, geom, args...) = LazySets.overapproximate(geom, BufferedPolygonPrism(regular_buffered_polygon(8, 1.0; buffer=0.05 * default_robot_radius())), args...)
+construct_child_approximation(::PolyhedronKey, geom, args...) =
+    LazySets.overapproximate(geom, equatorial_overapprox_model(), args...)
+construct_child_approximation(::HypersphereKey, geom, args...) =
+    LazySets.overapproximate(geom, LazySets.Ball2{Float64,SVector{3,Float64}}, args...)
+construct_child_approximation(::HyperrectangleKey, geom, args...) =
+    LazySets.overapproximate(
+        geom,
+        Hyperrectangle{Float64,SVector{3,Float64},SVector{3,Float64}},
+        args...,
+    )
+construct_child_approximation(::PolygonKey, geom, args...) =
+    LazySets.overapproximate(geom, ngon_overapprox_model(8), args...)
+construct_child_approximation(::CircleKey, geom, args...) =
+    LazySets.overapproximate(geom, LazySets.Ball2{Float64,SVector{2,Float64}}, args...)
+construct_child_approximation(::CylinderKey, geom, args...) =
+    LazySets.overapproximate(geom, GeometryBasics.Cylinder, args...)
+construct_child_approximation(::OctagonalPrismKey, geom, args...) =
+    LazySets.overapproximate(
+        geom,
+        BufferedPolygonPrism(
+            regular_buffered_polygon(8, 1.0; buffer = 0.05 * default_robot_radius()),
+        ),
+        args...,
+    )
 
 
 """
@@ -494,7 +556,7 @@ function geom_hierarchy(geom::GeomNode)
 end
 for op in (:get_base_geom, :get_cached_geom)
     @eval begin
-        function $op(n::GeometryHierarchy, k=BaseGeomKey())
+        function $op(n::GeometryHierarchy, k = BaseGeomKey())
             if Graphs.has_vertex(n, k)
                 return $op(get_node(n, k))
             else
@@ -512,19 +574,21 @@ Overapproximate `g`'s type `parent_key` geometry with geometry of type
 `child_key`, and add this new approximation to `g` under key `child_key` with an
 edge from `parent_key` to `child_key`.
 """
-function add_child_approximation!(g::GeometryHierarchy,
+function add_child_approximation!(
+    g::GeometryHierarchy,
     child_id,
     parent_id,
-    base_geom=get_base_geom(g, parent_id),
-    args...
+    base_geom = get_base_geom(g, parent_id),
+    args...,
 )
     @assert Graphs.has_vertex(g, parent_id) "g does not have parent_id = $parent_id"
     @assert !Graphs.has_vertex(g, child_id) "g already has child_id = $child_id"
     node = get_node(g, parent_id)
     geom = construct_child_approximation(child_id, base_geom, args...)
-    add_node!(g,
+    add_node!(
+        g,
         GeomNode(geom, node.parent), # Share parent
-        child_id
+        child_id,
     ) # todo needs parent
     Graphs.add_edge!(g, parent_id, child_id)
     return g
@@ -551,11 +615,11 @@ node_id(n::SceneNode) = n.id
 
 const geom_node_accessor_interface = [
     transform_node_accessor_interface...,
-    :get_base_geom, :get_cached_geom, :get_transform_node
+    :get_base_geom,
+    :get_cached_geom,
+    :get_transform_node,
 ]
-const geom_node_mutator_interface = [
-    transform_node_mutator_interface...
-]
+const geom_node_mutator_interface = [transform_node_mutator_interface...]
 
 for op in geom_node_accessor_interface
     @eval $op(n::SceneNode) = $op(n.geom)
@@ -642,8 +706,14 @@ struct AssemblyNode <: SceneNode
     components::TransformDict{Union{ObjectID,AssemblyID}}
     geom_hierarchy::GeometryHierarchy
 end
-AssemblyNode(n::AssemblyNode, geom) = AssemblyNode(n.id, geom, n.components, geom_hierarchy(geom))
-AssemblyNode(id, geom) = AssemblyNode(id, geom, TransformDict{Union{ObjectID,AssemblyID}}(), geom_hierarchy(geom))
+AssemblyNode(n::AssemblyNode, geom) =
+    AssemblyNode(n.id, geom, n.components, geom_hierarchy(geom))
+AssemblyNode(id, geom) = AssemblyNode(
+    id,
+    geom,
+    TransformDict{Union{ObjectID,AssemblyID}}(),
+    geom_hierarchy(geom),
+)
 assembly_components(n::AssemblyNode) = n.components
 add_component!(n::AssemblyNode, p) = push!(n.components, p)
 has_component(n::AssemblyNode, id) = haskey(assembly_components(n), id)
@@ -657,11 +727,15 @@ struct TransportUnitNode{C<:Union{ObjectID,AssemblyID},T} <: SceneNode
     robots::TransformDict{BotID} # must be filled with unique invalid ids
     geom_hierarchy::GeometryHierarchy
 end
-TransportUnitNode(n::TransportUnitNode, geom) = TransportUnitNode(geom, n.cargo, n.robots, geom_hierarchy(geom))
-TransportUnitNode(geom, cargo) = TransportUnitNode(geom, cargo, TransformDict{BotID}(), geom_hierarchy(geom))
-TransportUnitNode(geom, cargo_id::Union{AssemblyID,ObjectID}) = TransportUnitNode(geom, cargo_id => identity_linear_map())
+TransportUnitNode(n::TransportUnitNode, geom) =
+    TransportUnitNode(geom, n.cargo, n.robots, geom_hierarchy(geom))
+TransportUnitNode(geom, cargo) =
+    TransportUnitNode(geom, cargo, TransformDict{BotID}(), geom_hierarchy(geom))
+TransportUnitNode(geom, cargo_id::Union{AssemblyID,ObjectID}) =
+    TransportUnitNode(geom, cargo_id => identity_linear_map())
 TransportUnitNode(cargo::Pair) = TransportUnitNode(GeomNode(nothing), cargo)
-TransportUnitNode(cargo_id::Union{AssemblyID,ObjectID}) = TransportUnitNode(cargo_id => identity_linear_map())
+TransportUnitNode(cargo_id::Union{AssemblyID,ObjectID}) =
+    TransportUnitNode(cargo_id => identity_linear_map())
 TransportUnitNode(cargo::Union{AssemblyNode,ObjectNode}) = TransportUnitNode(node_id(cargo))
 robot_team(n::TransportUnitNode) = n.robots
 cargo_id(n::TransportUnitNode) = n.cargo.first
@@ -672,17 +746,21 @@ function required_transforms_to_children(n::TransportUnitNode)
 end
 
 const TransportUnitID = TemplatedID{Tuple{T,C}} where {C,T<:TransportUnitNode}
-node_id(n::TransportUnitNode{C,T}) where {C,T} = TemplatedID{Tuple{TransportUnitNode,C}}(get_id(cargo_id(n)))
+node_id(n::TransportUnitNode{C,T}) where {C,T} =
+    TemplatedID{Tuple{TransportUnitNode,C}}(get_id(cargo_id(n)))
 Base.convert(::Pair{A,B}, pair) where {A,B} = convert(A, pair.first) => convert(B, p.second)
 
 has_component(n::TransportUnitNode, id::Union{ObjectID,AssemblyID}) = id == cargo_id(n)
 has_component(n::TransportUnitNode, id::BotID) = haskey(robot_team(n), id)
-child_transform(n::TransportUnitNode, id::Union{ObjectID,AssemblyID}) = has_component(n, id) ? n.cargo.second : throw(ErrorException("TransportUnitNode $n does not have component $id"))
+child_transform(n::TransportUnitNode, id::Union{ObjectID,AssemblyID}) =
+    has_component(n, id) ? n.cargo.second :
+    throw(ErrorException("TransportUnitNode $n does not have component $id"))
 child_transform(n::TransportUnitNode, id::BotID) = robot_team(n)[id]
 add_robot!(n::TransportUnitNode, p) = push!(robot_team(n), p)
 remove_robot!(n::TransportUnitNode, id) = delete!(robot_team(n), id)
 add_robot!(n::TransportUnitNode, r, t) = add_robot!(n, r => t)
-add_robot!(n::TransportUnitNode, t::CoordinateTransformations.AffineMap) = add_robot!(n, get_unique_invalid_id(RobotID) => t)
+add_robot!(n::TransportUnitNode, t::CoordinateTransformations.AffineMap) =
+    add_robot!(n, get_unique_invalid_id(RobotID) => t)
 function is_in_formation(n::TransportUnitNode, scene_tree)
     all([Graphs.has_edge(scene_tree, n, id) for (id, _) in robot_team(n)])
 end
@@ -720,7 +798,12 @@ export recurse_child_geometry
 Return an iterator over all geometry elements matching `key` that belong to
 `node` or to any of `node`'s descendants down to depth `depth`.
 """
-function recurse_child_geometry(node::SceneNode, tree, key=BaseGeomKey(), depth=typemax(Int))
+function recurse_child_geometry(
+    node::SceneNode,
+    tree,
+    key = BaseGeomKey(),
+    depth = typemax(Int),
+)
     if depth < 0
         return nothing
     end
@@ -730,7 +813,12 @@ function recurse_child_geometry(node::SceneNode, tree, key=BaseGeomKey(), depth=
     end
     return nothing
 end
-function recurse_child_geometry(dict::TransformDict, tree, key=BaseGeomKey(), depth=typemax(Int))
+function recurse_child_geometry(
+    dict::TransformDict,
+    tree,
+    key = BaseGeomKey(),
+    depth = typemax(Int),
+)
     if depth < 0
         return nothing
     end
@@ -748,14 +836,18 @@ function recurse_child_geometry(dict::TransformDict, tree, key=BaseGeomKey(), de
     end
     Base.Iterators.flatten(geoms)
 end
-function recurse_child_geometry(node::Union{TransportUnitNode,AssemblyNode},
-    tree, key=BaseGeomKey(), depth=typemax(Int)
+function recurse_child_geometry(
+    node::Union{TransportUnitNode,AssemblyNode},
+    tree,
+    key = BaseGeomKey(),
+    depth = typemax(Int),
 )
     if depth < 0
         return nothing
     end
     geom = [get_base_geom(node, key)]
-    child_geom = recurse_child_geometry(required_transforms_to_children(node), tree, key, depth - 1)
+    child_geom =
+        recurse_child_geometry(required_transforms_to_children(node), tree, key, depth - 1)
     if (geom[1] === nothing)
         return child_geom
     elseif (child_geom === nothing)
@@ -825,10 +917,10 @@ add_node!(tree::SceneTree, node::SceneNode) = add_node!(tree, node, node_id(node
 get_vtx(tree::SceneTree, n::SceneNode) = get_vtx(tree, node_id(n))
 function Base.copy(tree::SceneTree)
     SceneTree(
-        graph=deepcopy(tree.graph),
-        nodes=map(copy, tree.nodes), # TODO This may cause problems with TransformNode
-        vtx_map=deepcopy(tree.vtx_map),
-        vtx_ids=deepcopy(tree.vtx_ids)
+        graph = deepcopy(tree.graph),
+        nodes = map(copy, tree.nodes), # TODO This may cause problems with TransformNode
+        vtx_map = deepcopy(tree.vtx_map),
+        vtx_ids = deepcopy(tree.vtx_ids),
     )
 end
 
@@ -846,9 +938,12 @@ function set_child!(tree::SceneTree, parent::AbstractID, child::AbstractID)
     child_node = get_node(tree, child)
     set_child!(tree, parent, get_vtx(tree, child), t, make_edge(tree, node, child_node))
 end
-set_child!(tree::SceneTree, parent::SceneNode, args...) = set_child!(tree, node_id(parent), args...)
-set_child!(tree::SceneTree, parent::SceneNode, child::SceneNode) = set_child!(tree, node_id(parent), node_id(child))
-set_child!(tree::SceneTree, parent::AbstractID, child::SceneNode, args...) = set_child!(tree, parent, node_id(child), args...)
+set_child!(tree::SceneTree, parent::SceneNode, args...) =
+    set_child!(tree, node_id(parent), args...)
+set_child!(tree::SceneTree, parent::SceneNode, child::SceneNode) =
+    set_child!(tree, node_id(parent), node_id(child))
+set_child!(tree::SceneTree, parent::AbstractID, child::SceneNode, args...) =
+    set_child!(tree, parent, node_id(child), args...)
 function force_remove_edge!(tree::SceneTree, u, v)
     rem_parent!(get_node(tree, v))
     if Graphs.has_edge(tree, u, v)
@@ -911,7 +1006,12 @@ function is_within_capture_distance(parent::SceneNode, child::SceneNode, args...
     is_within_capture_distance(t, t_des, args...)
 end
 
-function is_within_capture_distance(t, t_des, ttol=capture_distance_tolerance(), rtol=capture_rotation_tolerance())
+function is_within_capture_distance(
+    t,
+    t_des,
+    ttol = capture_distance_tolerance(),
+    rtol = capture_rotation_tolerance(),
+)
     et = norm(t.translation - t_des.translation) # translation error
     er = Inf
     # Rotation error
@@ -942,15 +1042,23 @@ end
 If the transform error of `v` relative to the transform prescribed for it by `u`
 is small, allow `u` to capture `v` (`v` becomes a child of `u`).
 """
-function capture_child!(tree::SceneTree, u, v, ttol=capture_distance_tolerance(), rtol=capture_rotation_tolerance())
+function capture_child!(
+    tree::SceneTree,
+    u,
+    v,
+    ttol = capture_distance_tolerance(),
+    rtol = capture_rotation_tolerance(),
+)
     nu = get_node(tree, u)
     nv = get_node(tree, v)
     @assert has_component(nu, node_id(nv)) "$nu cannot capture $nv"
     if is_within_capture_distance(get_node(tree, u), get_node(tree, v), ttol, rtol)
         if !is_root_node(tree, v)
             p = get_node(tree, get_parent(tree, v)) # current parent
-            @assert(isa(p, TransportUnitNode),
-                "Trying to capture child $v from non-TransportUnit parent $p")
+            @assert(
+                isa(p, TransportUnitNode),
+                "Trying to capture child $v from non-TransportUnit parent $p"
+            )
             # NOTE that there may be a time gap if the cargo has to be lifted
             # into place by a separate "robot"
             disband!(tree, p)
@@ -1000,9 +1108,12 @@ Example:
     computation for each assembly's Hyperrectangle will be based on the
     BaseGeomKey geometry of all of that assembly's children.
 """
-function compute_approximate_geometries!(scene_tree, key=HypersphereKey(), base_key=key;
-    leaves_only=false,
-    ϵ=0.0,
+function compute_approximate_geometries!(
+    scene_tree,
+    key = HypersphereKey(),
+    base_key = key;
+    leaves_only = false,
+    ϵ = 0.0,
 )
     # Build dependency graph (to enable full topological sort)
     G = construct_scene_dependency_graph(scene_tree)
@@ -1048,7 +1159,7 @@ end
 Jump to the final configuration state wherein all `ObjectNode`s and
 `AssemblyNode`s are in the configurations specified by their parent assemblies.
 """
-function jump_to_final_configuration!(scene_tree; respect_edges=false, set_edges=false)
+function jump_to_final_configuration!(scene_tree; respect_edges = false, set_edges = false)
     for node in get_nodes(scene_tree)
         if matches_template(AssemblyNode, node)
             for (id, tform) in assembly_components(node)
@@ -1111,8 +1222,10 @@ function circle_intersection_with_line(circle, line)
     end
 end
 circle_intersects_line(args...) = circle_intersection_with_line(args...) < 0
-circle_intersection_with_line(circle, pt1, pt2) = circle_intersection_with_line(circle,
-    GeometryBasics.Line(GeometryBasics.Point(pt1...), GeometryBasics.Point(pt2...)))
+circle_intersection_with_line(circle, pt1, pt2) = circle_intersection_with_line(
+    circle,
+    GeometryBasics.Line(GeometryBasics.Point(pt1...), GeometryBasics.Point(pt2...)),
+)
 
 
 
@@ -1123,28 +1236,46 @@ circle_intersection_with_line(circle, pt1, pt2) = circle_intersection_with_line(
 
 Returns an iterator over points and radii.
 """
-extract_points_and_radii(n::GeometryBasics.Ngon) = zip(GeometryBasics.coordinates(n), Base.Iterators.repeated(0.0))
+extract_points_and_radii(n::GeometryBasics.Ngon) =
+    zip(GeometryBasics.coordinates(n), Base.Iterators.repeated(0.0))
 
-function extract_points_and_radii(n::GeometryBasics.Cylinder, c=16)
+function extract_points_and_radii(n::GeometryBasics.Cylinder, c = 16)
     # Approximate, because there's no other way to account for the cylinder's flat top and bottom
     v = normalize(n.extremity - n.origin)
     θ_range = 0.0:(2π/c):(2π*(c-1)/c)
-    extract_points_and_radii(Base.Iterators.flatten([
-        map(θ -> SVector(n.origin + normalize(cross(SVector{3,Float64}(cos(θ), sin(θ), 0.0), v)) * n.r), θ_range),
-        map(θ -> SVector(n.extremity + normalize(cross(SVector{3,Float64}(cos(θ), sin(θ), 0.0), v)) * n.r), θ_range),
-    ]))
+    extract_points_and_radii(
+        Base.Iterators.flatten([
+            map(
+                θ -> SVector(
+                    n.origin +
+                    normalize(cross(SVector{3,Float64}(cos(θ), sin(θ), 0.0), v)) * n.r,
+                ),
+                θ_range,
+            ),
+            map(
+                θ -> SVector(
+                    n.extremity +
+                    normalize(cross(SVector{3,Float64}(cos(θ), sin(θ), 0.0), v)) * n.r,
+                ),
+                θ_range,
+            ),
+        ]),
+    )
 end
 extract_points_and_radii(n::LazySets.Ball2) = [(n.center, n.radius)]
-extract_points_and_radii(n::Union{Hyperrectangle,AbstractPolytope}) = zip(LazySets.vertices(n), Base.Iterators.repeated(0.0))
+extract_points_and_radii(n::Union{Hyperrectangle,AbstractPolytope}) =
+    zip(LazySets.vertices(n), Base.Iterators.repeated(0.0))
 for T in (:AbstractVector, :(Base.Iterators.Flatten), :(Base.Generator))
-    @eval extract_points_and_radii(n::$T) = Base.Iterators.flatten(map(extract_points_and_radii, n))
+    @eval extract_points_and_radii(n::$T) =
+        Base.Iterators.flatten(map(extract_points_and_radii, n))
 end
 extract_points_and_radii(n::SVector) = [(n, 0.0)]
 
 LazySets.dim(::Type{SVector{N,T}}) where {N,T} = N
 LazySets.dim(::Type{LazySets.Ball2{T,V}}) where {T,V} = LazySets.dim(V)
 
-Base.convert(::Type{LazySets.Ball2{T,V}}, b::LazySets.Ball2) where {T,V} = LazySets.Ball2(V(b.center), T(b.radius))
+Base.convert(::Type{LazySets.Ball2{T,V}}, b::LazySets.Ball2) where {T,V} =
+    LazySets.Ball2(V(b.center), T(b.radius))
 
 """
     overapproximate_sphere(points_and_radii,N=3,ϵ=0.0)
@@ -1152,7 +1283,7 @@ Base.convert(::Type{LazySets.Ball2{T,V}}, b::LazySets.Ball2) where {T,V} = LazyS
 The bounding sphere ought to be constructed instead by iteratively adding points
 and updating the sphere.
 """
-function overapproximate_sphere(points_and_radii, N=3, ϵ=0.0)
+function overapproximate_sphere(points_and_radii, N = 3, ϵ = 0.0)
     model = Model(default_geom_optimizer())
     set_optimizer_attributes(model, default_geom_optimizer_attributes()...)
     @variable(model, v[1:N])
@@ -1161,7 +1292,10 @@ function overapproximate_sphere(points_and_radii, N=3, ϵ=0.0)
     list_is_empty = true
     for (pt, r) in points_and_radii
         list_is_empty = false
-        @constraint(model, [(d - r - ϵ), map(i -> (v[i] - pt[i]), 1:N)...] in SecondOrderCone())
+        @constraint(
+            model,
+            [(d - r - ϵ), map(i -> (v[i] - pt[i]), 1:N)...] in SecondOrderCone()
+        )
     end
     if list_is_empty
         # return nothing
@@ -1171,7 +1305,7 @@ function overapproximate_sphere(points_and_radii, N=3, ϵ=0.0)
     ball = LazySets.Ball2(SVector{N,Float64}(value.(v)), max(0.0, value(d)))
     return ball
 end
-function overapproximate_cylinder(points_and_radii, ϵ=0.0)
+function overapproximate_cylinder(points_and_radii, ϵ = 0.0)
     N = 2
     b = overapproximate_sphere(points_and_radii, N, ϵ)
     zhi = -Inf
@@ -1188,15 +1322,28 @@ function overapproximate_cylinder(points_and_radii, ϵ=0.0)
     return GeometryBasics.Cylinder(
         GeometryBasics.Point(b.center[1], b.center[2], zlo),
         GeometryBasics.Point(b.center[1], b.center[2], zhi),
-        b.radius)
+        b.radius,
+    )
 end
 
 for T in (:AbstractPolytope, :LazySet, :AbstractVector, :(GeometryBasics.Ngon), :Any)
     @eval begin
-        function LazySets.overapproximate(lazy_set::$T, ::Type{H}, ϵ::Float64=0.0, N=LazySets.dim(H)) where {H<:LazySets.Ball2}
-            return convert(H, overapproximate_sphere(extract_points_and_radii(lazy_set), N, ϵ))
+        function LazySets.overapproximate(
+            lazy_set::$T,
+            ::Type{H},
+            ϵ::Float64 = 0.0,
+            N = LazySets.dim(H),
+        ) where {H<:LazySets.Ball2}
+            return convert(
+                H,
+                overapproximate_sphere(extract_points_and_radii(lazy_set), N, ϵ),
+            )
         end
-        function LazySets.overapproximate(lazy_set::$T, ::Type{H}, ϵ::Float64=0.0) where {A,V<:AbstractVector,H<:Hyperrectangle{A,V,V}}
+        function LazySets.overapproximate(
+            lazy_set::$T,
+            ::Type{H},
+            ϵ::Float64 = 0.0,
+        ) where {A,V<:AbstractVector,H<:Hyperrectangle{A,V,V}}
             # overapproximate_hyperrectangle(extract_points_and_radii(lazy_set),ϵ)
             high = -Inf * ones(V)
             low = Inf * ones(V)
@@ -1212,19 +1359,31 @@ for T in (:AbstractPolytope, :LazySet, :AbstractVector, :(GeometryBasics.Ngon), 
             end
             Hyperrectangle(ctr, widths .+ (ϵ / 2))
         end
-        function LazySets.overapproximate(lazy_set::$T, m::Type{C}, ϵ::Float64=0.0) where {C<:GeometryBasics.Cylinder}
+        function LazySets.overapproximate(
+            lazy_set::$T,
+            m::Type{C},
+            ϵ::Float64 = 0.0,
+        ) where {C<:GeometryBasics.Cylinder}
             overapproximate_cylinder(extract_points_and_radii(lazy_set), ϵ)
         end
     end
 end
 
-function LazySets.overapproximate(lazy_set::LazySets.Ball2, model::Type{H}, ϵ::Float64=0.0) where {A,V<:AbstractVector,H<:Hyperrectangle{A,V,V}}
+function LazySets.overapproximate(
+    lazy_set::LazySets.Ball2,
+    model::Type{H},
+    ϵ::Float64 = 0.0,
+) where {A,V<:AbstractVector,H<:Hyperrectangle{A,V,V}}
     ctr = lazy_set.center
     r = lazy_set.radius + ϵ
     Hyperrectangle(V(ctr), r * ones(V))
 end
 
-function LazySets.overapproximate(lazy_set, sphere::H, ϵ::Float64=0.0) where {V,T,H<:LazySets.Ball2{T,V}}
+function LazySets.overapproximate(
+    lazy_set,
+    sphere::H,
+    ϵ::Float64 = 0.0,
+) where {V,T,H<:LazySets.Ball2{T,V}}
     r = 0.0
     for (pt, rad) in extract_points_and_radii(lazy_set)
         r = max(norm(pt - get_center(sphere)) + rad + ϵ, r)
@@ -1245,17 +1404,20 @@ Args
 * [f_inner = v->1.0*minimum(v)] - a function mapping a vector of distances
     to a scalar value.
 """
-function construct_support_placement_aggregator(pts, n,
-    f_neighbor=v -> 1.0 * minimum(v) + (0.5 / n) * sum(v),
-    f_inner=v -> (0.1 / (n^2)) * minimum(v)
+function construct_support_placement_aggregator(
+    pts,
+    n,
+    f_neighbor = v -> 1.0 * minimum(v) + (0.5 / n) * sum(v),
+    f_inner = v -> (0.1 / (n^2)) * minimum(v),
 )
     D = [norm(v - vp) for (v, vp) in Base.Iterators.product(pts, pts)]
-    d_neighbor = (idxs) -> f_neighbor(
-        map(i -> wrap_get(D, (idxs[i], wrap_get(idxs, i + 1))), 1:length(idxs))
-    )
-    d_inner = (idxs) -> f_inner(
-        [wrap_get(D, (i, j)) for (i, j) in Base.Iterators.product(idxs, idxs)]
-    )
+    d_neighbor =
+        (idxs) -> f_neighbor(
+            map(i -> wrap_get(D, (idxs[i], wrap_get(idxs, i + 1))), 1:length(idxs)),
+        )
+    d_inner =
+        (idxs) ->
+            f_inner([wrap_get(D, (i, j)) for (i, j) in Base.Iterators.product(idxs, idxs)])
     d = (idxs) -> d_neighbor(idxs) + d_inner(idxs)
 end
 
@@ -1266,9 +1428,12 @@ Return the indices of the `n` vertices of `polygon` whose neighbor distances
 maximize the utility metric defined by `aggregator`. Uses local optimization,
 so there is no guarantee of global optimality.
 """
-function spaced_neighbors(polygon::LazySets.AbstractPolygon, n::Int,
-    score_function=construct_support_placement_aggregator(vertices_list(polygon), n),
-    ϵ=1e-8)
+function spaced_neighbors(
+    polygon::LazySets.AbstractPolygon,
+    n::Int,
+    score_function = construct_support_placement_aggregator(vertices_list(polygon), n),
+    ϵ = 1e-8,
+)
     pts = vertices_list(polygon)
     @assert length(pts) >= n "length(pts) = $(length(pts)), but n = $n"
     if length(pts) == n
@@ -1306,8 +1471,10 @@ perimeter(p::LazySets.AbstractPolygon) = perimeter(vertices_list(p))
 Select support locations where options are the vertices of `polygon` and the
 robot radius is `r`.
 """
-function select_support_locations(polygon::LazySets.AbstractPolygon, r;
-    score_function_constructor=construct_support_placement_aggregator,
+function select_support_locations(
+    polygon::LazySets.AbstractPolygon,
+    r;
+    score_function_constructor = construct_support_placement_aggregator,
 )
     n = select_num_robots(polygon, r)
     if n == 1
@@ -1346,7 +1513,7 @@ end
 Reduce the list of candidate points to those that are at least `2r+ϵ` away from each other.
 This selects points that are "far" away from each other.
 """
-function reduce_to_valid_candidate_list(pts, r; ϵ=0.5 * r)
+function reduce_to_valid_candidate_list(pts, r; ϵ = 0.5 * r)
     pts_c = deepcopy(pts)
     candidate_pts = Vector{Vector{Float64}}()
 
@@ -1365,7 +1532,7 @@ function reduce_to_valid_candidate_list(pts, r; ϵ=0.5 * r)
         end
 
         # Determine feasible points
-        min_dist_to_candidates = minimum(dist_to_candidates, dims=1)
+        min_dist_to_candidates = minimum(dist_to_candidates, dims = 1)
         bool_mask = vec(min_dist_to_candidates .> (2 * r + ϵ))
         pts_c = pts_c[bool_mask]
 
@@ -1374,7 +1541,7 @@ function reduce_to_valid_candidate_list(pts, r; ϵ=0.5 * r)
         end
 
         # Select next candidate: feasible and furthest sum lp norm from candidates
-        sum_lp_dist = vec(sum(lp_dist_to_candidates, dims=1))
+        sum_lp_dist = vec(sum(lp_dist_to_candidates, dims = 1))
         sum_lp_dist = sum_lp_dist[bool_mask]
 
         next_candidate_idx = argmax(sum_lp_dist)

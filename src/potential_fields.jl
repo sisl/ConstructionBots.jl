@@ -10,9 +10,9 @@ potential_gradient(v::Vector, x) = sum(potential_gradient(p, x) for p in v)
 Produces a potential function in the shape of a cone.
 """
 mutable struct ConePotential <: Potential
-    c # coefficient
-    R # radius
-    x # center
+    c::Any # coefficient
+    R::Any # radius
+    x::Any # center
 end
 potential(p::ConePotential, x) = p.c * min(p.R, norm(p.x - x))
 
@@ -20,9 +20,9 @@ potential(p::ConePotential, x) = p.c * min(p.R, norm(p.x - x))
     HelicalPotential
 """
 mutable struct HelicalPotential
-    c # coefficient
-    x # center
-    θ # desired angle
+    c::Any # coefficient
+    x::Any # center
+    θ::Any # desired angle
 end
 function potential(p::HelicalPotential, x)
     ψ = atan(x[2], x[1])
@@ -36,10 +36,10 @@ end
 Produces a potential function in the shape of a tent
 """
 mutable struct TentPotential <: Potential
-    c # coefficient
-    R # radius
-    x # start
-    g # goal
+    c::Any # coefficient
+    R::Any # radius
+    x::Any # start
+    g::Any # goal
 end
 function potential(p::TentPotential, x)
     dx = x - p.x
@@ -53,19 +53,19 @@ function potential(p::TentPotential, x)
 end
 
 mutable struct TransformPotential <: Potential
-    p # potential
-    f # function
+    p::Any # potential
+    f::Any # function
 end
 potential(p::TransformPotential, x) = p.f(potential(p.p, x))
 
 mutable struct GenericPotential <: Potential
-    f # function
+    f::Any # function
 end
 potential(p::GenericPotential, x) = p.f(x)
 
 mutable struct ScaledPotential
-    p # potential
-    c # scalar
+    p::Any # potential
+    c::Any # scalar
 end
 potential(p::ScaledPotential, x) = p.c * potential(p.p, x)
 
@@ -75,9 +75,9 @@ potential(p::ScaledPotential, x) = p.c * potential(p.p, x)
 Represents a clipped potential function
 """
 mutable struct ClippedPotential <: Potential
-    p # potential
-    c # coefficient
-    R # radius
+    p::Any # potential
+    c::Any # coefficient
+    R::Any # radius
 end
 potential(p::ClippedPotential, x) = p.c * max(p.R, potential(p.p, x))
 
@@ -88,9 +88,9 @@ Encodes a potential field formed by inverting the squared value of a child
 potential plus some minimum denominator value
 """
 mutable struct BarrierPotential <: Potential
-    p # potential
-    c # coefficient
-    z # minimum denominator
+    p::Any # potential
+    c::Any # coefficient
+    z::Any # minimum denominator
 end
 potential(p::BarrierPotential, x) = p.c / (p.z + potential(p.p, x)^2)
 
@@ -100,9 +100,9 @@ potential(p::BarrierPotential, x) = p.c / (p.z + potential(p.p, x)^2)
 Encodes a rotational field
 """
 mutable struct RotationalPotential
-    p # potential
-    c # coefficient
-    zmax # maximum magnitude
+    p::Any # potential
+    c::Any # coefficient
+    zmax::Any # maximum magnitude
 end
 # function potential(p::RotationalPotential,x)
 #     dx = potential_gradient(p.p,x)
@@ -122,8 +122,8 @@ function potential_gradient(p::RotationalPotential, x)
 end
 
 mutable struct PairwisePotential
-    f
-    scale
+    f::Any
+    scale::Any
 end
 (p::PairwisePotential)(x1, x2, r1, r2) = p.f(x1, x2, r1, r2)
 
@@ -133,8 +133,12 @@ end
 Combines a cone potential and a 1/||x|| barrier potential for pairwise
 repulsion.
 """
-function repulsion_potential(x, r, x2, r2;
-    dr=2 * default_robot_radius(),
+function repulsion_potential(
+    x,
+    r,
+    x2,
+    r2;
+    dr = 2 * default_robot_radius(),
     # fillet_radius=0.5*default_robot_radius(),
 )
     dx = x .- x2
@@ -187,21 +191,28 @@ function dist_to_nearest_active_agent(policy::PotentialFieldController, env::Pla
     end
     return id, shortest_dist
 end
-function update_dist_to_nearest_active_agent!(policy::PotentialFieldController, env::PlannerEnv)
+function update_dist_to_nearest_active_agent!(
+    policy::PotentialFieldController,
+    env::PlannerEnv,
+)
     id, dist = dist_to_nearest_active_agent(policy, env)
     policy.dist_to_nearest_active_agent = dist
 end
 
 function update_buffer_radius!(
     policy::PotentialFieldController,
-    node::Union{RobotGo, TransportUnitGo},
+    node::Union{RobotGo,TransportUnitGo},
     build_step_active::Bool,
-    cargo_ready_for_pickup::Bool
+    cargo_ready_for_pickup::Bool,
 )
-    r_j = min(policy.max_buffer_radius, policy.agent_radius / policy.dist_to_nearest_active_agent)
+    r_j = min(
+        policy.max_buffer_radius,
+        policy.agent_radius / policy.dist_to_nearest_active_agent,
+    )
     active_agent = (
-        (matches_template(TransportUnitGo, node) && build_step_active) ||
-        (matches_template(RobotGo, node) && build_step_active && cargo_ready_for_pickup)
+        (matches_template(TransportUnitGo, node) && build_step_active) || (
+            matches_template(RobotGo, node) && build_step_active && cargo_ready_for_pickup
+        )
     )
     if active_agent
         r_j = policy.max_buffer_radius
@@ -213,17 +224,17 @@ end
 function static_potential_gradient(c::PotentialFieldController, pos)
     ForwardDiff.gradient(x -> c.static_potentials(x, c.agent_radius), pos)
 end
-function pairwise_potential_gradient(c::PotentialFieldController, pos, other_pos, other_radius; dr=1.0)
+function pairwise_potential_gradient(
+    c::PotentialFieldController,
+    pos,
+    other_pos,
+    other_radius;
+    dr = 1.0,
+)
     ForwardDiff.gradient(
-        x -> c.pairwise_potentials(
-            x,
-            c.agent_radius,
-            other_pos,
-            other_radius,
-            ;
-            dr=dr
-        ),
-        pos)
+        x -> c.pairwise_potentials(x, c.agent_radius, other_pos, other_radius, ; dr = dr),
+        pos,
+    )
 end
 
 function clip_velocity(vel, vmax)
@@ -276,13 +287,15 @@ function compute_potential_gradient!(policy::PotentialFieldController, env::Plan
             scale = 1.0
             other_pos = project_to_2d(global_transform(other_agent).translation)
             if norm(pos - other_pos) <= policy.interaction_radius
-                dp = dp .+ scale * pairwise_potential_gradient(
-                    policy,
-                    pos,
-                    other_pos,
-                    other_rad; # + dilate based on priority?
-                    dr=other_policy.buffer_radius,
-                )
+                dp =
+                    dp .+
+                    scale * pairwise_potential_gradient(
+                        policy,
+                        pos,
+                        other_pos,
+                        other_rad; # + dilate based on priority?
+                        dr = other_policy.buffer_radius,
+                    )
             end
         end
     end

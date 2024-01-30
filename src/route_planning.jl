@@ -1,5 +1,4 @@
-export
-    PlannerEnv,
+export PlannerEnv,
     step_environment!,
     get_cmd,
     apply_cmd!,
@@ -11,17 +10,18 @@ export
     update_parent_build_status!
 
 
-export
-    set_use_deconfliction,
-    use_rvo
+export set_use_deconfliction, use_rvo
 
 function set_use_deconfliction(deconflict_strategies)
     if in(:RVO, deconflict_strategies)
         global USE_RVO = true
     else
         global USE_RVO = false
-        println("No configuration required in route planning for 
-        deconfliction strategy: ", join(deconflict_strategies, ", "))
+        println(
+            "No configuration required in route planning for 
+    deconfliction strategy: ",
+            join(deconflict_strategies, ", "),
+        )
     end
 end
 
@@ -38,10 +38,7 @@ function set_staging_buffer_radius!(val)
     global STAGING_BUFFER_RADIUS = val
 end
 
-export
-    Twist,
-    optimal_twist,
-    integrate_twist
+export Twist, optimal_twist, integrate_twist
 
 """
     Twist
@@ -61,7 +58,7 @@ goal pose.
     tf_error = inv(state) ∘ goal # transform error from state to goal
     i.e., state ∘ tf_error == goal
 """
-function optimal_twist(tf_error, v_max, ω_max, dt, ϵ_x=1e-4, ϵ_θ=1e-4)
+function optimal_twist(tf_error, v_max, ω_max, dt, ϵ_x = 1e-4, ϵ_θ = 1e-4)
     # translation error
     dx = tf_error.translation
     if norm(dx) <= ϵ_x
@@ -117,7 +114,8 @@ node_is_active(env, node) = get_vtx(env.sched, node_id(node)) in env.cache.activ
 node_is_closed(env, node) = get_vtx(env.sched, node_id(node)) in env.cache.closed_set
 
 function update_parent_build_status!(env::PlannerEnv, node)
-    env.agent_parent_build_step_active[node_id(entity(node))] = parent_build_step_is_active(node, env)
+    env.agent_parent_build_step_active[node_id(entity(node))] =
+        parent_build_step_is_active(node, env)
 end
 
 function parent_build_step_is_active(id::AbstractID, env::PlannerEnv)
@@ -128,7 +126,10 @@ function parent_build_step_is_active(node, env::PlannerEnv)
     build_step = get_parent_build_step(env.sched, node)
     !(build_step === nothing) && node_id(build_step) in env.active_build_steps
 end
-function cargo_ready_for_pickup(n::Union{FormTransportUnit,TransportUnitGo,DepositCargo}, env::PlannerEnv)
+function cargo_ready_for_pickup(
+    n::Union{FormTransportUnit,TransportUnitGo,DepositCargo},
+    env::PlannerEnv,
+)
     @unpack sched, scene_tree, cache = env
     cargo = get_node(scene_tree, cargo_id(entity(n)))
     if matches_template(ObjectNode, cargo)
@@ -143,7 +144,8 @@ function cargo_ready_for_pickup(n::Union{RobotStart,RobotGo}, env::PlannerEnv)
     end
     cargo_ready_for_pickup(get_node(env.sched, first(outneighbors(env.sched, n))), env)
 end
-cargo_ready_for_pickup(n::ScheduleNode, env::PlannerEnv) = cargo_ready_for_pickup(n.node, env)
+cargo_ready_for_pickup(n::ScheduleNode, env::PlannerEnv) =
+    cargo_ready_for_pickup(n.node, env)
 
 # Ideally, we want to set the priority of agents only within a certain region. If we
 # can do this dynamically, we could also set one agent to have an α of 0, which would help
@@ -154,7 +156,10 @@ cargo_ready_for_pickup(n::ScheduleNode, env::PlannerEnv) = cargo_ready_for_picku
 Low alpha means higher priority
 """
 function set_rvo_priority!(env::PlannerEnv, node) end
-function set_rvo_priority!(env::PlannerEnv, node::Union{RobotStart,RobotGo,FormTransportUnit,TransportUnitGo,DepositCargo})
+function set_rvo_priority!(
+    env::PlannerEnv,
+    node::Union{RobotStart,RobotGo,FormTransportUnit,TransportUnitGo,DepositCargo},
+)
     if matches_template(Union{FormTransportUnit,DepositCargo}, node)
         alpha = 0.0
     elseif matches_template(TransportUnitGo, node)
@@ -201,13 +206,10 @@ function set_default_rotational_loading_speed!(val::Float64)
     global ROTATIONAL_LOADING_SPEED = val
 end
 
-function simulate!(
-    env;
-    max_time_steps=2000,
-)
+function simulate!(env; max_time_steps = 2000)
     @unpack sched, cache = env
     iters = 0
-    for k in 1:max_time_steps
+    for k = 1:max_time_steps
         iters = k
         if mod(k, 100) == 0
             @info " ******************* BEGINNING TIME STEP $k: $(length(cache.closed_set))/$(nv(sched)) nodes closed *******************"
@@ -231,7 +233,12 @@ function update_position_from_sim!(agent)
     pt = rvo_get_agent_position(agent)
     @assert has_parent(agent, agent) "agent $(node_id(agent)) should be its own parent"
     set_local_transform!(agent, CoordinateTransformations.Translation(pt[1], pt[2], 0.0))
-    if !isapprox(norm(global_transform(agent).translation[1:2] .- pt), 0.0; rtol=1e-6, atol=1e-6)
+    if !isapprox(
+        norm(global_transform(agent).translation[1:2] .- pt),
+        0.0;
+        rtol = 1e-6,
+        atol = 1e-6,
+    )
         @warn "Agent $node_id(agent) should be at $pt but is at $(global_transform(agent).translation[1:2])"
     end
     return global_transform(agent)
@@ -253,7 +260,7 @@ end
 
 Step forward one time step.
 """
-function step_environment!(env::PlannerEnv, sim=rvo_global_sim())
+function step_environment!(env::PlannerEnv, sim = rvo_global_sim())
 
     prev_active_pos_dict = get_active_pos(env)
     for v in env.cache.active_set
@@ -452,7 +459,10 @@ function is_goal(node::LiftIntoPlace, env::PlannerEnv)
     return is_within_capture_distance(state, goal)
 end
 
-function swap_first_paralyzed_transport_unit!(env::PlannerEnv, pos_before_step::Dict{Int,Vector{Float64}})
+function swap_first_paralyzed_transport_unit!(
+    env::PlannerEnv,
+    pos_before_step::Dict{Int,Vector{Float64}},
+)
     @unpack sched, scene_tree, cache, dt = env
     for v in cache.active_set
         n = get_node(sched, v)
@@ -465,7 +475,8 @@ function swap_first_paralyzed_transport_unit!(env::PlannerEnv, pos_before_step::
                 # is robot stuck?
                 agent = entity(n)
                 transport_unit = entity(next_node)
-                if has_parent(agent, transport_unit) || is_within_capture_distance(transport_unit, agent)
+                if has_parent(agent, transport_unit) ||
+                   is_within_capture_distance(transport_unit, agent)
                     continue
                 end
                 circ = get_cached_geom(transport_unit, HypersphereKey())
@@ -499,7 +510,11 @@ end
 
 For agent
 """
-function find_best_swap_candidate(node::FormTransportUnit, agent_node::RobotGo, env::PlannerEnv)
+function find_best_swap_candidate(
+    node::FormTransportUnit,
+    agent_node::RobotGo,
+    env::PlannerEnv,
+)
     @unpack sched, scene_tree = env
     transport_unit = entity(node)
     agent = entity(agent_node)
@@ -538,7 +553,11 @@ end
 
 To be executed if `agent` is within the hypersphere but stuck.
 """
-function swap_carrying_positions!(node::FormTransportUnit, agent_node::RobotGo, env::PlannerEnv)
+function swap_carrying_positions!(
+    node::FormTransportUnit,
+    agent_node::RobotGo,
+    env::PlannerEnv,
+)
     @unpack sched, scene_tree = env
     other_id = find_best_swap_candidate(node, agent_node, env)
     if !(other_id === nothing)
@@ -578,10 +597,14 @@ include("potential_fields.jl")
 Returns a 2D goal vector that will take the robot outside of circular boundary
 regions while pursuing its main goal
 """
-function circle_avoidance_policy(circles, agent_radius, pos, nominal_goal;
-    planning_radius::Float64=agent_radius * 2,
-    detour_horizon::Float64=2 * planning_radius,
-    buffer=staging_buffer_radius(),
+function circle_avoidance_policy(
+    circles,
+    agent_radius,
+    pos,
+    nominal_goal;
+    planning_radius::Float64 = agent_radius * 2,
+    detour_horizon::Float64 = 2 * planning_radius,
+    buffer = staging_buffer_radius(),
 )
     dmin = Inf
     id = nothing
@@ -630,10 +653,8 @@ function circle_avoidance_policy(circles, agent_radius, pos, nominal_goal;
                 goal = pos .+ [-dvec[2], dvec[1]]
             else
                 # Pick a tangent point to shoot for
-                pts = nearest_points_between_circles(
-                    pos[1:2], c[1:2], norm(pos - c), r
-                )
-                goal = sort([pts...], by=p -> norm(nominal_goal - [p...]))[1]
+                pts = nearest_points_between_circles(pos[1:2], c[1:2], norm(pos - c), r)
+                goal = sort([pts...], by = p -> norm(nominal_goal - [p...]))[1]
             end
         else
             goal = nominal_goal
@@ -641,16 +662,20 @@ function circle_avoidance_policy(circles, agent_radius, pos, nominal_goal;
     else
         # get goal points on the edge of the circle
         pts = nearest_points_between_circles(
-            pos[1:2], get_center(circ)[1:2], planning_radius, get_radius(circ),
+            pos[1:2],
+            get_center(circ)[1:2],
+            planning_radius,
+            get_radius(circ),
         )
         if pts === nothing
             goal = nominal_goal
         else
             # select closest point to goal
-            goal = sort([pts...], by=p -> norm(nominal_goal - [p...]))[1]
+            goal = sort([pts...], by = p -> norm(nominal_goal - [p...]))[1]
         end
     end
-    nominal_pt = pos + normalize(nominal_goal - pos) * min(planning_radius, norm(nominal_goal - pos))
+    nominal_pt =
+        pos + normalize(nominal_goal - pos) * min(planning_radius, norm(nominal_goal - pos))
     f = g -> circle_intersection_with_line(circ, pos, g)
     # if norm(nominal_pt .- c) > norm(goal .- c)
     if f(nominal_pt) > f(goal)
@@ -660,21 +685,31 @@ function circle_avoidance_policy(circles, agent_radius, pos, nominal_goal;
     end
 end
 
-inflate_circle(circ::LazySets.Ball2, r::Float64) = LazySets.Ball2(get_center(circ), get_radius(circ) + r)
+inflate_circle(circ::LazySets.Ball2, r::Float64) =
+    LazySets.Ball2(get_center(circ), get_radius(circ) + r)
 # inflate_circle(circ::GeometryBasics.HyperSphere,r::Float64) = GeometryBasics.HyperSphere(get_center(circ),get_radius(circ)+r)
 
-function active_staging_circles(env, exclude_ids=Set())
+function active_staging_circles(env, exclude_ids = Set())
     buffer = env.staging_buffers # to increase radius of staging circles when necessary
-    node_iter = (get_node(env.sched, id).node for id in env.active_build_steps if !(id in exclude_ids))
-    circle_iter = (node_id(n) => project_to_2d(
-        inflate_circle(get_cached_geom(n.staging_circle), get(buffer, node_id(n), 0.0)
-        )) for n in node_iter)
+    node_iter = (
+        get_node(env.sched, id).node for
+        id in env.active_build_steps if !(id in exclude_ids)
+    )
+    circle_iter = (
+        node_id(n) => project_to_2d(
+            inflate_circle(get_cached_geom(n.staging_circle), get(buffer, node_id(n), 0.0)),
+        ) for n in node_iter
+    )
 end
 
-function inflate_staging_circle_buffers!(env, policy, agent, circle_ids;
-    threshold=0.2,
-    delta=0.1 * default_robot_radius(),
-    delta_max=4 * default_robot_radius(),
+function inflate_staging_circle_buffers!(
+    env,
+    policy,
+    agent,
+    circle_ids;
+    threshold = 0.2,
+    delta = 0.1 * default_robot_radius(),
+    delta_max = 4 * default_robot_radius(),
 )
     @unpack staging_buffers, dt = env
     # desird change in position
@@ -752,11 +787,31 @@ function get_twist_cmd(node, env::PlannerEnv)
 
         # TangentBug Policy
         parent_step_is_active = parent_build_step_is_active(node, env)
-        goal_pt = query_policy_for_goal!(policy, circles, pos, project_to_2d(goal.translation), parent_step_is_active)
-        new_goal = CoordinateTransformations.Translation(goal_pt..., 0.0) ∘ CoordinateTransformations.LinearMap(goal.linear)
+        goal_pt = query_policy_for_goal!(
+            policy,
+            circles,
+            pos,
+            project_to_2d(goal.translation),
+            parent_step_is_active,
+        )
+        new_goal =
+            CoordinateTransformations.Translation(goal_pt..., 0.0) ∘
+            CoordinateTransformations.LinearMap(goal.linear)
 
-        _, circ, _ = get_closest_interfering_circle(policy, circles, pos, project_to_2d(goal.translation); return_w_no_buffer=true)
-        mode = set_policy_mode!(policy, circ, pos, project_to_2d(goal.translation), parent_step_is_active)
+        _, circ, _ = get_closest_interfering_circle(
+            policy,
+            circles,
+            pos,
+            project_to_2d(goal.translation);
+            return_w_no_buffer = true,
+        )
+        mode = set_policy_mode!(
+            policy,
+            circ,
+            pos,
+            project_to_2d(goal.translation),
+            parent_step_is_active,
+        )
 
         twist = compute_twist_from_goal(agent, new_goal, dt) # nominal twist
     else
@@ -809,9 +864,12 @@ function get_twist_cmd(node, env::PlannerEnv)
                 vel = clip_velocity(v, policy.vmax)
                 # compute goal
                 goal_pt = pos + vel * dt
-                goal = CoordinateTransformations.Translation(goal_pt..., 0.0) ∘ CoordinateTransformations.LinearMap(goal.linear)
+                goal =
+                    CoordinateTransformations.Translation(goal_pt..., 0.0) ∘
+                    CoordinateTransformations.LinearMap(goal.linear)
                 twist = compute_twist_from_goal(agent, goal, dt) # nominal twist
-            else !(policy === nothing)
+            else
+                !(policy === nothing)
                 policy.dist_to_nearest_active_agent = 0.0
             end
         end
@@ -821,14 +879,20 @@ function get_twist_cmd(node, env::PlannerEnv)
 end
 
 function compute_twist_from_goal(
-    agent, goal, dt;
-    v_max=get_rvo_max_speed(agent), ω_max=default_rotational_loading_speed()
+    agent,
+    goal,
+    dt;
+    v_max = get_rvo_max_speed(agent),
+    ω_max = default_rotational_loading_speed(),
 )
     tf_error = relative_transform(global_transform(agent), goal)
     return optimal_twist(tf_error, v_max, ω_max, dt)
 end
 
-get_cmd(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete}, env::PlannerEnv) = nothing
+get_cmd(
+    ::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},
+    env::PlannerEnv,
+) = nothing
 function get_cmd(node::Union{TransportUnitGo,RobotGo}, env::PlannerEnv)
     agent = entity(node)
     if use_rvo()
@@ -863,7 +927,7 @@ function get_cmd(node::Union{FormTransportUnit,DepositCargo}, env::PlannerEnv)
     v_max = default_loading_speed()
     ω_max = default_rotational_loading_speed()
     g_tform = global_transform(cargo_goal_config(node))
-    return compute_twist_from_goal(cargo, g_tform, env.dt, v_max=v_max, ω_max=ω_max)
+    return compute_twist_from_goal(cargo, g_tform, env.dt, v_max = v_max, ω_max = ω_max)
 end
 function get_cmd(node::LiftIntoPlace, env::PlannerEnv)
     cargo = entity(node)
@@ -871,7 +935,7 @@ function get_cmd(node::LiftIntoPlace, env::PlannerEnv)
     t_des = global_transform(goal_config(node))
     v_max = default_loading_speed()
     ω_max = default_rotational_loading_speed()
-    twist = compute_twist_from_goal(cargo, t_des, env.dt, v_max=v_max, ω_max=ω_max)
+    twist = compute_twist_from_goal(cargo, t_des, env.dt, v_max = v_max, ω_max = ω_max)
     if norm(twist.ω) >= 1e-2
         # rotate first
         return Twist(0 * twist.vel, twist.ω)
@@ -879,7 +943,11 @@ function get_cmd(node::LiftIntoPlace, env::PlannerEnv)
     return twist
 end
 
-apply_cmd!(::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete}, cmd, env::PlannerEnv) = nothing
+apply_cmd!(
+    ::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},
+    cmd,
+    env::PlannerEnv,
+) = nothing
 apply_cmd!(node::CloseBuildStep, cmd::Nothing, env::PlannerEnv) = close_node!(node, env)
 apply_cmd!(node::OpenBuildStep, cmd::Nothing, env::PlannerEnv) = close_node!(node, env)
 function apply_cmd!(node::FormTransportUnit, twist::Twist, env::PlannerEnv)

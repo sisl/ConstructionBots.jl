@@ -1,5 +1,5 @@
 function create_node(node_type, id)
-    geom = LazySets.Ball2(zeros(SVector{3, Float64}), 1.0)
+    geom = LazySets.Ball2(zeros(SVector{3,Float64}), 1.0)
     return node_type(id, ConstructionBots.GeomNode(deepcopy(geom)))
 end
 
@@ -25,7 +25,7 @@ let
             ConstructionBots.LiftIntoPlace(object),
             ConstructionBots.FormTransportUnit(transport_unit),
             ConstructionBots.TransportUnitGo(transport_unit),
-            ConstructionBots.DepositCargo(transport_unit)
+            ConstructionBots.DepositCargo(transport_unit),
         ]
     ])
 end

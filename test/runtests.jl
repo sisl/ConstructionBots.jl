@@ -17,10 +17,12 @@ using StaticArrays
 global_logger(SimpleLogger(stderr, Logging.Warn))
 
 # Check approximate equality between arrays, or array elements
-@inline function array_isapprox(x::Union{AbstractArray{F}, F},
-                                y::Union{AbstractArray{F}, F};
-                                rtol::F=sqrt(eps(F)),
-                                atol::F=zero(F)) where {F<:AbstractFloat}
+@inline function array_isapprox(
+    x::Union{AbstractArray{F},F},
+    y::Union{AbstractArray{F},F};
+    rtol::F = sqrt(eps(F)),
+    atol::F = zero(F),
+) where {F<:AbstractFloat}
     # Check if x, y are single values and convert to array if needed
     x_array = isa(x, AbstractArray) ? x : fill(x, length(y))
     y_array = isa(y, AbstractArray) ? y : fill(y, length(x_array))
@@ -32,7 +34,7 @@ global_logger(SimpleLogger(stderr, Logging.Warn))
 
     # Compare elements
     for (a, b) in zip(x_array, y_array)
-        if !isapprox(a, b, rtol=rtol, atol=atol)
+        if !isapprox(a, b, rtol = rtol, atol = atol)
             return false
         end
     end

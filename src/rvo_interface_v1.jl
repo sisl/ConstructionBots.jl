@@ -9,8 +9,8 @@ struct IntWrapper
 end
 
 struct RVOAgentMap
-    graph::NGraph{DiGraph, IntWrapper, AbstractID}
-    RVOAgentMap() = new(NGraph{DiGraph, IntWrapper, AbstractID}())
+    graph::NGraph{DiGraph,IntWrapper,AbstractID}
+    RVOAgentMap() = new(NGraph{DiGraph,IntWrapper,AbstractID}())
 end
 
 struct RVO <: DeconflictStrategy
@@ -29,7 +29,13 @@ struct RVO <: DeconflictStrategy
         RVOAgentMap(),
         nothing,
         CachedElement{Any}(nothing, false, Dates.now()),
-        4.0, 0.01, 1.0, 1/40.0, 2.0, 1.0, 1.0
+        4.0,
+        0.01,
+        1.0,
+        1 / 40.0,
+        2.0,
+        1.0,
+        1.0,
     )
 end
 
@@ -38,7 +44,8 @@ function rvo_reset_agent_map!(state::RVO)
     state.id_map = RVOAgentMap()
 end
 
-rvo_active_agents(scene_tree) = (get_node(scene_tree, node_id(n)) for n in get_nodes(rvo_global_id_map()))
+rvo_active_agents(scene_tree) =
+    (get_node(scene_tree, node_id(n)) for n in get_nodes(rvo_global_id_map()))
 
 function reset_rvo_python_module!(state::RVO)
     state.python_module = nothing
@@ -46,17 +53,32 @@ function reset_rvo_python_module!(state::RVO)
 end
 
 # RVO simulation methods
-function rvo_new_sim(state::RVO; dt::Float64=1 / 40.0, neighbor_dist::Float64=2.0,
-    max_neighbors::Int=5, horizon::Float64=2.0, horizon_obst::Float64=1.0,
-    radius::Float64=0.5, max_speed::Float64=state.max_speed,
-    default_vel=(0.0, 0.0))
+function rvo_new_sim(
+    state::RVO;
+    dt::Float64 = 1 / 40.0,
+    neighbor_dist::Float64 = 2.0,
+    max_neighbors::Int = 5,
+    horizon::Float64 = 2.0,
+    horizon_obst::Float64 = 1.0,
+    radius::Float64 = 0.5,
+    max_speed::Float64 = state.max_speed,
+    default_vel = (0.0, 0.0),
+)
     reset_rvo_python_module!(state)
     rvo_reset_agent_map!(state)
     state.python_module.PyRVOSimulator(
-        dt, neighbor_dist, max_neighbors, horizon, horizon_obst, radius, max_speed, default_vel)
+        dt,
+        neighbor_dist,
+        max_neighbors,
+        horizon,
+        horizon_obst,
+        radius,
+        max_speed,
+        default_vel,
+    )
 end
 
-function rvo_set_new_sim!(state::RVO, sim=nothing)
+function rvo_set_new_sim!(state::RVO, sim = nothing)
     sim = isnothing(sim) ? rvo_new_sim(state) : sim
     state.sim_wrapper = CachedElement{Any}(sim, true, Dates.now())
 end
@@ -75,7 +97,7 @@ end
 set_rvo_id_map!(m::RVOAgentMap, id::AbstractID, idx::Int) = set_rvo_id_map!(m, id, idx)
 
 # RVOAgent methods
-function rvo_add_agent!(state::RVO, agent::Union{RobotNode, TransportUnitNode}, sim)
+function rvo_add_agent!(state::RVO, agent::Union{RobotNode,TransportUnitNode}, sim)
     rad = get_rvo_radius(agent) * 1.05 # Add a little bit of padding for visualization
     max_speed = get_rvo_max_speed(state, agent)
     neighbor_dist = get_rvo_neighbor_distance(state, agent)
@@ -113,13 +135,13 @@ function rvo_get_agent_velocity(state::RVO, node)
     get_element(state.sim_wrapper).getAgentVelocity(idx)
 end
 
-function rvo_set_agent_max_speed!(state::RVO, node, speed=nothing)
+function rvo_set_agent_max_speed!(state::RVO, node, speed = nothing)
     speed = isnothing(speed) ? rvo_default_max_speed(state) : speed
     idx = rvo_get_agent_idx(state, node)
     get_element(state.sim_wrapper).setAgentMaxSpeed(idx, speed)
 end
 
-function rvo_set_agent_alpha!(state::RVO, node, alpha=0.5)
+function rvo_set_agent_alpha!(state::RVO, node, alpha = 0.5)
     idx = rvo_get_agent_idx(state, node)
     get_element(state.sim_wrapper).setAgentAlpha(idx, alpha)
 end
@@ -223,13 +245,7 @@ function get_rvo_neighbor_distance(state::RVO, node)
 end
 
 # RVO eligibility helper methods
-for T in (
-    :RobotStart,
-    :RobotGo,
-    :FormTransportUnit,
-    :TransportUnitGo,
-    :DepositCargo
-)
+for T in (:RobotStart, :RobotGo, :FormTransportUnit, :TransportUnitGo, :DepositCargo)
     @eval begin
         rvo_eligible_node(n::$T) = true
     end
@@ -239,7 +255,7 @@ rvo_eligible_node(n) = false
 
 function is_rvo_eligible(node)
     matches_template(RobotNode, node) && is_root_node(scene_tree, node) ||
-    matches_template(TransportUnitNode, node) && is_in_formation(node, scene_tree)
+        matches_template(TransportUnitNode, node) && is_in_formation(node, scene_tree)
 end
 
 function not_already_mapped(state::RVO, node)
@@ -252,7 +268,8 @@ function rvo_add_agents!(state::RVO, scene_tree)
     for node in get_nodes(scene_tree)
         if matches_template(RobotNode, node) && is_root_node(scene_tree, node)
             rvo_add_agent!(state, node, sim)
-        elseif matches_template(TransportUnitNode, node) && is_in_formation(node, scene_tree)
+        elseif matches_template(TransportUnitNode, node) &&
+               is_in_formation(node, scene_tree)
             rvo_add_agent!(state, node, sim)
         end
     end
@@ -271,7 +288,7 @@ end
 global RVO_SIM_WRAPPER = CachedElement{Any}(nothing, false, Dates.now())
 rvo_global_sim_wrapper() = RVO_SIM_WRAPPER
 
-function rvo_set_new_global_sim!(sim=nothing)
+function rvo_set_new_global_sim!(sim = nothing)
     sim = isnothing(sim) ? rvo_new_sim() : sim
     set_element!(rvo_global_sim_wrapper(), sim)
 end

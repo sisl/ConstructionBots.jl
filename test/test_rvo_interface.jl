@@ -1,4 +1,4 @@
-using  ConstructionBots
+using ConstructionBots
 
 using Test
 using PyCall
@@ -36,9 +36,12 @@ end
 
     # Test agent properties have correct types
     for node in ConstructionBots.rvo_active_agents(scene_tree)
-        @test typeof(ConstructionBots.rvo_get_agent_position(node)) == Tuple{Float64, Float64}
-        @test typeof(ConstructionBots.rvo_get_agent_velocity(node)) == Tuple{Float64, Float64}
-        @test typeof(ConstructionBots.rvo_get_agent_pref_velocity(node)) == Tuple{Float64, Float64}
+        @test typeof(ConstructionBots.rvo_get_agent_position(node)) ==
+              Tuple{Float64,Float64}
+        @test typeof(ConstructionBots.rvo_get_agent_velocity(node)) ==
+              Tuple{Float64,Float64}
+        @test typeof(ConstructionBots.rvo_get_agent_pref_velocity(node)) ==
+              Tuple{Float64,Float64}
     end
 end
 
