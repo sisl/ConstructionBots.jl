@@ -1,5 +1,4 @@
 using ConstructionBots
-using JLD2
 
 """
 This script exists to helping debug scenarios. If a simulation doesn't progress after a

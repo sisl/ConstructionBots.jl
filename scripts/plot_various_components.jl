@@ -7,7 +7,6 @@ using StaticArrays
 using LinearAlgebra
 using Dates
 using StatsBase
-using JLD2
 using ProgressMeter
 using Logging
 using TOML

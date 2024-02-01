@@ -2,6 +2,7 @@ module ConstructionBots
 
 # Utility libraries
 using Dates
+using JLD2
 using Logging
 using Parameters
 using Printf
