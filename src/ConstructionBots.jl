@@ -38,6 +38,7 @@ using ECOS, GLPK, Gurobi, HiGHS
 # Generating graphical plots
 using Compose, Measures, MeshCat
 
+include("constants.jl")
 include("graph_utils_essentials.jl")
 include("taskgraphs_components.jl")
 include("hierarchical_geom_essentials.jl")

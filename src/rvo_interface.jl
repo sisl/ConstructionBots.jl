@@ -61,7 +61,7 @@ function rvo_new_sim(;
     horizon::Float64 = 2.0,
     horizon_obst::Float64 = 1.0,
     radius::Float64 = 0.5,
-    max_speed::Float64 = rvo_default_max_speed(),
+    max_speed::Float64 = DEFAULT_MAX_SPEED,
     default_vel = (0.0, 0.0),
 )
     reset_rvo_python_module!()
@@ -89,44 +89,20 @@ end
 # rvo_global_sim() = rvo_global_sim_wrapper().sim
 rvo_global_sim() = get_element(rvo_global_sim_wrapper())
 
-# RVO PARAMETERS
-global RVO_MAX_SPEED_VOLUME_FACTOR = 0.01
-global RVO_MAX_SPEED = 4.0
-global RVO_MIN_MAX_SPEED = 1.0
-function rvo_default_max_speed()
-    RVO_MAX_SPEED
-end
-function set_rvo_default_max_speed!(val)
-    global RVO_MAX_SPEED = val
-end
-function rvo_default_max_speed_volume_factor()
-    RVO_MAX_SPEED_VOLUME_FACTOR
-end
-function set_rvo_default_max_speed_volume_factor!(val)
-    global RVO_MAX_SPEED_VOLUME_FACTOR = val
-end
-function rvo_default_min_max_speed()
-    RVO_MIN_MAX_SPEED
-end
-function set_rvo_default_min_max_speed!(val)
-    global RVO_MIN_MAX_SPEED = val
-end
-
 """ get_rvo_max_speed(node) """
-get_rvo_max_speed(::RobotNode) = rvo_default_max_speed()
+get_rvo_max_speed(::RobotNode) = DEFAULT_MAX_SPEED
 function get_rvo_max_speed(node)
     ensure_rvo_python_module_loaded!()
     rect = get_base_geom(node, HyperrectangleKey())
     vol = LazySets.volume(rect)
     # Speed limited by volume
-    vmax = rvo_default_max_speed()
-    delta_v = vol * rvo_default_max_speed_volume_factor()
-    return max(vmax - delta_v, rvo_default_min_max_speed())
+    vmax = DEFAULT_MAX_SPEED
+    delta_v = vol * DEFAULT_MAX_SPEED_VOLUME_FACTOR
+    return max(vmax - delta_v, DEFAULT_MIN_MAX_SPEED)
 end
 
 """ get_rvo_radius(node) """
 get_rvo_radius(node) = get_base_geom(node, HypersphereKey()).radius
-
 
 global RVO_DEFAULT_TIME_STEP = 1 / 40.0
 function rvo_default_time_step()
@@ -135,7 +111,6 @@ end
 function set_rvo_default_time_step!(val)
     global RVO_DEFAULT_TIME_STEP = val
 end
-
 
 global RVO_DEFAULT_NEIGHBOR_DISTANCE = 2.0
 global RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE = 1.0
@@ -162,7 +137,7 @@ end
 function get_rvo_neighbor_distance(node)
     ensure_rvo_python_module_loaded!()
     d = rvo_default_neighbor_distance()
-    v_ratio = get_rvo_max_speed(node) / rvo_default_max_speed()
+    v_ratio = get_rvo_max_speed(node) / DEFAULT_MAX_SPEED
     delta_d = v_ratio * rvo_default_neighborhood_velocity_scale_factor()
     d = max(d - delta_d, rvo_default_min_neighbor_distance())
 end
