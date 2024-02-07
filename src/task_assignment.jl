@@ -110,6 +110,8 @@ align_with_successor(node::RobotGo, succ::T) where {T<:RobotGo} = RobotGo(
     start_config(node),
     start_config(succ),
     node_id(node),
+    nothing,
+    nothing,
 )
 align_with_predecessor(
     node::RobotGo,
@@ -119,6 +121,8 @@ align_with_predecessor(
     goal_config(pred),
     goal_config(node),
     node_id(node),
+    nothing, 
+    nothing,
 )
 # align_with_successor(node::T,succ::S) where {C,T<:EntityConfigPredicate{C},S<:EntityGo{C}} = T(first_valid(node,succ),start_config(node))
 
@@ -173,6 +177,8 @@ function align_with_predecessor(sched::OperatingSchedule, node::RobotGo, pred::D
                 start_config(node),
                 goal_config(node),
                 node_id(node),
+                nothing,
+                nothing,
             )
         end
     else

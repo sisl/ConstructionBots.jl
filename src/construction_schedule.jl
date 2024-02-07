@@ -99,12 +99,18 @@ struct RobotGo{R} <: EntityGo{RobotNode}
     start_config::TransformNode
     goal_config::TransformNode
     id::ActionID # required because there may be multiple RobotGo nodes for one robot
+    desired_twist::Union{CoordinateTransformations.Transformation, Nothing}
+    alpha::Union{Float64, Nothing}
 end
 
 struct TransportUnitGo <: EntityGo{TransportUnitNode}
     entity::TransportUnitNode
     start_config::TransformNode
     goal_config::TransformNode
+    desired_twist::Union{CoordinateTransformations.Transformation, Nothing}
+    alpha::Union{Float64, Nothing}
+
+    TransportUnitGo(entity::TransportUnitNode, start_config, goal_config, desired_twist=nothing, alpha=nothing) = new(entity, start_config, goal_config, desired_twist, alpha)
 end
 
 struct LiftIntoPlace{C} <: EntityGo{C}
@@ -261,7 +267,7 @@ for T in (:RobotGo, :TransportUnitGo) #,:LiftIntoPlace)
         end
     end
 end
-RobotGo(n::RobotNode, start, goal) = RobotGo(n, start, goal, get_unique_id(ActionID))
+RobotGo(n::RobotNode, start, goal) = RobotGo(n, start, goal, get_unique_id(ActionID), nothing, nothing)
 function LiftIntoPlace(n::Union{ObjectNode,AssemblyNode})
     l = LiftIntoPlace(n, TransformNode(), TransformNode())
     set_parent!(start_config(l), goal_config(l)) # point to parent
