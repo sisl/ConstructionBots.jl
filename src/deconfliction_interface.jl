@@ -25,20 +25,20 @@ function set_agent_properties(deconflict_strategies)
     end
 end
 
-function update_env_with_deconfliction(env, deconflict_strategies)
+function update_env_with_deconfliction(env::PlannerEnv)
     for node in get_nodes(env.sched)
         if matches_template(Union{RobotStart,FormTransportUnit}, node)
             n = entity(node)
             agent_radius = get_radius(get_base_geom(n, HypersphereKey()))
-            vmax = get_vmax(n, deconflict_strategies)
+            vmax = get_vmax(n, env)
             env.agent_policies[node_id(n)] = ConstructionBots.VelocityController(
-                nominal_policy = in(:TangentBugPolicy, deconflict_strategies) ?
+                nominal_policy = in(:TangentBugPolicy, env.deconflict_strategies) ?
                                  TangentBugPolicy(
                     dt = env.dt,
                     vmax = vmax,
                     agent_radius = agent_radius,
                 ) : nothing,
-                dispersion_policy = in(:Dispersion, deconflict_strategies) ?
+                dispersion_policy = in(:Dispersion, env.deconflict_strategies) ?
                                     ConstructionBots.PotentialFieldController(
                     agent = n,
                     node = node,
@@ -55,25 +55,25 @@ function update_env_with_deconfliction(env, deconflict_strategies)
 end
 
 # Update the simulation environment by specifying new agent properties.
-function update_simulation_environment(deconflict_strategies)
-    if in(:RVO, deconflict_strategies)
+function update_simulation_environment(env::PlannerEnv)
+    if in(:RVO, env.deconflict_strategies)
         rvo_set_new_sim!()
     else
         println(
             "No simulation update required for deconfliction strategy: ",
-            join(deconflict_strategies, ", "),
+            join(env.deconflict_strategies, ", "),
         )
     end
 end
 
 # Add agents to simulation based on the deconfliction algorithm used.
-function add_agents_to_simulation!(scene_tree, deconflict_strategies)
-    if in(:RVO, deconflict_strategies)
+function add_agents_to_simulation!(scene_tree, env::PlannerEnv)
+    if in(:RVO, env.deconflict_strategies)
         return rvo_add_agents!(scene_tree)
     else
         println(
             "No new agents to add for deconfliction strategy: ",
-            join(deconflict_strategies, ", "),
+            join(env.deconflict_strategies, ", "),
         )
     end
 end
@@ -83,18 +83,18 @@ end
 # TODO(tashakim): assess whether deconflict_strategies can be passed in for 
 # this method.
 function set_agent_priority(env::PlannerEnv, node)
-    if in(:RVO, deconflict_strategies)
+    if in(:RVO, env.deconflict_strategies)
         return set_rvo_priority!(env, node)
     else
         println(
             "No agent priority to update for deconfliction strategy: ",
-            join(deconflict_strategies, ", "),
+            join(env.deconflict_strategies, ", "),
         )
     end
 end
 
 # Return the maximum speed of a node based on its type and volume.
-function get_vmax(node, deconflict_strategies)
+function get_vmax(node, env::PlannerEnv)
     # TODO(tashakim): Computing vmax is necessary for simulation (See line 566 
     # of full_demo.jl), but currently relies on RVO fields. A new method should
     # be implemented that enables computing vmax without using any RVO fields 

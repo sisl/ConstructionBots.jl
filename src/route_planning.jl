@@ -108,6 +108,7 @@ Contains the Environment state and definition.
     staging_buffers::Dict{AbstractID,Float64} = Dict{AbstractID,Float64}() # dynamic buffer for staging areas
     max_robot_go_id::Int64 = Inf
     max_cargo_id::Int64 = Inf
+    deconflict_strategies::Vector{Symbol} = [:Nothing]
 end
 
 node_is_active(env, node) = get_vtx(env.sched, node_id(node)) in env.cache.active_set

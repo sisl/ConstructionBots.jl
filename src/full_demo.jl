@@ -30,7 +30,7 @@ Keyword arguments:
 - `block_save_anim::Bool`: whether to save the animation in blocks instead of incrementally. false = incrementall, true = save in blocks (default: false)
 - `update_anim_at_every_step::Bool`: whether to update the animation at every step (default: false)
 - `save_anim_interval::Int`: the interval of number of updates to save the animation if `save_animation_along_the_way=true` (default: 500)
-- `deconflict_strategies::Vector{Symbol}`: algorithm used for decentralized collision avoidance
+- `deconflict_strategies::Vector{Symbol}`: algorithm(s) used for decentralized collision avoidance (:RVO, :TangentBugPolicy, :Dispersion)
 - `overwrite_results::Bool`: whether to overwrite the stats.toml file or create a new one with a date-time filename (default: true)
 - `write_results::Bool`: whether to write the results to disk (default: true)
 - `max_num_iters_no_progress::Int`: maximum number of iterations to run without progress (default: 10000)
@@ -74,7 +74,7 @@ function run_lego_demo(;
     block_save_anim::Bool = false,
     update_anim_at_every_step::Bool = false,
     save_anim_interval::Int = 500,
-    deconflict_strategies::Vector{Symbol} = [:RVO, :TangentBugPolicy, :Dispersion],
+    deconflict_strategies::Vector{Symbol} = [:Nothing],
     overwrite_results::Bool = false,
     write_results::Bool = true,
     max_num_iters_no_progress::Int = 10000,
@@ -615,7 +615,6 @@ function run_lego_demo(;
     set_scene_tree_to_initial_condition!(scene_tree, sched; remove_all_edges = true)
 
     # Apply deconfliction strategies in simulation
-    update_simulation_environment(deconflict_strategies)
     env = PlannerEnv(
         sched = tg_sched,
         scene_tree = scene_tree,
@@ -627,9 +626,11 @@ function run_lego_demo(;
             cargo_id(entity(n)).id for
             n in get_nodes(tg_sched) if matches_template(TransportUnitGo, n)
         ]),
+        deconflict_strategies=deconflict_strategies
     )
-    add_agents_to_simulation!(scene_tree, deconflict_strategies)
-    update_env_with_deconfliction(env, deconflict_strategies)
+    update_simulation_environment(env)
+    add_agents_to_simulation!(scene_tree, env)
+    update_env_with_deconfliction(env)
     # TODO(tashakim): Update route planning to use DeconflictionStrategy
 
     # Configure collision avoidance strategies for route planning 
