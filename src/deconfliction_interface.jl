@@ -13,8 +13,8 @@ abstract type DeconflictStrategy end
 # rvo_default_min_neighbor_distance etc.
 function set_agent_properties(deconflict_strategies)
     if in(:RVO, deconflict_strategies)
-        # TODO(tashakim): figure out if these fields should be part of AgentType
-        # or DeconflictStrategy type, then update accordingly.
+        # TODO(tashakim): consider if these fields should be part of 
+        # DeconflictStrategy type.
         set_rvo_default_neighbor_distance!(16 * default_robot_radius())
         set_rvo_default_min_neighbor_distance!(10 * default_robot_radius())
     else

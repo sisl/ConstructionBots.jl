@@ -26,16 +26,6 @@ mutable struct SimProcessingData
     progress_update_fcn::Function
 end
 
-# TODO(tashakim): Extend AgentType to encapsulate required fields 
-mutable struct AgentType
-    id::Int
-    position::Float64
-    velocity::Float64
-    desired_velocity::Float64
-    max_velocity::Float64
-    alpha::Float64
-end
-
 struct NoSolutionError <: Exception end
 Base.showerror(io::IO, e::NoSolutionError) = print(io, "No solution found!")
 
