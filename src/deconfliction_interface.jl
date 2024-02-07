@@ -3,7 +3,7 @@
 
 # TODO(tashakim): Replace `deconflict_strategies` from an indicator string
 # to a Vector{DeconflictionStrategy} type after redefining deconfliction common
-# methods, e.g. update_velocity(deconflict_strategies).
+# methods, e.g. update_env_with_deconfliction
 
 abstract type DeconflictStrategy end
 
@@ -25,8 +25,7 @@ function set_agent_properties(deconflict_strategies)
     end
 end
 
-# TODO(tashakim): take in AgentType parameter to update velocity
-function update_velocity(env, deconflict_strategies)
+function update_env_with_deconfliction(env, deconflict_strategies)
     for node in get_nodes(env.sched)
         if matches_template(Union{RobotStart,FormTransportUnit}, node)
             n = entity(node)

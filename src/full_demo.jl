@@ -629,7 +629,7 @@ function run_lego_demo(;
         ]),
     )
     add_agents_to_simulation!(scene_tree, deconflict_strategies)
-    update_velocity(env, deconflict_strategies)
+    update_env_with_deconfliction(env, deconflict_strategies)
     # TODO(tashakim): Update route planning to use DeconflictionStrategy
 
     # Configure collision avoidance strategies for route planning 
