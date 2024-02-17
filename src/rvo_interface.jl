@@ -268,5 +268,5 @@ function set_rvo_priority!(
     else
         alpha = 1.0
     end
-    set_agent_alpha!(node, alpha)
+    set_agent_alpha!(env, node, alpha)
 end

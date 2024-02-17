@@ -74,6 +74,7 @@ function update_simulation!(env)
             "No simulation update required for deconfliction strategy: ",
             join(env.deconflict_strategies, ", "),
         )
+    end
 end
 
 # Add agents to simulation based on the deconfliction algorithm used.
@@ -121,7 +122,7 @@ end
 
 function set_agent_max_speed!(env, node, speed)
     if in(:RVO, env.deconflict_strategies)
-        return rvo_set_agent_max_speed!(entity(node), speed)
+        return rvo_set_agent_max_speed!(node, speed)
     else
         println(
             "No agent max speed to update for deconfliction strategy: ",
@@ -132,18 +133,18 @@ end
 
 function set_agent_pref_velocity!(env, node, desired_velocity)
     if in(:RVO, env.deconflict_strategies)
-        return rvo_set_agent_pref_velocity!(entity(node), desired_velocity)
+        return rvo_set_agent_pref_velocity!(node, desired_velocity)
     else
         node.desired_twist = desired_velocity
     end
 end
 
-function get_agent_pref_velocity(env, node)
+function get_agent_pref_velocity(env, agent)
     if in(:RVO, env.deconflict_strategies)
-        return rvo_get_agent_pref_velocity(entity(node))
+        return rvo_get_agent_pref_velocity(entity(agent))
     else
-        println("node is: ", node.node)
-        return node.node.desired_twist
+        println("node is: ", agent.node)
+        return agent.node.desired_twist
     end
 end
 

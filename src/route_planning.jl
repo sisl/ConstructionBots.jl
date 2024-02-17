@@ -262,7 +262,7 @@ function step_environment!(env::PlannerEnv, sim = rvo_global_sim())
     # Set velocities to zero for all agents. The pref velocities are only overwritten if
     # agent is "active" in the next time step
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
-        set_agent_pref_velocity!(env, id, (0.0, 0.0))
+        set_agent_pref_velocity!(env, get_node(env.scene_tree, id), (0.0, 0.0))
     end
     return env
 end
