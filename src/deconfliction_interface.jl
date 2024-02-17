@@ -61,7 +61,8 @@ function update_simulation_environment(env)
     else
         println(
             "No simulation environment update required for deconfliction
-            strategy: ", join(env.deconflict_strategies, ", "),
+            strategy: ",
+            join(env.deconflict_strategies, ", "),
         )
     end
 end
@@ -81,7 +82,10 @@ function update_agent_position_in_sim!(env, agent)
     if in(:RVO, env.deconflict_strategies)
         pt = rvo_get_agent_position(agent)
         @assert has_parent(agent, agent) "agent $(node_id(agent)) should be its own parent"
-        set_local_transform!(agent, CoordinateTransformations.Translation(pt[1], pt[2], 0.0))
+        set_local_transform!(
+            agent,
+            CoordinateTransformations.Translation(pt[1], pt[2], 0.0),
+        )
         if !isapprox(
             norm(global_transform(agent).translation[1:2] .- pt),
             0.0;
@@ -95,7 +99,8 @@ function update_agent_position_in_sim!(env, agent)
     else
         println(
             "No agent position updated in simulation for deconfliction 
-            strategy: ", join(env.deconflict_strategies, ", "),
+            strategy: ",
+            join(env.deconflict_strategies, ", "),
         )
     end
 end
@@ -171,7 +176,7 @@ function get_agent_pref_velocity(env, agent)
     end
 end
 
-function set_agent_alpha!(env, node, alpha=0.5)
+function set_agent_alpha!(env, node, alpha = 0.5)
     if in(:RVO, env.deconflict_strategies)
         return rvo_set_agent_alpha!(node, alpha)
     else

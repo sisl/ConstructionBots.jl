@@ -626,7 +626,7 @@ function run_lego_demo(;
             cargo_id(entity(n)).id for
             n in get_nodes(tg_sched) if matches_template(TransportUnitGo, n)
         ]),
-        deconflict_strategies=deconflict_strategies
+        deconflict_strategies = deconflict_strategies,
     )
     update_simulation_environment(env)
     add_agents_to_simulation!(scene_tree, env)

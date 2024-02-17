@@ -863,7 +863,14 @@ function get_cmd(node::Union{FormTransportUnit,DepositCargo}, env::PlannerEnv)
     v_max = default_loading_speed()
     ω_max = default_rotational_loading_speed()
     g_tform = global_transform(cargo_goal_config(node))
-    return compute_twist_from_goal(env, cargo, g_tform, env.dt, v_max = v_max, ω_max = ω_max)
+    return compute_twist_from_goal(
+        env,
+        cargo,
+        g_tform,
+        env.dt,
+        v_max = v_max,
+        ω_max = ω_max,
+    )
 end
 function get_cmd(node::LiftIntoPlace, env::PlannerEnv)
     cargo = entity(node)

@@ -121,7 +121,7 @@ align_with_predecessor(
     goal_config(pred),
     goal_config(node),
     node_id(node),
-    nothing, 
+    nothing,
     nothing,
 )
 # align_with_successor(node::T,succ::S) where {C,T<:EntityConfigPredicate{C},S<:EntityGo{C}} = T(first_valid(node,succ),start_config(node))
