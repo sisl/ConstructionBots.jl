@@ -104,7 +104,7 @@ Contains the Environment state and definition.
     active_build_steps::Set{AbstractID} = Set{AbstractID}()
     # TODO(tashakim): Store default time step as fields of RVO state, and 
     # remove the global var from rvo_interface
-    dt::Float64 = rvo_default_time_step()
+    dt::Float64 = DEFAULT_TIME_STEP
     agent_policies::Dict = Dict()
     agent_parent_build_step_active::Dict = Dict()
     staging_buffers::Dict{AbstractID,Float64} = Dict{AbstractID,Float64}() # dynamic buffer for staging areas

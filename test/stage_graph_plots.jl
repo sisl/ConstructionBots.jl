@@ -212,7 +212,6 @@ ConstructionBots.set_default_robot_geom!(
     Cylinder(Point(0.0, 0.0, 0.0), Point(0.0, 0.0, robot_height), robot_radius),
 )
 
-ConstructionBots.set_rvo_default_time_step!(1 / 40.0)
 ConstructionBots.set_default_loading_speed!(50 * ConstructionBots.default_robot_radius())
 ConstructionBots.set_default_rotational_loading_speed!(
     50 * ConstructionBots.default_robot_radius(),

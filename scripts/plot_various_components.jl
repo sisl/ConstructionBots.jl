@@ -113,7 +113,6 @@ ConstructionBots.reset_all_invalid_id_counters!()
 ConstructionBots.set_default_robot_geom!(
     Cylinder(Point(0.0, 0.0, 0.0), Point(0.0, 0.0, robot_height), robot_radius),
 )
-ConstructionBots.set_rvo_default_time_step!(1 / 40.0)
 
 ConstructionBots.set_rvo_default_neighbor_distance!(
     16 * ConstructionBots.default_robot_radius(),

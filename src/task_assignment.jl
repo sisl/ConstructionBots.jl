@@ -1,6 +1,6 @@
 duration_lower_bound(node::ConstructionPredicate) = 0.0
 function duration_lower_bound(node::ConstructionPredicate, start, goal, max_speed)
-    env_dt = rvo_default_time_step()
+    env_dt = DEFAULT_TIME_STEP
     d = norm(goal - start)
     δd = max_speed * env_dt
     num_steps = floor(d / δd)
@@ -23,7 +23,7 @@ function duration_lower_bound(node::Union{FormTransportUnit,DepositCargo})
 end
 function duration_lower_bound(node::LiftIntoPlace)
     # Need to account for order of movement: rotate, then translate
-    env_dt = rvo_default_time_step()
+    env_dt = DEFAULT_TIME_STEP
 
     v_max = default_loading_speed()
     ω_max = default_rotational_loading_speed()

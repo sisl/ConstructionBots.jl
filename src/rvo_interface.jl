@@ -108,14 +108,6 @@ end
 """ get_rvo_radius(node) """
 get_rvo_radius(node) = get_base_geom(node, HypersphereKey()).radius
 
-global RVO_DEFAULT_TIME_STEP = 1 / 40.0
-function rvo_default_time_step()
-    RVO_DEFAULT_TIME_STEP
-end
-function set_rvo_default_time_step!(val)
-    global RVO_DEFAULT_TIME_STEP = val
-end
-
 global RVO_DEFAULT_NEIGHBOR_DISTANCE = 2.0
 global RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE = 1.0
 global RVO_DEFAULT_NEIGHBORHOOD_VELOCITY_SCALE_FACTOR = 1.0
