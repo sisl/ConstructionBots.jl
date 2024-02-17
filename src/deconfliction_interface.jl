@@ -77,6 +77,29 @@ function update_simulation!(env)
     end
 end
 
+function update_agent_position_in_sim!(env, agent)
+    if in(:RVO, env.deconflict_strategies)
+        pt = rvo_get_agent_position(agent)
+        @assert has_parent(agent, agent) "agent $(node_id(agent)) should be its own parent"
+        set_local_transform!(agent, CoordinateTransformations.Translation(pt[1], pt[2], 0.0))
+        if !isapprox(
+            norm(global_transform(agent).translation[1:2] .- pt),
+            0.0;
+            rtol = 1e-6,
+            atol = 1e-6,
+        )
+            @warn "Agent $node_id(agent) should be at $pt but is at 
+            $(global_transform(agent).translation[1:2])"
+        end
+        return global_transform(agent)
+    else
+        println(
+            "No agent position updated in simulation for deconfliction 
+            strategy: ", join(env.deconflict_strategies, ", "),
+        )
+    end
+end
+
 # Add agents to simulation based on the deconfliction algorithm used.
 function add_agents_to_simulation!(scene_tree, env)
     if in(:RVO, env.deconflict_strategies)

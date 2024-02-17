@@ -192,27 +192,6 @@ function simulate!(env; max_time_steps = 2000)
     return project_complete(env), iters
 end
 
-"""
-    update_position_from_sim!(agent)
-
-Update agent position from RVO simulator
-"""
-function update_position_from_sim!(agent)
-    # TODO(tashakim): Get agent position from node
-    pt = rvo_get_agent_position(agent)
-    @assert has_parent(agent, agent) "agent $(node_id(agent)) should be its own parent"
-    set_local_transform!(agent, CoordinateTransformations.Translation(pt[1], pt[2], 0.0))
-    if !isapprox(
-        norm(global_transform(agent).translation[1:2] .- pt),
-        0.0;
-        rtol = 1e-6,
-        atol = 1e-6,
-    )
-        @warn "Agent $node_id(agent) should be at $pt but is at $(global_transform(agent).translation[1:2])"
-    end
-    return global_transform(agent)
-end
-
 function get_active_pos(env::PlannerEnv)
     pos_dict = Dict{Int,Vector{Float64}}()
     for v in env.cache.active_set
@@ -251,9 +230,7 @@ function step_environment!(env::PlannerEnv, sim = rvo_global_sim())
     end
     # TODO(tashakim): Refactor rvo_global_id_map
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
-        if use_rvo()
-            tform = update_position_from_sim!(get_node(env.scene_tree, id))
-        end
+        tform = update_agent_position_in_sim!(env, get_node(env.scene_tree, id))
     end
 
     # swap transport unit positions if necessary
@@ -855,10 +832,7 @@ get_cmd(
 ) = nothing
 function get_cmd(node::Union{TransportUnitGo,RobotGo}, env::PlannerEnv)
     agent = entity(node)
-    if use_rvo()
-        update_position_from_sim!(agent)
-    end
-
+    update_agent_position_in_sim!(env, agent)
     set_agent_priority!(env, node)
 
     #? Do we want to set the max speed to zero because its at its goal? I think we should
