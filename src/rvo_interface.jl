@@ -110,7 +110,6 @@ get_rvo_radius(node) = get_base_geom(node, HypersphereKey()).radius
 
 global RVO_DEFAULT_NEIGHBOR_DISTANCE = 2.0
 global RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE = 1.0
-global RVO_DEFAULT_NEIGHBORHOOD_VELOCITY_SCALE_FACTOR = 1.0
 function rvo_default_neighbor_distance()
     RVO_DEFAULT_NEIGHBOR_DISTANCE
 end
@@ -123,18 +122,12 @@ end
 function set_rvo_default_min_neighbor_distance!(val)
     global RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE = val
 end
-function rvo_default_neighborhood_velocity_scale_factor()
-    RVO_DEFAULT_NEIGHBORHOOD_VELOCITY_SCALE_FACTOR
-end
-function set_rvo_default_neighborhood_velocity_scale_factor!(val)
-    global RVO_DEFAULT_NEIGHBORHOOD_VELOCITY_SCALE_FACTOR = val
-end
 
 function get_rvo_neighbor_distance(node)
     ensure_rvo_python_module_loaded!()
     d = rvo_default_neighbor_distance()
     v_ratio = get_rvo_max_speed(node) / DEFAULT_MAX_SPEED
-    delta_d = v_ratio * rvo_default_neighborhood_velocity_scale_factor()
+    delta_d = v_ratio * DEFAULT_NEIGHBORHOOD_VELOCITY_SCALE_FACTOR
     d = max(d - delta_d, rvo_default_min_neighbor_distance())
 end
 
