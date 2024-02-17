@@ -14,7 +14,7 @@ end
 function duration_lower_bound(node::EntityGo)
     start = global_transform(start_config(node)).translation
     goal = global_transform(goal_config(node)).translation
-    duration_lower_bound(node, start, goal, get_rvo_max_speed(entity(node)))
+    duration_lower_bound(node, start, goal, get_agent_max_speed(entity(node)))
 end
 function duration_lower_bound(node::Union{FormTransportUnit,DepositCargo})
     start = global_transform(cargo_start_config(node)).translation

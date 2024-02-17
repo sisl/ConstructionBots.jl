@@ -25,7 +25,7 @@ function set_agent_properties(deconflict_strategies)
     end
 end
 
-function update_env_with_deconfliction(env::PlannerEnv)
+function update_env_with_deconfliction(env)
     for node in get_nodes(env.sched)
         if matches_template(Union{RobotStart,FormTransportUnit}, node)
             n = entity(node)
@@ -55,7 +55,7 @@ function update_env_with_deconfliction(env::PlannerEnv)
 end
 
 # Update the simulation environment by specifying new agent properties.
-function update_simulation_environment(env::PlannerEnv)
+function update_simulation_environment(env)
     if in(:RVO, env.deconflict_strategies)
         rvo_set_new_sim!()
     else
@@ -67,7 +67,7 @@ function update_simulation_environment(env::PlannerEnv)
 end
 
 # Add agents to simulation based on the deconfliction algorithm used.
-function add_agents_to_simulation!(scene_tree, env::PlannerEnv)
+function add_agents_to_simulation!(scene_tree, env)
     if in(:RVO, env.deconflict_strategies)
         return rvo_add_agents!(scene_tree)
     else
@@ -82,7 +82,7 @@ end
 # potential gridlocks. 
 # TODO(tashakim): assess whether deconflict_strategies can be passed in for 
 # this method.
-function set_agent_priority(env::PlannerEnv, node)
+function set_agent_priority!(env, node)
     if in(:RVO, env.deconflict_strategies)
         return set_rvo_priority!(env, node)
     else
@@ -93,15 +93,67 @@ function set_agent_priority(env::PlannerEnv, node)
     end
 end
 
+function get_agent_position(env, agent)
+    if in(:RVO, env.deconflict_strategies)
+        return rvo_get_agent_position(agent)
+    end
+end
+
+get_agent_max_speed(::RobotNode) = DEFAULT_MAX_SPEED
+function get_agent_max_speed(node)
+    rect = get_base_geom(node, HyperrectangleKey())
+    vol = LazySets.volume(rect)
+    # Speed limited by volume
+    vmax = DEFAULT_MAX_SPEED
+    delta_v = vol * DEFAULT_MAX_SPEED_VOLUME_FACTOR
+    return max(vmax - delta_v, DEFAULT_MIN_MAX_SPEED)
+end
+
+function set_agent_max_speed!(env, node, speed)
+    if in(:RVO, env.deconflict_strategies)
+        return rvo_set_agent_max_speed!(entity(node), speed)
+    else
+        println(
+            "No agent max speed to update for deconfliction strategy: ",
+            join(env.deconflict_strategies, ", "),
+        )
+    end
+end
+
+function set_agent_pref_velocity!(env, node, desired_velocity)
+    if in(:RVO, env.deconflict_strategies)
+        return rvo_set_agent_pref_velocity!(entity(node), desired_velocity)
+    else
+        node.desired_twist = desired_velocity
+    end
+end
+
+function get_agent_pref_velocity(env, node)
+    if in(:RVO, env.deconflict_strategies)
+        return rvo_get_agent_pref_velocity(entity(node))
+    else
+        println("node is: ", node.node)
+        return node.node.desired_twist
+    end
+end
+
+function set_agent_alpha!(env, node, alpha=0.5)
+    if in(:RVO, env.deconflict_strategies)
+        return rvo_set_agent_alpha!(node, alpha)
+    else
+        node.alpha = alpha
+    end
+end
+
 # Return the maximum speed of a node based on its type and volume.
-function get_vmax(node, env::PlannerEnv)
+function get_vmax(node, env)
     # TODO(tashakim): Computing vmax is necessary for simulation (See line 566 
     # of full_demo.jl), but currently relies on RVO fields. A new method should
     # be implemented that enables computing vmax without using any RVO fields 
     # so that vmax can be computed for any deconfliction strategy.
 
     # if in(:RVO, deconflict_strategies)
-    vmax = get_rvo_max_speed(node)
+    vmax = get_agent_max_speed(node)
     # end
 
     # Debugging: println("Maximum speed of node for deconfliction strategy $deconflict_strategies: $vmax")

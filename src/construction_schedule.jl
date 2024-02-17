@@ -94,20 +94,20 @@ Encodes going from state start_config(n) to state goal_config(n).
 """
 abstract type EntityGo{E} <: ConstructionPredicate end
 
-struct RobotGo{R} <: EntityGo{RobotNode}
+mutable struct RobotGo{R} <: EntityGo{RobotNode}
     entity::R
     start_config::TransformNode
     goal_config::TransformNode
     id::ActionID # required because there may be multiple RobotGo nodes for one robot
-    desired_twist::Union{CoordinateTransformations.Transformation, Nothing}
+    desired_twist::Union{Vector{Float64}, Nothing}
     alpha::Union{Float64, Nothing}
 end
 
-struct TransportUnitGo <: EntityGo{TransportUnitNode}
+mutable struct TransportUnitGo <: EntityGo{TransportUnitNode}
     entity::TransportUnitNode
     start_config::TransformNode
     goal_config::TransformNode
-    desired_twist::Union{CoordinateTransformations.Transformation, Nothing}
+    desired_twist::Union{Vector{Float64}, Nothing}
     alpha::Union{Float64, Nothing}
 
     TransportUnitGo(entity::TransportUnitNode, start_config, goal_config, desired_twist=nothing, alpha=nothing) = new(entity, start_config, goal_config, desired_twist, alpha)

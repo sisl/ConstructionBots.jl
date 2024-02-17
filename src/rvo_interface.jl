@@ -56,6 +56,8 @@ end
 
 function rvo_new_sim(;
     dt::Float64 = 1 / 40.0,
+    # TODO(tashakim): Store neighbor_dist, max_neighbors, horizon, 
+    # horizon_obst, radius as fields in RVO state
     neighbor_dist::Float64 = 2.0,
     max_neighbors::Int = 5,
     horizon::Float64 = 2.0,
@@ -89,6 +91,8 @@ end
 # rvo_global_sim() = rvo_global_sim_wrapper().sim
 rvo_global_sim() = get_element(rvo_global_sim_wrapper())
 
+# TODO(tashakim): Remove this method after implementing 
+# get_agent_max_speed method
 """ get_rvo_max_speed(node) """
 get_rvo_max_speed(::RobotNode) = DEFAULT_MAX_SPEED
 function get_rvo_max_speed(node)

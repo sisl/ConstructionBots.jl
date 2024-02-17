@@ -102,6 +102,8 @@ Contains the Environment state and definition.
     cache::PlanningCache = initialize_planning_cache(sched)
     staging_circles::Dict{AbstractID,LazySets.Ball2} = Dict{AbstractID,LazySets.Ball2}()
     active_build_steps::Set{AbstractID} = Set{AbstractID}()
+    # TODO(tashakim): Store default time step as fields of RVO state, and 
+    # remove the global var from rvo_interface
     dt::Float64 = rvo_default_time_step()
     agent_policies::Dict = Dict()
     agent_parent_build_step_active::Dict = Dict()
@@ -156,6 +158,7 @@ cargo_ready_for_pickup(n::ScheduleNode, env::PlannerEnv) =
 
 Low alpha means higher priority
 """
+# TODO(tashakim): Move to rvo interface
 function set_rvo_priority!(env::PlannerEnv, node) end
 function set_rvo_priority!(
     env::PlannerEnv,
@@ -179,7 +182,7 @@ function set_rvo_priority!(
     else
         alpha = 1.0
     end
-    rvo_set_agent_alpha!(node, alpha)
+    set_agent_alpha!(node, alpha)
 end
 
 
@@ -231,6 +234,7 @@ end
 Update agent position from RVO simulator
 """
 function update_position_from_sim!(agent)
+    # TODO(tashakim): Get agent position from node
     pt = rvo_get_agent_position(agent)
     @assert has_parent(agent, agent) "agent $(node_id(agent)) should be its own parent"
     set_local_transform!(agent, CoordinateTransformations.Translation(pt[1], pt[2], 0.0))
@@ -261,6 +265,7 @@ end
 
 Step forward one time step.
 """
+# TODO(tashakim): Refactor sim default param and step RVO, line 282
 function step_environment!(env::PlannerEnv, sim = rvo_global_sim())
 
     prev_active_pos_dict = get_active_pos(env)
@@ -280,6 +285,7 @@ function step_environment!(env::PlannerEnv, sim = rvo_global_sim())
     if !isnothing(sim)
         sim.doStep()
     end
+    # TODO(tashakim): Refactor rvo_global_id_map
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
         if use_rvo()
             tform = update_position_from_sim!(get_node(env.scene_tree, id))
@@ -292,12 +298,12 @@ function step_environment!(env::PlannerEnv, sim = rvo_global_sim())
     # Set velocities to zero for all agents. The pref velocities are only overwritten if
     # agent is "active" in the next time step
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
-        rvo_set_agent_pref_velocity!(id, (0.0, 0.0))
+        set_agent_pref_velocity!(env, id, (0.0, 0.0))
     end
     return env
 end
 
-
+# TODO(tashakim): Move to rvo interface
 function update_rvo_sim!(env::PlannerEnv)
     @unpack sched, scene_tree, cache = env
     active_nodes = [get_node(sched, v) for v in cache.active_set]
@@ -340,7 +346,11 @@ function update_planning_cache!(env::PlannerEnv, time_stamp::Float64)
     if updated
         process_schedule!(sched)
         preprocess_env!(env)
-        update_rvo_sim!(env)
+        # TODO(tashakim): move update_rvo_sim into deconfliction_interface by 
+        # implementing a general method
+        if in(:RVO, env.deconflict_strategies)
+            update_rvo_sim!(env)
+        end
     end
     newly_updated
 end
@@ -483,7 +493,7 @@ function swap_first_paralyzed_transport_unit!(
                 circ = get_cached_geom(transport_unit, HypersphereKey())
                 ctr = get_center(circ)[1:2]
                 rad = get_radius(circ)
-                vel = rvo_get_agent_pref_velocity(agent)
+                vel = get_agent_pref_velocity(env, n)
                 pos = global_transform(agent).translation[1:2]
                 agent_radius = get_radius(get_cached_geom(agent, HypersphereKey()))
                 if norm(pos .- ctr) < agent_radius + rad # within circle
@@ -567,6 +577,8 @@ function swap_carrying_positions!(
         other_agent = get_node(scene_tree, other_id)
         swap_positions!(agent, other_agent)
         # swap positions in rvo_sim as well
+        # TODO(tashakim): Get position from node instead of directly from 
+        # rvo_get_agent_position (and below)
         tmp = rvo_get_agent_position(agent)
         rvo_set_agent_position!(agent, rvo_get_agent_position(other_agent))
         rvo_set_agent_position!(other_agent, tmp)
@@ -814,9 +826,9 @@ function get_twist_cmd(node, env::PlannerEnv)
             parent_step_is_active,
         )
 
-        twist = compute_twist_from_goal(agent, new_goal, dt) # nominal twist
+        twist = compute_twist_from_goal(env, agent, new_goal, dt) # nominal twist
     else
-        twist = compute_twist_from_goal(agent, goal, dt)
+        twist = compute_twist_from_goal(env, agent, goal, dt)
     end
     if use_rvo()
         ############ Hacky Traffic Thinning #############
@@ -868,7 +880,7 @@ function get_twist_cmd(node, env::PlannerEnv)
                 goal =
                     CoordinateTransformations.Translation(goal_pt..., 0.0) ∘
                     CoordinateTransformations.LinearMap(goal.linear)
-                twist = compute_twist_from_goal(agent, goal, dt) # nominal twist
+                twist = compute_twist_from_goal(env, agent, goal, dt) # nominal twist
             else
                 !(policy === nothing)
                 policy.dist_to_nearest_active_agent = 0.0
@@ -880,10 +892,11 @@ function get_twist_cmd(node, env::PlannerEnv)
 end
 
 function compute_twist_from_goal(
+    env,
     agent,
     goal,
     dt;
-    v_max = get_rvo_max_speed(agent),
+    v_max = get_agent_max_speed(agent),
     ω_max = default_rotational_loading_speed(),
 )
     tf_error = relative_transform(global_transform(agent), goal)
@@ -900,25 +913,25 @@ function get_cmd(node::Union{TransportUnitGo,RobotGo}, env::PlannerEnv)
         update_position_from_sim!(agent)
     end
 
-    set_rvo_priority!(env, node)
+    set_agent_priority!(env, node)
 
     #? Do we want to set the max speed to zero because its at its goal? I think we should
     #? still have agents be able to move, albeit slower? 10% of normal max speed?
     if is_goal(node, env)
         twist = zero(Twist) # desired velocity it to stay still #? Could change this?
-        max_speed = 0.1 * get_rvo_max_speed(agent)
+        max_speed = 0.1 * get_agent_max_speed(agent)
     else
         twist = get_twist_cmd(node, env)
         twist_vel = norm(twist.vel[1:2])
         if twist_vel > 0.0
-            max_speed = min(get_rvo_max_speed(agent), twist_vel)
+            max_speed = min(get_agent_max_speed(agent), twist_vel)
         else
-            max_speed = get_rvo_max_speed(agent)
+            max_speed = get_agent_max_speed(agent)
         end
     end
 
-    rvo_set_agent_max_speed!(agent, max_speed)
-    rvo_set_agent_pref_velocity!(agent, twist.vel[1:2])
+    set_agent_max_speed!(env, node, max_speed)
+    set_agent_pref_velocity!(env, node, twist.vel[1:2])
     return twist
 end
 function get_cmd(node::Union{FormTransportUnit,DepositCargo}, env::PlannerEnv)
@@ -928,7 +941,7 @@ function get_cmd(node::Union{FormTransportUnit,DepositCargo}, env::PlannerEnv)
     v_max = default_loading_speed()
     ω_max = default_rotational_loading_speed()
     g_tform = global_transform(cargo_goal_config(node))
-    return compute_twist_from_goal(cargo, g_tform, env.dt, v_max = v_max, ω_max = ω_max)
+    return compute_twist_from_goal(env, cargo, g_tform, env.dt, v_max = v_max, ω_max = ω_max)
 end
 function get_cmd(node::LiftIntoPlace, env::PlannerEnv)
     cargo = entity(node)
@@ -936,7 +949,7 @@ function get_cmd(node::LiftIntoPlace, env::PlannerEnv)
     t_des = global_transform(goal_config(node))
     v_max = default_loading_speed()
     ω_max = default_rotational_loading_speed()
-    twist = compute_twist_from_goal(cargo, t_des, env.dt, v_max = v_max, ω_max = ω_max)
+    twist = compute_twist_from_goal(env, cargo, t_des, env.dt, v_max = v_max, ω_max = ω_max)
     if norm(twist.ω) >= 1e-2
         # rotate first
         return Twist(0 * twist.vel, twist.ω)
@@ -965,9 +978,9 @@ function apply_cmd!(node::FormTransportUnit, twist::Twist, env::PlannerEnv)
     set_local_transform!(cargo, local_transform(cargo) ∘ tform)
     if is_within_capture_distance(agent, cargo)
         capture_child!(scene_tree, agent, cargo)
-        rvo_set_agent_max_speed!(agent, get_rvo_max_speed(agent))
+        set_agent_max_speed!(env, agent, get_agent_max_speed(agent))
     else
-        rvo_set_agent_max_speed!(agent, 0.0)
+        set_agent_max_speed!(env, agent, 0.0)
     end
 end
 function apply_cmd!(node::DepositCargo, twist::Twist, env::PlannerEnv)
@@ -978,9 +991,9 @@ function apply_cmd!(node::DepositCargo, twist::Twist, env::PlannerEnv)
     set_local_transform!(cargo, local_transform(cargo) ∘ tform)
     if is_goal(node, env)
         disband!(scene_tree, agent)
-        rvo_set_agent_max_speed!(agent, get_rvo_max_speed(agent))
+        set_agent_max_speed!(env, agent, get_agent_max_speed(agent))
     else
-        rvo_set_agent_max_speed!(agent, 0.0)
+        set_agent_max_speed!(env, agent, 0.0)
     end
 end
 function apply_cmd!(node::LiftIntoPlace, twist::Twist, env::PlannerEnv)
