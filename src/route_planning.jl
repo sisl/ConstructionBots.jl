@@ -502,9 +502,11 @@ function swap_carrying_positions!(
         # swap positions in rvo_sim as well
         # TODO(tashakim): Get position from node instead of directly from 
         # rvo_get_agent_position (and below)
-        tmp = rvo_get_agent_position(agent)
-        rvo_set_agent_position!(agent, rvo_get_agent_position(other_agent))
-        rvo_set_agent_position!(other_agent, tmp)
+        if use_rvo()
+            tmp = rvo_get_agent_position(agent)
+            rvo_set_agent_position!(agent, rvo_get_agent_position(other_agent))
+            rvo_set_agent_position!(other_agent, tmp)
+        end
     end
     return agent_node
 end
