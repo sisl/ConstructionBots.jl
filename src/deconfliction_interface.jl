@@ -18,10 +18,8 @@ function set_agent_properties(deconflict_strategies)
         set_rvo_default_neighbor_distance!(16 * default_robot_radius())
         set_rvo_default_min_neighbor_distance!(10 * default_robot_radius())
     else
-        println(
-            "No agent properties set for deconfliction strategies: ",
-            join(deconflict_strategies, ", "),
-        )
+        @debug "No agent properties set for deconfliction strategies: 
+        $(join(env.deconflict_strategies, ", "))"
     end
 end
 
@@ -59,11 +57,8 @@ function update_simulation_environment(env)
     if in(:RVO, env.deconflict_strategies)
         rvo_set_new_sim!()
     else
-        println(
-            "No simulation environment update required for deconfliction
-            strategy: ",
-            join(env.deconflict_strategies, ", "),
-        )
+        @debug "No simulation environment update required for deconfliction 
+        strategy: $(join(env.deconflict_strategies, ", "))"
     end
 end
 
@@ -71,10 +66,8 @@ function update_simulation!(env)
     if in(:RVO, env.deconflict_strategies)
         update_rvo_sim!(env)
     else
-        println(
-            "No simulation update required for deconfliction strategy: ",
-            join(env.deconflict_strategies, ", "),
-        )
+        @debug "No simulation update required for deconfliction strategy: 
+        $(join(env.deconflict_strategies, ", "))"
     end
 end
 
@@ -97,11 +90,8 @@ function update_agent_position_in_sim!(env, agent)
         end
         return global_transform(agent)
     else
-        println(
-            "No agent position updated in simulation for deconfliction 
-            strategy: ",
-            join(env.deconflict_strategies, ", "),
-        )
+        @debug "No agent position updated in simulation for deconfliction 
+        strategy: $(join(env.deconflict_strategies, ", "))"
     end
 end
 
@@ -110,10 +100,8 @@ function add_agents_to_simulation!(scene_tree, env)
     if in(:RVO, env.deconflict_strategies)
         return rvo_add_agents!(scene_tree)
     else
-        println(
-            "No new agents to add for deconfliction strategy: ",
-            join(env.deconflict_strategies, ", "),
-        )
+        @debug "No new agents to add for deconfliction strategy: 
+        $(join(env.deconflict_strategies, ", "))"
     end
 end
 
@@ -125,10 +113,8 @@ function set_agent_priority!(env, node)
     if in(:RVO, env.deconflict_strategies)
         return set_rvo_priority!(env, node)
     else
-        println(
-            "No agent priority to update for deconfliction strategy: ",
-            join(env.deconflict_strategies, ", "),
-        )
+        @debug "No agent priority to update for deconfliction strategy: 
+        $(join(env.deconflict_strategies, ", "))"
     end
 end
 
@@ -152,10 +138,8 @@ function set_agent_max_speed!(env, node, speed)
     if in(:RVO, env.deconflict_strategies)
         return rvo_set_agent_max_speed!(node, speed)
     else
-        println(
-            "No agent max speed to update for deconfliction strategy: ",
-            join(env.deconflict_strategies, ", "),
-        )
+        @debug "No agent max speed to update for deconfliction strategy: 
+        $(join(env.deconflict_strategies, ", "))"
     end
 end
 
@@ -171,7 +155,6 @@ function get_agent_pref_velocity(env, agent)
     if in(:RVO, env.deconflict_strategies)
         return rvo_get_agent_pref_velocity(entity(agent))
     else
-        println("node is: ", agent.node)
         return agent.node.desired_twist
     end
 end
@@ -195,7 +178,7 @@ function get_vmax(node, env)
     vmax = get_agent_max_speed(node)
     # end
 
-    # Debugging: println("Maximum speed of node for deconfliction strategy $deconflict_strategies: $vmax")
+    # @debug "Maximum speed of node for deconfliction strategy $(deconflict_strategies: vmax)"
     return vmax
 end
 

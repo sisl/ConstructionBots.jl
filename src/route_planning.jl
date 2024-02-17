@@ -17,11 +17,6 @@ function set_use_deconfliction(deconflict_strategies)
         global USE_RVO = true
     else
         global USE_RVO = false
-        println(
-            "No configuration required in route planning for 
-    deconfliction strategy: ",
-            join(deconflict_strategies, ", "),
-        )
     end
 end
 
@@ -252,9 +247,7 @@ function update_planning_cache!(env::PlannerEnv, time_stamp::Float64)
     while true
         done = true
         for v in collect(cache.active_set)
-            # println("Node v: $v")
             node = get_node(sched, v)
-            # println("\t node_type: $(typeof(node))")
             if is_goal(node, env)
                 close_node!(node, env)
                 @info "node $(summary(node_id(node))) finished."
