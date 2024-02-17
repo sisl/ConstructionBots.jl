@@ -296,11 +296,7 @@ function update_planning_cache!(env::PlannerEnv, time_stamp::Float64)
     if updated
         process_schedule!(sched)
         preprocess_env!(env)
-        # TODO(tashakim): move update_rvo_sim into deconfliction_interface by 
-        # implementing a general method
-        if in(:RVO, env.deconflict_strategies)
-            update_rvo_sim!(env)
-        end
+        update_simulation!(env)
     end
     newly_updated
 end

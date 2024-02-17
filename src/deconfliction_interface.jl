@@ -60,10 +60,20 @@ function update_simulation_environment(env)
         rvo_set_new_sim!()
     else
         println(
+            "No simulation environment update required for deconfliction
+            strategy: ", join(env.deconflict_strategies, ", "),
+        )
+    end
+end
+
+function update_simulation!(env)
+    if in(:RVO, env.deconflict_strategies)
+        update_rvo_sim!(env)
+    else
+        println(
             "No simulation update required for deconfliction strategy: ",
             join(env.deconflict_strategies, ", "),
         )
-    end
 end
 
 # Add agents to simulation based on the deconfliction algorithm used.
