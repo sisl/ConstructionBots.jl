@@ -224,7 +224,7 @@ function rvo_sim_needs_update(scene_tree)
     return false
 end
 
-function update_rvo_sim!(env::PlannerEnv)
+function update_rvo_sim!(env)
     @unpack sched, scene_tree, cache = env
     active_nodes = [get_node(sched, v) for v in cache.active_set]
     if rvo_sim_needs_update(scene_tree)
@@ -245,9 +245,9 @@ end
 
 Low alpha means higher priority
 """
-function set_rvo_priority!(env::PlannerEnv, node) end
+function set_rvo_priority!(env, node) end
 function set_rvo_priority!(
-    env::PlannerEnv,
+    env,
     node::Union{RobotStart,RobotGo,FormTransportUnit,TransportUnitGo,DepositCargo},
 )
     if matches_template(Union{FormTransportUnit,DepositCargo}, node)
