@@ -223,3 +223,50 @@ function rvo_sim_needs_update(scene_tree)
     end
     return false
 end
+
+function update_rvo_sim!(env::PlannerEnv)
+    @unpack sched, scene_tree, cache = env
+    active_nodes = [get_node(sched, v) for v in cache.active_set]
+    if rvo_sim_needs_update(scene_tree)
+        @info "New RVO simulation"
+        rvo_set_new_sim!()
+        rvo_add_agents!(scene_tree)
+        for node in active_nodes
+            set_rvo_priority!(env, node)
+        end
+    end
+end
+
+# Ideally, we want to set the priority of agents only within a certain region. If we
+# can do this dynamically, we could also set one agent to have an α of 0, which would help
+# reduce grid lock (by forcing other agents to move around it)
+"""
+    set_rvo_priority!(env, node)
+
+Low alpha means higher priority
+"""
+function set_rvo_priority!(env::PlannerEnv, node) end
+function set_rvo_priority!(
+    env::PlannerEnv,
+    node::Union{RobotStart,RobotGo,FormTransportUnit,TransportUnitGo,DepositCargo},
+)
+    if matches_template(Union{FormTransportUnit,DepositCargo}, node)
+        alpha = 0.0
+    elseif matches_template(TransportUnitGo, node)
+        if parent_build_step_is_active(node, env)
+            c_id = cargo_id(entity(node)).id
+            alpha = 0.0 + c_id / (10 * env.max_cargo_id)
+        else
+            alpha = 1.0
+        end
+    elseif parent_build_step_is_active(node, env)
+        if cargo_ready_for_pickup(node, env)
+            alpha = 0.1
+        else
+            alpha = 0.5
+        end
+    else
+        alpha = 1.0
+    end
+    set_agent_alpha!(node, alpha)
+end
