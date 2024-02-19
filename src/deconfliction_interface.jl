@@ -147,7 +147,9 @@ function set_agent_pref_velocity!(env, node, desired_velocity)
     if in(:RVO, env.deconflict_strategies)
         return rvo_set_agent_pref_velocity!(node, desired_velocity)
     else
-        node.desired_twist = desired_velocity
+        if matches_template(Union{RobotGo, TransportUnitGo}, node)
+            node.desired_twist = desired_velocity
+        end
     end
 end
 
@@ -155,7 +157,9 @@ function get_agent_pref_velocity(env, agent)
     if in(:RVO, env.deconflict_strategies)
         return rvo_get_agent_pref_velocity(entity(agent))
     else
-        return agent.node.desired_twist
+        if matches_template(Union{RobotGo, TransportUnitGo}, agent)
+            return agent.node.desired_twist
+        end
     end
 end
 

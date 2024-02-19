@@ -219,6 +219,8 @@ function step_environment!(env::PlannerEnv, sim = rvo_global_sim())
         end
     end
 
+    # TODO(tashakim): Fold below methods into common update method for all non-
+    # RVO deconfliction strategies. Below currently only apply to RVO.
     # Step RVO
     if !isnothing(sim)
         sim.doStep()
@@ -227,10 +229,8 @@ function step_environment!(env::PlannerEnv, sim = rvo_global_sim())
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
         tform = update_agent_position_in_sim!(env, get_node(env.scene_tree, id))
     end
-
     # swap transport unit positions if necessary
     swap_first_paralyzed_transport_unit!(env, prev_active_pos_dict)
-
     # Set velocities to zero for all agents. The pref velocities are only overwritten if
     # agent is "active" in the next time step
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
