@@ -31,7 +31,7 @@ save_anim_interval = 100
 process_updates_interval = 100
 block_save_anim = false
 
-deconflict_strategies = [:RVO, :TangentBugPolicy, :Dispersion]  #:RVO :TangentBugPolicy :Dispersion
+deconflict_strategies = [:None]  #:RVO :TangentBugPolicy :Dispersion
 assignment_mode = :greedy  # :milp :milp_w_greedy_warm_start
 milp_optimizer = :highs  # :gurobi :highs
 optimizer_time_limit = 60

@@ -519,6 +519,7 @@ end
 
 function query_policy_for_goal! end
 
+include("deconfliction_interface.jl")
 include("tangent_bug.jl")
 include("potential_fields.jl")
 

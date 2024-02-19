@@ -1,5 +1,3 @@
-include("deconfliction_interface.jl")
-
 export TangentBugPolicy
 
 @with_kw mutable struct TangentBugPolicy <: DeconflictStrategy
