@@ -16,7 +16,6 @@ projects = Dict(
     14 => :at_at,                       # 1105 x 2, ??
     15 => :saturn_v,                     # 1845 x 306, 163 min
 )
-
 project_parameters = Dict(
     :colored_8x8 => (
         project_name = "colored_8x8",
@@ -140,6 +139,7 @@ function get_project_params(project::Int)
     end
     return get_project_params(projects[project])
 end
+
 function get_project_params(project::Symbol)
     if !(project in keys(project_parameters))
         list_projects()

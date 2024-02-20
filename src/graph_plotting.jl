@@ -1,28 +1,30 @@
 
 @with_kw struct BFS_state
-    d::Int = 0 # current depth
-    w::Int = 0 # current width
-    d_max::Int = 0 # max depth so far
+    d::Int = 0  # current depth
+    w::Int = 0  # current width
+    d_max::Int = 0  # max depth so far
 end
 
 function leaf_case!(G, v, s::BFS_state)
-    set_prop!(G, v, :height, 0)   # distance to leaf
-    set_prop!(G, v, :depth, s.d) # distance to root
+    set_prop!(G, v, :height, 0)  # distance to leaf
+    set_prop!(G, v, :depth, s.d)  # distance to root
     set_prop!(G, v, :left, s.w)
     set_prop!(G, v, :width, 1)
     set_prop!(G, v, :right, s.w + 1)
     set_prop!(G, v, :center, (get_prop(G, v, :left) + get_prop(G, v, :right)) / 2.0)
     s = BFS_state(d = s.d, w = s.w + 1, d_max = max(s.d_max, s.d))
 end
+
 function initial_branch_case!(G, v, s::BFS_state)
-    set_prop!(G, v, :height, 0)   # distance to leaf
+    set_prop!(G, v, :height, 0)  # distance to leaf
     set_prop!(G, v, :left, s.w)
     set_prop!(G, v, :depth, s.d)
     set_prop!(G, v, :edge_count, 0)
     set_prop!(G, v, :center, 0.0)
 end
+
 function backup!(G, v, v2, s::BFS_state)
-    set_prop!(G, v, :height, max(get_prop(G, v, :height), 1 + get_prop(G, v2, :height)))   # distance to leaf
+    set_prop!(G, v, :height, max(get_prop(G, v, :height), 1 + get_prop(G, v2, :height)))  # distance to leaf
     set_prop!(G, v, :right, s.w)
     set_prop!(G, v, :width, s.w - get_prop(G, v, :left))
     set_prop!(G, v, :edge_count, 1 + get_prop(G, v, :edge_count))
@@ -68,23 +70,26 @@ struct BackwardCenter <: GraphInfoFeature end
 struct ForwardTreeWidth <: GraphInfoFeature end
 struct BackwardTreeWidth <: GraphInfoFeature end
 initial_value(f::Union{ForwardTreeWidth,BackwardTreeWidth}) = Dict{Int,Int}()
+
 function forward_propagate(::ForwardTreeWidth, G, v, v2, vec)
     for (k, val) in vec[v2]
         vec[v][k] = max(get(vec[v], k, 0), val)
     end
 end
+
 function backward_propagate(::BackwardTreeWidth, G, v, v2, vec)
     for (k, val) in vec[v2]
         vec[v][k] = max(get(vec[v], k, 0), val)
     end
 end
-# backward_propagate(::BackwardTreeWidth,G,v,v2,vec) = merge(vec[v],vec[v2])
+
 function forward_accumulate(::ForwardTreeWidth, G, v, vtxs, vec)
     if indegree(G, v) == 0
         vec[v][v] = 1
     end
     return vec[v]
 end
+
 function backward_accumulate(::BackwardTreeWidth, G, v, vtxs, vec)
     if outdegree(G, v) == 0
         vec[v][v] = 1
@@ -92,15 +97,12 @@ function backward_accumulate(::BackwardTreeWidth, G, v, vtxs, vec)
     return vec[v]
 end
 
-
-
 initial_value(f) = 1.0
 initial_value(f::Union{ForwardDepth,BackwardDepth}) = 1
 forward_propagate(f, G, v, v2, vec) = vec[v]
 backward_propagate(f, G, v, v2, vec) = vec[v]
 forward_accumulate(f, G, v, vtxs, vec) = vec[v]
 backward_accumulate(f, G, v, vtxs, vec) = vec[v]
-
 backward_propagate(::BackwardDepth, G, v, v2, vec) = max(vec[v], vec[v2] + 1)
 forward_propagate(::ForwardDepth, G, v, v2, vec) = max(vec[v], vec[v2] + 1)
 forward_propagate(::ForwardWidth, G, v, v2, vec) =
@@ -127,6 +129,7 @@ function forward_pass!(
     end
     return feat_vals
 end
+
 function backward_pass!(
     G,
     feats,
@@ -152,7 +155,6 @@ function get_graph_layout(
     feat_vals = forward_pass!(G, feats)
     feat_vals = backward_pass!(G, feats, feat_vals)
     feat_vals[VtxWidth()] = max.(feat_vals[ForwardWidth()], feat_vals[BackwardWidth()])
-
     graph = MetaDiGraph(nv(G))
     for e in edges(G)
         add_edge!(graph, e)
@@ -195,7 +197,6 @@ function get_graph_layout(
         feat_vals[idx_key] = forward_idxs
         feat_vals[ctr_key] = forward_idxs .+ 0.5 * feat_vals[VtxWidth()]
     end
-
     feat_vals
 end
 
@@ -209,14 +210,13 @@ _text_color(n) = _node_color(n)
 _node_shape(n, t = 0.1) = Compose.circle(0.5, 0.5, 0.5 - t / 2)
 _title_text_scale(n) = 0.6
 _subtitle_text_scale(n) = 0.2
-# _node_shape(n,t) = Compose.circle(0.5, 0.5, 0.5-t/2)
 for op in (:_node_shape, :_node_color, :_subtitle_string, :_text_color, :_title_string)
     @eval $op(graph::AbstractGraph, v, args...) = $op(v, args...)
 end
 
 function draw_node(
     n;
-    t = 0.1, # line thickness
+    t = 0.1,  # line thickness
     title_scale = _title_text_scale(n),
     subtitle_scale = _subtitle_text_scale(n),
     bg_color = _node_bg_color(n),
@@ -230,7 +230,6 @@ function draw_node(
         title_y -= subtitle_scale / 2
     end
     subtitle_y = title_y + (title_scale) / 2
-
     Compose.compose(
         context(),
         (
@@ -254,6 +253,7 @@ function draw_node(
         ),
     )
 end
+
 draw_node(graph, v; kwargs...) = draw_node(v; kwargs...)
 
 function default_draw_node(G, v; fg_color = "red", bg_color = "white", stroke_width = 0.1)
@@ -286,8 +286,8 @@ function display_graph(
     graph;
     draw_node_function = (G, v) -> default_draw_node(G, v),
     draw_edge_function = (G, v, v2, pt1, pt2) -> default_draw_edge(G, v, v2, pt1, pt2),
-    grow_mode = :from_bottom, # :from_left, :from_bottom, :from_top,
-    align_mode = :leaf_aligned, # :root_aligned
+    grow_mode = :from_bottom,  # :from_left, :from_bottom, :from_top,
+    align_mode = :leaf_aligned,  # :root_aligned
     node_size = (0.75, 0.75),
     scale = 1.0,
     pad = (0.5, 0.5),
@@ -295,9 +295,8 @@ function display_graph(
     bg_color = "white",
     enforce_visited = false,
 )
-
     feat_vals = get_graph_layout(graph; enforce_visited = enforce_visited)
-    # alignment
+    # Check alignment mode
     if align_mode == :leaf_aligned
         x = feat_vals[ForwardDepth()]
         y = feat_vals[ForwardCenter()]
@@ -328,13 +327,12 @@ function display_graph(
             parents = temp_parents
             temp_parents = []
         end
-
     else
         throw(ErrorException("Unknown align_mode $align_mode"))
     end
-    # growth direction
+    # Check growth direction
     if grow_mode == :from_left
-        # do nothing
+        # Do nothing
     elseif grow_mode == :from_right
         x = -x
     elseif grow_mode == :from_bottom
@@ -344,15 +342,14 @@ function display_graph(
     else
         throw(ErrorException("Unknown grow_mode $grow_mode"))
     end
-    # ensure positive and shift to be on the canvas (how to shift the canvas instead?)
+    # Ensure positive and shift to be on the canvas (how to shift the canvas instead?)
     x *= aspect_stretch[1]
     y *= aspect_stretch[2]
-    x = x .- minimum(x) .+ node_size[1] / 2# .+ pad[1]
-    y = y .- minimum(y) .+ node_size[2] / 2# .+ pad[2]
+    x = x .- minimum(x) .+ node_size[1] / 2  # .+ pad[1]
+    y = y .- minimum(y) .+ node_size[2] / 2  # .+ pad[2]
     context_size = (maximum(x) + node_size[1] / 2, maximum(y) + node_size[2] / 2)
     canvas_size = (context_size[1] .+ 2 * pad[1], context_size[2] .+ 2 * pad[2])
     set_default_graphic_size((scale * canvas_size[1])cm, (scale * canvas_size[2])cm)
-
     node_context(a, b, s = node_size) = context(
         (a - s[1] / 2),
         (b - s[2] / 2),

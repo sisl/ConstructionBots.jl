@@ -6,14 +6,10 @@ let
     save_animation_at_end = true
     anim_active_agents = true
     anim_active_areas = true
-
     deconflict_strategies = [:RVO, :TangentBugPolicy, :Dispersion]
-    assignment_mode = :greedy # :milp :greedy :milp_w_greedy_warm_start
-
+    assignment_mode = :greedy  # :milp :greedy :milp_w_greedy_warm_start
     write_results = false
     overwrite_results = false
-
-
     env, stats = run_lego_demo(;
         ldraw_file = project_params[:file_name],
         project_name = project_params[:project_name],
@@ -30,7 +26,6 @@ let
         overwrite_results = overwrite_results,
         stop_after_task_assignment = false,
     )
-
 end
 
 let
@@ -40,14 +35,10 @@ let
     save_animation_at_end = false
     anim_active_agents = false
     anim_active_areas = false
-
     deconflict_strategies = [:None]
     assignment_mode = :milp  # :greedy :milp_w_greedy_warm_start
-
     write_results = true
     overwrite_results = true
-
-
     env, stats = run_lego_demo(;
         ldraw_file = project_params[:file_name],
         project_name = project_params[:project_name],
@@ -68,7 +59,6 @@ let
         save_milp_solution = false,
         stop_after_task_assignment = false,
     )
-
 end
 
 let
@@ -78,14 +68,10 @@ let
     save_animation_at_end = false
     anim_active_agents = false
     anim_active_areas = false
-
     deconflict_strategies = [:None]
     assignment_mode = :milp_w_greedy_warm_start
-
     write_results = true
     overwrite_results = true
-
-
     env, stats = run_lego_demo(;
         ldraw_file = project_params[:file_name],
         project_name = project_params[:project_name],
@@ -106,7 +92,6 @@ let
         save_milp_solution = false,
         stop_after_task_assignment = false,
     )
-
 end
 
 let

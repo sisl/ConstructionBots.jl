@@ -1,6 +1,6 @@
 # TODO(#32): Consider replacing components with direct imports from TaskGraphs
 
-# Used components from TaskGraphs below
+# Used components from TaskGraphs
 const path_spec_accessor_interface =
     [:get_t0, :get_tF, :get_slack, :get_local_slack, :get_min_duration, :get_duration]
 const path_spec_mutator_interface =
@@ -68,8 +68,8 @@ mutable struct ScheduleNode{I<:AbstractID,V}
     node::V
     spec::PathSpec
 end
-ScheduleNode(id, node) = ScheduleNode(id, node, PathSpec())
 
+ScheduleNode(id, node) = ScheduleNode(id, node, PathSpec())
 for op in [:(matches_template)]
     @eval $op(template::Type{T}, node::ScheduleNode) where {T} = $op(template, node.node)
 end
@@ -97,10 +97,11 @@ get_local_slack(spec::PathSpec) = spec.local_slack
 set_local_slack!(spec::PathSpec, val) = begin
     spec.local_slack = val
 end
-Base.summary(s::PathSpec) = string("t0=", s.t0, ", tF=", s.tF, ", fixed=", s.fixed)
 
+Base.summary(s::PathSpec) = string("t0=", s.t0, ", tF=", s.tF, ", fixed=", s.fixed)
 get_path_spec(node::ScheduleNode) = node.spec
 Base.copy(n::ScheduleNode) = ScheduleNode(n.id, copy(n.node), deepcopy(n.spec))
+
 function set_path_spec!(node::ScheduleNode, spec)
     node.spec = spec
 end
@@ -128,6 +129,7 @@ constraint between them.
     terminal_vtxs::Vector{Int} = Vector{Int}() # list of "project heads"
     weights::Dict{Int,Float64} = Dict{Int,Float64}() # weights corresponding to project heads
 end
+
 get_terminal_vtxs(sched::P) where {P<:OperatingSchedule} = sched.terminal_vtxs
 get_root_node_weights(sched::P) where {P<:OperatingSchedule} = sched.weights
 
@@ -235,7 +237,7 @@ function validate(sched::OperatingSchedule)
                     if matches_node_type(node2, AbstractSingleRobotAction)
                         if length(
                             intersect(resources_reserved(node), resources_reserved(node2)),
-                        ) == 0 # job shop constraint
+                        ) == 0  # job shop constraint
                             @assert(
                                 get_robot_id(node) == get_robot_id(node2),
                                 string(
@@ -311,7 +313,6 @@ function process_schedule!(sched)
 end
 
 makespan(sched::OperatingSchedule) = maximum(get_tF(sched))
-
 #################################################
 abstract type AbstractPlanningPredicate end
 abstract type AbstractRobotAction{R<:AbstractRobotType} <: AbstractPlanningPredicate end
@@ -319,12 +320,12 @@ abstract type AbstractSingleRobotAction{R<:AbstractRobotType} <: AbstractRobotAc
 abstract type AbstractTeamRobotAction{R<:AbstractRobotType} <: AbstractRobotAction{R} end
 
 Base.copy(p::AbstractPlanningPredicate) = deepcopy(p)
-
 robot_type(a::AbstractRobotAction{R}) where {R} = R
 robot_type(a) = Nothing
 
-# Do we need this here? Better someplace else?
+# TODO: Check if we need this here, or better someplace else
 graph_key() = Symbol(DefaultRobotType)
+
 function graph_key(a)
     if robot_type(a) == Nothing
         return graph_key()
@@ -367,10 +368,8 @@ how e.g., robot ids are propagated through an existing operating schedule
 after assignments (or re-assignments) have been made.
 """
 align_with_successor(node, succ) = node
-
 is_valid(id::A) where {A<:AbstractID} = valid_id(id) #get_id(id) != -1
 first_valid(a, b) = is_valid(a) ? a : b
-
 align_with_predecessor(graph, node, pred) = align_with_predecessor(node, pred)
 align_with_successor(graph, node, pred) = align_with_successor(node, pred)
 
@@ -386,6 +385,7 @@ matches_node_type(::A, ::Type{B}) where {A,B} = A <: B
     AbstractCostModel{T}
 """
 abstract type AbstractCostModel{T} end
+
 cost_type(model::M) where {T,M<:AbstractCostModel{T}} = T
 
 """
@@ -403,8 +403,11 @@ function aggregate_costs end
 aggregate_costs_meta(m::AbstractCostModel, args...) = aggregate_costs(m, args...)
 
 abstract type AggregationFunction end
+
 struct MaxCost <: AggregationFunction end
+
 (f::MaxCost)(costs...) = maximum(costs...)
+
 struct SumCost <: AggregationFunction end
 (f::SumCost)(costs...) = sum(costs...)
 
@@ -437,6 +440,7 @@ Cost model that assigns cost equal to the duration of a path.
 struct TravelTime <: LowLevelCostModel{Float64} end
 
 abstract type AbstractDeadlineCost <: LowLevelCostModel{Float64} end
+
 """
     DeadlineCost
 
@@ -504,12 +508,12 @@ function set_deadline!(m::M, t_max) where {M<:MultiDeadlineCost}
     m.deadlines .= t_max
     return m
 end
+
 add_heuristic_cost(m::C, cost, h_cost) where {C<:MultiDeadlineCost} =
     m.f(m.weights .* max.(0.0, cost .+ h_cost .- m.deadlines)) # assumes heuristic is PerfectHeuristic
 aggregate_costs(m::C, costs::Vector{T}) where {T,C<:MultiDeadlineCost} =
     m.f(m.tF[m.root_nodes] .* m.weights)
 aggregate_costs_meta(m::C, costs::Vector{T}) where {T,C<:MultiDeadlineCost} = maximum(costs)
-
 #################################################
 """
     TaskGraphsMILP
@@ -565,6 +569,7 @@ be posed as a one-off assignment problem with inter-task constraints.
     operation_map::Dict{OperationID,Int} =
         Dict{OperationID,Int}(p.first => k for (k, p) in enumerate(operations))
 end
+
 AssignmentMILP(model::JuMP.Model) = AssignmentMILP(model = model)
 
 """
@@ -588,6 +593,7 @@ end
 function get_assignment_matrix(model::M) where {M<:JuMP.Model}
     Matrix{Int}(min.(1, round.(value.(model[:X])))) # guarantees binary matrix
 end
+
 get_assignment_matrix(model::TaskGraphsMILP) = get_assignment_matrix(model.model)
 
 """
@@ -720,12 +726,12 @@ function formulate_milp(
     set_optimizer_attributes(model, default_milp_optimizer_attributes()...)
     milp = AssignmentMILP(model = model, sched = sched)
     @unpack robot_ics, object_ics, operations, robot_map, object_map, operation_map = milp
-    N = length(robot_ics) # number of robots
-    M = length(object_ics) # number of delivery tasks
+    N = length(robot_ics)  # number of robots
+    M = length(object_ics)  # number of delivery tasks
     Δt_collect = zeros(Int, M)
     Δt_deposit = zeros(Int, M)
-    r0 = map(p -> get_id(get_initial_location_id(p.second.node)), robot_ics) # initial robot locations
-    s0 = map(p -> get_id(get_initial_location_id(p.second.node)), object_ics) # initial object locations
+    r0 = map(p -> get_id(get_initial_location_id(p.second.node)), robot_ics)  # initial robot locations
+    s0 = map(p -> get_id(get_initial_location_id(p.second.node)), object_ics)  # initial object locations
     sF = zeros(Int, M)
     for (v, n) in enumerate(get_nodes(sched))
         if matches_node_type(n, BOT_COLLECT)
@@ -735,25 +741,23 @@ function formulate_milp(
             sF[object_map[get_object_id(n)]] = get_id(get_destination_location_id(n))
         end
     end
-    # from ProblemSpec
+    # From ProblemSpec
     D = (x, y) -> get_distance(problem_spec, x, y)
-    @variable(model, to0[1:M] >= 0.0) # object availability time
-    @variable(model, tor[1:M] >= 0.0) # object robot arrival time
-    @variable(model, toc[1:M] >= 0.0) # object collection complete time
-    @variable(model, tod[1:M] >= 0.0) # object deliver begin time
-    @variable(model, tof[1:M] >= 0.0) # object termination time
-    @variable(model, tr0[1:N+M] >= 0.0) # robot availability time
+    @variable(model, to0[1:M] >= 0.0)  # object availability time
+    @variable(model, tor[1:M] >= 0.0)  # object robot arrival time
+    @variable(model, toc[1:M] >= 0.0)  # object collection complete time
+    @variable(model, tod[1:M] >= 0.0)  # object deliver begin time
+    @variable(model, tof[1:M] >= 0.0)  # object termination time
+    @variable(model, tr0[1:N+M] >= 0.0)  # robot availability time
     # Assignment matrix x
     @variable(model, X[1:N+M, 1:M], binary = true)  # X[i,j] ∈ {0,1}
     @constraint(model, X * ones(M) .<= 1)  # each robot may have no more than 1 task
     @constraint(model, X' * ones(N + M) .== 1)  # each task must have exactly 1 assignment
     for (id, node) in robot_ics  # robot start times
-        # @constraint(model, tr0[robot_map[id]] == get_t0(node))
         @constraint(model, tr0[robot_map[id]] == get_tF(node))
     end
     for (id, node) in object_ics  # task start times
         if is_root_node(sched, id)  # only applies to root tasks (with no prereqs)
-            # @constraint(model, to0[object_map[id]] == get_t0(node))
             @constraint(model, to0[object_map[id]] == get_tF(node))
         end
     end
@@ -761,7 +765,7 @@ function formulate_milp(
     for (id, _) in object_ics
         add_node!(precedence_graph, nothing, id)
     end
-    for (op_id, node) in operations  #get_operations(sched) # precedence constraints on task start time
+    for (op_id, node) in operations  # get_operations(sched) # precedence constraints on task start time
         op = node.node
         for (_, input) in preconditions(op)
             i = object_map[get_object_id(input)]
@@ -772,7 +776,7 @@ function formulate_milp(
             end
         end
     end
-    # propagate upstream edges through precedence graph
+    # Propagate upstream edges through precedence graph
     for v in topological_sort_by_dfs(precedence_graph)
         for v1 in inneighbors(precedence_graph, v)
             for v2 in outneighbors(precedence_graph, v)
@@ -781,16 +785,16 @@ function formulate_milp(
         end
         add_edge!(precedence_graph, v, v)
     end
-    # constraints
-    r0 = vcat(r0, sF) # combine to get dummy robot ``spawn'' locations too
+    # Constraints
+    r0 = vcat(r0, sF)  # combine to get dummy robot ``spawn'' locations too
     for j = 1:M
-        # constraint on dummy robot start time (corresponds to moment of object delivery)
+        # Constraint on dummy robot start time (corresponds to moment of object delivery)
         @constraint(model, tr0[j+N] == tof[j])
-        # dummy robots can't do upstream jobs
+        # Dummy robots can't do upstream jobs
         for v in inneighbors(precedence_graph, j)
             @constraint(model, X[j+N, v] == 0)
         end
-        # lower bound on task completion time (task can't start until it's available).
+        # Lower bound on task completion time (task can't start until it's available).
         @constraint(model, tor[j] >= to0[j])
         for i = 1:N+M
             @constraint(model, tor[j] - (tr0[i] + D(r0[i], s0[j])) >= -Mm * (1 - X[i, j]))
@@ -855,7 +859,6 @@ function adj_mat_from_assignment_mat(
     N = size(assignment_matrix, 1) - M
     @assert N == length(get_robot_ICs(sched))
     @unpack robot_ics, object_ics = model
-    # M = length(get_object_ICs(sched))
     assignment_dict = get_assignment_dict(assignment_matrix, N, M)
     G = get_graph(sched)
     adj_matrix = adjacency_matrix(G)
@@ -865,7 +868,7 @@ function adj_mat_from_assignment_mat(
         if is_terminal_node(sched, robot_node)
             v_go = get_vtx(sched, robot_node)
         else
-            v_go = outneighbors(sched, robot_node)[1] # GO_NODE
+            v_go = outneighbors(sched, robot_node)[1]  # GO_NODE
         end
         if !is_terminal_node(sched, v_go)
             log_schedule_edges(sched)
@@ -873,7 +876,6 @@ function adj_mat_from_assignment_mat(
         end
         for object_idx in task_list
             object_id = get_object_id(object_ics[object_idx].second)
-            # object_node = get_node(sched,object_id)
             v_collect = outneighbors(sched, object_id)[1]
             adj_matrix[v_go, v_collect] = 1
             v_carry = outneighbors(sched, v_collect)[1]
@@ -920,8 +922,8 @@ function formulate_milp(
         non_upstream_vertices,
     ) = preprocess_project_schedule(sched)
     Δt = get_min_duration(sched)
-    @variable(model, t0[1:nv(sched)] >= 0.0) # initial times for all nodes
-    @variable(model, tF[1:nv(sched)] >= 0.0) # final times for all nodes
+    @variable(model, t0[1:nv(sched)] >= 0.0)  # initial times for all nodes
+    @variable(model, tF[1:nv(sched)] >= 0.0)  # final times for all nodes
     # Precedence relationships
     Xa = SparseMatrixCSC{VariableRef,Int}(
         nv(sched),
@@ -930,7 +932,7 @@ function formulate_milp(
         Int[],
         VariableRef[],
     )
-    # set all initial times that are provided
+    # Set all initial times that are provided
     for (id, t) in t0_
         v = get_vtx(sched, id)
         @constraint(model, t0[v] >= t)
@@ -941,18 +943,17 @@ function formulate_milp(
     end
     # Precedence constraints and duration constraints for existing nodes and edges
     for v in Graphs.vertices(sched)
-        @constraint(model, tF[v] >= t0[v] + Δt[v]) # NOTE Δt may change for some nodes
+        @constraint(model, tF[v] >= t0[v] + Δt[v])  # NOTE: Δt may change for some nodes
         for v2 in outneighbors(sched, v)
             if warm_start
                 Xa[v, v2] = @variable(model, binary = true, start = warm_start_soln[v, v2])
             else
                 Xa[v, v2] = @variable(model, binary = true)
             end
-            @constraint(model, Xa[v, v2] == 1) #TODO this edge already exists--no reason to encode it as a decision variable
-            @constraint(model, t0[v2] >= tF[v]) # NOTE DO NOT CHANGE TO EQUALITY CONSTRAINT. Making this an equality constraint causes the solver to return a higher final value in some cases (e.g., toy problems 2,3,7). Why? Maybe the Big-M constraint forces it to bump up. I though the equality constraint might speed up the solver.
+            @constraint(model, Xa[v, v2] == 1)  # TODO: this edge already exists--no reason to encode it as a decision variable
+            @constraint(model, t0[v2] >= tF[v])  # NOTE: DO NOT CHANGE TO EQUALITY CONSTRAINT. Making this an equality constraint causes the solver to return a higher final value in some cases (e.g., toy problems 2,3,7). Why? Maybe the Big-M constraint forces it to bump up. I though the equality constraint might speed up the solver.
         end
     end
-
     # Big M constraints
     for v in Graphs.vertices(sched)
         node = get_node_from_id(sched, get_vtx_id(sched, v))
@@ -972,7 +973,6 @@ function formulate_milp(
                             if (val > 0 && val2 > 0)
                                 potential_match = true
                                 new_node = align_with_successor(node, node2)
-
                                 dt_min =
                                     generate_path_spec(
                                         sched,
@@ -1004,15 +1004,15 @@ function formulate_milp(
             @constraint(model, tF[v] == t0[v] + Δt[v])  # adding this constraint may provide some speedup
         end
     end
-
-    # In the sparse implementation, these constraints must come after all possible edges are defined by a VariableRef
+    # In the sparse implementation, these constraints must come after all
+    # possible edges are defined by a VariableRef
     @constraint(model, Xa * ones(nv(sched)) .<= n_eligible_successors)
     @constraint(model, Xa * ones(nv(sched)) .>= n_required_successors)
     @constraint(model, Xa' * ones(nv(sched)) .<= n_eligible_predecessors)
     @constraint(model, Xa' * ones(nv(sched)) .>= n_required_predecessors)
     for i = 1:nv(sched)
         for j = i:nv(sched)
-            # prevent self-edges and cycles
+            # Prevent self-edges and cycles
             @constraint(model, Xa[i, j] + Xa[j, i] <= 1)
         end
     end
@@ -1052,10 +1052,9 @@ function formulate_milp(
                             string(node2),
                             ")",
                         )
-                        # @show common_resources
                         # Big M constraints
-                        Xj[v, v2] = @variable(model, binary = true) #
-                        Xj[v2, v] = @variable(model, binary = true) # need both directions to have a valid adjacency matrix
+                        Xj[v, v2] = @variable(model, binary = true)
+                        Xj[v2, v] = @variable(model, binary = true)  # need both directions to have a valid adjacency matrix
                         @constraint(model, Xj[v, v2] + Xj[v2, v] == 1)
                         @constraint(model, t0[v2] - tF[v] >= -Mm * (1 - Xj[v, v2]))
                         @constraint(model, t0[v] - tF[v2] >= -Mm * (1 - Xj[v2, v]))
@@ -1065,8 +1064,9 @@ function formulate_milp(
         end
     end
     # Full adjacency matrix
-    @expression(model, X, Xa .+ Xj) # Make X an expression rather than a variable
-    milp = SparseAdjacencyMILP(model, Xa, Xj, milp_model.job_shop) #, job_shop_variables
+    # TODO: make X an expression rather than a variable
+    @expression(model, X, Xa .+ Xj)
+    milp = SparseAdjacencyMILP(model, Xa, Xj, milp_model.job_shop)  #, job_shop_variables
     cost1 = get_objective_expr(milp, cost_model, milp.model, sched, tF)
     @objective(milp.model, Min, cost1)
     return milp
@@ -1194,7 +1194,7 @@ end
 JuMP.optimize!(model::AbstractGreedyAssignment) = greedy_assignment!(model)
 
 function propagate_valid_ids!(sched::OperatingSchedule, problem_spec)
-    @assert(is_cyclic(sched) == false, "is_cyclic(sched)") # string(sparse(adj_matrix))
+    @assert(is_cyclic(sched) == false, "is_cyclic(sched)")  # string(sparse(adj_matrix))
     # Propagate valid IDs through the schedule
     for v in topological_sort_by_dfs(sched)
         n_id = get_vtx_id(sched, v)
@@ -1243,11 +1243,11 @@ end
 function update_project_schedule!(sched::OperatingSchedule, problem_spec, adj_matrix)
     # Add all new edges to project sched
     G = get_graph(sched)
-    # remove existing edges first, so that there is no carryover between consecutive MILP iterations
+    # Remove existing edges first, so that there is no carryover between consecutive MILP iterations
     for e in collect(edges(G))
         rem_edge!(G, e)
     end
-    # add all edges encoded by adjacency matrix
+    # Add all edges encoded by adjacency matrix
     for v in Graphs.vertices(G)
         for v2 in Graphs.vertices(G)
             if adj_matrix[v, v2] >= 1
@@ -1306,7 +1306,6 @@ function update_project_schedule!(
     adj_matrix = adj_mat_from_assignment_mat(model, sched, assignment_matrix)
     update_project_schedule!(solver, sched, prob_spec, adj_matrix)
 end
-
 #################################################
 # Structs for PathNode and Conflict
 """
@@ -1430,10 +1429,10 @@ function update_planning_cache!(
         set_tF!(sched, v, t)
         process_schedule!(sched)
     end
-    # update closed_set
+    # Update closed_set
     activated_vtxs = Int[]
     push!(closed_set, v)
-    # update active_set
+    # Update active_set
     setdiff!(active_set, v)
     for v2 in outneighbors(sched, v)
         active = true
@@ -1445,16 +1444,15 @@ function update_planning_cache!(
         end
         if active
             push!(activated_vtxs, v2)
-            push!(active_set, v2)               # add to active set
+            push!(active_set, v2)  # add to active set
         end
     end
-    # update priority queue
+    # Update priority queue
     for v2 in active_set
         node_queue[v2] = isps_queue_cost(sched, v2)
     end
     return cache
 end
-
 #################################################
 # Functions Related to MILP Optimization
 global MILP_OPTIMIZER = nothing
@@ -1494,6 +1492,7 @@ function set_default_milp_optimizer_attributes!(pair::Pair, pairs...)
     push!(DEFAULT_MILP_OPTIMIZER_ATTRIBUTES, pair)
     set_default_milp_optimizer_attributes!(pairs...)
 end
+
 set_default_milp_optimizer_attributes!(d::Dict) =
     set_default_milp_optimizer_attributes!(d...)
 set_default_milp_optimizer_attributes!() = nothing

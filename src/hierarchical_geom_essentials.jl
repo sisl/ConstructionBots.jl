@@ -19,7 +19,6 @@ function set_default_geom_optimizer!(optimizer)
     global DEFAULT_GEOM_OPTIMIZER = optimizer
 end
 
-
 """
     default_geom_optimizer_attributes()
 
@@ -37,6 +36,7 @@ function set_default_geom_optimizer_attributes!(pair::Pair, pairs...)
     push!(DEFAULT_GEOM_OPTIMIZER_ATTRIBUTES, pair)
     set_default_geom_optimizer_attributes!(pairs...)
 end
+
 set_default_geom_optimizer_attributes!(d::Dict) =
     set_default_geom_optimizer_attributes!(d...)
 set_default_geom_optimizer_attributes!() = nothing
@@ -67,19 +67,19 @@ GeometryBasics.HyperRectangle(s::Hyperrectangle) = GeometryBasics.HyperRectangle
     GeometryBasics.Vec((s.center .- s.radius)...),
     2 * GeometryBasics.Vec(s.radius...),
 )
-
-
 global DEFAULT_ROBOT_GEOM = GeometryBasics.Cylinder(
     GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.0),
     GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.25),
     0.5,
 )
+
 """
     default_robot_geom()
 
 Get the default robot geometry.
 """
 default_robot_geom() = DEFAULT_ROBOT_GEOM
+
 """
     set_default_robot_geom!(geom)
 
@@ -97,6 +97,7 @@ function default_robot_radius()
         return 0.25
     end
 end
+
 function default_robot_height()
     geom = default_robot_geom()
     if isa(geom, GeometryBasics.Cylinder)
@@ -140,7 +141,6 @@ transformed version `g`.
     overapproximate(t(convert(LazySets.VPolytope, g)), Hyperrectangle)
 (t::CoordinateTransformations.Translation)(g::Hyperrectangle) =
     Hyperrectangle(t(g.center), g.radius)
-
 for T in (:(CoordinateTransformations.AffineMap),)
     @eval begin
         (t::$T)(v::V) where {N<:GeometryBasics.Ngon,V<:AbstractVector{N}} = V(map(t, v))
@@ -156,7 +156,6 @@ for T in (:(CoordinateTransformations.AffineMap),)
         (t::$T)(g::LazySets.Ball2) = LazySets.Ball2(t(g.center), g.radius)
     end
 end
-
 for T in (:(CoordinateTransformations.LinearMap), :(CoordinateTransformations.Translation))
     @eval begin
         (t::$T)(v::V) where {N<:GeometryBasics.Ngon,V<:AbstractVector{N}} = V(map(t, v))
@@ -235,7 +234,7 @@ compute a rotation matrix `ΔR` such that `Ra*ΔR` is c/1.0 of the way to `Rb`.
 """
 function interpolate_rotation(Ra, Rb, c = 0.5)
     R = inv(Ra) * Rb
-    r = Rotations.RotationVec(R) # rotation vector
+    r = Rotations.RotationVec(R)  # rotation vector
     Rotations.RotationVec(r.sx * c, r.sy * c, r.sz * c)
 end
 function interpolate_transforms(Ta, Tb, c = 0.5)
@@ -255,9 +254,9 @@ Has a parent field that points to another TransformNode.
 """
 mutable struct TransformNode <: CachedTreeNode{TransformNodeID}
     id::TransformNodeID
-    local_transform::CoordinateTransformations.Transformation # transform from the parent frame to the child frame
+    local_transform::CoordinateTransformations.Transformation  # transform from the parent frame to the child frame
     global_transform::CachedElement{CoordinateTransformations.Transformation}
-    parent::TransformNode # parent node
+    parent::TransformNode  # parent node
     children::Dict{AbstractID,CachedTreeNode}
     function TransformNode(a::CoordinateTransformations.Transformation, b::CachedElement)
         t = new()
@@ -301,6 +300,7 @@ set_tf_up_to_date!(n::TransformNode, val = true) = set_cached_node_up_to_date!(n
 local_transform(n::TransformNode) = n.local_transform
 set_global_transform!(n::TransformNode, t, args...) = update_element!(n, t, args...)
 global_transform(n::TransformNode) = get_cached_value!(n)
+
 function propagate_forward!(parent::TransformNode, child::TransformNode)
     if parent === child
         set_global_transform!(child, local_transform(child))
@@ -309,20 +309,23 @@ function propagate_forward!(parent::TransformNode, child::TransformNode)
     end
     global_transform(child)
 end
+
 function set_local_transform!(n::TransformNode, t, update = false)
-    n.local_transform = t ∘ identity_linear_map() # guarantee AffineMap?
+    n.local_transform = t ∘ identity_linear_map()  # guarantee AffineMap?
     set_tf_up_to_date!(n, false)
     if update
-        global_transform(n) # just get the global transform
+        global_transform(n)  # just get the global transform
     end
     return n.local_transform
 end
+
 function set_local_transform_in_global_frame!(n::TransformNode, t, args...)
     rot_mat = CoordinateTransformations.LinearMap(global_transform(get_parent(n)).linear)
     set_local_transform!(n, inv(rot_mat) ∘ t)
 end
 
 export set_desired_global_transform!
+
 """
     set_desired_global_transform!(n::TransformNode,t,args...)
 
@@ -349,6 +352,7 @@ const transform_node_mutator_interface = [
 ]
 
 export set_desired_global_transform_without_affecting_children!
+
 """
     set_desired_global_transform_without_affecting_children!()
 """
@@ -406,7 +410,7 @@ function set_child!(
 )
     Graphs.rem_edge!(tree, get_parent(tree, child), child)
     if Graphs.add_edge!(tree, parent, child, edge)
-        set_parent!(get_node(tree, child), get_node(tree, parent)) # for TransformNode
+        set_parent!(get_node(tree, child), get_node(tree, parent))  # for TransformNode
         @assert !Graphs.is_cyclic(tree) "adding edge $(parent) → $(child) made tree cyclic"
         set_local_transform!(tree, child, t)
         return true
@@ -414,6 +418,7 @@ function set_child!(
     return false
 end
 const transform_tree_mutator_interface = [:set_local_transform!, :set_global_transform!]
+
 function add_child!(tree::AbstractCustomTree, parent, child, child_id)
     n = add_node!(tree, child, child_id)
     if set_child!(tree, get_node(tree, parent), child_id)
@@ -434,16 +439,17 @@ mutable struct GeomNode{G} <: CachedTreeNode{GeomID}
     parent::TransformNode
     cached_geom::CachedElement{G}
 end
+
 function GeomNode(geom)
     GeomNode(get_unique_id(GeomID), geom, TransformNode(), CachedElement(geom))
 end
+
 function GeomNode(geom, tf)
     GeomNode(get_unique_id(GeomID), geom, tf, CachedElement(geom))
 end
 get_children(n::GeomNode) = Dict{AbstractID,CachedTreeNode}()
 cached_element(n::GeomNode) = n.cached_geom
 set_cached_geom!(n::GeomNode, geom) = update_element!(n, geom)
-
 get_base_geom(n::GeomNode) = n.base_geom
 get_transform_node(n::GeomNode) = n.parent
 for op in transform_node_accessor_interface
@@ -454,6 +460,7 @@ for op in transform_node_mutator_interface
 end
 set_parent!(a::GeomNode, b::TransformNode) = set_parent!(get_transform_node(a), b)
 set_parent!(a::GeomNode, b::GeomNode) = set_parent!(a, get_transform_node(b))
+
 function propagate_forward!(t::TransformNode, n::GeomNode)
     transformed_geom = transform(get_base_geom(n), global_transform(n))
     set_cached_geom!(n, transformed_geom)
@@ -534,7 +541,6 @@ construct_child_approximation(::OctagonalPrismKey, geom, args...) =
         args...,
     )
 
-
 """
     GeometryHierarchy
 
@@ -547,13 +553,15 @@ Fields:
     graph::Graphs.DiGraph = Graphs.DiGraph()
     nodes::Vector{GeomNode} = Vector{GeomNode}()
     vtx_map::Dict{GeometryKey,Int} = Dict{GeometryKey,Int}()
-    vtx_ids::Vector{GeometryKey} = Vector{GeometryKey}() # maps vertex uid to actual graph node
+    vtx_ids::Vector{GeometryKey} = Vector{GeometryKey}()  # maps vertex uid to actual graph node
 end
+
 function geom_hierarchy(geom::GeomNode)
     h = GeometryHierarchy()
     add_node!(h, geom, BaseGeomKey())
     return h
 end
+
 for op in (:get_base_geom, :get_cached_geom)
     @eval begin
         function $op(n::GeometryHierarchy, k = BaseGeomKey())
@@ -587,9 +595,10 @@ function add_child_approximation!(
     geom = construct_child_approximation(child_id, base_geom, args...)
     add_node!(
         g,
-        GeomNode(geom, node.parent), # Share parent
+        GeomNode(geom, node.parent),  # share parent
         child_id,
-    ) # todo needs parent
+        # TODO: Add parent
+    )
     Graphs.add_edge!(g, parent_id, child_id)
     return g
 end
@@ -612,7 +621,6 @@ abstract type SceneNode end
 abstract type SceneAssemblyNode <: SceneNode end
 # SceneNode interface
 node_id(n::SceneNode) = n.id
-
 const geom_node_accessor_interface = [
     transform_node_accessor_interface...,
     :get_base_geom,
@@ -620,7 +628,6 @@ const geom_node_accessor_interface = [
     :get_transform_node,
 ]
 const geom_node_mutator_interface = [transform_node_mutator_interface...]
-
 for op in geom_node_accessor_interface
     @eval $op(n::SceneNode) = $op(n.geom)
     @eval $op(n::CustomNode) = $op(node_val(n))
@@ -639,9 +646,9 @@ for op in (:(has_parent), :(has_child), :(has_descendant))
         $op(a::SceneNode, b::SceneNode) = $op(get_transform_node(a), get_transform_node(b))
     end
 end
-
 get_cached_geom(n::SceneNode, k::GeometryKey) = get_cached_geom(n.geom_hierarchy, k)
 get_base_geom(n::SceneNode, k::GeometryKey) = get_base_geom(n.geom_hierarchy, k)
+
 function add_child_approximation!(n::SceneNode, args...)
     add_child_approximation!(n.geom_hierarchy, args...)
 end
@@ -675,6 +682,7 @@ struct RobotNode{R} <: SceneNode
     geom::GeomNode
     geom_hierarchy::GeometryHierarchy
 end
+
 RobotNode(id::BotID, geom) = RobotNode(id, geom, geom_hierarchy(geom))
 RobotNode(n::RobotNode, geom) = RobotNode(n.id, geom)
 RobotNode(id::BotID, n::RobotNode) = RobotNode(id, n.geom, n.geom_hierarchy)
@@ -684,6 +692,7 @@ struct ObjectNode <: SceneNode
     geom::GeomNode
     geom_hierarchy::GeometryHierarchy
 end
+
 ObjectNode(id::ObjectID, geom) = ObjectNode(id, geom, geom_hierarchy(geom))
 ObjectNode(n::ObjectNode, geom) = ObjectNode(n.id, geom)
 has_component(n::SceneNode, id) = false
@@ -691,6 +700,7 @@ has_component(n::SceneNode, id) = false
 RobotNode{R}(n::RobotNode, args...) where {R} = RobotNode(n.id, args...)
 
 const TransformDict{T} = Dict{T,CoordinateTransformations.Transformation}
+
 """
     abstract type SceneNode end
 
@@ -706,6 +716,7 @@ struct AssemblyNode <: SceneNode
     components::TransformDict{Union{ObjectID,AssemblyID}}
     geom_hierarchy::GeometryHierarchy
 end
+
 AssemblyNode(n::AssemblyNode, geom) =
     AssemblyNode(n.id, geom, n.components, geom_hierarchy(geom))
 AssemblyNode(id, geom) = AssemblyNode(
@@ -724,9 +735,10 @@ required_transforms_to_children(n::AssemblyNode) = assembly_components(n)
 struct TransportUnitNode{C<:Union{ObjectID,AssemblyID},T} <: SceneNode
     geom::GeomNode
     cargo::Pair{C,T}
-    robots::TransformDict{BotID} # must be filled with unique invalid ids
+    robots::TransformDict{BotID}  # must be filled with unique invalid ids
     geom_hierarchy::GeometryHierarchy
 end
+
 TransportUnitNode(n::TransportUnitNode, geom) =
     TransportUnitNode(geom, n.cargo, n.robots, geom_hierarchy(geom))
 TransportUnitNode(geom, cargo) =
@@ -741,11 +753,13 @@ robot_team(n::TransportUnitNode) = n.robots
 cargo_id(n::TransportUnitNode) = n.cargo.first
 cargo_type(n::TransportUnitNode) = isa(cargo_id(n), AssemblyID) ? AssemblyNode : ObjectNode
 Base.copy(n::TransportUnitNode) = TransportUnitNode(n, copy(n.geom))
+
 function required_transforms_to_children(n::TransportUnitNode)
     merge(robot_team(n), Dict(n.cargo))
 end
 
 const TransportUnitID = TemplatedID{Tuple{T,C}} where {C,T<:TransportUnitNode}
+
 node_id(n::TransportUnitNode{C,T}) where {C,T} =
     TemplatedID{Tuple{TransportUnitNode,C}}(get_id(cargo_id(n)))
 Base.convert(::Pair{A,B}, pair) where {A,B} = convert(A, pair.first) => convert(B, p.second)
@@ -761,9 +775,11 @@ remove_robot!(n::TransportUnitNode, id) = delete!(robot_team(n), id)
 add_robot!(n::TransportUnitNode, r, t) = add_robot!(n, r => t)
 add_robot!(n::TransportUnitNode, t::CoordinateTransformations.AffineMap) =
     add_robot!(n, get_unique_invalid_id(RobotID) => t)
+
 function is_in_formation(n::TransportUnitNode, scene_tree)
     all([Graphs.has_edge(scene_tree, n, id) for (id, _) in robot_team(n)])
 end
+
 function capture_robots!(agent::TransportUnitNode, scene_tree)
     formed = true
     for (robot_id, _) in robot_team(agent)
@@ -784,10 +800,8 @@ Robot `new_id` takes robot `old_id`'s plave in `robot_team(transport_unit)`.
 function swap_robot_id!(transport_unit, old_id, new_id)
     team = robot_team(transport_unit)
     tform = child_transform(transport_unit, old_id)
-    # @info "robot team before swap" team
     remove_robot!(transport_unit, old_id)
     add_robot!(transport_unit, new_id => tform)
-    # @info "robot team after swap" team
 end
 
 export recurse_child_geometry
@@ -813,6 +827,7 @@ function recurse_child_geometry(
     end
     return nothing
 end
+
 function recurse_child_geometry(
     dict::TransformDict,
     tree,
@@ -836,6 +851,7 @@ function recurse_child_geometry(
     end
     Base.Iterators.flatten(geoms)
 end
+
 function recurse_child_geometry(
     node::Union{TransportUnitNode,AssemblyNode},
     tree,
@@ -856,7 +872,6 @@ function recurse_child_geometry(
         return Base.Iterators.flatten((geom, child_geom))
     end
 end
-
 
 """
     abstract type SceneTreeEdge
@@ -913,12 +928,14 @@ Permanent edges (cannot be broken after placement)
     inedges::Vector{Dict{Int,SceneTreeEdge}} = Vector{Dict{Int,SceneTreeEdge}}()
     outedges::Vector{Dict{Int,SceneTreeEdge}} = Vector{Dict{Int,SceneTreeEdge}}()
 end
+
 add_node!(tree::SceneTree, node::SceneNode) = add_node!(tree, node, node_id(node))
 get_vtx(tree::SceneTree, n::SceneNode) = get_vtx(tree, node_id(n))
+
 function Base.copy(tree::SceneTree)
     SceneTree(
         graph = deepcopy(tree.graph),
-        nodes = map(copy, tree.nodes), # TODO This may cause problems with TransformNode
+        nodes = map(copy, tree.nodes), # TODO: Check if this causes problems with TransformNode
         vtx_map = deepcopy(tree.vtx_map),
         vtx_ids = deepcopy(tree.vtx_ids),
     )
@@ -938,12 +955,14 @@ function set_child!(tree::SceneTree, parent::AbstractID, child::AbstractID)
     child_node = get_node(tree, child)
     set_child!(tree, parent, get_vtx(tree, child), t, make_edge(tree, node, child_node))
 end
+
 set_child!(tree::SceneTree, parent::SceneNode, args...) =
     set_child!(tree, node_id(parent), args...)
 set_child!(tree::SceneTree, parent::SceneNode, child::SceneNode) =
     set_child!(tree, node_id(parent), node_id(child))
 set_child!(tree::SceneTree, parent::AbstractID, child::SceneNode, args...) =
     set_child!(tree, parent, node_id(child), args...)
+
 function force_remove_edge!(tree::SceneTree, u, v)
     rem_parent!(get_node(tree, v))
     if Graphs.has_edge(tree, u, v)
@@ -982,11 +1001,14 @@ end
 
 global CAPTURE_DISTANCE_TOLERANCE = 1e-2
 capture_distance_tolerance() = CAPTURE_DISTANCE_TOLERANCE
+
 function set_capture_distance_tolerance!(val)
     global CAPTURE_DISTANCE_TOLERANCE = val
 end
+
 global CAPTURE_ROTATION_TOLERANCE = 1e-2
 capture_rotation_tolerance() = CAPTURE_ROTATION_TOLERANCE
+
 function set_capture_rotation_tolerance!(val)
     global CAPTURE_ROTATION_TOLERANCE = val
 end
@@ -1012,11 +1034,11 @@ function is_within_capture_distance(
     ttol = capture_distance_tolerance(),
     rtol = capture_rotation_tolerance(),
 )
-    et = norm(t.translation - t_des.translation) # translation error
+    et = norm(t.translation - t_des.translation)  # translation error
     er = Inf
     # Rotation error
-    # QuatVecMap -- cheapest to compute, but goes singular at 180 degrees  (sign ambiguity)
-    # MRPMap     -- singular at 360 degrees (sign ambiguity)
+    # - QuatVecMap: cheapest to compute, but goes singular at 180 degrees  (sign ambiguity)
+    # - MRPMap: singular at 360 degrees (sign ambiguity)
     er_quatvecmap = norm(Rotations.rotation_error(t, t_des, Rotations.QuatVecMap()))
     er_mrpmap = norm(Rotations.rotation_error(t, t_des, Rotations.MRPMap()))
 
@@ -1054,32 +1076,17 @@ function capture_child!(
     @assert has_component(nu, node_id(nv)) "$nu cannot capture $nv"
     if is_within_capture_distance(get_node(tree, u), get_node(tree, v), ttol, rtol)
         if !is_root_node(tree, v)
-            p = get_node(tree, get_parent(tree, v)) # current parent
+            p = get_node(tree, get_parent(tree, v))  # current parent
             @assert(
                 isa(p, TransportUnitNode),
                 "Trying to capture child $v from non-TransportUnit parent $p"
             )
-            # NOTE that there may be a time gap if the cargo has to be lifted
-            # into place by a separate "robot"
+            # NOTE: There may be a time gap if the cargo has to be lifted into
+            # place by a separate "robot"
             disband!(tree, p)
         end
         return set_child!(tree, u, v)
     end
-    # t = relative_transform(tree,u,v)
-    # t_des = child_transform(nu,node_id(nv))
-    # et = norm(t.translation - t_des.translation) # translation error
-    # er = norm(Rotations.rotation_error(t,t_des)) # rotation_error
-    # if et < ttol && er < rtol
-    #     if !is_root_node(tree,v)
-    #         p = get_node(tree,get_parent(tree,v)) # current parent
-    #         @assert(isa(p, TransportUnitNode),
-    #             "Trying to capture child $v from non-TransportUnit parent $p")
-    #         # NOTE that there may be a time gap if the cargo has to be lifted
-    #         # into place by a separate "robot"
-    #         disband!(tree,p)
-    #     end
-    #     return set_child!(tree,u,v)
-    # end
     return false
 end
 
@@ -1144,14 +1151,15 @@ function compute_approximate_geometries!(
 end
 
 export remove_geometry!
+
 remove_geometry!(n::GeometryHierarchy, key) = rem_node!(n, key)
 remove_geometry!(n::SceneNode, key) = rem_node!(n.geom_hierarchy, key)
+
 function remove_geometry!(scene_tree::SceneTree, key)
     for n in get_nodes(scene_tree)
         remove_geometry!(n, key)
     end
 end
-
 
 """
     jump_to_final_configuration!(scene_tree;respect_edges=false)
@@ -1163,16 +1171,11 @@ function jump_to_final_configuration!(scene_tree; respect_edges = false, set_edg
     for node in get_nodes(scene_tree)
         if matches_template(AssemblyNode, node)
             for (id, tform) in assembly_components(node)
-                # if Graphs.has_edge(scene_tree, node, id)
                 force_remove_edge!(scene_tree, node, id)
                 set_child!(scene_tree, node, id)
                 if !set_edges
                     force_remove_edge!(scene_tree, node, id)
                 end
-                # end
-                # if !respect_edges || Graphs.has_edge(scene_tree,node,id)
-                #     set_local_transform!(get_node(scene_tree,id),tform)
-                # end
             end
         end
     end
@@ -1196,7 +1199,6 @@ end
 project `vec` onto `b`.
 """
 project_onto_vector(vec, b) = b * dot(vec, b) / dot(b, b)
-# project_onto_unit_vector(vec,b) = project_onto_vector(vec,normalize(b))
 
 """
 """
@@ -1221,15 +1223,12 @@ function circle_intersection_with_line(circle, line)
         return min(norm(c - p1), norm(c - p2)) - r
     end
 end
+
 circle_intersects_line(args...) = circle_intersection_with_line(args...) < 0
 circle_intersection_with_line(circle, pt1, pt2) = circle_intersection_with_line(
     circle,
     GeometryBasics.Line(GeometryBasics.Point(pt1...), GeometryBasics.Point(pt2...)),
 )
-
-
-
-
 
 """
     extract_points_and_radii(lazy_set)
@@ -1262,6 +1261,7 @@ function extract_points_and_radii(n::GeometryBasics.Cylinder, c = 16)
         ]),
     )
 end
+
 extract_points_and_radii(n::LazySets.Ball2) = [(n.center, n.radius)]
 extract_points_and_radii(n::Union{Hyperrectangle,AbstractPolytope}) =
     zip(LazySets.vertices(n), Base.Iterators.repeated(0.0))
@@ -1270,10 +1270,8 @@ for T in (:AbstractVector, :(Base.Iterators.Flatten), :(Base.Generator))
         Base.Iterators.flatten(map(extract_points_and_radii, n))
 end
 extract_points_and_radii(n::SVector) = [(n, 0.0)]
-
 LazySets.dim(::Type{SVector{N,T}}) where {N,T} = N
 LazySets.dim(::Type{LazySets.Ball2{T,V}}) where {T,V} = LazySets.dim(V)
-
 Base.convert(::Type{LazySets.Ball2{T,V}}, b::LazySets.Ball2) where {T,V} =
     LazySets.Ball2(V(b.center), T(b.radius))
 
@@ -1298,13 +1296,13 @@ function overapproximate_sphere(points_and_radii, N = 3, ϵ = 0.0)
         )
     end
     if list_is_empty
-        # return nothing
         return LazySets.Ball2(SVector(zeros(N)...), 0.0)
     end
     optimize!(model)
     ball = LazySets.Ball2(SVector{N,Float64}(value.(v)), max(0.0, value(d)))
     return ball
 end
+
 function overapproximate_cylinder(points_and_radii, ϵ = 0.0)
     N = 2
     b = overapproximate_sphere(points_and_radii, N, ϵ)
@@ -1318,7 +1316,7 @@ function overapproximate_cylinder(points_and_radii, ϵ = 0.0)
             zlo = pt[3]
         end
     end
-    # get z values
+    # Get z values
     return GeometryBasics.Cylinder(
         GeometryBasics.Point(b.center[1], b.center[2], zlo),
         GeometryBasics.Point(b.center[1], b.center[2], zhi),
@@ -1344,7 +1342,6 @@ for T in (:AbstractPolytope, :LazySet, :AbstractVector, :(GeometryBasics.Ngon), 
             ::Type{H},
             ϵ::Float64 = 0.0,
         ) where {A,V<:AbstractVector,H<:Hyperrectangle{A,V,V}}
-            # overapproximate_hyperrectangle(extract_points_and_radii(lazy_set),ϵ)
             high = -Inf * ones(V)
             low = Inf * ones(V)
             for (pt, r) in extract_points_and_radii(lazy_set)
@@ -1462,7 +1459,7 @@ function spaced_neighbors(
     return best_idxs, d_hi
 end
 
-perimeter(pts) = sum(map(v -> norm(v[1] - v[2]), zip(pts[1:end-1], pts[2:end]))) #sum(map(i->norm(wrap_get(pts,(i,i+1))),1:length(pts)))
+perimeter(pts) = sum(map(v -> norm(v[1] - v[2]), zip(pts[1:end-1], pts[2:end])))  # sum(map(i->norm(wrap_get(pts,(i,i+1))),1:length(pts)))
 perimeter(p::LazySets.AbstractPolygon) = perimeter(vertices_list(p))
 
 """
@@ -1484,20 +1481,17 @@ function select_support_locations(
     end
     pts = vertices_list(polygon)
     pts = reduce_to_valid_candidate_list(pts, r)
-
     reduced_polygon = VPolygon(pts)
-
     # The desired number of robots can't be more than the number of valid points
+
     # We also use the vertices list of the reduced polygon so we are only considering the
     # convex hull of the valid points``
-    n = min(n, length(vertices_list(reduced_polygon))) # Can cannot be greater than the number of valid points
-
+    n = min(n, length(vertices_list(reduced_polygon)))  # cannot be greater than the number of valid points
     if n == 1
         sphere = overapproximate(polygon, LazySets.Ball2{Float64,SVector{2,Float64}})
         support_pts = [LazySets.center(sphere)]
         return support_pts
     end
-
     score_function = score_function_constructor(pts, n)
     best_idxs, _ = spaced_neighbors(reduced_polygon, n, score_function)
     if length(best_idxs) < n
@@ -1516,13 +1510,10 @@ This selects points that are "far" away from each other.
 function reduce_to_valid_candidate_list(pts, r; ϵ = 0.5 * r)
     pts_c = deepcopy(pts)
     candidate_pts = Vector{Vector{Float64}}()
-
-    # The first candidate point is the point furthest from the origin
-    pts_dist = norm.(pts_c, 2)
+    pts_dist = norm.(pts_c, 2)  # the first candidate point is the point furthest from the origin
     first_candidate_idx = argmax(pts_dist)
     push!(candidate_pts, pts_c[first_candidate_idx])
     deleteat!(pts_c, first_candidate_idx)
-
     while !isempty(pts_c)
         dist_to_candidates = Matrix{Float64}(undef, length(candidate_pts), length(pts_c))
         lp_dist_to_candidates = Matrix{Float64}(undef, length(candidate_pts), length(pts_c))
@@ -1530,7 +1521,6 @@ function reduce_to_valid_candidate_list(pts, r; ϵ = 0.5 * r)
             dist_to_candidates[ii, jj] = norm(c_pt - pt, 2)
             lp_dist_to_candidates[ii, jj] = norm(c_pt - pt, 2)
         end
-
         # Determine feasible points
         min_dist_to_candidates = minimum(dist_to_candidates, dims = 1)
         bool_mask = vec(min_dist_to_candidates .> (2 * r + ϵ))
@@ -1539,16 +1529,13 @@ function reduce_to_valid_candidate_list(pts, r; ϵ = 0.5 * r)
         if isempty(pts_c)
             break
         end
-
         # Select next candidate: feasible and furthest sum lp norm from candidates
         sum_lp_dist = vec(sum(lp_dist_to_candidates, dims = 1))
         sum_lp_dist = sum_lp_dist[bool_mask]
-
         next_candidate_idx = argmax(sum_lp_dist)
         push!(candidate_pts, pts_c[next_candidate_idx])
         deleteat!(pts_c, next_candidate_idx)
     end
-
     @assert !isempty(candidate_pts) "Starting point should always be an option"
     return candidate_pts
 end
@@ -1563,9 +1550,8 @@ function select_num_robots(polygon, r)
     # Extract length and width from spectral value decomposition
     pts = vertices_list(polygon)
     _, S, _ = svd(hcat(convert.(Vector, pts)...))
-    L = S[1] # length
-    W = S[2] # width
-
+    L = S[1]  # length
+    W = S[2]  # width
     neighbor_dists = map(i -> norm(pts[i] - pts[i+1]), 1:length(pts)-1)
     push!(neighbor_dists, norm(pts[end] - pts[1]))
     N = length(pts) - length(findall(neighbor_dists .< 2 * r))
@@ -1573,7 +1559,7 @@ function select_num_robots(polygon, r)
     x = p / (π * r)
     if W >= 2 * r
         n = Int(floor(max(1, min(N, min(x, 2 * sqrt(x))))))
-    else # long and skinny
+    else  # long and skinny
         n = Int(floor(max(1, min(x, 2))))
     end
     @info "number of robots in transport unit: $(n)"

@@ -9,10 +9,8 @@ let
     robot = create_node(ConstructionBots.RobotNode, ConstructionBots.RobotID(1))
     assembly = create_node(ConstructionBots.AssemblyNode, ConstructionBots.AssemblyID(1))
     transport_unit = ConstructionBots.TransportUnitNode(ConstructionBots.node_id(assembly))
-
     # Initialize a set for node IDs
     node_ids = Set{ConstructionBots.AbstractID}()
-
     # Populate with node IDs
     node_ids = Set([
         ConstructionBots.node_id(x) for x in [

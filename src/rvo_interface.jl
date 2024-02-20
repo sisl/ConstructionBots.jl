@@ -1,8 +1,6 @@
 using PyCall
 
-struct IntWrapper
-    idx::Int
-end
+struct IntWrapper idx::Int end
 
 function ensure_rvo_python_module_loaded!()
     if rvo_python_module() === nothing
@@ -11,29 +9,35 @@ function ensure_rvo_python_module_loaded!()
 end
 
 const RVOAgentMap = NGraph{DiGraph,IntWrapper,AbstractID}
+
 rvo_map_num_agents(m::RVOAgentMap) = nv(m)
+
 function set_rvo_id_map!(m::RVOAgentMap, id::AbstractID, idx::Int)
     ensure_rvo_python_module_loaded!()
     @assert nv(m) == idx "RVOAgentMap shows $(nv(m)) agents, but this index is $idx"
     @assert !has_vertex(m, id) "Agent with id $(id) has already been added to schedule"
     add_node!(m, IntWrapper(idx), id)
 end
-set_rvo_id_map!(m::RVOAgentMap, idx::Int, id::AbstractID) = set_rvo_id_map!(m, id, idx)
 
+set_rvo_id_map!(m::RVOAgentMap, idx::Int, id::AbstractID) = set_rvo_id_map!(m, id, idx)
 rvo_get_agent_idx(id::AbstractID) = node_val(get_node(rvo_global_id_map(), id)).idx
 rvo_get_agent_idx(node::SceneNode) = rvo_get_agent_idx(node_id(node))
 rvo_get_agent_idx(node::ConstructionPredicate) = rvo_get_agent_idx(entity(node))
 rvo_get_agent_idx(node::ScheduleNode) = rvo_get_agent_idx(node.node)
 
 global RVO_ID_GLOBAL_MAP = RVOAgentMap()
+
 function rvo_global_id_map()
     RVO_ID_GLOBAL_MAP
 end
+
 function set_rvo_global_id_map!(val)
     global RVO_ID_GLOBAL_MAP = val
 end
+
 rvo_map_num_agents() = rvo_map_num_agents(rvo_global_id_map())
 set_rvo_id_map!(id::AbstractID, idx::Int) = set_rvo_id_map!(rvo_global_id_map(), id, idx)
+
 function rvo_reset_agent_map!()
     global RVO_ID_GLOBAL_MAP = RVOAgentMap()
 end
@@ -42,9 +46,11 @@ rvo_active_agents(scene_tree) =
     (get_node(scene_tree, node_id(n)) for n in get_nodes(rvo_global_id_map()))
 
 global RVO_PYTHON_MODULE = nothing
+
 function rvo_python_module()
     RVO_PYTHON_MODULE
 end
+
 function set_rvo_python_module!(val)
     global RVO_PYTHON_MODULE = val
 end
@@ -80,15 +86,14 @@ function rvo_new_sim(;
     )
 end
 
-# global RVO_SIM_WRAPPER = RVOSimWrapper(nothing)
 global RVO_SIM_WRAPPER = CachedElement{Any}(nothing, false, time())
 rvo_global_sim_wrapper() = RVO_SIM_WRAPPER
+
 function rvo_set_new_sim!(sim = rvo_new_sim())
     ensure_rvo_python_module_loaded!()
     set_element!(rvo_global_sim_wrapper(), sim)
-    # rvo_global_sim_wrapper().sim = sim
 end
-# rvo_global_sim() = rvo_global_sim_wrapper().sim
+
 rvo_global_sim() = get_element(rvo_global_sim_wrapper())
 
 # TODO(tashakim): Remove this method after implementing 
@@ -110,15 +115,19 @@ get_rvo_radius(node) = get_base_geom(node, HypersphereKey()).radius
 
 global RVO_DEFAULT_NEIGHBOR_DISTANCE = 2.0
 global RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE = 1.0
+
 function rvo_default_neighbor_distance()
     RVO_DEFAULT_NEIGHBOR_DISTANCE
 end
+
 function set_rvo_default_neighbor_distance!(val)
     global RVO_DEFAULT_NEIGHBOR_DISTANCE = val
 end
+
 function rvo_default_min_neighbor_distance()
     RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE
 end
+
 function set_rvo_default_min_neighbor_distance!(val)
     global RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE = val
 end
@@ -145,11 +154,11 @@ function rvo_add_agent!(agent::Union{RobotNode,TransportUnitNode}, sim)
     return agent_idx
 end
 
-
 function rvo_get_agent_position(n)
     rvo_idx = rvo_get_agent_idx(n)
     rvo_global_sim().getAgentPosition(rvo_idx)
 end
+
 function rvo_set_agent_position!(node, pos)
     idx = rvo_get_agent_idx(node)
     rvo_global_sim().setAgentPosition(idx, (pos[1], pos[2]))
@@ -173,10 +182,12 @@ function rvo_set_agent_max_speed!(node, speed = get_rvo_max_speed(node))
     idx = rvo_get_agent_idx(node)
     rvo_global_sim().setAgentMaxSpeed(idx, speed)
 end
+
 function rvo_set_agent_alpha!(node, alpha = 0.5)
     idx = rvo_get_agent_idx(node)
     rvo_global_sim().setAgentAlpha(idx, alpha)
 end
+
 function rvo_get_agent_alpha(node)
     idx = rvo_get_agent_idx(node)
     rvo_global_sim().getAgentAlpha(idx)
@@ -246,6 +257,7 @@ end
 Low alpha means higher priority
 """
 function set_rvo_priority!(env, node) end
+
 function set_rvo_priority!(
     env,
     node::Union{RobotStart,RobotGo,FormTransportUnit,TransportUnitGo,DepositCargo},

@@ -18,25 +18,19 @@ using ConstructionBots
 #     15 => :saturn_v                   1845           306
 
 project_params = get_project_params(4)
-
-
 open_animation_at_end = true
 save_animation_along_the_way = false
 save_animation_at_end = false
 anim_active_agents = true # green circles around active agents (robots and transport units)
 anim_active_areas = true # purple circles around active assembly areas
-
 update_anim_at_every_step = true
 save_anim_interval = 100
 process_updates_interval = 100
 block_save_anim = false
-
-deconflict_strategies = [:None]  #:RVO :TangentBugPolicy :Dispersion
+deconflict_strategies = [:RVO, :TangentBugPolicy, :Dispersion]  #:RVO :TangentBugPolicy :Dispersion
 assignment_mode = :greedy  # :milp :milp_w_greedy_warm_start
 milp_optimizer = :highs  # :gurobi :highs
 optimizer_time_limit = 60
-
-
 env, stats = run_lego_demo(;
     ldraw_file = project_params[:file_name],
     project_name = project_params[:project_name],

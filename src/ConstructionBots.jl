@@ -10,32 +10,27 @@ using ProgressMeter
 using Random
 using StatsBase
 using TOML
-
-# Handling arrays and mathematical operations
+# Handle arrays and mathematical operations
 using DataStructures
 using ForwardDiff
 using JuMP, MathOptInterface
 using LinearAlgebra
 using SparseArrays
 using StaticArrays
-
-# Handling geometric data and graph structures
+# Handle geometric data and graph structures
 using CoordinateTransformations
 using GeometryBasics
 using Graphs, MetaGraphs
 using LazySets
 using Rotations
 using SpatialIndexing
-
 # Python interfacing, handling LDraw LEGO models
 using Colors
 using LDrawParser
 using PyCall
-
 # Optimization solvers
 using ECOS, GLPK, Gurobi, HiGHS
-
-# Generating graphical plots
+# Generate graphical plots
 using Compose, Measures, MeshCat
 
 include("constants.jl")
@@ -54,11 +49,9 @@ include("demo_utils.jl")
 include("project_params.jl")
 include("full_demo.jl")
 
-
 ################################################################################
 ############################ Constructing Model Tree ###########################
 ################################################################################
-
 # model::MPDModel - model.parts contains raw geometry of all parts
 # assembly_tree::AssemblyTree - stored transforms of all parts and submodels
 # model_schedule - encodes the partial ordering of assembly operations.
@@ -94,7 +87,9 @@ struct DuplicateIDGenerator{K}
     id_map::Dict{K,K}
     DuplicateIDGenerator{K}() where {K} = new{K}(Dict{K,Int}(), Dict{K,K}())
 end
+
 _id_type(::DuplicateIDGenerator{K}) where {K} = K
+
 function (g::DuplicateIDGenerator)(id)
     k = get!(g.id_map, id, id)
     g.id_counts[k] = get(g.id_counts, k, 0) + 1
@@ -102,6 +97,7 @@ function (g::DuplicateIDGenerator)(id)
     g.id_map[new_id] = id
     new_id
 end
+
 function duplicate_subtree!(g, old_root, d = :out)
     vtxs = [get_vtx(g, old_root)]
     append!(vtxs, collect(map(e -> e.dst, edges(bfs_tree(g, old_root; dir = d)))))
@@ -136,20 +132,19 @@ ancestors are the operations building up thereto.
     graph::DiGraph = DiGraph()
     nodes::Vector{CustomNode{N,ID}} = Vector{CustomNode{N,ID}}()
     vtx_map::Dict{ID,Int} = Dict{ID,Int}()
-    vtx_ids::Vector{ID} = Vector{ID}() # maps vertex uid to actual graph node
+    vtx_ids::Vector{ID} = Vector{ID}()  # maps vertex uid to actual graph node
     id_generator::DuplicateIDGenerator{ID} = DuplicateIDGenerator{ID}()
 end
+
 create_node_id(g, v::BuildingStep) = g.id_generator("BuildingStep")
 create_node_id(g, v::SubModelPlan) =
     has_vertex(g, model_name(v)) ? g.id_generator(model_name(v)) : model_name(v)
 create_node_id(g, v::SubFileRef) = g.id_generator(model_name(v))
+
 function add_node!(g::MPDModelGraph{N,ID}, val::N) where {N,ID}
     id = create_node_id(g, val)
     add_node!(g, val, id)
 end
-
-# function add_subfile_reference!(model_graph,ref::SubFileRef)
-# end
 
 """
     add_build_step!(model_graph,build_step,parent=-1)
@@ -169,13 +164,13 @@ function add_build_step!(model_graph, build_step::BuildingStep, preceding_step =
         add_edge!(model_graph, input, node)
         add_edge!(model_graph, preceding_step, input)
     end
-    # if is_root_node(model_graph,node)
     if has_vertex(model_graph, preceding_step) &&
        is_terminal_node(model_graph, preceding_step)
-        add_edge!(model_graph, preceding_step, node) # Do I want this or not?
+        add_edge!(model_graph, preceding_step, node)
     end
     node
 end
+
 function populate_model_subgraph!(model_graph, model::SubModelPlan)
     n = add_node!(model_graph, model)
     preceding_step = -1
@@ -218,7 +213,7 @@ function copy_submodel_trees!(sched, model)
             if isa(val, SubFileRef)
                 if model_name(val) == k
                     sub_model_plan = duplicate_subtree!(sched, k, :in)
-                    add_edge!(sched, sub_model_plan, v) # add before instead of replacing
+                    add_edge!(sched, sub_model_plan, v)  # add before instead of replacing
                 end
             end
         end
@@ -263,7 +258,6 @@ function construct_model_spec(model)
     return spec
 end
 
-
 """
     extract_single_model(sched::S,model_key) where {S<:MPDModelGraph}
 
@@ -297,7 +291,8 @@ function extract_single_model(
     new_spec
 end
 
-# Edges for Project Spec. TODO dispatch on graph type
+# Edges for Project Spec
+# TODO: Dispatch on graph type
 validate_edge(::SubModelPlan, ::SubFileRef) = true
 validate_edge(::BuildingStep, ::SubModelPlan) = true
 validate_edge(::BuildingStep, ::BuildingStep) = true
@@ -321,8 +316,6 @@ eligible_predecessors(n::BuildingStep) =
 required_successors(::BuildingStep) = Dict(Union{SubModelPlan,BuildingStep} => 1)
 required_predecessors(n::BuildingStep) = Dict(SubFileRef => LDrawParser.n_lines(n))
 
-
-
 """
     construct_assembly_graph(model)
 
@@ -341,12 +334,12 @@ function construct_assembly_graph(model)
             end
         end
     end
-    # copy_submodel_trees!(model_graph,model)
     return model_graph
 end
 
 geom_node(m::DATModel) = GeomNode(LDrawParser.extract_geometry(m))
 geom_node(m::SubModelPlan) = GeomNode(nothing)
+
 function geom_node(model::MPDModel, ref::SubFileRef)
     if has_model(model, ref.file)
         return geom_node(get_model(model, ref.file))
@@ -401,7 +394,6 @@ whereas other SubFileRef nodes reference the assembly encoded by their direct pa
 """
 function get_referenced_component(model_spec, id_map, node)
     @assert matches_template(SubFileRef, node)
-    # node = get_node(model_spec,id)
     for v in inneighbors(model_spec, node)
         input = get_node(model_spec, v)
         if matches_template(SubModelPlan, input)
@@ -455,17 +447,18 @@ function construct_assembly_tree(
             g = geom_node(val)
             add_node!(assembly_tree, AssemblyNode(new_id, g), new_id)
             is_terminal_node(spec, v) ? continue : nothing
-            # retrieve parent SubFileRef
+            # Retrieve parent SubFileRef
             ref_node = get_node(spec, outneighbors(spec, v)[1])
             ref = node_val(ref_node)
             @assert isa(ref, SubFileRef) "ref is $(ref)"
             parent_id = id_map[parent_map[node_id(ref_node)]]
         elseif isa(val, SubFileRef)
             if has_model(model, val.file)
-                continue # Don't add assembly here
+                # Do not add assembly here
+                continue
             else
                 has_part(model, val.file)
-                # Adding an object only
+                # Add an object only
                 @info "SUB FILE PART: $(node_id(node))"
                 p = get_part(model, val.file)
                 g = geom_node(p)
@@ -499,8 +492,7 @@ function convert_to_scene_tree(assembly_tree; set_children::Bool = true)
         for e in edges(assembly_tree)
             src_id = get_vtx_id(assembly_tree, edge_source(e))
             dst_id = get_vtx_id(assembly_tree, edge_target(e))
-            # set_child! will ensure that the full tree is correctly set up.
-            set_child!(scene_tree, src_id, dst_id)
+            set_child!(scene_tree, src_id, dst_id)  # ensures that the full tree is correctly set up
         end
     end
     return scene_tree
@@ -606,9 +598,11 @@ function GeometryBasics.decompose(
 ) where {N}
     return SVector{N - 1,TriangleFace{Int}}(TriangleFace{Int}(1, i, i + 1) for i = 1:N-1)
 end
+
 function GeometryBasics.decompose(::Type{Point{3,Float64}}, n::GeometryBasics.Ngon)
     return n.points
 end
+
 GeometryBasics.faces(n::GeometryBasics.Ngon{3,Float64,4,Point{3,Float64}}) =
     [TriangleFace{Int}(1, 2, 3), TriangleFace{Int}(1, 3, 4)]
 GeometryBasics.faces(n::GeometryBasics.Ngon{3,Float64,3,Point{3,Float64}}) =
@@ -622,11 +616,13 @@ function GeometryBasics.coordinates(
 ) where {N,G<:GeometryBasics.Ngon{3,Float64,N,Point{3,Float64}}}
     vcat(map(coordinates, v)...)
 end
+
 function GeometryBasics.faces(
     v::AbstractVector{G},
 ) where {N,G<:GeometryBasics.Ngon{3,Float64,N,Point{3,Float64}}}
     vcat(map(i -> map(f -> f .+ ((i - 1) * N), faces(v[i])), 1:length(v))...)
 end
+
 function GeometryBasics.faces(v::AbstractVector{G}) where {G<:GeometryBasics.Ngon}
     face_vec = Vector{TriangleFace{Int}}()
     i = 0

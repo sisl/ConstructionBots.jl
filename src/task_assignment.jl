@@ -1,26 +1,30 @@
 duration_lower_bound(node::ConstructionPredicate) = 0.0
+
 function duration_lower_bound(node::ConstructionPredicate, start, goal, max_speed)
     env_dt = DEFAULT_TIME_STEP
     d = norm(goal - start)
     δd = max_speed * env_dt
     num_steps = floor(d / δd)
     ϵ = capture_distance_tolerance()
-    if abs(d - num_steps * δd) > ϵ # eps(Float64)
+    if abs(d - num_steps * δd) > ϵ  # eps(Float64)
         num_add_steps = ceil(ϵ / δd)
         num_steps += num_add_steps
     end
     return env_dt * num_steps
 end
+
 function duration_lower_bound(node::EntityGo)
     start = global_transform(start_config(node)).translation
     goal = global_transform(goal_config(node)).translation
     duration_lower_bound(node, start, goal, get_agent_max_speed(entity(node)))
 end
+
 function duration_lower_bound(node::Union{FormTransportUnit,DepositCargo})
     start = global_transform(cargo_start_config(node)).translation
     goal = global_transform(cargo_goal_config(node)).translation
     duration_lower_bound(node, start, goal, default_loading_speed())
 end
+
 function duration_lower_bound(node::LiftIntoPlace)
     # Need to account for order of movement: rotate, then translate
     env_dt = DEFAULT_TIME_STEP
@@ -31,9 +35,8 @@ function duration_lower_bound(node::LiftIntoPlace)
     start_tform = global_transform(start_config(node))
     goal_tform = global_transform(goal_config(node))
     tf_error = relative_transform(start_tform, goal_tform)
-
-    # translation error
-    dx = tf_error.translation[1:2]
+    # Translation error
+    dx = tf_error.translation[1:2]  
     trans_dt = 0.0
     if norm(dx) <= 1e-4
         trans_dt = env_dt
@@ -41,9 +44,9 @@ function duration_lower_bound(node::LiftIntoPlace)
         vel = normalize(dx) * min(v_max, norm(dx) / env_dt)
         trans_dt = duration_lower_bound(node, tf_error.translation[1:2], [0, 0], norm(vel))
     end
-    # rotation error (estimate for time)
-    r = RotationVec(tf_error.linear) # rotation vector
-    θ = SVector(r.sx, r.sy, r.sz) # convert r to svector
+    # Rotation error (estimate for time)
+    r = RotationVec(tf_error.linear)  # rotation vector
+    θ = SVector(r.sx, r.sy, r.sz)  # convert r to svector
     if norm(θ) <= 1e-4
         rot_dt = 0.0
     else
@@ -70,6 +73,7 @@ function generate_path_spec(node::ConstructionPredicate)
         plan_path = needs_path(node),
     )
 end
+
 generate_path_spec(::SceneTree, node) = generate_path_spec(node)
 generate_path_spec(::OperatingSchedule, scene_tree::SceneTree, node) =
     generate_path_spec(scene_tree, node)
@@ -90,6 +94,7 @@ function convert_to_operating_schedule(sched)
     end
     tg_sched
 end
+
 function convert_from_operating_schedule(::Type{T}, sched::OperatingSchedule) where {T}
     G = T()
     for node in get_nodes(sched)
@@ -101,10 +106,10 @@ function convert_from_operating_schedule(::Type{T}, sched::OperatingSchedule) wh
     G
 end
 
-# is_valid(node::ConstructionPredicate) = is_valid(node_id(node))
 is_valid(node::SceneNode) = is_valid(node_id(node))
 
 align_with_successor(node::ConstructionPredicate, succ::ConstructionPredicate) = node
+
 align_with_successor(node::RobotGo, succ::T) where {T<:RobotGo} = RobotGo(
     first_valid(entity(node), entity(succ)),
     start_config(node),
@@ -113,6 +118,7 @@ align_with_successor(node::RobotGo, succ::T) where {T<:RobotGo} = RobotGo(
     nothing,
     nothing,
 )
+
 align_with_predecessor(
     node::RobotGo,
     pred::T,
@@ -124,7 +130,6 @@ align_with_predecessor(
     nothing,
     nothing,
 )
-# align_with_successor(node::T,succ::S) where {C,T<:EntityConfigPredicate{C},S<:EntityGo{C}} = T(first_valid(node,succ),start_config(node))
 
 ALIGNMENT_CHECK_TOLERANCE = 1e-3
 
@@ -166,6 +171,7 @@ function align_with_predecessor(node::FormTransportUnit, pred::RobotGo)
     end
     node
 end
+
 function align_with_predecessor(sched::OperatingSchedule, node::RobotGo, pred::DepositCargo)
     matching_id = get_matching_child_id(pred, node)
     if !(matching_id === nothing)
@@ -245,73 +251,7 @@ export GreedyOrderedAssignment
     problem_spec::P = ProblemSpec()
     cost_model::C = SumOfMakeSpans()
     greedy_cost::M = GreedyPathLengthCost()
-    # t0::Vector{Float64}         = get_tF(schedule)
-    # ordering_graph::DiGraph     = get_graph(greedy_set_precedence_graph(schedule))
-    # ordering_graph::DiGraph     = get_graph(construct_build_step_graph(schedule))
-    # ordering::Vector{Int}       = topological_sort_by_dfs(ordering_graph)
-    # frontier::Set{Int}          = get_all_root_nodes(ordering_graph)
 end
-
-# """
-#     construct_build_step_graph(sched)
-
-# Returns a graph with the same nodes as sched, but with edges modified to enforce
-# precedence (for assignment) between the tasks associated with each build phase.
-# """
-# function construct_build_step_graph(sched)
-#     build_step_graph = CustomNDiGraph{_node_type(sched),_id_type(sched)}()
-#     # build step dependency graph
-#     for n in get_nodes(sched)
-#         add_node!(build_step_graph,n,node_id(n))
-#     end
-#     for n in get_nodes(build_step_graph)
-#         val = n.node
-#         if matches_template(CloseBuildStep,n)
-#             ob = get_node(build_step_graph,OpenBuildStep(val))
-#             add_edge!(build_step_graph,ob,n)
-#         end
-#     end
-#     # subassembly dependencies
-#     for n in get_nodes(build_step_graph)
-#         val = n.node
-#         if matches_template(CloseBuildStep,n)
-#             blanket = backward_cover(sched,get_vtx(sched,n),np->matches_template(CloseBuildStep,np))
-#             for np in blanket
-#                 if node_id(np) != node_id(n)
-#                     add_edge!(build_step_graph,np,OpenBuildStep(val))
-#                 end
-#             end
-#         end
-#     end
-#     # add tasks
-#     for n in get_nodes(build_step_graph)
-#         if matches_template(CloseBuildStep,n)
-#             cb = n
-#             ob = get_node(sched,OpenBuildStep(n.node))
-#             for component in keys(assembly_components(n.node))
-#                 if matches_template(ObjectID,component)
-#                     transport_unit = TransportUnitNode(ObjectNode(component,GeomNode(nothing)))
-#                 else
-#                     transport_unit = TransportUnitNode(AssemblyNode(component,GeomNode(nothing)))
-#                 end
-#                 form_transport_unit = get_node(sched,FormTransportUnit(transport_unit))
-#                 for np in node_iterator(sched,inneighbors(sched,form_transport_unit))
-#                     if matches_template(RobotGo,np)
-#                         add_edge!(build_step_graph,ob,np)
-#                         add_edge!(build_step_graph,np,cb)
-#                     end
-#                 end
-#                 deposit_cargo = get_node(sched,DepositCargo(transport_unit))
-#                 for np in node_iterator(sched,outneighbors(sched,deposit_cargo))
-#                     if matches_template(RobotGo,np)
-#                         add_edge!(build_step_graph,cb,np)
-#                     end
-#                 end
-#             end
-#         end
-#     end
-#     build_step_graph
-# end
 
 function formulate_milp(
     milp_model::GreedyOrderedAssignment,
@@ -327,6 +267,7 @@ function formulate_milp(
         greedy_cost = milp_model.greedy_cost,
     )
 end
+
 function set_leaf_vtxs!(sched::OperatingSchedule, template = ProjectComplete)
     empty!(get_terminal_vtxs(sched))
     empty!(get_root_node_weights(sched))
@@ -338,8 +279,8 @@ function set_leaf_vtxs!(sched::OperatingSchedule, template = ProjectComplete)
     end
     sched
 end
+
 function JuMP.optimize!(model::GreedyOrderedAssignment)
-    # greedy_assignment!(model)
     assign_collaborative_tasks!(model)
     set_leaf_vtxs!(model.schedule, ProjectComplete)
 end
@@ -356,16 +297,16 @@ function construct_build_step_task_set(sched, scene_tree, step_id)
 end
 
 function build_step_dependency_graph(sched, scene_tree)
-    dependency_graph = DiGraph(nv(sched)) # track robot -> build step edges
-    # add edges between build steps and assemblies
+    dependency_graph = DiGraph(nv(sched))  # track robot -> build step edges
+    # Add edges between build steps and assemblies
     for n in get_nodes(sched)
         v = get_vtx(sched, n)
         if matches_template(CloseBuildStep, n)
             close_step_vtx = v
             open_step_vtx = get_vtx(sched, OpenBuildStep(n.node))
-            add_edge!(dependency_graph, open_step_vtx, close_step_vtx) # open -> close
+            add_edge!(dependency_graph, open_step_vtx, close_step_vtx)  # open -> close
             next_vtx = first(outneighbors(sched, n))
-            add_edge!(dependency_graph, close_step_vtx, next_vtx) # close -> next vtx (OpenBuildStep or AssemblyComplete)
+            add_edge!(dependency_graph, close_step_vtx, next_vtx)  # close -> next vtx (OpenBuildStep or AssemblyComplete)
             for (part_id, tform) in assembly_components(n.node)
                 part = get_node(scene_tree, part_id)
                 if matches_template(AssemblyID, part_id)
@@ -388,13 +329,9 @@ end
 
 Assign collaborative tasks in a greedy manner.
 """
-function assign_collaborative_tasks!(
-    model,
-    # D = construct_schedule_distance_matrix(model.schedule,model.problem_spec)
-)
+function assign_collaborative_tasks!(model)
     sched = model.schedule
     scene_tree = model.problem_spec
-    # D = construct_schedule_distance_matrix(sched,scene_tree)
     assembly_starts = Dict(
         node_id(n) => n for n in get_nodes(sched) if matches_template(AssemblyStart, n)
     )
@@ -406,7 +343,7 @@ function assign_collaborative_tasks!(
         active_build_steps[step_id] =
             construct_build_step_task_set(sched, scene_tree, step_id)
     end
-    # fill robots with go nodes
+    # Fill robots with go nodes
     robots = Set{Int}()
     for n in get_nodes(sched)
         if matches_template(RobotStart, n)
@@ -416,16 +353,13 @@ function assign_collaborative_tasks!(
         end
     end
     robots, active_build_steps
-    # assign tasks
-
+    # Assign tasks
     NUM_BUILD_STEPS =
         length([true for n in get_nodes(sched) if matches_template(OpenBuildStep, n)])
     BUILD_STEPS_CLOSED = 0
-
     @info "Beginning task assignment"
-    # initialize dependency graph to track and prevent cycles
+    # Initialize dependency graph to track and prevent cycles
     dependency_graph = build_step_dependency_graph(sched, scene_tree)
-    # cost_func = (v,v2)->get_edge_cost(model,D,v,v2)
     distance_dict = Dict{Tuple{Int,Int},Float64}()
     cost_func =
         (v, v2) -> begin
@@ -438,20 +372,15 @@ function assign_collaborative_tasks!(
                     generate_path_spec(sched, scene_tree, new_node).min_duration
             end
             return get_tF(sched, v) + distance_dict[(v, v2)]
-            # return distance_dict[(v,v2)]
-            # get_edge_cost(model,D,v,v2)
         end
     while !isempty(active_build_steps)
-        # get best possible assignment of robots to a team task
+        # Get best possible assignment of robots to a team task
         best_cost = Inf
         build_step_id = nothing
         task_id = nothing
         best_assignments = nothing
         for (step_id, tasks) in active_build_steps
             step_vtx = get_vtx(sched, step_id)
-            # filter out robots that would cause a cycle
-            # filt_func = (v,v2)->!has_path(dependency_graph,step_vtx,v)
-            # filt_func = (v,v2)->!has_path(sched,step_vtx,v)
             for task in tasks
                 task_node = get_node(sched, task)
                 cargo = get_node(scene_tree, cargo_id(entity(task_node)))
@@ -475,51 +404,49 @@ function assign_collaborative_tasks!(
                     push!(assignments, robot => slot)
                     @assert slot in team_slots
                     @assert robot in robots
-                    setdiff!(team_slots, slot) # remove slot from team_slots
-                    setdiff!(robots, robot) # remove robots from robots
+                    setdiff!(team_slots, slot)  # remove slot from team_slots
+                    setdiff!(robots, robot)  # remove robots from robots
                 end
                 # @info "assignment for $(summary(task)): $assignments"
-                # replace robot in robot set
+                # Replace robot in robot set
                 for (robot, slot) in assignments
                     push!(robots, robot)
                 end
-                # update best assignment
+                # Update best assignment
                 if cost < best_cost
                     build_step_id = step_id
                     task_id = task
                     best_assignments = assignments
                     best_cost = cost
-                    # @info "updating best assignment to $(summary(task)): $assignments"
                 end
             end
         end
-        # update schedule
+        # Update schedule
         @assert !(best_assignments === nothing) "no assignment found!"
-        # @info "best assignment selected $(summary(task_id)): $best_assignments"
         team_task_vtx = get_vtx(sched, task_id)
         open_step_vtx = get_vtx(sched, build_step_id)
         close_step_vtx = get_vtx(sched, CloseBuildStep(get_node(sched, build_step_id).node))
         for (robot, task) in best_assignments
             add_edge!(sched, robot, task)
-            # add RobotNode -> TeamTask and OpenBuildStep -> TeamTask edges to dependency graph.
+            # Add RobotNode -> TeamTask and OpenBuildStep -> TeamTask edges to dependency graph.
             add_edge!(dependency_graph, robot, team_task_vtx)
             add_edge!(dependency_graph, open_step_vtx, team_task_vtx)
             add_edge!(dependency_graph, team_task_vtx, close_step_vtx)
-            setdiff!(robots, robot) # remove robots
+            setdiff!(robots, robot)  # remove robots
         end
-        # add new robots
+        # Add new robots
         deposit_node = get_node(sched, DepositCargo(entity(get_node(sched, task_id))))
         for v in outneighbors(sched, deposit_node)
             if matches_template(RobotGo, get_node(sched, v))
                 robot = v
                 push!(robots, robot)
-                # add TeamTask -> RobotNode edge to dependency graph
+                # Add TeamTask -> RobotNode edge to dependency graph
                 add_edge!(dependency_graph, team_task_vtx, robot)
             end
         end
-        # update schedule times
+        # Update schedule times
         update_schedule_times!(sched)
-        # update active build step list
+        # Update active build step list
         delete!(active_build_steps[build_step_id], task_id)
         if isempty(active_build_steps[build_step_id])
             BUILD_STEPS_CLOSED += 1
@@ -534,7 +461,7 @@ function assign_collaborative_tasks!(
                     construct_build_step_task_set(sched, scene_tree, step_id)
                 # @info "new build step $(summary(step_id)) with tasks $(active_build_steps[step_id])"
             else
-                # assembly complete
+                # Assembly complete
                 @assert matches_template(AssemblyComplete, next_node)
                 push!(assemblies_completed, node_id(entity(next_node)))
                 @info "Closing Assembly $(summary(node_id(entity(next_node))))"

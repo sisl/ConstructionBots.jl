@@ -41,7 +41,6 @@ function run_simulation!(
     anim::Union{ConstructionBots.AnimationWrapper,Nothing},
     sim_params::SimParameters,
 )
-
     it = 1
     ConstructionBots.step_environment!(env)
     ConstructionBots.update_planning_cache!(env, 0.0)
@@ -57,12 +56,10 @@ function run_simulation!(
         showspeed = true,
         dt = 1.0,
     )
-
     starting_frame = 0
     if !isnothing(anim)
         starting_frame = ConstructionBots.current_frame(anim)
     end
-
     sim_process_data = SimProcessingData(
         false,
         1,
@@ -74,7 +71,6 @@ function run_simulation!(
         0,
         generate_showvalues,
     )
-
     up_steps = []
     while !sim_process_data.stop_simulating &&
         sim_process_data.iter < sim_params.max_time_steps
@@ -92,7 +88,6 @@ function simulate!(
     sim_process_data::SimProcessingData,
     update_steps::Vector,
 )
-
     @unpack sched, cache = env
     @unpack sim_batch_size, max_time_steps = sim_params
     @unpack process_animation_tasks, save_anim_interval = sim_params
@@ -102,7 +97,6 @@ function simulate!(
 
     for _ = 1:sim_batch_size
         sim_process_data.iter += 1
-
         ConstructionBots.step_environment!(env)
         newly_updated = ConstructionBots.update_planning_cache!(env, 0.0)
 
@@ -130,14 +124,12 @@ function simulate!(
                 end
             end
         end
-
         if length(cache.closed_set) == sim_process_data.last_iter_num_closed
             sim_process_data.num_iters_no_progress += 1
         else
             sim_process_data.num_iters_no_progress = 0
         end
         sim_process_data.last_iter_num_closed = length(cache.closed_set)
-
         project_stop_bool = ConstructionBots.project_complete(env)
         if sim_process_data.num_iters_no_progress >= max_num_iters_no_progress
             @warn "No progress for $(sim_process_data.num_iters_no_progress) iterations. Terminating."
@@ -146,7 +138,6 @@ function simulate!(
 
         if process_animation_tasks &&
            (length(update_steps) >= process_updates_interval || project_stop_bool)
-
             if block_save_anim
                 anim = ConstructionBots.AnimationWrapper(0)
                 update_visualizer!(factory_vis)
@@ -160,7 +151,6 @@ function simulate!(
                     CoordinateTransformations.Translation(0, 10, 0).translation,
                 )
             end
-
             k_i = 0
             for step_k in update_steps
                 k_k = step_k[1]
@@ -176,7 +166,6 @@ function simulate!(
                     current_frame = k_i
                 end
                 ConstructionBots.set_current_frame!(anim, current_frame)
-
                 atframe(anim, ConstructionBots.current_frame(anim)) do
                     if anim_active_areas
                         for node_i in closed_steps_nodes_k
@@ -197,14 +186,12 @@ function simulate!(
             end
             setanimation!(factory_vis.vis, anim.anim, play = false)
             update_steps = []
-
             if (
                 save_animation_along_the_way &&
                 !isnothing(save_anim_prog_path) &&
                 !project_stop_bool &&
                 sim_process_data.num_iters_since_anim_save >= save_anim_interval
             )
-
                 save_animation!(
                     factory_vis.vis,
                     "$(save_anim_prog_path)$(sim_process_data.iter).html",
@@ -219,7 +206,6 @@ function simulate!(
             nc - sim_process_data.num_closed_step_1;
             showvalues = sim_process_data.progress_update_fcn(sim_process_data.iter, nc),
         )
-
         if project_stop_bool
             ProgressMeter.finish!(sim_process_data.prog)
             if ConstructionBots.project_complete(env)
@@ -244,7 +230,6 @@ function simulate!(
                 print("done!\n")
             end
         end
-
         sim_process_data.stop_simulating = project_stop_bool
         if sim_process_data.stop_simulating
             break
@@ -288,12 +273,10 @@ function shift_staging_circles(
         else
             cargo_node = get_node!(sched, ObjectStart(cargo, TransformNode()))
         end
-
         translate = project_to_2d(global_transform(start_config(cargo_node)).translation)
         tform = CoordinateTransformations.Translation(translate)
         new_center = tform(geom.center)
         shifted_circles[id] = LazySets.Ball2(new_center, geom.radius)
-
     end
     return shifted_circles
 end
@@ -321,11 +304,9 @@ function get_object_vtx(scene_tree, obstacles, max_cargo_height, num_layers, rob
         n -> get_base_geom(n, HyperrectangleKey()),
         filter(n -> matches_template(ObjectNode, n), get_nodes(scene_tree)),
     )
-
     max_object_x = maximum([ob.radius[1] * 2 for ob in objects_hyperrects])
     max_object_y = maximum([ob.radius[2] * 2 for ob in objects_hyperrects])
     max_object_h = maximum([ob.radius[3] * 2 for ob in objects_hyperrects])
-
     mean_object_x =
         sum([ob.radius[1] * 2 for ob in objects_hyperrects]) / length(objects_hyperrects)
     mean_object_y =
@@ -333,28 +314,22 @@ function get_object_vtx(scene_tree, obstacles, max_cargo_height, num_layers, rob
 
     std_object_x = std([ob.radius[1] * 2 for ob in objects_hyperrects])
     std_object_y = std([ob.radius[2] * 2 for ob in objects_hyperrects])
-
     num_objects =
         length(filter(n -> matches_template(ObjectNode, n), get_nodes(scene_tree)))
-
     object_x_delta = min(max_object_x, mean_object_x + 3 * std_object_x) + robot_d * 2
     object_y_delta = min(max_object_y, mean_object_y + 3 * std_object_y) + robot_d * 2
 
     inflate_delta = max(max_object_x, max_object_y)
-
     inflated_obstacles = []
     for ob in obstacles
         push!(inflated_obstacles, LazySets.Ball2(ob.center, ob.radius + inflate_delta))
     end
 
     num_objs_per_layer = ceil(num_objects / num_layers)
-
     init_width = sqrt(num_objs_per_layer * object_x_delta * object_y_delta) / 2
-
     x_range = -init_width:object_x_delta:init_width
     y_range = -init_width:object_y_delta:init_width
     sweep_ranges = (x_range, y_range, 0:0)
-
     found_size = false
     cnt = 0
     while !found_size
@@ -374,9 +349,7 @@ function get_object_vtx(scene_tree, obstacles, max_cargo_height, num_layers, rob
             sweep_ranges = (x_range, y_range, 0:0)
         end
     end
-
     object_vtx_range = (x_range, y_range, 0:num_layers-1)
-
     vtxs = ConstructionBots.construct_vtx_array(;
         origin = SVector{3,Float64}(0.0, 0.0, max_cargo_height),
         obstacles = inflated_obstacles,

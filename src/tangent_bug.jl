@@ -60,7 +60,7 @@ function get_closest_interfering_circle(
         bloated_circle =
             LazySets.Ball2(x, r + agent_radius + buffer * (!return_w_no_buffer))
         if circle_intersects_line(bloated_circle, pos, nominal_goal)
-            d = norm(x - pos) - get_radius(bloated_circle) # penetration
+            d = norm(x - pos) - get_radius(bloated_circle)  # penetration
             if d < dmin
                 # penetration < 0 => pos is in circle
                 dmin = d
@@ -89,30 +89,27 @@ function set_policy_mode!(policy, circ, pos, nominal_goal, parent_step_active)
         r = get_radius(circ)
         dmin = norm(c - pos) - r
     end
-
     mode = policy.mode
     if circ === nothing
         mode = :MOVE_TOWARD_GOAL
     else
-        if norm(nominal_goal - c) < r # nominal_goal is in circle
+        if norm(nominal_goal - c) < r  # nominal_goal is in circle
             mode = :WAIT_OUTSIDE
-
             # If we're in a circle and its not active, we need to get out
             goal_in_circle = norm(nominal_goal - c) < r
             robot_in_circle = norm(pos - c) < r
             if !parent_step_active && goal_in_circle && robot_in_circle
                 mode = :EXIT_CIRCLE
             end
-
         elseif dmin + proximity_tolerance >= 0
-            # not currently in a circle, but on a course for intersection
+            # Not currently in a circle, but on a course for intersection
             if norm(nominal_goal - pos) + agent_radius / 2 < norm(nominal_goal - c)
-                # Just keep going toward goal (on the clear side)--this statement should never be reached
+                # Just keep going toward goal (on the clear side). This statement should never be reached
                 mode = :MOVE_TOWARD_GOAL
             elseif dmin < detour_horizon
-                # detour
+                # Detour
                 if dmin < 2 * proximity_tolerance
-                    # right at circle---just turn right to skim
+                    # This is right at circle, so just turn right to skim
                     mode = :MOVE_ALONG_CIRCLE
                 else
                     # Pick a tangent point to shoot for
@@ -122,7 +119,6 @@ function set_policy_mode!(policy, circ, pos, nominal_goal, parent_step_active)
                 mode = :MOVE_TOWARD_GOAL
             end
         else
-            # INSIDE CIRCLE
             mode = :EXIT_CIRCLE
         end
     end
@@ -137,7 +133,6 @@ function tangent_bug_policy!(policy, circles, pos, nominal_goal, parent_step_act
     agent_radius,
     vmax,
     dt = policy
-
     c = nothing
     r = nothing
     id = nothing
@@ -148,9 +143,8 @@ function tangent_bug_policy!(policy, circles, pos, nominal_goal, parent_step_act
         r = get_radius(circ)
         dmin = norm(c - pos) - r
     end
-    # select operating mode
+    # Select operating mode
     mode = set_policy_mode!(policy, circ, pos, nominal_goal, parent_step_active)
-
     # Select waypoint
     goal = nominal_goal
     if mode == :WAIT_OUTSIDE
@@ -166,17 +160,17 @@ function tangent_bug_policy!(policy, circles, pos, nominal_goal, parent_step_act
         goal = nominal_goal
     elseif mode == :MOVE_ALONG_CIRCLE
         dvec = normalize(pos - c) * (r + proximity_tolerance)
-        # compute sector to traverse
+        # Compute sector to traverse
         dr = vmax * dt
         dθ = 2 * sin(0.5 * dr / r)
         goal = c + [cos(dθ) -sin(dθ); sin(dθ) cos(dθ)] * dvec
     elseif mode == :MOVE_TANGENT
-        vec = c - pos # vector from pos to circle center
-        ψ = asin(r / norm(vec)) # yaw angle of right tangent line
-        dθ = π / 2 - ψ # CCW angular offset to tangent point
+        vec = c - pos  # vector from pos to circle center
+        ψ = asin(r / norm(vec))  # yaw angle of right tangent line
+        dθ = π / 2 - ψ  # CCW angular offset to tangent point
         dvec = normalize(pos - c) * r
         goal = c + [cos(dθ) -sin(dθ); sin(dθ) cos(dθ)] * dvec
-        # if goal causes intersection with another circle, choose waypoint instead
+        # If goal causes intersection with another circle, choose waypoint instead
         new_id, _, _ = get_closest_interfering_circle(policy, circles, pos, goal)
         if !(new_id === nothing || new_id == id)
             policy.mode = :MOVE_TOWARD_GOAL
@@ -192,7 +186,7 @@ function tangent_bug_policy!(policy, circles, pos, nominal_goal, parent_step_act
     else
         throw(ErrorException("Unknown controller mode $mode"))
     end
-    # compute desired velocity
+    # Compute desired velocity
     vec = goal - pos
     if norm(vec) > vmax * dt
         vel = vmax * normalize(vec)
@@ -200,7 +194,6 @@ function tangent_bug_policy!(policy, circles, pos, nominal_goal, parent_step_act
         vel = vec / dt
     end
     policy.cmd = Twist(SVector(vel[1:2]..., 0.0), SVector(0.0, 0.0, 0.0))
-    # @show mode, dmin
     return goal
 end
 

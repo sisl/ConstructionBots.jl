@@ -7,13 +7,13 @@
 
 abstract type DeconflictStrategy end
 
-# TODO(tashakim): refine method to set default agent properties 
+# TODO(tashakim): Refine method to set default agent properties 
 # that are dependent on the type of deconflict strategies used. 
 # I.e., this method should replace rvo_default_neighbor_distance,
 # rvo_default_min_neighbor_distance etc.
 function set_agent_properties(deconflict_strategies)
     if in(:RVO, deconflict_strategies)
-        # TODO(tashakim): consider if these fields should be part of 
+        # TODO(tashakim): Consider if these fields should be part of 
         # DeconflictStrategy type.
         set_rvo_default_neighbor_distance!(16 * default_robot_radius())
         set_rvo_default_min_neighbor_distance!(10 * default_robot_radius())
@@ -127,8 +127,7 @@ end
 get_agent_max_speed(::RobotNode) = DEFAULT_MAX_SPEED
 function get_agent_max_speed(node)
     rect = get_base_geom(node, HyperrectangleKey())
-    vol = LazySets.volume(rect)
-    # Speed limited by volume
+    vol = LazySets.volume(rect)  # speed limited by volume
     vmax = DEFAULT_MAX_SPEED
     delta_v = vol * DEFAULT_MAX_SPEED_VOLUME_FACTOR
     return max(vmax - delta_v, DEFAULT_MIN_MAX_SPEED)
@@ -177,12 +176,8 @@ function get_vmax(node, env)
     # of full_demo.jl), but currently relies on RVO fields. A new method should
     # be implemented that enables computing vmax without using any RVO fields 
     # so that vmax can be computed for any deconfliction strategy.
-
-    # if in(:RVO, deconflict_strategies)
+    @debug "Maximum speed of node for deconfliction strategy $(deconflict_strategies: vmax)"
     vmax = get_agent_max_speed(node)
-    # end
-
-    # @debug "Maximum speed of node for deconfliction strategy $(deconflict_strategies: vmax)"
     return vmax
 end
 

@@ -3,7 +3,9 @@ VALID_ID_COUNTERS = Dict{DataType,Int}()
 INVALID_ID_COUNTERS = Dict{DataType,Int}()
 
 abstract type AbstractRobotType end
+
 struct DeliveryBot <: AbstractRobotType end
+
 const DefaultRobotType = DeliveryBot
 
 abstract type AbstractID end
@@ -88,6 +90,7 @@ mutable struct CachedElement{E}
     is_up_to_date::Bool
     timestamp::Float64
 end
+
 CachedElement(element, flag) = CachedElement(element, flag, time())
 CachedElement(element) = CachedElement(element, false)
 
@@ -109,7 +112,6 @@ Outputs:
     returns `true` if vertex v has no inneighbors
 """
 is_root_node(G, v) = indegree(G, v) == 0
-
 
 """
 is_terminal_node(G, v)
@@ -149,7 +151,6 @@ function get_all_terminal_nodes(G)
     return root_nodes
 end
 
-
 """
     get_element(n::CachedElement)
 
@@ -180,6 +181,7 @@ function set_up_to_date!(n::CachedElement, val::Bool = true)
 
     n.is_up_to_date = val
 end
+
 """
     set_element!(n::CachedElement,g)
 
@@ -189,6 +191,7 @@ function set_element!(n::CachedElement, g)
 
     n.element = g
 end
+
 """
     set_time_stamp!(n::CachedElement,t=time())
 
@@ -198,6 +201,7 @@ function set_time_stamp!(n::CachedElement, t = time())
 
     n.timestamp = t
 end
+
 """
     update_element!(n::CachedElement,g)
 
@@ -223,6 +227,7 @@ Base.convert(::Type{CachedElement{T}}, e::CachedElement) where {T} =
     CachedElement{T}(get_element(e), is_up_to_date(e), time())
 
 const cached_element_accessor_interface = [:is_up_to_date, :time_stamp]
+
 const cached_element_mutator_interface =
     [:update_element!, :set_time_stamp!, :set_element!, :set_up_to_date!]
 
@@ -235,7 +240,6 @@ cross_product_operator(x) = SMatrix{3,3}([
 wrap_to_2pi(θ) = mod(θ, 2π)
 
 """
-
     wrap_to_pi(θ₀)
 
 wraps the angle θ₀ to a value in (-π,π]
@@ -272,26 +276,31 @@ function get_unique_id(::Type{T}) where {T}
     VALID_ID_COUNTERS[T] += 1
     return T(id)
 end
+
 function reset_id_counter!(::Type{T}) where {T}
     global VALID_ID_COUNTERS
     VALID_ID_COUNTERS[T] = 1
 end
+
 function reset_all_id_counters!()
     global VALID_ID_COUNTERS
     for k in collect(keys(VALID_ID_COUNTERS))
         reset_id_counter!(k)
     end
 end
+
 function get_unique_invalid_id(::Type{T}) where {T}
     global INVALID_ID_COUNTERS
     id = get!(INVALID_ID_COUNTERS, T, -1)
     INVALID_ID_COUNTERS[T] -= 1
     return T(id)
 end
+
 function reset_invalid_id_counter!(::Type{T}) where {T}
     global INVALID_ID_COUNTERS
     INVALID_ID_COUNTERS[T] = -1
 end
+
 function reset_all_invalid_id_counters!()
     global INVALID_ID_COUNTERS
     for k in collect(keys(INVALID_ID_COUNTERS))
@@ -319,7 +328,6 @@ E is element type, ID is id type
 """
 abstract type AbstractTreeNode{ID} end
 _id_type(n::AbstractTreeNode{ID}) where {ID} = ID
-
 node_id(node::AbstractTreeNode) = node.id
 get_parent(n::AbstractTreeNode) = n.parent
 get_children(n::AbstractTreeNode) = n.children
@@ -346,7 +354,7 @@ end
 Return the root node of a tree
 """
 function get_root_node(n::AbstractTreeNode)
-    # identify the root of the tree
+    # Identify the root of the tree
     ids = Set{AbstractID}()
     node = n
     parent_id = nothing
@@ -360,7 +368,6 @@ function get_root_node(n::AbstractTreeNode)
     end
     return node
 end
-
 
 """
     validate_tree(n::AbstractTreeNode)
@@ -545,8 +552,9 @@ Set "up to date" status of n to val.
 function set_cached_node_up_to_date!(n::CachedTreeNode, val = true, propagate = true)
     old_val = is_up_to_date(cached_element(n))
     set_up_to_date!(cached_element(n), val)
-    # propagate "outdated" signal up the tree
-    if propagate && old_val # reduce the amount of wasted forward propagation of "out-of-date" flag
+    # Propagate "outdated" signal up the tree
+    # Reduce the amount of wasted forward propagation of "out-of-date" flag
+    if propagate && old_val
         for (id, child) in get_children(n)
             set_cached_node_up_to_date!(child, false, propagate)
         end
@@ -562,12 +570,14 @@ Propagate information up the tree from n.
 function propagate_backward!(n::CachedTreeNode, args...)
     propagate_backward!(n, get_parent(n), args...)
 end
+
 """
     propagate_backward!(child::CachedTreeNode,parent::CachedTreeNode,args...)
 
 Propagate information from child to parent.
 """
 propagate_backward!(child::CachedTreeNode, parent::CachedTreeNode, args...) = nothing
+
 """
     propagate_forward!(n::CachedTreeNode,args...)
 
@@ -579,6 +589,7 @@ function propagate_forward!(n::CachedTreeNode, args...)
     end
     return n
 end
+
 """
     propagate_forward!(parent::CachedTreeNode,child::CachedTreeNode,args...)
 
@@ -610,7 +621,7 @@ nodes if necessary.
 """
 function get_cached_value!(n::CachedTreeNode)
     if !cached_node_up_to_date(n)
-        propagate_forward!(get_parent(n), n) # retrieve relevant info from parent
+        propagate_forward!(get_parent(n), n)  # retrieve relevant info from parent
     end
     get_element(cached_element(n))
 end
@@ -654,7 +665,6 @@ fields:
 - `inedges   ::Vector{Dict{Int,E}}`
 """
 abstract type AbstractCustomNEGraph{G,N,E,ID} <: AbstractCustomNGraph{G,N,ID} end
-
 const AbstractCustomNDiGraph{N,ID} = AbstractCustomNGraph{Graphs.DiGraph,N,ID}
 const AbstractCustomNEDiGraph{N,E,ID} = AbstractCustomNEGraph{Graphs.DiGraph,N,E,ID}
 
@@ -671,6 +681,7 @@ const AbstractCustomTree = Union{AbstractCustomNTree,AbstractCustomNETree}
 _graph_type(::AbstractCustomNGraph{G,N,ID}) where {G,N,ID} = G
 _node_type(::AbstractCustomNGraph{G,N,ID}) where {G,N,ID} = N
 _id_type(::AbstractCustomNGraph{G,N,ID}) where {G,N,ID} = ID
+
 """
     get_graph(g::AbstractCustomNGraph{G,N,ID})
 
@@ -678,27 +689,28 @@ return the underlying graph of type `G`.
 """
 get_graph(g::AbstractCustomGraph) = g.graph
 get_graph(g::Graphs.AbstractGraph) = g
+
 """
     get_vtx_ids(g::AbstractCustomNGraph{G,N,ID})
 
 return the vector `Vector{ID}` of `g`'s unique vertex ids.
 """
 get_vtx_ids(g::AbstractCustomNGraph) = g.vtx_ids
+
 """
     get_vtx_map(g::AbstractCustomNGraph{G,N,ID})
 
 return a data structure (e.g, a 'Dict{ID,Int}') mapping node id to node index.
 """
 get_vtx_map(g::AbstractCustomNGraph) = g.vtx_map
+
 """
     get_nodes(g::AbstractCustomNGraph{G,N,ID})
 
 Return the vector `Vector{N}` of `g`'s nodes.
 """
 get_nodes(g::AbstractCustomNGraph) = g.nodes
-
 Base.zero(g::G) where {G<:AbstractCustomNGraph} = G(graph = _graph_type(g)())
-
 get_vtx(g::AbstractCustomNGraph, v::Int) = v
 get_vtx(g::AbstractCustomNGraph{G,N,ID}, id::ID) where {G,N,ID} =
     get(get_vtx_map(g), id, -1)
@@ -757,6 +769,7 @@ Returns the ID of the source node of an edge. Part of the required interface for
 edges in an `AbstractCustomNEGraph`.
 """
 edge_source(edge) = edge.src
+
 """
     edge_target(edge)
 
@@ -764,6 +777,7 @@ Returns the ID of the target node of an edge. Part of the required interface for
 edges in an `AbstractCustomNEGraph`.
 """
 edge_target(edge) = edge.dst
+
 """
     edge_val(edge)
 
@@ -772,12 +786,12 @@ edges in an `AbstractCustomNEGraph`.
 """
 edge_val(edge) = edge.val
 
-
 function set_vtx_map!(g::AbstractCustomNGraph, node, id, v::Int)
     @assert nv(g) >= v
     get_vtx_map(g)[id] = v
     get_nodes(g)[v] = node
 end
+
 function insert_to_vtx_map!(g::AbstractCustomNGraph, node, id, idx::Int = nv(g))
     push!(get_vtx_ids(g), id)
     push!(get_nodes(g), node)
@@ -808,6 +822,7 @@ function add_node!(g::AbstractCustomNGraph{G,N,ID}, node::N, id::ID) where {G,N,
     add_edge_lists!(g)
     node
 end
+
 """
     make_node(g::AbstractCustomNGraph{G,N,ID},val,id)
 
@@ -817,7 +832,6 @@ for whatever custom node type is used.
 function make_node end
 add_node!(g::AbstractCustomNGraph{G,N,ID}, val, id::ID) where {G,N,ID} =
     add_node!(g, make_node(g, val, id), id)
-# add_node!(g::AbstractCustomNEGraph{G,N,E,ID},val,id::ID) where {G,N,E,ID} = add_node!(g,make_node(g,val,id),id)
 add_node!(g::AbstractCustomNGraph, val, id) = add_node!(g, make_node(g, val, id))
 replace_node!(g::AbstractCustomNGraph{G,N,ID}, val, id::ID) where {G,N,ID} =
     replace_node!(g, make_node(g, val, id), id)
@@ -888,7 +902,7 @@ function rem_node!(g::AbstractCustomNGraph{G,N,ID}, id::ID) where {G,N,ID}
     if v <= nv(g)
         get_vtx_map(g)[get_vtx_ids(g)[v]] = v
     end
-    delete_from_edge_lists!(g, v) # no effect except for AbstractCustomNEGraph
+    delete_from_edge_lists!(g, v)  # no effect except for AbstractCustomNEGraph
     g
 end
 rem_node!(g::AbstractCustomNGraph, v) = rem_node!(g, get_vtx_id(g, v))
@@ -929,20 +943,24 @@ custom edge associated with `u → v`.
 out_edges(g::AbstractCustomNEGraph) = g.outedges
 out_edges(g::AbstractCustomNEGraph, v) = out_edges(g)[get_vtx(g, v)]
 out_edge(g::AbstractCustomNEGraph, u, v) = out_edges(g, u)[get_vtx(g, v)]
+
 function get_edge(g::AbstractCustomNEGraph, u, v)
     @assert has_edge(g, u, v) "Edge $u → $v does not exist."
     return out_edge(g, u, v)
 end
+
 get_edge(g::AbstractCustomNEGraph, edge) = get_edge(g, edge_source(edge), edge_target(edge))
 Graphs.has_edge(g::AbstractCustomNEGraph, e) = has_edge(g, edge_source(e), edge_target(e))
-
 add_edge_lists!(g::AbstractCustomNGraph) = g
+
 function add_edge_lists!(g::AbstractCustomNEGraph{G,N,E,ID}) where {G,N,E,ID}
     push!(g.outedges, Dict{Int,E}())
     push!(g.inedges, Dict{Int,E}())
     return g
 end
+
 delete_from_edge_lists!(g::AbstractCustomNGraph, v::Int) = g
+
 function delete_from_edge_lists!(g::AbstractCustomNEGraph, v::Int)
     swap_with_end_and_delete!(in_edges(g), v)
     swap_with_end_and_delete!(out_edges(g), v)
@@ -969,17 +987,15 @@ function add_custom_edge!(
 
     return false
 end
+
 add_custom_edge!(g::AbstractCustomNEGraph, edge) =
     add_custom_edge!(g, edge_source(edge), edge_target(edge), edge)
-
-
 add_custom_edge!(g::AbstractCustomNGraph, edge) =
     add_custom_edge!(g, edge_source(edge), edge_target(edge))
 add_custom_edge!(g::AbstractCustomNGraph, u, v) =
     add_edge!(get_graph(g), get_vtx(g, u), get_vtx(g, v))
 add_custom_edge!(g::AbstractCustomNGraph, u, v, args...) = add_custom_edge!(g, u, v)
-
-Graphs.add_edge!(g::AbstractCustomGraph, args...) = add_custom_edge!(g, args...) # no custom edge type here
+Graphs.add_edge!(g::AbstractCustomGraph, args...) = add_custom_edge!(g, args...)  # no custom edge type here
 
 """
     make_edge(g::G,u,v,val) where {G}
@@ -996,10 +1012,13 @@ function make_edge(g::G, u, v, val) where {G}
                          - implement `GraphUtils.make_edge(g,u,v,val)`
                          """))
 end
+
 make_edge(g, u, v) = make_edge(g, u, v, nothing)
+
 function add_custom_edge!(g::AbstractCustomNEGraph, u, v, val)
     add_custom_edge!(g, u, v, make_edge(g, u, v, val))
 end
+
 function add_custom_edge!(g::AbstractCustomNEGraph, u, v)
     add_custom_edge!(g, u, v, make_edge(g, u, v))
 end
@@ -1012,8 +1031,10 @@ function replace_edge!(g::AbstractCustomNEGraph{G,N,E,ID}, u, v, edge::E) where 
     @warn "graph does not have edge $u → $v"
     return false
 end
+
 replace_edge!(g::AbstractCustomNEGraph, u, v, val) =
     replace_edge!(g, u, v, make_edge(g, u, v, val))
+
 function replace_edge!(
     g::AbstractCustomNEGraph{G,N,E,ID},
     old_edge,
@@ -1031,6 +1052,7 @@ function delete_edge!(g::AbstractCustomNEGraph, u, v)
     @warn "Cannot remove edge $u → $v. Does it exist?"
     return false
 end
+
 delete_edge!(g::AbstractCustomNGraph, u, v) =
     rem_edge!(get_graph(g), get_vtx(g, u), get_vtx(g, v))
 delete_edge!(g, edge) = delete_edge!(g, edge_source(edge), edge_target(edge))
@@ -1051,7 +1073,6 @@ function add_custom_edge!(g::AbstractCustomTree, u, v)
     add_edge!(get_graph(g), get_vtx(g, u), get_vtx(g, v))
 end
 
-
 """
     CustomGraph
 
@@ -1061,8 +1082,9 @@ An example concrete subtype of `AbstractCustomNGraph`.
     graph::G = G()
     nodes::Vector{N} = Vector{N}()
     vtx_map::Dict{ID,Int} = Dict{ID,Int}()
-    vtx_ids::Vector{ID} = Vector{ID}() # maps vertex uid to actual graph node
+    vtx_ids::Vector{ID} = Vector{ID}()  # maps vertex uid to actual graph node
 end
+
 const CustomNDiGraph{N,ID} = CustomNGraph{DiGraph,N,ID}
 
 """
@@ -1078,6 +1100,7 @@ Custom graph type with custom edge and node types.
     inedges::Vector{Dict{Int,E}} = Vector{Dict{Int,E}}()
     outedges::Vector{Dict{Int,E}} = Vector{Dict{Int,E}}()
 end
+
 const CustomNEDiGraph{N,E,ID} = CustomNEGraph{N,E,ID}
 
 """
@@ -1117,7 +1140,9 @@ struct CustomNode{N,ID}
     id::ID
     val::N
 end
+
 CustomNode{N,ID}(id::ID) where {N,ID} = CustomNode{N,ID}(id, N())
+
 function make_node(
     g::AbstractCustomNGraph{G,CustomNode{N,ID},ID},
     val::N,
@@ -1138,7 +1163,9 @@ struct CustomEdge{E,ID}
     dst::ID
     val::E
 end
+
 CustomEdge{E,ID}(id1::ID, id2::ID) where {E,ID} = CustomEdge{E,ID}(id1, id2, E())
+
 function make_edge(
     g::AbstractCustomNEGraph{G,N,CustomEdge{E,ID},ID},
     u,
@@ -1152,7 +1179,6 @@ const NGraph{G,N,ID} = CustomNGraph{G,CustomNode{N,ID},ID}
 const NEGraph{G,N,E,ID} = CustomNEGraph{G,CustomNode{N,ID},CustomEdge{E,ID},ID}
 const NTree{N,ID} = CustomNTree{CustomNode{N,ID},ID}
 const NETree{N,E,ID} = CustomNETree{CustomNode{N,ID},CustomEdge{E,ID},ID}
-
 for T in (:CustomNGraph, :CustomNTree)
     @eval begin
         function Base.convert(
@@ -1186,7 +1212,6 @@ for T in (:CustomNEGraph, :CustomNETree)
     end
 end
 
-
 """
 	matches_template(template,node)
 
@@ -1196,11 +1221,8 @@ matches_template(template::Type{T}, node::Type{S}) where {T,S} = S <: T
 matches_template(template::Type{T}, node::S) where {T,S} = S <: T
 matches_template(template, node) = matches_template(typeof(template), node)
 matches_template(template::Tuple, node) = any(map(t -> matches_template(t, node), template))
-
 matches_template(template::Type{T}, n::CustomNode) where {T} =
     matches_template(template, node_val(n))
-
-
 
 """
 	depth_first_search(graph,v,goal_function,expand_function,
@@ -1284,7 +1306,6 @@ function transplant!(graph, old_graph, id)
     add_node!(graph, get_node(old_graph, id), id)
 end
 
-
 """
     backup_descendants(g::AbstractCustomNGraph{G,N,ID},template)
 
@@ -1350,8 +1371,10 @@ function collect_subtree(graph, v, dir = :out, keep = true)
     end
     descendants
 end
+
 collect_subtree(graph, vec::AbstractVector{Int}, args...) =
     collect_subtree(graph, Set{Int}(vec), args...)
+
 function collect_subtree(graph, starts::Set{Int}, dir = :out, keep = true)
     frontier = Set{Int}(starts)
     explored = Set{Int}()
@@ -1375,6 +1398,7 @@ end
 	collect_descendants(graph,v) = collect_subtree(graph,v,:out)
 """
 collect_descendants(graph, v, keep = false) = collect_subtree(graph, v, :out, keep)
+
 """
 	collect_ancestors(graph,v) = collect_subtree(graph,v,:in)
 """
@@ -1411,7 +1435,6 @@ Identifies the types (and how many) of eligible successors to `node`
 Return type: `Dict{DataType,Int}`
 """
 function eligible_successors end
-
 
 """
 	num_required_predecessors(node)
@@ -1488,7 +1511,6 @@ function validate_edge(a, b)
 end
 
 validate_edge(n1::CustomNode, n2) = validate_edge(node_val(n1), n2)
-
 validate_edge(n1::CustomNode, n2::CustomNode) = validate_edge(n1, node_val(n2))
 for op in [
     :required_successors,
@@ -1499,7 +1521,7 @@ for op in [
     @eval $op(n::CustomNode) = $op(node_val(n))
 end
 
-# extending the validation interface to allow dispatch on graph type
+# Extend the validation interface to allow dispatch on graph type
 for op in [
     :required_successors,
     :required_predecessors,
@@ -1599,6 +1621,7 @@ abstract type AbstractBFSIterator end
 Base.IteratorSize(::AbstractBFSIterator) = Base.SizeUnknown()
 Base.IteratorEltype(::AbstractBFSIterator) = Base.HasEltype()
 Base.eltype(::AbstractBFSIterator) = Int
+
 function Base.iterate(iter::AbstractBFSIterator, v = nothing)
     if !(v === nothing)
         update_iterator!(iter, v)
@@ -1615,12 +1638,14 @@ end
     frontier::Set{Int} = get_all_root_nodes(graph)
     next_frontier::Set{Int} = Set{Int}()
     explored::Vector{Bool} = _indicator_vec(nv(graph), frontier)
-    replace::Bool = false # if true, allow nodes to reused
+    replace::Bool = false  # if true, allow nodes to reused
 end
+
 BFSIterator(graph) = BFSIterator(graph = graph)
 BFSIterator(graph, frontier) = BFSIterator(graph = graph, frontier = frontier)
 Base.pop!(iter::BFSIterator) = pop!(iter.frontier)
 Base.isempty(iter::BFSIterator) = isempty(iter.frontier)
+
 function update_iterator!(iter::BFSIterator, v)
     iter.explored[v] = true
     for vp in outneighbors(iter.graph, v)
@@ -1640,14 +1665,18 @@ end
     frontier::Vector{Int} = sort(collect(get_all_root_nodes(graph)))
     next_frontier::Vector{Int} = Vector{Int}()
     explored::Vector{Bool} = _indicator_vec(nv(graph), frontier)
-    replace::Bool = false # if true, allow nodes to reused
+    replace::Bool = false  # if true, allow nodes to reused
 end
+
 SortedBFSIterator(graph) = SortedBFSIterator(graph = graph)
 SortedBFSIterator(graph, frontier) = SortedBFSIterator(graph = graph, frontier = frontier)
+
 function Base.pop!(iter::SortedBFSIterator)
     v = popfirst!(iter.frontier)
 end
+
 Base.isempty(iter::SortedBFSIterator) = isempty(iter.frontier)
+
 function update_iterator!(iter::SortedBFSIterator, v)
     iter.explored[v] = true
     for vp in outneighbors(iter.graph, v)

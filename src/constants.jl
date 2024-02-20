@@ -1,4 +1,4 @@
-# simulation constants
+# Simulation constants
 const DEFAULT_MAX_SPEED_VOLUME_FACTOR = 0.01
 const DEFAULT_MAX_SPEED = 4.0
 const DEFAULT_MIN_MAX_SPEED = 1.0
