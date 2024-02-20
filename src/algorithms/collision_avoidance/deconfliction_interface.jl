@@ -1,11 +1,14 @@
+abstract type DeconflictStrategy end
+
 # TODO(tashakim): Import deconfliction algorithm implementations once
 # complete.
+include("reciprocal_velocity_obstacle.jl")
+include("tangent_bug_policy.jl")
+include("potential_fields.jl")
 
 # TODO(tashakim): Replace `deconflict_strategies` from an indicator string
 # to a Vector{DeconflictionStrategy} type after redefining deconfliction common
 # methods, e.g. update_env_with_deconfliction
-
-abstract type DeconflictStrategy end
 
 # TODO(tashakim): Refine method to set default agent properties 
 # that are dependent on the type of deconflict strategies used. 

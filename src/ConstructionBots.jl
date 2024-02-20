@@ -38,9 +38,6 @@ include("graph_utils_essentials.jl")
 include("taskgraphs_components.jl")
 include("hierarchical_geom_essentials.jl")
 include("construction_schedule.jl")
-# TODO(tashakim): Remove rvo_interface import by replacing all
-# functionality with the deconfliction_interface instead.
-include("rvo_interface.jl")
 include("task_assignment.jl")
 include("graph_plotting.jl")
 include("render_tools.jl")
