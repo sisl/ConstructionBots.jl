@@ -33,16 +33,19 @@ using ECOS, GLPK, Gurobi, HiGHS
 # Generate graphical plots
 using Compose, Measures, MeshCat
 
+# TODO(tashakim): Refactor common structs or methods like `PlannerEnv`, so that
+# ordering of imports do not depend on file dependencies. Common structs and 
+# methods should be defined directly in ConstructionBots main module file.
 include("constants.jl")
-include("graph_utils_essentials.jl")
-include("taskgraphs_components.jl")
-include("hierarchical_geom_essentials.jl")
+include("utils/graph_utils_essentials.jl")
+include("utils/taskgraphs_essentials.jl")
+include("utils/hierarchical_geom_essentials.jl")
 include("construction_schedule.jl")
 include("task_assignment.jl")
 include("graph_plotting.jl")
-include("render_tools.jl")
+include("utils/render_tools.jl")
 include("route_planning.jl")
-include("demo_utils.jl")
+include("utils/demo_utils.jl")
 
 ################################################################################
 ############################ Constructing Model Tree ###########################
