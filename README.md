@@ -46,7 +46,8 @@ pkg> build
 Individual part geometry is needed for all features. The parts library can be downloaded from [LDraw™ Parts Library](https://library.ldraw.org/updates?latest). Place the unzipped library in your desired path. The default path assumed by LDrawParser is `joinpath(homedir(), "Documents/ldraw")`. It is recommended to download the complete library (~80 MB zipped, ~450 MB unzipped). If you did not place the parts library in the default path, you can change the path LDrawParser uses by the `set_part_library_dir!` command.
 
 ### RVO
-The RVO2 library is used for collision avoidance. ConstructionBots uses a Python API to interact with RVO2 library. The modified version of RVO2 that integrates dynamic priorities can be found at https://github.com/sisl/Python-RVO2.
+The RVO2 library can be used for collision avoidance. ConstructionBots uses a Python API to interact with the RVO2 library. The modified version of RVO2 that integrates dynamic priorities can be found at https://github.com/sisl/Python-RVO2. Note this step is only required if `RVO` is specified as a 
+deconflict strategy, e.g. deconflict_strategies = [:RVO].
 
 To install the RVO2 library:
 ```bash
