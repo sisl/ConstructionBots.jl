@@ -97,7 +97,7 @@ year = {2023}
 ## Functions
 
 ```@docs
-    run_lego_demo()
+    run_demo()
     list_projects()
     get_project_params
 ```

@@ -10,7 +10,7 @@ let
     assignment_mode = :greedy  # :milp :greedy :milp_w_greedy_warm_start
     write_results = false
     overwrite_results = false
-    env, stats = run_lego_demo(;
+    env, stats = run_demo(;
         ldraw_file = project_params[:file_name],
         project_name = project_params[:project_name],
         model_scale = project_params[:model_scale],
@@ -39,7 +39,7 @@ let
     assignment_mode = :milp  # :greedy :milp_w_greedy_warm_start
     write_results = true
     overwrite_results = true
-    env, stats = run_lego_demo(;
+    env, stats = run_demo(;
         ldraw_file = project_params[:file_name],
         project_name = project_params[:project_name],
         model_scale = project_params[:model_scale],
@@ -72,7 +72,7 @@ let
     assignment_mode = :milp_w_greedy_warm_start
     write_results = true
     overwrite_results = true
-    env, stats = run_lego_demo(;
+    env, stats = run_demo(;
         ldraw_file = project_params[:file_name],
         project_name = project_params[:project_name],
         model_scale = project_params[:model_scale],

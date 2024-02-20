@@ -175,10 +175,10 @@ end
 
 # Return the maximum speed of a node based on its type and volume.
 function get_vmax(node, env)
-    # TODO(tashakim): Computing vmax is necessary for simulation (See line 566 
-    # of full_demo.jl), but currently relies on RVO fields. A new method should
-    # be implemented that enables computing vmax without using any RVO fields 
-    # so that vmax can be computed for any deconfliction strategy.
+    # TODO(tashakim): Computing vmax is necessary for simulation to run, but 
+    # currently relies on RVO fields. A new method should be implemented that
+    # enables computing vmax without using any RVO fields so that vmax can be 
+    # computed for any deconfliction strategy.
     @debug "Maximum speed of node for deconfliction strategy $(deconflict_strategies: vmax)"
     vmax = get_agent_max_speed(node)
     return vmax
