@@ -1,5 +1,14 @@
 using PyCall
 
+mutable struct ReciprocalVelocityObstacle <: DeconflictStrategy
+    name::String="ReciprocalVelocityObstacle"
+    # TODO(tashakim): store relevant fields
+end
+
+function perform_twist_deconfliction(ReciprocalVelocityObstacle, params)
+    # TODO(tashakim): implement this method
+end
+
 struct IntWrapper idx::Int end
 
 function ensure_rvo_python_module_loaded!()

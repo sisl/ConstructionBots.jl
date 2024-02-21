@@ -1,5 +1,6 @@
 struct CustomPolicy <: DeconflictStrategy
     # Add fields for your custom policy
+    name::String="CustomPolicy"
     custom_field_1::Float64
     custom_field_2::Type
 end

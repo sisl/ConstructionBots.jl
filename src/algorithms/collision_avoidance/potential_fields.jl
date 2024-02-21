@@ -1,5 +1,14 @@
 abstract type Potential end
 
+mutable struct Dispersion <: DeconflictStrategy
+    name::String="Dispersion"
+    # TODO(tashakim): store relevant fields
+end
+
+function perform_twist_deconfliction(Dispersion, params)
+    # TODO(tashakim): implement this method
+end
+
 potential(v::Vector, x) = sum(potential(p, x) for p in v)
 potential_gradient(v, x) = ForwardDiff.gradient(x -> potential(v, x), x)
 potential_gradient(v::Vector, x) = sum(potential_gradient(p, x) for p in v)
