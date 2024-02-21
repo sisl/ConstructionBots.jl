@@ -5,6 +5,7 @@ abstract type DeconflictStrategy end
 include("reciprocal_velocity_obstacle.jl")
 include("tangent_bug_policy.jl")
 include("potential_fields.jl")
+include("custom_policy.jl")
 
 # TODO(tashakim): Replace `deconflict_strategies` from an indicator string
 # to a Vector{DeconflictionStrategy} type after redefining deconfliction common
