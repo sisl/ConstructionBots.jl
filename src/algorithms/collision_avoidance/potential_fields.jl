@@ -1,6 +1,6 @@
 abstract type Potential end
 
-mutable struct Dispersion <: DeconflictStrategy
+@with_kw mutable struct Dispersion <: DeconflictStrategy
     name::String="Dispersion"
     # TODO(tashakim): store relevant fields
 end

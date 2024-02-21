@@ -1,6 +1,6 @@
 using PyCall
 
-mutable struct ReciprocalVelocityObstacle <: DeconflictStrategy
+@with_kw mutable struct ReciprocalVelocityObstacle <: DeconflictStrategy
     name::String="ReciprocalVelocityObstacle"
     # TODO(tashakim): store relevant fields
 end
