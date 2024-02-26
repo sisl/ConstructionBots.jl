@@ -173,24 +173,6 @@ function set_default_rotational_loading_speed!(val::Float64)
     global ROTATIONAL_LOADING_SPEED = val
 end
 
-function simulate!(env; max_time_steps = 2000)
-    @unpack sched, cache = env
-    iters = 0
-    for k = 1:max_time_steps
-        iters = k
-        if mod(k, 100) == 0
-            @info " ******************* BEGINNING TIME STEP $k: $(length(cache.closed_set))/$(nv(sched)) nodes closed *******************"
-        end
-        step_environment!(env)
-        update_planning_cache!(env, 0.0)
-        if project_complete(env)
-            println("PROJECT COMPLETE!")
-            break
-        end
-    end
-    return project_complete(env), iters
-end
-
 function get_active_pos(env::PlannerEnv)
     pos_dict = Dict{Int,Vector{Float64}}()
     for v in env.cache.active_set
