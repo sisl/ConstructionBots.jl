@@ -37,12 +37,11 @@ using Compose, Measures, MeshCat
 # ordering of imports do not depend on file dependencies. Common structs and 
 # methods should be defined directly in ConstructionBots main module file.
 include("constants.jl")
-include("utils/graph_utils_essentials.jl")
-include("utils/taskgraphs_essentials.jl")
-include("utils/hierarchical_geom_essentials.jl")
-include("construction_schedule.jl")
+include("utils/graph_utils.jl")
+include("utils/taskgraphs_components.jl")
+include("utils/hierarchical_geometry.jl")
+include("schedule_construction.jl")
 include("task_assignment.jl")
-include("utils/graph_plotting.jl")
 include("utils/render_tools.jl")
 include("route_planning.jl")
 include("utils/demo_utils.jl")
