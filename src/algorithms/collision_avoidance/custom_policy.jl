@@ -1,10 +1,11 @@
+# Use this file to implement your custom deconfliction algorithm
+export CustomPolicy
+
 @with_kw mutable struct CustomPolicy <: DeconflictStrategy
-    # Add fields for your custom policy
-    name::String="CustomPolicy"
-    custom_field_1::Float64=0.0
-    custom_field_2::Int64=0
+    name::String = "CustomName"
+    # Add your fields here
 end
 
-function perform_twist_deconfliction(CustomPolicy, params)
-    # Implement this method
+function update_twists_with_deconfliction(policy::CustomPolicy, params_to_update)
+    # Implement your method updating an agent's velocity at a single timestep
 end
