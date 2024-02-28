@@ -406,7 +406,7 @@ end
 """Add agents to simulation based on the deconfliction algorithm used."""
 function add_agents_to_simulation!(scene_tree, env)
     if env.deconfliction_type isa ReciprocalVelocityObstacle
-        return rvo_add_agents!(scene_tree)
+        return rvo_add_agents!(env, scene_tree)
     else
         @debug "No new agents to add for deconfliction type: 
         $(join(env.deconfliction_type.name, ", "))"

@@ -184,9 +184,9 @@ ConstructionBots.set_default_rotational_loading_speed!(
     50 * ConstructionBots.default_robot_radius(),
 )
 ConstructionBots.set_staging_buffer_radius!(ConstructionBots.default_robot_radius()) # for tangent_bug policy
-ConstructionBots.set_rvo_default_neighbor_distance!(
-    16 * ConstructionBots.default_robot_radius(),
-)
+# ConstructionBots.set_rvo_default_neighbor_distance!(
+#     16 * ConstructionBots.default_robot_radius(),
+# )
 ConstructionBots.set_rvo_default_min_neighbor_distance!(
     10 * ConstructionBots.default_robot_radius(),
 )
