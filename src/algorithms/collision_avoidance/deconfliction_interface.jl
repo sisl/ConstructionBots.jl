@@ -7,9 +7,7 @@ include("tangent_bug_policy.jl")
 include("potential_fields.jl")
 include("custom_policy.jl")
 
-const supported_deconfliction_options = Dict(
-    :RVO => ReciprocalVelocityObstacle()
-)
+const supported_deconfliction_options = Dict(:RVO => ReciprocalVelocityObstacle())
 
 function set_agent_properties(deconfliction_type)
     if deconfliction_type isa ReciprocalVelocityObstacle
@@ -93,7 +91,7 @@ function set_agent_pref_velocity!(env, node, desired_velocity)
     if env.deconfliction_type isa ReciprocalVelocityObstacle
         return rvo_set_agent_pref_velocity!(node, desired_velocity)
     else
-        if matches_template(Union{RobotGo, TransportUnitGo}, node)
+        if matches_template(Union{RobotGo,TransportUnitGo}, node)
             node.desired_twist = desired_velocity
         end
     end
@@ -103,7 +101,7 @@ function get_agent_pref_velocity(env, agent)
     if env.deconfliction_type isa ReciprocalVelocityObstacle
         return rvo_get_agent_pref_velocity(entity(agent))
     else
-        if matches_template(Union{RobotGo, TransportUnitGo}, agent)
+        if matches_template(Union{RobotGo,TransportUnitGo}, agent)
             return agent.node.desired_twist
         end
     end

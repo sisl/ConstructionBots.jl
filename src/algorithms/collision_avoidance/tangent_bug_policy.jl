@@ -1,17 +1,17 @@
 export TangentBugPolicy
 
 @with_kw mutable struct TangentBugPolicy <: DeconflictStrategy
-    name::String="TangentBugPolicy"
-    mode::Symbol=:MOVE_TOWARD_GOAL
-    vmax::Float64=1.0
-    dt::Float64=1/40.0
-    proximity_tolerance::Float64=1e-2
-    agent_radius::Float64=0.5
-    planning_radius::Float64=2 * agent_radius
-    detour_horizon::Float64=2 * planning_radius
-    buffer::Float64=staging_buffer_radius()
-    config::Any=identity_linear_map()
-    cmd::Twist=Twist(SVector(0.0, 0.0, 0.0), SVector(0.0, 0.0, 0.0))
+    name::String = "TangentBugPolicy"
+    mode::Symbol = :MOVE_TOWARD_GOAL
+    vmax::Float64 = 1.0
+    dt::Float64 = 1 / 40.0
+    proximity_tolerance::Float64 = 1e-2
+    agent_radius::Float64 = 0.5
+    planning_radius::Float64 = 2 * agent_radius
+    detour_horizon::Float64 = 2 * planning_radius
+    buffer::Float64 = staging_buffer_radius()
+    config::Any = identity_linear_map()
+    cmd::Twist = Twist(SVector(0.0, 0.0, 0.0), SVector(0.0, 0.0, 0.0))
 end
 
 function perform_twist_deconfliction(TangentBugPolicy, params)

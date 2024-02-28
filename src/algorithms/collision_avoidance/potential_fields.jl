@@ -1,7 +1,7 @@
 abstract type Potential end
 
 @with_kw mutable struct Dispersion <: DeconflictStrategy
-    name::String="Dispersion"
+    name::String = "Dispersion"
     # TODO(tashakim): store relevant fields
 end
 
@@ -147,13 +147,7 @@ end
 Combines a cone potential and a 1/||x|| barrier potential for pairwise
 repulsion.
 """
-function repulsion_potential(
-    x,
-    r,
-    x2,
-    r2;
-    dr = 2 * default_robot_radius(),
-)
+function repulsion_potential(x, r, x2, r2; dr = 2 * default_robot_radius())
     dx = x .- x2
     R = r + r2
     # Cone
@@ -206,10 +200,7 @@ function dist_to_nearest_active_agent(policy::PotentialFieldController, env)
     return id, shortest_dist
 end
 
-function update_dist_to_nearest_active_agent!(
-    policy::PotentialFieldController,
-    env,
-)
+function update_dist_to_nearest_active_agent!(policy::PotentialFieldController, env)
     id, dist = dist_to_nearest_active_agent(policy, env)
     policy.dist_to_nearest_active_agent = dist
 end

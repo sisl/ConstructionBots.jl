@@ -1,26 +1,28 @@
 using PyCall
 
 @with_kw mutable struct ReciprocalVelocityObstacle <: DeconflictStrategy
-    name::String="ReciprocalVelocityObstacle"
-    dt::Float64=1/40.0
-    max_speed::Float64=DEFAULT_MAX_SPEED
-    max_speed_volume_factor::Float64=DEFAULT_MAX_SPEED_VOLUME_FACTOR
-    min_max_speed::Float64=DEFAULT_MIN_MAX_SPEED
-    default_time_step::Float64=DEFAULT_TIME_STEP
-    neighbor_distance::Float64=DEFAULT_NEIGHBOR_DISTANCE
-    min_neighbor_distance::Float64=DEFAULT_MINIMUM_NEIGHBOR_DISTANCE
-    max_neighbors::Int=5
-    horizon::Float64=2.0
-    horizon_obst::Float64=1.0
-    default_radius::Float64=0.5
-    default_velocity::Tuple{Float64, Float64}=(0.0, 0.0)
+    name::String = "ReciprocalVelocityObstacle"
+    dt::Float64 = 1 / 40.0
+    max_speed::Float64 = DEFAULT_MAX_SPEED
+    max_speed_volume_factor::Float64 = DEFAULT_MAX_SPEED_VOLUME_FACTOR
+    min_max_speed::Float64 = DEFAULT_MIN_MAX_SPEED
+    default_time_step::Float64 = DEFAULT_TIME_STEP
+    neighbor_distance::Float64 = DEFAULT_NEIGHBOR_DISTANCE
+    min_neighbor_distance::Float64 = DEFAULT_MINIMUM_NEIGHBOR_DISTANCE
+    max_neighbors::Int = 5
+    horizon::Float64 = 2.0
+    horizon_obst::Float64 = 1.0
+    default_radius::Float64 = 0.5
+    default_velocity::Tuple{Float64,Float64} = (0.0, 0.0)
 end
 
 function perform_twist_deconfliction(ReciprocalVelocityObstacle, params)
     # TODO(tashakim): implement this method
 end
 
-struct IntWrapper idx::Int end
+struct IntWrapper
+    idx::Int
+end
 
 function ensure_rvo_python_module_loaded!()
     if rvo_python_module() === nothing
@@ -98,7 +100,7 @@ end
 global RVO_SIM_WRAPPER = CachedElement{Any}(nothing, false, time())
 rvo_global_sim_wrapper() = RVO_SIM_WRAPPER
 
-function rvo_set_new_sim!(env, sim=rvo_new_sim(env))
+function rvo_set_new_sim!(env, sim = rvo_new_sim(env))
     ensure_rvo_python_module_loaded!()
     set_element!(rvo_global_sim_wrapper(), sim)
 end
