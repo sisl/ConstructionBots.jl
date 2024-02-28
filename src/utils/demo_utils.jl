@@ -359,3 +359,56 @@ function get_object_vtx(scene_tree, obstacles, max_cargo_height, num_layers, rob
 
     return vtxs
 end
+
+"""Update the simulation environment by specifying new agent properties."""
+function update_simulation_environment(env)
+    if env.deconfliction_type isa ReciprocalVelocityObstacle
+        rvo_set_new_sim!()
+    else
+        @debug "No simulation environment update required for deconfliction 
+        type: $(join(env.deconfliction_type.name, ", "))"
+    end
+end
+
+function update_simulation!(env)
+    if env.deconfliction_type isa ReciprocalVelocityObstacle
+        update_rvo_sim!(env)
+    else
+        @debug "No simulation update required for deconfliction type: 
+        $(join(env.deconfliction_type.name, ", "))"
+    end
+end
+
+function update_agent_position_in_sim!(env, agent)
+    if env.deconfliction_type isa ReciprocalVelocityObstacle
+        pt = rvo_get_agent_position(agent)
+        @assert has_parent(agent, agent) "agent $(node_id(agent)) should be its own parent"
+        set_local_transform!(
+            agent,
+            CoordinateTransformations.Translation(pt[1], pt[2], 0.0),
+        )
+        if !isapprox(
+            norm(global_transform(agent).translation[1:2] .- pt),
+            0.0;
+            rtol = 1e-6,
+            atol = 1e-6,
+        )
+            @warn "Agent $node_id(agent) should be at $pt but is at 
+            $(global_transform(agent).translation[1:2])"
+        end
+        return global_transform(agent)
+    else
+        @debug "No agent position updated in simulation for deconfliction 
+        type: $(join(env.deconfliction_type.name, ", "))"
+    end
+end
+
+"""Add agents to simulation based on the deconfliction algorithm used."""
+function add_agents_to_simulation!(scene_tree, env)
+    if env.deconfliction_type isa ReciprocalVelocityObstacle
+        return rvo_add_agents!(scene_tree)
+    else
+        @debug "No new agents to add for deconfliction type: 
+        $(join(env.deconfliction_type.name, ", "))"
+    end
+end
