@@ -11,16 +11,12 @@ const supported_deconfliction_options = Dict(
     :RVO => ReciprocalVelocityObstacle()
 )
 
-# TODO(tashakim): Refine method to set default agent properties 
-# that are dependent on the type of deconflict strategies used. 
-# I.e., this method should replace rvo_default_neighbor_distance,
-# rvo_default_min_neighbor_distance etc.
 function set_agent_properties(deconfliction_type)
     if deconfliction_type isa ReciprocalVelocityObstacle
         # TODO(tashakim): Consider if these fields should be part of 
         # DeconflictStrategy type.
-        deconfliction_type.neighbor_distance = (16 * default_robot_radius())
-        set_rvo_default_min_neighbor_distance!(10 * default_robot_radius())
+        deconfliction_type.neighbor_distance = 16 * default_robot_radius()
+        deconfliction_type.min_neighbor_distance = 10 * default_robot_radius()
     else
         @debug "No agent properties set for deconfliction type: 
         $(join(env.deconfliction_type.name, ", "))"

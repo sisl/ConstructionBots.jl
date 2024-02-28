@@ -7,7 +7,7 @@ using PyCall
     min_max_speed::Float64=1.0
     default_time_step::Float64=1/40.0
     neighbor_distance::Float64=DEFAULT_NEIGHBOR_DISTANCE
-    default_min_neighbor_distance::Float64=1.0
+    min_neighbor_distance::Float64=DEFAULT_MINIMUM_NEIGHBOR_DISTANCE
     # TODO(tashakim): add relevant fields
 end
 
@@ -128,22 +128,12 @@ end
 """ get_rvo_radius(node) """
 get_rvo_radius(node) = get_base_geom(node, HypersphereKey()).radius
 
-global RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE = 1.0
-
-function rvo_default_min_neighbor_distance()
-    RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE
-end
-
-function set_rvo_default_min_neighbor_distance!(val)
-    global RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE = val
-end
-
 function get_rvo_neighbor_distance(env, node)
     ensure_rvo_python_module_loaded!()
     d = env.deconfliction_type.neighbor_distance
     v_ratio = get_rvo_max_speed(node) / DEFAULT_MAX_SPEED
     delta_d = v_ratio * DEFAULT_NEIGHBORHOOD_VELOCITY_SCALE_FACTOR
-    d = max(d - delta_d, rvo_default_min_neighbor_distance())
+    d = max(d - delta_d, env.deconfliction_type.min_neighbor_distance)
 end
 
 function rvo_add_agent!(env, agent::Union{RobotNode,TransportUnitNode}, sim)
