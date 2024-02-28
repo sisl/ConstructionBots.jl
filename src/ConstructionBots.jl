@@ -147,6 +147,8 @@ function run_demo(;
 )
     process_animation_tasks =
         save_animation || save_animation_along_the_way || open_animation_at_end
+    # TODO(tashakim): Remove hardcoded value, make multiple strategies work
+    deconfliction_type = supported_deconfliction_options[:RVO]
     if in(:RVO, deconflict_strategies) && !in(:Dispersion, deconflict_strategies)
         @warn "RVO is enabled but dispersion is disabled. This is not recommended."
     end
@@ -278,7 +280,7 @@ function run_demo(;
     ConstructionBots.set_default_loading_speed!(50 * default_robot_radius())
     ConstructionBots.set_default_rotational_loading_speed!(50 * default_robot_radius())
     ConstructionBots.set_staging_buffer_radius!(default_robot_radius()) # for tangent_bug policy
-    set_agent_properties(deconflict_strategies)
+    set_agent_properties(deconfliction_type)
     # Set default optimizer for staging layout
     ConstructionBots.set_default_geom_optimizer!(ECOS.Optimizer)
     ConstructionBots.set_default_geom_optimizer_attributes!(MOI.Silent() => true)
@@ -628,7 +630,7 @@ function run_demo(;
             cargo_id(entity(n)).id for
             n in get_nodes(tg_sched) if matches_template(TransportUnitGo, n)
         ]),
-        deconflict_strategies = deconflict_strategies,
+        deconfliction_type = deconfliction_type,
     )
     update_simulation_environment(env)
     add_agents_to_simulation!(scene_tree, env)
@@ -636,7 +638,7 @@ function run_demo(;
     # TODO(tashakim): Update route planning to use DeconflictionStrategy
 
     # Configure collision avoidance strategies for route planning 
-    set_use_deconfliction(deconflict_strategies)
+    set_use_deconfliction(deconfliction_type)
     anim = nothing
     if process_animation_tasks
         print("Animating preprocessing step...")

@@ -179,7 +179,7 @@ end
     static_potentials = (x, r) -> 0.0
 end
 
-function dist_to_nearest_active_agent(policy::PotentialFieldController, env::PlannerEnv)
+function dist_to_nearest_active_agent(policy::PotentialFieldController, env)
     @unpack scene_tree, sched, cache = env
     agent = policy.agent
     pos = project_to_2d(global_transform(agent).translation)
@@ -208,7 +208,7 @@ end
 
 function update_dist_to_nearest_active_agent!(
     policy::PotentialFieldController,
-    env::PlannerEnv,
+    env,
 )
     id, dist = dist_to_nearest_active_agent(policy, env)
     policy.dist_to_nearest_active_agent = dist
@@ -286,7 +286,7 @@ function pairwise_potential_width(policy::PotentialFieldController, α1, α2)
     end
 end
 
-function compute_potential_gradient!(policy::PotentialFieldController, env::PlannerEnv, pos)
+function compute_potential_gradient!(policy::PotentialFieldController, env, pos)
     @unpack scene_tree, sched = env
     agent = policy.agent
     dp = static_potential_gradient(policy, pos)
@@ -316,7 +316,7 @@ function compute_potential_gradient!(policy::PotentialFieldController, env::Plan
     end
     return dp
 end
-function compute_velocity_command!(policy::PotentialFieldController, env::PlannerEnv, pos)
+function compute_velocity_command!(policy::PotentialFieldController, env, pos)
     dp = compute_potential_gradient!(policy::PotentialFieldController, env, pos)
     vel = clip_velocity(-1.0 * dp, policy.vmax)
     return vel

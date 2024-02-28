@@ -11,8 +11,8 @@ export PlannerEnv,
     set_use_deconfliction,
     use_rvo
 
-function set_use_deconfliction(deconflict_strategies)
-    if in(:RVO, deconflict_strategies)
+function set_use_deconfliction(deconfliction_type)
+    if deconfliction_type isa ReciprocalVelocityObstacle
         global USE_RVO = true
     else
         global USE_RVO = false
@@ -85,6 +85,8 @@ function integrate_twist(twist, dt)
     return Δ
 end
 
+include("algorithms/collision_avoidance/deconfliction_interface.jl")
+
 """
     PlannerEnv
 
@@ -104,7 +106,7 @@ Contains the Environment state and definition.
     staging_buffers::Dict{AbstractID,Float64} = Dict{AbstractID,Float64}()  # dynamic buffer for staging areas
     max_robot_go_id::Int64 = Inf
     max_cargo_id::Int64 = Inf
-    deconflict_strategies::Vector{Symbol} = [:Nothing]
+    deconfliction_type::DeconflictStrategy = nothing
 end
 
 node_is_active(env, node) = get_vtx(env.sched, node_id(node)) in env.cache.active_set
@@ -501,8 +503,6 @@ function swap_positions!(agent1, agent2)
 end
 
 function query_policy_for_goal! end
-
-include("algorithms/collision_avoidance/deconfliction_interface.jl")
 
 """
     circle_avoidance_policy()
