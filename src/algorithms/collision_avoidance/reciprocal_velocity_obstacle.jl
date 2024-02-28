@@ -2,13 +2,18 @@ using PyCall
 
 @with_kw mutable struct ReciprocalVelocityObstacle <: DeconflictStrategy
     name::String="ReciprocalVelocityObstacle"
-    max_speed::Float64=4.0
-    max_speed_volume_factor::Float64=0.01
-    min_max_speed::Float64=1.0
-    default_time_step::Float64=1/40.0
+    dt::Float64=1/40.0
+    max_speed::Float64=DEFAULT_MAX_SPEED
+    max_speed_volume_factor::Float64=DEFAULT_MAX_SPEED_VOLUME_FACTOR
+    min_max_speed::Float64=DEFAULT_MIN_MAX_SPEED
+    default_time_step::Float64=DEFAULT_TIME_STEP
     neighbor_distance::Float64=DEFAULT_NEIGHBOR_DISTANCE
     min_neighbor_distance::Float64=DEFAULT_MINIMUM_NEIGHBOR_DISTANCE
-    # TODO(tashakim): add relevant fields
+    max_neighbors::Int=5
+    horizon::Float64=2.0
+    horizon_obst::Float64=1.0
+    default_radius::Float64=0.5
+    default_velocity::Tuple{Float64, Float64}=(0.0, 0.0)
 end
 
 function perform_twist_deconfliction(ReciprocalVelocityObstacle, params)
@@ -75,36 +80,25 @@ function reset_rvo_python_module!()
     set_rvo_python_module!(pyimport("rvo2"))
 end
 
-function rvo_new_sim(;
-    dt::Float64 = 1 / 40.0,
-    # TODO(tashakim): Store neighbor_dist, max_neighbors, horizon, 
-    # horizon_obst, radius as fields in RVO state
-    neighbor_dist::Float64 = 2.0,
-    max_neighbors::Int = 5,
-    horizon::Float64 = 2.0,
-    horizon_obst::Float64 = 1.0,
-    radius::Float64 = 0.5,
-    max_speed::Float64 = DEFAULT_MAX_SPEED,
-    default_vel = (0.0, 0.0),
-)
+function rvo_new_sim(env)
     reset_rvo_python_module!()
     rvo_reset_agent_map!()
     rvo_python_module().PyRVOSimulator(
-        dt,
-        neighbor_dist,
-        max_neighbors,
-        horizon,
-        horizon_obst,
-        radius,
-        max_speed,
-        default_vel,
+        env.deconfliction_type.dt,
+        env.deconfliction_type.neighbor_distance,
+        env.deconfliction_type.max_neighbors,
+        env.deconfliction_type.horizon,
+        env.deconfliction_type.horizon_obst,
+        env.deconfliction_type.default_radius,
+        env.deconfliction_type.max_speed,
+        env.deconfliction_type.default_velocity,
     )
 end
 
 global RVO_SIM_WRAPPER = CachedElement{Any}(nothing, false, time())
 rvo_global_sim_wrapper() = RVO_SIM_WRAPPER
 
-function rvo_set_new_sim!(sim = rvo_new_sim())
+function rvo_set_new_sim!(env, sim=rvo_new_sim(env))
     ensure_rvo_python_module_loaded!()
     set_element!(rvo_global_sim_wrapper(), sim)
 end
@@ -236,7 +230,7 @@ function update_rvo_sim!(env)
     active_nodes = [get_node(sched, v) for v in cache.active_set]
     if rvo_sim_needs_update(scene_tree)
         @info "New RVO simulation"
-        rvo_set_new_sim!()
+        rvo_set_new_sim!(env)
         rvo_add_agents!(env, scene_tree)
         for node in active_nodes
             set_rvo_priority!(env, node)

@@ -363,7 +363,7 @@ end
 """Update the simulation environment by specifying new agent properties."""
 function update_simulation_environment(env)
     if env.deconfliction_type isa ReciprocalVelocityObstacle
-        rvo_set_new_sim!()
+        rvo_set_new_sim!(env)
     else
         @debug "No simulation environment update required for deconfliction 
         type: $(join(env.deconfliction_type.name, ", "))"
