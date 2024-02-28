@@ -313,27 +313,7 @@ function compute_velocity_command!(policy::PotentialFieldController, env, pos)
     return vel
 end
 
-@with_kw mutable struct PotentialController
-    x = nothing # state
-    v = nothing # velocity
-    circ_idx = -1      # index of circle that robot may enter
-    goal = nothing # goal position
-    p = nothing # potential function
-    dp = nothing # gradient of potential function
-    radius = nothing # radius
-    vmax = 1.0
-end
-
 ROBOT_RADIUS = 0.5
-
-@with_kw mutable struct GlobalPotentialController
-    robot_controllers = Dict()
-    goal_potentials = Dict()
-    circle_potentials = Dict()
-    collision_potentials = Dict()
-    path_potentials = Dict()
-    INTERACTION_RANGE = 5 * ROBOT_RADIUS
-end
 
 function update_potential_controllers!(controller)
     for (k, robot) in controller.robot_controllers
