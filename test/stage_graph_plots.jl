@@ -22,7 +22,7 @@ save_animation_at_end = false
 anim_active_agents = false
 anim_active_areas = false
 update_anim_at_every_step = false
-deconflict_strategies = [:RVO, :TangentBugPolicy, :Dispersion]
+deconflict_strategies = [:RVO, :TangentBugPolicy, :PotentialFields]
 assignment_mode = :greedy
 write_results = false
 overwrite_results = false
@@ -64,7 +64,7 @@ ignore_rot_matrix_warning = true
 rng::Random.AbstractRNG = Random.MersenneTwister(1)
 process_animation_tasks =
     save_animation || save_animation_along_the_way || open_animation_at_end
-if in(:RVO, deconflict_strategies) && !in(:Dispersion, deconflict_strategies)
+if in(:RVO, deconflict_strategies) && !in(:PotentialFields, deconflict_strategies)
     @warn "RVO is enabled but dispersion is disabled. This is not recommended."
 end
 # Record statistics
@@ -130,10 +130,10 @@ if in(:TangentBugPolicy, deconflict_strategies)
 else
     prefix = string(prefix, "_no-TangentBug")
 end
-if in(:Dispersion, deconflict_strategies)
-    prefix = string(prefix, "_Dispersion")
+if in(:PotentialFields, deconflict_strategies)
+    prefix = string(prefix, "_PotentialFields")
 else
-    prefix = string(prefix, "_no-Dispersion")
+    prefix = string(prefix, "_no-PotentialFields")
 end
 soln_str_pre = ""
 if assignment_mode == :milp

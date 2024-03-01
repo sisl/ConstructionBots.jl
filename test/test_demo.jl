@@ -6,7 +6,7 @@ let
     save_animation_at_end = true
     anim_active_agents = true
     anim_active_areas = true
-    deconflict_strategies = [:RVO, :TangentBugPolicy, :Dispersion]
+    deconflict_strategies = [:RVO, :TangentBugPolicy, :PotentialFields]
     assignment_mode = :greedy  # :milp :greedy :milp_w_greedy_warm_start
     write_results = false
     overwrite_results = false

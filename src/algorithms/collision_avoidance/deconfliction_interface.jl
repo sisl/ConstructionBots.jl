@@ -34,8 +34,8 @@ function update_env_with_deconfliction(env)
                     vmax = vmax,
                     agent_radius = agent_radius,
                 ) : nothing,
-                dispersion_policy = env.deconfliction_type isa Dispersion ?
-                                    ConstructionBots.PotentialFieldController(
+                dispersion_policy = env.deconfliction_type isa PotentialFields ?
+                                    ConstructionBots.PotentialFields(
                     agent = n,
                     node = node,
                     agent_radius = agent_radius,
