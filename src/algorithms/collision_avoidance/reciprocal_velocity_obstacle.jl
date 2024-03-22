@@ -1,28 +1,15 @@
 using PyCall
 
 @with_kw mutable struct ReciprocalVelocityObstacle <: DeconflictStrategy
-    name::String = "ReciprocalVelocityObstacle"
-    dt::Float64 = 1 / 40.0
-    max_speed::Float64 = DEFAULT_MAX_SPEED
-    max_speed_volume_factor::Float64 = DEFAULT_MAX_SPEED_VOLUME_FACTOR
-    min_max_speed::Float64 = DEFAULT_MIN_MAX_SPEED
-    default_time_step::Float64 = DEFAULT_TIME_STEP
-    neighbor_distance::Float64 = DEFAULT_NEIGHBOR_DISTANCE
-    min_neighbor_distance::Float64 = DEFAULT_MINIMUM_NEIGHBOR_DISTANCE
-    max_neighbors::Int = 5
-    horizon::Float64 = 2.0
-    horizon_obst::Float64 = 1.0
-    default_radius::Float64 = 0.5
-    default_velocity::Tuple{Float64,Float64} = (0.0, 0.0)
+    name::String="ReciprocalVelocityObstacle"
+    # TODO(tashakim): store relevant fields
 end
 
 function perform_twist_deconfliction(ReciprocalVelocityObstacle, params)
     # TODO(tashakim): implement this method
 end
 
-struct IntWrapper
-    idx::Int
-end
+struct IntWrapper idx::Int end
 
 function ensure_rvo_python_module_loaded!()
     if rvo_python_module() === nothing
@@ -82,25 +69,36 @@ function reset_rvo_python_module!()
     set_rvo_python_module!(pyimport("rvo2"))
 end
 
-function rvo_new_sim(env)
+function rvo_new_sim(;
+    dt::Float64 = 1 / 40.0,
+    # TODO(tashakim): Store neighbor_dist, max_neighbors, horizon, 
+    # horizon_obst, radius as fields in RVO state
+    neighbor_dist::Float64 = 2.0,
+    max_neighbors::Int = 5,
+    horizon::Float64 = 2.0,
+    horizon_obst::Float64 = 1.0,
+    radius::Float64 = 0.5,
+    max_speed::Float64 = DEFAULT_MAX_SPEED,
+    default_vel = (0.0, 0.0),
+)
     reset_rvo_python_module!()
     rvo_reset_agent_map!()
     rvo_python_module().PyRVOSimulator(
-        env.deconfliction_type.dt,
-        env.deconfliction_type.neighbor_distance,
-        env.deconfliction_type.max_neighbors,
-        env.deconfliction_type.horizon,
-        env.deconfliction_type.horizon_obst,
-        env.deconfliction_type.default_radius,
-        env.deconfliction_type.max_speed,
-        env.deconfliction_type.default_velocity,
+        dt,
+        neighbor_dist,
+        max_neighbors,
+        horizon,
+        horizon_obst,
+        radius,
+        max_speed,
+        default_vel,
     )
 end
 
 global RVO_SIM_WRAPPER = CachedElement{Any}(nothing, false, time())
 rvo_global_sim_wrapper() = RVO_SIM_WRAPPER
 
-function rvo_set_new_sim!(env, sim = rvo_new_sim(env))
+function rvo_set_new_sim!(sim = rvo_new_sim())
     ensure_rvo_python_module_loaded!()
     set_element!(rvo_global_sim_wrapper(), sim)
 end
@@ -124,19 +122,38 @@ end
 """ get_rvo_radius(node) """
 get_rvo_radius(node) = get_base_geom(node, HypersphereKey()).radius
 
-function get_rvo_neighbor_distance(env, node)
-    ensure_rvo_python_module_loaded!()
-    d = env.deconfliction_type.neighbor_distance
-    v_ratio = get_rvo_max_speed(node) / DEFAULT_MAX_SPEED
-    delta_d = v_ratio * DEFAULT_NEIGHBORHOOD_VELOCITY_SCALE_FACTOR
-    d = max(d - delta_d, env.deconfliction_type.min_neighbor_distance)
+global RVO_DEFAULT_NEIGHBOR_DISTANCE = 2.0
+global RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE = 1.0
+
+function rvo_default_neighbor_distance()
+    RVO_DEFAULT_NEIGHBOR_DISTANCE
 end
 
-function rvo_add_agent!(env, agent::Union{RobotNode,TransportUnitNode}, sim)
+function set_rvo_default_neighbor_distance!(val)
+    global RVO_DEFAULT_NEIGHBOR_DISTANCE = val
+end
+
+function rvo_default_min_neighbor_distance()
+    RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE
+end
+
+function set_rvo_default_min_neighbor_distance!(val)
+    global RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE = val
+end
+
+function get_rvo_neighbor_distance(node)
+    ensure_rvo_python_module_loaded!()
+    d = rvo_default_neighbor_distance()
+    v_ratio = get_rvo_max_speed(node) / DEFAULT_MAX_SPEED
+    delta_d = v_ratio * DEFAULT_NEIGHBORHOOD_VELOCITY_SCALE_FACTOR
+    d = max(d - delta_d, rvo_default_min_neighbor_distance())
+end
+
+function rvo_add_agent!(agent::Union{RobotNode,TransportUnitNode}, sim)
     ensure_rvo_python_module_loaded!()
     rad = get_rvo_radius(agent) * 1.05 # Add a little bit of padding for visualization
     max_speed = get_rvo_max_speed(agent)
-    neighbor_dist = get_rvo_neighbor_distance(env, agent)
+    neighbor_dist = get_rvo_neighbor_distance(agent)
     pt = project_to_2d(global_transform(agent).translation)
     agent_idx = sim.addAgent((pt[1], pt[2]))
     set_rvo_id_map!(node_id(agent), agent_idx)
@@ -192,16 +209,16 @@ for T in (:RobotStart, :RobotGo, :FormTransportUnit, :TransportUnitGo, :DepositC
 end
 rvo_eligible_node(n) = false
 
-function rvo_add_agents!(env, scene_tree, sim = rvo_global_sim())
+function rvo_add_agents!(scene_tree, sim = rvo_global_sim())
     ensure_rvo_python_module_loaded!()
     for node in get_nodes(scene_tree)
         if matches_template(RobotNode, node)
             if is_root_node(scene_tree, node)
-                idx = rvo_add_agent!(env, node, sim)
+                idx = rvo_add_agent!(node, sim)
             end
         elseif matches_template(TransportUnitNode, node)
             if is_in_formation(node, scene_tree)
-                idx = rvo_add_agent!(env, node, sim)
+                idx = rvo_add_agent!(node, sim)
             end
         end
     end
@@ -232,8 +249,8 @@ function update_rvo_sim!(env)
     active_nodes = [get_node(sched, v) for v in cache.active_set]
     if rvo_sim_needs_update(scene_tree)
         @info "New RVO simulation"
-        rvo_set_new_sim!(env)
-        rvo_add_agents!(env, scene_tree)
+        rvo_set_new_sim!()
+        rvo_add_agents!(scene_tree)
         for node in active_nodes
             set_rvo_priority!(env, node)
         end

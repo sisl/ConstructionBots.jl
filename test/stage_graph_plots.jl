@@ -22,7 +22,7 @@ save_animation_at_end = false
 anim_active_agents = false
 anim_active_areas = false
 update_anim_at_every_step = false
-deconflict_strategies = [:RVO, :TangentBugPolicy, :PotentialFields]
+deconflict_strategies = [:RVO, :TangentBugPolicy, :Dispersion]
 assignment_mode = :greedy
 write_results = false
 overwrite_results = false
@@ -64,7 +64,7 @@ ignore_rot_matrix_warning = true
 rng::Random.AbstractRNG = Random.MersenneTwister(1)
 process_animation_tasks =
     save_animation || save_animation_along_the_way || open_animation_at_end
-if in(:RVO, deconflict_strategies) && !in(:PotentialFields, deconflict_strategies)
+if in(:RVO, deconflict_strategies) && !in(:Dispersion, deconflict_strategies)
     @warn "RVO is enabled but dispersion is disabled. This is not recommended."
 end
 # Record statistics
@@ -130,10 +130,10 @@ if in(:TangentBugPolicy, deconflict_strategies)
 else
     prefix = string(prefix, "_no-TangentBug")
 end
-if in(:PotentialFields, deconflict_strategies)
-    prefix = string(prefix, "_PotentialFields")
+if in(:Dispersion, deconflict_strategies)
+    prefix = string(prefix, "_Dispersion")
 else
-    prefix = string(prefix, "_no-PotentialFields")
+    prefix = string(prefix, "_no-Dispersion")
 end
 soln_str_pre = ""
 if assignment_mode == :milp
@@ -184,12 +184,12 @@ ConstructionBots.set_default_rotational_loading_speed!(
     50 * ConstructionBots.default_robot_radius(),
 )
 ConstructionBots.set_staging_buffer_radius!(ConstructionBots.default_robot_radius()) # for tangent_bug policy
-# ConstructionBots.set_rvo_default_neighbor_distance!(
-#     16 * ConstructionBots.default_robot_radius(),
-# # )
-# ConstructionBots.set_rvo_default_min_neighbor_distance!(
-#     10 * ConstructionBots.default_robot_radius(),
-# )
+ConstructionBots.set_rvo_default_neighbor_distance!(
+    16 * ConstructionBots.default_robot_radius(),
+)
+ConstructionBots.set_rvo_default_min_neighbor_distance!(
+    10 * ConstructionBots.default_robot_radius(),
+)
 # Set default optimizer for staging layout
 ConstructionBots.set_default_geom_optimizer!(ECOS.Optimizer)
 ConstructionBots.set_default_geom_optimizer_attributes!(MOI.Silent() => true)
