@@ -293,10 +293,10 @@ function compute_potential_gradient!(policy::PotentialFieldController, env::Plan
     @unpack scene_tree, sched = env
     agent = policy.agent
     dp = static_potential_gradient(policy, pos)
-    α1 = rvo_get_agent_alpha(agent)
+    α1 = get_agent_alpha(env.deconfliction_type, agent)
     for other_agent in rvo_active_agents(scene_tree)
         if !(agent === other_agent)
-            α2 = rvo_get_agent_alpha(other_agent)
+            α2 = get_agent_alpha(env.deconfliction_type, other_agent)
             if α1 <= α2 # can't be pushed by other agent
                 continue
             end

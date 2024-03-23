@@ -462,11 +462,9 @@ function swap_carrying_positions!(
         # Swap positions in rvo_sim as well
         # TODO(tashakim): Get position from node instead of directly from 
         # rvo_get_agent_position (and below)
-        if env.deconfliction_type isa ReciprocalVelocityObstacle
-            tmp = rvo_get_agent_position(agent)
-            rvo_set_agent_position!(agent, rvo_get_agent_position(other_agent))
-            rvo_set_agent_position!(other_agent, tmp)
-        end
+        tmp = get_agent_position(env.deconfliction_type, agent)
+        set_agent_position!(env.deconfliction_type, agent, get_agent_position(env.deconfliction_type, other_agent))
+        set_agent_position!(env.deconfliction_type, other_agent, tmp)
     end
     return agent_node
 end
@@ -893,16 +891,6 @@ function apply_cmd!(node::Union{TransportUnitGo,RobotGo}, twist::Twist, env::Pla
     end
 end
 
-# Update the simulation environment by specifying new agent properties.
-function update_simulation_environment(env)
-    if env.deconfliction_type isa ReciprocalVelocityObstacle
-        rvo_set_new_sim!()
-    else
-        @debug "No simulation environment update required for deconfliction 
-        strategy: $(join(env.deconflict_strategies, ", "))"
-    end
-end
-
 function update_simulation!(env)
     if env.deconfliction_type isa ReciprocalVelocityObstacle
         update_rvo_sim!(env)
@@ -914,7 +902,7 @@ end
 
 function update_agent_position_in_sim!(env, agent)
     if env.deconfliction_type isa ReciprocalVelocityObstacle
-        pt = rvo_get_agent_position(agent)
+        pt = get_agent_position(env.deconfliction_type, agent)
         @assert has_parent(agent, agent) "agent $(node_id(agent)) should be its own parent"
         set_local_transform!(
             agent,
@@ -933,15 +921,5 @@ function update_agent_position_in_sim!(env, agent)
     else
         @debug "No agent position updated in simulation for deconfliction 
         strategy: $(join(env.deconflict_strategies, ", "))"
-    end
-end
-
-# Add agents to simulation based on the deconfliction algorithm used.
-function add_agents_to_simulation!(scene_tree, env)
-    if env.deconfliction_type isa ReciprocalVelocityObstacle
-        return rvo_add_agents!(scene_tree)
-    else
-        @debug "No new agents to add for deconfliction strategy: 
-        $(join(env.deconflict_strategies, ", "))"
     end
 end

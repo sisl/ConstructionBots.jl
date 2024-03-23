@@ -33,9 +33,6 @@ using ECOS, GLPK, Gurobi, HiGHS
 # Generate graphical plots
 using Compose, Measures, MeshCat
 
-# TODO(tashakim): Refactor common structs or methods like `PlannerEnv`, so that
-# ordering of imports do not depend on file dependencies. Common structs and 
-# methods should be defined directly in ConstructionBots main module file.
 include("constants.jl")
 include("utils/graph_utils.jl")
 include("utils/taskgraphs_components.jl")
@@ -641,7 +638,7 @@ function run_demo(;
         deconflict_strategies = deconflict_strategies,
         deconfliction_type = deconfliction_type,
     )
-    update_env_with_deconfliction(scene_tree, env)
+    update_env_with_deconfliction(deconfliction_type, scene_tree, env)
     anim = nothing
     if process_animation_tasks
         print("Animating preprocessing step...")

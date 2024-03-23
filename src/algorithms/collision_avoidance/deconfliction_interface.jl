@@ -1,17 +1,19 @@
 abstract type DeconflictStrategy end
 
-# TODO(tashakim): Import deconfliction algorithm implementations once
-# complete.
 include("reciprocal_velocity_obstacle.jl")
 include("tangent_bug_policy.jl")
 include("potential_fields.jl")
 include("custom_policy.jl")
 
+@with_kw mutable struct NoDeconfliction <: DeconflictStrategy
+    name::String = "NoDeconfliction"
+end
+
 const supported_deconfliction_options = Dict(
     :RVO => ReciprocalVelocityObstacle(),
     :TangentBugPolicy => TangentBugPolicy(),
     :PotentialFields => PotentialFields(),
-    :Nothing => Nothing,
+    :None => NoDeconfliction(),
 )
 
 # Interface methods
@@ -22,9 +24,7 @@ function set_agent_properties(d::DeconflictStrategy)
     $(join(env.d.name, ", "))"
 end
 
-function update_env_with_deconfliction(scene_tree, env)
-    update_simulation_environment(env)
-    add_agents_to_simulation!(scene_tree, env)
+function update_env_with_deconfliction(d::DeconflictStrategy, scene_tree, env)
     for node in get_nodes(env.sched)
         if matches_template(Union{RobotStart,FormTransportUnit}, node)
             n = entity(node)
@@ -57,7 +57,7 @@ end
 Adjust the priority of agents to manage their interactions and avoid
 potential gridlocks.
 """
-function set_agent_priority!(d::DeconflictStrategy, env, node)
+function set_agent_priority!(d::DeconflictStrategy, env, agent)
     @debug "set_agent_priority! not implemented for deconfliction type: 
     $(join(env.d.name, ", "))"
 end
@@ -67,26 +67,36 @@ function get_agent_position(d::DeconflictStrategy, agent)
     $(join(env.d.name, ", "))"
 end
 
+function set_agent_position!(d::DeconflictStrategy, agent, pos)
+    @debug "set_agent_position! not implemented for deconfliction type: 
+    $(join(env.d.name, ", "))"
+end
+
 """
 Calculate the maximum speed of a node based on its type and volume.
 """
 get_agent_max_speed(::RobotNode) = DEFAULT_MAX_SPEED
-function get_agent_max_speed(node)
-    rect = get_base_geom(node, HyperrectangleKey())
+function get_agent_max_speed(agent)
+    rect = get_base_geom(agent, HyperrectangleKey())
     vol = LazySets.volume(rect)  # speed limited by volume
     vmax = DEFAULT_MAX_SPEED
     delta_v = vol * DEFAULT_MAX_SPEED_VOLUME_FACTOR
     return max(vmax - delta_v, DEFAULT_MIN_MAX_SPEED)
 end
 
-function set_agent_max_speed!(d::DeconflictStrategy, node, speed)
+function set_agent_max_speed!(d::DeconflictStrategy, agent, speed)
     @debug "set_agent_max_speed! not implemented for deconfliction type: 
     $(join(env.d.name, ", "))"
 end
 
-function set_agent_pref_velocity!(d::DeconflictStrategy, node, desired_velocity)
-    if matches_template(Union{RobotGo, TransportUnitGo}, node)
-        node.desired_twist = desired_velocity
+function get_agent_velocity(d::DeconflictStrategy, agent)
+    @debug "get_agent_velocity! not implemented for deconfliction type: 
+    $(join(env.d.name, ", "))"
+end
+
+function set_agent_pref_velocity!(d::DeconflictStrategy, agent, desired_velocity)
+    if matches_template(Union{RobotGo, TransportUnitGo}, agent)
+        agent.desired_twist = desired_velocity
     end
 end
 
@@ -96,6 +106,11 @@ function get_agent_pref_velocity(d::DeconflictStrategy, agent)
     end
 end
 
-function set_agent_alpha!(d::DeconflictStrategy, node, alpha = 0.5)
-    node.alpha = alpha
+function get_agent_alpha(d::DeconflictStrategy, agent)
+    @debug "get_agent_apha! not implemented for deconfliction type: 
+    $(join(env.d.name, ", "))"
+end
+
+function set_agent_alpha!(d::DeconflictStrategy, agent, alpha = 0.5)
+    agent.alpha = alpha
 end
