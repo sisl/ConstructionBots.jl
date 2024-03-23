@@ -1,35 +1,24 @@
 using PyCall
 
+# Note: A dispersion policy is recommended when using the 
+# ReciprocalVelocityObstacle policy.
 @with_kw mutable struct ReciprocalVelocityObstacle <: DeconflictStrategy
-    name::String="ReciprocalVelocityObstacle"
-    dt::Float64=1/40.0
-    max_speed::Float64=DEFAULT_MAX_SPEED
-    max_speed_volume_factor::Float64=DEFAULT_MAX_SPEED_VOLUME_FACTOR
-    min_max_speed::Float64=DEFAULT_MIN_MAX_SPEED
-    default_time_step::Float64=DEFAULT_TIME_STEP
-    neighbor_distance::Float64=DEFAULT_NEIGHBOR_DISTANCE
-    min_neighbor_distance::Float64=DEFAULT_MINIMUM_NEIGHBOR_DISTANCE
-    max_neighbors::Int=5
-    horizon::Float64=2.0
-    horizon_obst::Float64=1.0
-    default_radius::Float64=0.5
-    default_velocity::Tuple{Float64, Float64}=(0.0, 0.0)
-
-    function ReciprocalVelocityObstacle(name, dt, max_speed, 
-        max_speed_volume_factor, min_max_speed, default_time_step,
-        neighbor_distance, min_neighbor_distance, max_neighbors, horizon,
-        horizon_obst, default_radius, default_velocity)
-        @warn "A dispersion policy is not used but recommended when using 
-        ReciprocalVelocityObstacle policy. You can define custom structs that do
-        this using `custom_policy.jl`."
-
-        return new(name, dt, max_speed, max_speed_volume_factor, min_max_speed,
-        default_time_step, neighbor_distance, min_neighbor_distance,
-        max_neighbors, horizon, horizon_obst, default_radius, default_velocity)
-    end
+    name::String = "ReciprocalVelocityObstacle"
+    dt::Float64 = 1/40.0
+    max_speed::Float64 = DEFAULT_MAX_SPEED
+    max_speed_volume_factor::Float64 = DEFAULT_MAX_SPEED_VOLUME_FACTOR
+    min_max_speed::Float64 = DEFAULT_MIN_MAX_SPEED
+    default_time_step::Float64 = DEFAULT_TIME_STEP
+    neighbor_distance::Float64 = DEFAULT_NEIGHBOR_DISTANCE
+    min_neighbor_distance::Float64 = DEFAULT_MINIMUM_NEIGHBOR_DISTANCE
+    max_neighbors::Int = 5
+    horizon::Float64 = 2.0
+    horizon_obst::Float64 = 1.0
+    default_radius::Float64 = 0.5
+    default_velocity::Tuple{Float64, Float64} = (0.0, 0.0)
 end
 
-function perform_twist_deconfliction(ReciprocalVelocityObstacle, params)
+function perform_twist_deconfliction(r::ReciprocalVelocityObstacle, params)
     sim = rvo_global_sim()
     # params should contain information about all agents to be updated
     for (id, agent_params) in params
@@ -85,20 +74,19 @@ end
 rvo_active_agents(scene_tree) =
     (get_node(scene_tree, node_id(n)) for n in get_nodes(rvo_global_id_map()))
 
-function rvo_new_sim(;
-    dt::Float64 = 1 / 40.0,
-    # TODO(tashakim): Store neighbor_dist, max_neighbors, horizon, 
-    # horizon_obst, radius as fields in RVO state
-    neighbor_dist::Float64 = 2.0,
-    max_neighbors::Int = 5,
-    horizon::Float64 = 2.0,
-    horizon_obst::Float64 = 1.0,
-    radius::Float64 = 0.5,
-    max_speed::Float64 = DEFAULT_MAX_SPEED,
-    default_vel = (0.0, 0.0),
-    rvo_python_module = pyimport("rvo2")
-)
+function rvo_new_sim(env)
     rvo_reset_agent_map!()
+    rvo_instance = env.deconfliction_type
+    dt=rvo_instance.dt
+    neighbor_dist=rvo_instance.neighbor_distance
+    max_neighbors=rvo_instance.max_neighbors
+    horizon=rvo_instance.horizon
+    horizon_obst=rvo_instance.horizon_obst
+    radius=rvo_instance.default_radius
+    max_speed=rvo_instance.max_speed
+    default_vel=rvo_instance.default_velocity
+    rvo_python_module = pyimport("rvo2")
+
     rvo_python_module.PyRVOSimulator(
         dt,
         neighbor_dist,
@@ -114,7 +102,7 @@ end
 global RVO_SIM_WRAPPER = CachedElement{Any}(nothing, false, time())
 rvo_global_sim_wrapper() = RVO_SIM_WRAPPER
 
-function rvo_set_new_sim!(sim = rvo_new_sim())
+function rvo_set_new_sim!(env, sim = rvo_new_sim(env))
     set_element!(rvo_global_sim_wrapper(), sim)
 end
 
@@ -123,30 +111,19 @@ rvo_global_sim() = get_element(rvo_global_sim_wrapper())
 """ get_rvo_radius(node) """
 get_rvo_radius(node) = get_base_geom(node, HypersphereKey()).radius
 
-global RVO_DEFAULT_NEIGHBOR_DISTANCE = 2.0
-global RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE = 1.0
-
-function rvo_default_neighbor_distance()
-    RVO_DEFAULT_NEIGHBOR_DISTANCE
-end
-
 function set_rvo_default_neighbor_distance!(val)
-    global RVO_DEFAULT_NEIGHBOR_DISTANCE = val
-end
-
-function rvo_default_min_neighbor_distance()
-    RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE
+    DEFAULT_NEIGHBOR_DISTANCE = val
 end
 
 function set_rvo_default_min_neighbor_distance!(val)
-    global RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE = val
+    RVO_DEFAULT_MIN_NEIGHBOR_DISTANCE = val
 end
 
 function get_rvo_neighbor_distance(node)
-    d = rvo_default_neighbor_distance()
+    d = DEFAULT_NEIGHBOR_DISTANCE
     v_ratio = get_agent_max_speed(node) / DEFAULT_MAX_SPEED
     delta_d = v_ratio * DEFAULT_NEIGHBORHOOD_VELOCITY_SCALE_FACTOR
-    d = max(d - delta_d, rvo_default_min_neighbor_distance())
+    d = max(d - delta_d, DEFAULT_MINIMUM_NEIGHBOR_DISTANCE)
 end
 
 function rvo_add_agent!(agent::Union{RobotNode,TransportUnitNode}, sim)
@@ -207,7 +184,7 @@ function update_rvo_sim!(env)
     active_nodes = [get_node(sched, v) for v in cache.active_set]
     if rvo_sim_needs_update(scene_tree)
         @info "New RVO simulation"
-        rvo_set_new_sim!()
+        rvo_set_new_sim!(env)
         rvo_add_agents!(scene_tree)
         for node in active_nodes
             set_rvo_priority!(env, node)
@@ -216,7 +193,7 @@ function update_rvo_sim!(env)
 end
 
 function update_env_with_deconfliction(r::ReciprocalVelocityObstacle, scene_tree, env)
-    rvo_set_new_sim!()
+    rvo_set_new_sim!(env)
     rvo_add_agents!(scene_tree)
     for node in get_nodes(env.sched)
         if matches_template(Union{RobotStart,FormTransportUnit}, node)
@@ -229,6 +206,29 @@ function update_env_with_deconfliction(r::ReciprocalVelocityObstacle, scene_tree
             )
         end
     end
+end
+
+function update_simulation!(r::ReciprocalVelocityObstacle, env)
+    update_rvo_sim!(env)
+end
+
+function update_agent_position_in_sim!(r::ReciprocalVelocityObstacle, env, agent)
+    pt = get_agent_position(env.deconfliction_type, agent)
+    @assert has_parent(agent, agent) "agent $(node_id(agent)) should be its own parent"
+    set_local_transform!(
+        agent,
+        CoordinateTransformations.Translation(pt[1], pt[2], 0.0),
+    )
+    if !isapprox(
+        norm(global_transform(agent).translation[1:2] .- pt),
+        0.0;
+        rtol = 1e-6,
+        atol = 1e-6,
+    )
+        @warn "Agent $node_id(agent) should be at $pt but is at 
+        $(global_transform(agent).translation[1:2])"
+    end
+    return global_transform(agent)
 end
 
 # Ideally, we want to set the priority of agents only within a certain region. If we

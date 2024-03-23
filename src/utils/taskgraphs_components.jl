@@ -1,6 +1,6 @@
 # TODO(#32): Consider replacing components with direct imports from TaskGraphs
 
-# Used components from TaskGraphs
+# Note: these file contains components from TaskGraphs
 const path_spec_accessor_interface =
     [:get_t0, :get_tF, :get_slack, :get_local_slack, :get_min_duration, :get_duration]
 const path_spec_mutator_interface =

@@ -16,7 +16,7 @@ anim = JLD2.load(file_dump_location, "anim")
 sim_params = JLD2.load(file_dump_location, "sim_params")
 # Recreate rvo_sim
 ConstructionBots.reset_rvo_python_module!()
-ConstructionBots.rvo_set_new_sim!(ConstructionBots.rvo_new_sim())
+ConstructionBots.rvo_set_new_sim!(ConstructionBots.rvo_global_sim())
 scene_tree = env.scene_tree
 ConstructionBots.rvo_add_agents!(scene_tree)
 # Moddify the sim paramters as desired here

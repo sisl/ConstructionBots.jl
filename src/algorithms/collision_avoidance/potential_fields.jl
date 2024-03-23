@@ -385,3 +385,27 @@ function update_potential_controller!(robot, i, global_controller)  # i is the r
     end
     return robot
 end
+
+function update_env_with_deconfliction(p::PotentialFields, scene_tree, env)
+    for node in get_nodes(env.sched)
+        if matches_template(Union{RobotStart,FormTransportUnit}, node)
+            n = entity(node)
+            agent_radius = get_radius(get_base_geom(n, HypersphereKey()))
+            vmax = get_agent_max_speed(n)
+            env.agent_policies[node_id(n)] = ConstructionBots.VelocityController(
+                nominal_policy = nothing,
+                dispersion_policy = 
+                ConstructionBots.PotentialFieldController(
+                    agent = n,
+                    node = node,
+                    agent_radius = agent_radius,
+                    vmax = vmax,
+                    max_buffer_radius = 2.5 * agent_radius,
+                    interaction_radius = 15 * agent_radius,
+                    static_potentials = (x, r) -> 0.0,
+                    pairwise_potentials = ConstructionBots.repulsion_potential,
+                ),
+            )
+        end
+    end
+end

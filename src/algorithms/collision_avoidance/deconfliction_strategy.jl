@@ -3,6 +3,7 @@ abstract type DeconflictStrategy end
 include("reciprocal_velocity_obstacle.jl")
 include("tangent_bug_policy.jl")
 include("potential_fields.jl")
+include("combined_policy.jl")
 include("custom_policy.jl")
 
 @with_kw mutable struct NoDeconfliction <: DeconflictStrategy
@@ -13,7 +14,9 @@ const supported_deconfliction_options = Dict(
     :RVO => ReciprocalVelocityObstacle(),
     :TangentBugPolicy => TangentBugPolicy(),
     :PotentialFields => PotentialFields(),
-    :None => NoDeconfliction(),
+    :CombinedPolicy => CombinedPolicy(),
+    :Nothing => NoDeconfliction(),
+    # Add new deconfliction strategies here
 )
 
 # Interface methods
@@ -25,32 +28,18 @@ function set_agent_properties(d::DeconflictStrategy)
 end
 
 function update_env_with_deconfliction(d::DeconflictStrategy, scene_tree, env)
-    for node in get_nodes(env.sched)
-        if matches_template(Union{RobotStart,FormTransportUnit}, node)
-            n = entity(node)
-            agent_radius = get_radius(get_base_geom(n, HypersphereKey()))
-            vmax = get_agent_max_speed(n)
-            env.agent_policies[node_id(n)] = ConstructionBots.VelocityController(
-                nominal_policy = in(:TangentBugPolicy, env.deconflict_strategies) ?
-                                 TangentBugPolicy(
-                    dt = env.dt,
-                    vmax = vmax,
-                    agent_radius = agent_radius,
-                ) : nothing,
-                dispersion_policy = in(:PotentialFields, env.deconflict_strategies) ?
-                                    ConstructionBots.PotentialFieldController(
-                    agent = n,
-                    node = node,
-                    agent_radius = agent_radius,
-                    vmax = vmax,
-                    max_buffer_radius = 2.5 * agent_radius,
-                    interaction_radius = 15 * agent_radius,
-                    static_potentials = (x, r) -> 0.0,
-                    pairwise_potentials = ConstructionBots.repulsion_potential,
-                ) : nothing,
-            )
-        end
-    end
+    @debug "update_env_with_deconfliction not implemented for deconfliction type: 
+    $(join(env.d.name, ", "))"
+end
+
+function update_simulation!(d::DeconflictStrategy, env)
+    @debug "update_simulation! not implemented for deconfliction type: 
+    $(join(env.d.name, ", "))"
+end
+
+function update_agent_position_in_sim!(d::DeconflictStrategy, env, agent)
+    @debug "update_agent_position_in_sim! not implemented for deconfliction type: 
+    $(join(env.d.name, ", "))"
 end
 
 """

@@ -204,3 +204,21 @@ end
 
 query_policy_for_goal!(policy::TangentBugPolicy, args...) =
     tangent_bug_policy!(policy, args...)
+
+function update_env_with_deconfliction(t::TangentBugPolicy, scene_tree, env)
+    for node in get_nodes(env.sched)
+        if matches_template(Union{RobotStart,FormTransportUnit}, node)
+            n = entity(node)
+            agent_radius = get_radius(get_base_geom(n, HypersphereKey()))
+            vmax = get_agent_max_speed(n)
+            env.agent_policies[node_id(n)] = ConstructionBots.VelocityController(
+                nominal_policy = TangentBugPolicy(
+                    dt = env.dt,
+                    vmax = vmax,
+                    agent_radius = agent_radius,
+                ),
+                dispersion_policy = nothing,
+            )
+        end
+    end
+end

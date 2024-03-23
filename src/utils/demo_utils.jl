@@ -1,4 +1,25 @@
+"""
+    struct SimParameters
 
+Holds simulation parameters to control the behavior of the simulation process.
+
+# Fields
+- `sim_batch_size::Int`: Number of simulation steps to process before checking
+conditions.
+- `max_time_steps::Int`: The maximum number of steps the simulation will run.
+- `process_animation_tasks::Bool`: Whether to process animation-related tasks.
+- `save_anim_interval::Int`: Interval at which the animation is saved.
+- `process_updates_interval::Int`: Interval to process updates in simulation.
+- `block_save_anim::Bool`: Indicates whether to save animations in blocks rather
+than incrementally.
+- `update_anim_at_every_step::Bool`: Update animation at every simulation step.
+- `anim_active_agents::Bool`: Animate active agents in the simulation.
+- `anim_active_areas::Bool`: Highlight active areas in simulation environment.
+- `save_anim_prog_path::String`: Path where animation progress files are saved.
+- `save_animation_along_the_way::Bool`: Whether to save animation periodically.
+- `max_num_iters_no_progress::Int`: Maximum number of iterations allowed without
+any progress before stopping the simulation.
+"""
 struct SimParameters
     sim_batch_size::Int
     max_time_steps::Int
@@ -14,6 +35,24 @@ struct SimParameters
     max_num_iters_no_progress::Int
 end
 
+"""
+    mutable struct SimProcessingData
+
+Stores dynamic data for simulation processing, tracking simulation progress
+and controlling execution flow.
+
+# Fields
+- `stop_simulating::Bool`: Control flag to stop the simulation prematurely.
+- `iter::Int`: Current iteration number of the simulation.
+- `starting_frame::Int`: Frame number when simulation started.
+- `prog::ProgressMeter.Progress`: Progress bar shown during simulation.
+- `num_closed_step_1::Int`: Number of steps closed in first iteration.
+- `last_iter_num_closed::Int`: Number of steps closed in last iteration.
+- `num_iters_no_progress::Int`: Iterations without progress.
+- `num_iters_since_anim_save::Int`: Iterations since last saved animation.
+- `progress_update_fcn::Function`: Function to update progress bar with custom
+values.
+"""
 mutable struct SimProcessingData
     stop_simulating::Bool
     iter::Int
@@ -26,14 +65,32 @@ mutable struct SimProcessingData
     progress_update_fcn::Function
 end
 
+"""
+    struct NoSolutionError <: Exception
+
+A custom exception type to indicate that no solution was found during the
+simulation or planning process.
+"""
 struct NoSolutionError <: Exception end
 Base.showerror(io::IO, e::NoSolutionError) = print(io, "No solution found!")
 
 """
     run_simulation!(env, factory_vis, anim, sim_params)
 
-Run a simulation of the environment. Currently, this wraps another simulation function to
-help with memory issues. The goal is to refactor the code to not require this "hack".
+Runs the simulation environment based on specified parameters and updates the
+visualization accordingly.
+
+# Arguments
+- `env::PlannerEnv`: Environment setup containing planning and scheduling info.
+- `factory_vis::ConstructionBots.FactoryVisualizer`: Visualization tool for
+rendering the factory environment.
+- `anim::Union{ConstructionBots.AnimationWrapper,Nothing}`: Animation wrapper
+for the simulation, `Nothing` if animation is not processed.
+- `sim_params::SimParameters`: Parameters controlling the simulation behavior.
+
+# Returns
+`(Bool, Int)`: Tuple indicating if the project is complete and the number of
+iterations executed.
 """
 function run_simulation!(
     env::PlannerEnv,
@@ -80,6 +137,25 @@ function run_simulation!(
     return ConstructionBots.project_complete(env), sim_process_data.iter
 end
 
+"""
+    simulate!(env, factory_vis, anim, sim_params, sim_process_data, update_steps)
+
+Performs a single batch of simulation steps and updates the visualization and progress data.
+
+# Arguments
+- `env::PlannerEnv`: Simulation environment setup.
+- `factory_vis::ConstructionBots.FactoryVisualizer`: Factory visualizer for
+updating the simulation state.
+- `anim::Union{ConstructionBots.AnimationWrapper,Nothing}`: Animation wrapper
+for the simulation.
+- `sim_params::SimParameters`: Simulation parameters to guide the execution.
+- `sim_process_data::SimProcessingData`: Mutable data structure to track the
+simulation progress.
+- `update_steps::Vector`: Accumulator for steps that require visual updates.
+
+# Returns
+`Vector`: Updated `update_steps` with any new steps requiring visual updates.
+"""
 function simulate!(
     env::PlannerEnv,
     factory_vis::ConstructionBots.FactoryVisualizer,
@@ -239,6 +315,15 @@ function simulate!(
     return update_steps
 end
 
+"""
+    save_animation!(visualizer, path)
+
+Saves current state of the animation to a static HTML file at specified path.
+
+# Arguments
+- `visualizer`: The visualizer object containing the animation to be saved.
+- `path::String`: File path where the animation will be saved as an HTML file.
+"""
 function save_animation!(visualizer, path)
     println("Saving animation to $(path)")
     open(path, "w") do io
@@ -246,6 +331,19 @@ function save_animation!(visualizer, path)
     end
 end
 
+"""
+    get_buildstep_circles(sched)
+
+Generates a dictionary of circles representing the areas of interest within the 
+simulation, typically around build steps.
+
+# Arguments
+- `sched`: Schedule or plan containing build steps and associated spatial data.
+
+# Returns
+`Dict{AbstractID,LazySets.Ball2}`: A dictionary mapping each build step's ID to 
+its corresponding spatial area represented as a circle.
+"""
 function get_buildstep_circles(sched)
     circles = Dict{AbstractID,LazySets.Ball2}()
     for n in node_iterator(sched, topological_sort_by_dfs(sched))
@@ -259,6 +357,21 @@ function get_buildstep_circles(sched)
     return circles
 end
 
+"""
+    shift_staging_circles(staging_circles, sched, scene_tree)
+
+Adjusts the positions of staging circles based on the current state of the 
+environment, accounting for dynamic changes.
+
+# Arguments
+- `staging_circles::Dict{AbstractID,LazySets.Ball2}`: Initial staging circles.
+- `sched`: The schedule detailing the sequence of tasks or build steps.
+- `scene_tree`: The scene tree representing spatial organization of environment.
+
+# Returns
+`Dict{AbstractID,LazySets.Ball2}`: Updated staging circles with shifted
+positions to reflect the current environment state.
+"""
 function shift_staging_circles(
     staging_circles::Dict{AbstractID,LazySets.Ball2},
     sched,
@@ -281,6 +394,20 @@ function shift_staging_circles(
     return shifted_circles
 end
 
+"""
+    remove_redundant(balls::Vector{LazySets.Ball2}; ϵ = 1e-4)
+
+Removes redundant or overlapping circles from a list, simplifying the
+representation of areas in the simulation.
+
+# Arguments
+- `balls::Vector{LazySets.Ball2}`: List of circles represented as `Ball2` objects.
+- `ϵ::Float64`: A tolerance parameter to determine overlap. Smaller values
+result in fewer removals.
+
+# Returns
+`Vector{LazySets.Ball2}`: A filtered list of circles with redundancies removed.
+"""
 function remove_redundant(balls::Vector{LazySets.Ball2}; ϵ = 1e-4)
     redundant = falses(length(balls))
     for ii = 1:length(balls)
@@ -293,11 +420,36 @@ function remove_redundant(balls::Vector{LazySets.Ball2}; ϵ = 1e-4)
     return balls[.!redundant]
 end
 
+"""
+    contained_in(test_ball::LazySets.Ball2, outer_ball::LazySets.Ball2; ϵ=1e-4)
+
+Determines if one circle is entirely contained within another, within a
+    specified tolerance.
+"""
 function contained_in(test_ball::LazySets.Ball2, outer_ball::LazySets.Ball2; ϵ = 1e-4)
     return norm(test_ball.center - outer_ball.center) + test_ball.radius <=
            outer_ball.radius + ϵ
 end
 
+"""
+    get_object_vtx(scene_tree, obstacles, max_cargo_height, num_layers, robot_d)
+
+Computes vertex positions for objects in scene, considering obstacles and
+spatial constraints.
+
+# Arguments
+- `scene_tree`: The scene tree representing the spatial organization of objects.
+- `obstacles`: A collection of obstacles to be avoided when placing objects.
+- `max_cargo_height::Float64`: The maximum height of cargo items, used for 
+stacking considerations.
+- `num_layers::Int`: The desired number of layers for stacking objects.
+- `robot_d::Float64`: The diameter of robots, used to ensure sufficient spacing
+around objects.
+
+# Returns
+`Vector{Point}`: A vector of points representing the calculated positions for
+placing objects within the scene.
+"""
 function get_object_vtx(scene_tree, obstacles, max_cargo_height, num_layers, robot_d)
     # Use object height to stack objects on top of each other as needed
     objects_hyperrects = map(
@@ -324,7 +476,6 @@ function get_object_vtx(scene_tree, obstacles, max_cargo_height, num_layers, rob
     for ob in obstacles
         push!(inflated_obstacles, LazySets.Ball2(ob.center, ob.radius + inflate_delta))
     end
-
     num_objs_per_layer = ceil(num_objects / num_layers)
     init_width = sqrt(num_objs_per_layer * object_x_delta * object_y_delta) / 2
     x_range = -init_width:object_x_delta:init_width
@@ -356,6 +507,5 @@ function get_object_vtx(scene_tree, obstacles, max_cargo_height, num_layers, rob
         ranges = object_vtx_range,
         spacing = (1.0, 1.0, max_object_h),
     )
-
     return vtxs
 end

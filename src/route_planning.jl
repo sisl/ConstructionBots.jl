@@ -87,7 +87,6 @@ Contains the Environment state and definition.
     staging_buffers::Dict{AbstractID,Float64} = Dict{AbstractID,Float64}()  # dynamic buffer for staging areas
     max_robot_go_id::Int64 = Inf
     max_cargo_id::Int64 = Inf
-    deconflict_strategies::Vector{Symbol} = [:Nothing]
     deconfliction_type = ReciprocalVelocityObstacle()
 end
 
@@ -194,7 +193,7 @@ function step_environment!(env::PlannerEnv, sim = rvo_global_sim())
     end
     # TODO(tashakim): Refactor rvo_global_id_map
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
-        tform = update_agent_position_in_sim!(env, get_node(env.scene_tree, id))
+        tform = update_agent_position_in_sim!(env.deconfliction_type, env, get_node(env.scene_tree, id))
     end
     # Swap transport unit positions if necessary
     swap_first_paralyzed_transport_unit!(env, prev_active_pos_dict)
@@ -232,7 +231,7 @@ function update_planning_cache!(env::PlannerEnv, time_stamp::Float64)
     if updated
         process_schedule!(sched)
         preprocess_env!(env)
-        update_simulation!(env)
+        update_simulation!(env.deconfliction_type, env)
     end
     newly_updated
 end
@@ -484,7 +483,7 @@ end
 
 function query_policy_for_goal! end
 
-include("algorithms/collision_avoidance/deconfliction_interface.jl")
+include("algorithms/collision_avoidance/deconfliction_strategy.jl")
 
 """
     circle_avoidance_policy()
@@ -778,7 +777,7 @@ get_cmd(
 
 function get_cmd(node::Union{TransportUnitGo,RobotGo}, env::PlannerEnv)
     agent = entity(node)
-    update_agent_position_in_sim!(env, agent)
+    update_agent_position_in_sim!(env.deconfliction_type, env, agent)
     set_agent_priority!(env.deconfliction_type, env, node)
     # TODO: Figure out if we want to set the max speed to zero because its at
     # its goal. We may still want agents to be able to move, albeit slower 
@@ -888,38 +887,5 @@ function apply_cmd!(node::Union{TransportUnitGo,RobotGo}, twist::Twist, env::Pla
         agent = entity(node)
         tform = integrate_twist(twist, dt)
         set_local_transform!(agent, local_transform(agent) ∘ tform)
-    end
-end
-
-function update_simulation!(env)
-    if env.deconfliction_type isa ReciprocalVelocityObstacle
-        update_rvo_sim!(env)
-    else
-        @debug "No simulation update required for deconfliction strategy: 
-        $(join(env.deconflict_strategies, ", "))"
-    end
-end
-
-function update_agent_position_in_sim!(env, agent)
-    if env.deconfliction_type isa ReciprocalVelocityObstacle
-        pt = get_agent_position(env.deconfliction_type, agent)
-        @assert has_parent(agent, agent) "agent $(node_id(agent)) should be its own parent"
-        set_local_transform!(
-            agent,
-            CoordinateTransformations.Translation(pt[1], pt[2], 0.0),
-        )
-        if !isapprox(
-            norm(global_transform(agent).translation[1:2] .- pt),
-            0.0;
-            rtol = 1e-6,
-            atol = 1e-6,
-        )
-            @warn "Agent $node_id(agent) should be at $pt but is at 
-            $(global_transform(agent).translation[1:2])"
-        end
-        return global_transform(agent)
-    else
-        @debug "No agent position updated in simulation for deconfliction 
-        strategy: $(join(env.deconflict_strategies, ", "))"
     end
 end

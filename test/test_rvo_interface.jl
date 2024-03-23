@@ -14,7 +14,7 @@ using PyCall
 end
 
 @testset "Create RVO simulation success" begin
-    sim = ConstructionBots.rvo_new_sim()
+    sim = ConstructionBots.rvo_global_sim()
 
     @test typeof(sim) == PyCall.PyObject
 end
@@ -29,7 +29,7 @@ end
 
 @testset "Add agent success" begin
     scene_tree = ConstructionBots.SceneTree()
-    sim = ConstructionBots.rvo_new_sim()
+    sim = ConstructionBots.rvo_global_sim()
 
     # Add agents to the simulation
     ConstructionBots.rvo_add_agents!(scene_tree, sim)
@@ -47,7 +47,7 @@ end
 
 @testset "Update agent position success" begin
     scene_tree = ConstructionBots.SceneTree()
-    sim = ConstructionBots.rvo_new_sim()
+    sim = ConstructionBots.rvo_global_sim()
     ConstructionBots.rvo_add_agents!(scene_tree, sim)
 
     for node in ConstructionBots.rvo_active_agents(scene_tree)
@@ -61,7 +61,7 @@ end
 
 @testset "Update agent velocity success" begin
     scene_tree = ConstructionBots.SceneTree()
-    sim = ConstructionBots.rvo_new_sim()
+    sim = ConstructionBots.rvo_global_sim()
     ConstructionBots.rvo_add_agents!(scene_tree, sim)
 
     for node in ConstructionBots.rvo_active_agents(scene_tree)

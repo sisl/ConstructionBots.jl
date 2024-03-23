@@ -50,12 +50,161 @@ include("utils/demo_utils.jl")
 # assembly_tree::AssemblyTree - stored transforms of all parts and submodels
 # model_schedule - encodes the partial ordering of assembly operations.
 
-export run_demo, list_projects, get_project_params
+export list_projects, get_project_params, run_demo
+
+sample_projects = Dict(
+    1 => :colored_8x8,                  # 33 x 1, 4 sec
+    2 => :quad_nested,                  # 85 x 21, 26 sec
+    3 => :heavily_nested,               # 1757 x 508, 62 min
+    4 => :tractor,                      # 20 x 8, 2 sec
+    5 => :tie_fighter,                  # 44 x 4, 7 sec
+    6 => :x_wing_mini,                  # 61 x 12, 9 sec
+    7 => :imperial_shuttle,             # 84 x 5, 13 sec
+    8 => :x_wing_tie_mini,              # 105 x 17, 26 sec
+    9 => :at_te_walker,                 # 100 x 22, 23 sec
+    10 => :x_wing,                      # 309 x 28, 3 min
+    11 => :passenger_plane,             # 326 x 28, 4 min
+    12 => :imperial_star_destroyer,     # 418 x 11, 5 min
+    13 => :kings_castle,                # 761 x 70, 21 min
+    14 => :at_at,                       # 1105 x 2, ??
+    15 => :saturn_v,                     # 1845 x 306, 163 min
+)
+project_parameters = Dict(
+    :colored_8x8 => (
+        project_name = "colored_8x8",
+        file_name = "colored_8x8.ldr",
+        model_scale = 0.008,
+        num_robots = 24,
+    ),
+    :quad_nested => (
+        project_name = "quad_nested",
+        file_name = "quad_nested.mpd",
+        model_scale = 0.0015,
+        num_robots = 50,
+    ),
+    :heavily_nested => (
+        project_name = "heavily_nested",
+        file_name = "heavily_nested.mpd",
+        model_scale = 0.0015,
+        num_robots = 50,
+    ),
+    :tractor => (
+        project_name = "tractor",
+        file_name = "tractor.mpd",
+        model_scale = 0.008,
+        num_robots = 10,
+    ),
+    :tie_fighter => (
+        project_name = "tie_fighter",
+        file_name = "8028-1 - TIE Fighter - Mini.mpd",
+        model_scale = 0.008,
+        num_robots = 15,
+    ),
+    :x_wing_mini => (
+        project_name = "x_wing_mini",
+        file_name = "30051-1 - X-wing Fighter - Mini.mpd",
+        model_scale = 0.008,
+        num_robots = 20,
+    ),
+    :imperial_shuttle => (
+        project_name = "imperial_shuttle",
+        file_name = "4494-1 - Imperial Shuttle - Mini.mpd",
+        model_scale = 0.008,
+        num_robots = 20,
+    ),
+    :x_wing_tie_mini => (
+        project_name = "x_wing_tie_mini",
+        file_name = "X-wing--Tie Mini.mpd",
+        model_scale = 0.008,
+        num_robots = 20,
+    ),
+    :at_te_walker => (
+        project_name = "at_te_walker",
+        file_name = "20009-1 - AT-TE Walker - Mini.mpd",
+        model_scale = 0.008,
+        num_robots = 35,
+    ),
+    :x_wing => (
+        project_name = "x_wing",
+        file_name = "7140-1 - X-wing Fighter.mpd",
+        model_scale = 0.004,
+        num_robots = 50,
+    ),
+    :passenger_plane => (
+        project_name = "passenger_plane",
+        file_name = "3181 - Passenger Plane.mpd",
+        model_scale = 0.004,
+        num_robots = 50,
+    ),
+    :imperial_star_destroyer => (
+        project_name = "imperial_star_destroyer",
+        file_name = "8099-1 - Midi-Scale Imperial Star Destroyer.mpd",
+        model_scale = 0.004,
+        num_robots = 75,
+    ),
+    :kings_castle => (
+        project_name = "kings_castle",
+        file_name = "6080 - Kings Castle.mpd",
+        model_scale = 0.004,
+        num_robots = 125,
+    ),
+    :at_at => (
+        project_name = "at_at",
+        file_name = "75054-1 - AT-AT.mpd",
+        model_scale = 0.004,
+        num_robots = 150,
+    ),
+    :saturn_v => (
+        project_name = "saturn_v",
+        file_name = "21309-1 - NASA Apollo Saturn V.mpd",
+        model_scale = 0.0015,
+        num_robots = 200,
+    ),
+)
+
+"""
+    list_projects()
+
+Prints a list of available projects.
+"""
+function list_projects()
+    println("Available sample projects:")
+    for ii in sort(collect(keys(sample_projects)))
+        println("  $ii: $(sample_projects[ii])")
+    end
+end
+
+"""
+    get_project_params(project::Int)
+    get_project_params(project::Symbol)
+
+Returns the parameters for the project with the given number or symbol.
+Returns a Dict with the following fields:
+- `project_name` (String): The name of the project.
+- `file_name` (String): The name of the LDraw file.
+- `model_scale` (Float64): The default scale of the model.
+- `num_robots` (Int): The default number of robots to use.
+"""
+function get_project_params(project::Int)
+    if !(project in keys(sample_projects))
+        list_projects()
+        error("Project $project not found.")
+    end
+    return get_project_params(sample_projects[project])
+end
+
+function get_project_params(project::Symbol)
+    if !(project in keys(project_parameters))
+        list_projects()
+        error("Project $project not found.")
+    end
+    return project_parameters[project]
+end
 
 """
 run_demo(; kwargs...)
 
-Run the demo end-to-end.
+Main method to run a ConstructionBots demo end-to-end.
 
 Keyword arguments:
 - `ldraw_file::String`: ldraw file
@@ -82,7 +231,7 @@ Keyword arguments:
 - `block_save_anim::Bool`: whether to save the animation in blocks instead of incrementally. false = incrementall, true = save in blocks (default: false)
 - `update_anim_at_every_step::Bool`: whether to update the animation at every step (default: false)
 - `save_anim_interval::Int`: the interval of number of updates to save the animation if `save_animation_along_the_way=true` (default: 500)
-- `deconflict_strategies::Vector{Symbol}`: algorithm(s) used for decentralized collision avoidance (:RVO, :TangentBugPolicy, :PotentialFields)
+- `deconfliction_strategy::Symbol`: algorithm(s) used for decentralized collision avoidance (:RVO, :TangentBugPolicy, :PotentialFields)
 - `overwrite_results::Bool`: whether to overwrite the stats.toml file or create a new one with a date-time filename (default: true)
 - `write_results::Bool`: whether to write the results to disk (default: true)
 - `max_num_iters_no_progress::Int`: maximum number of iterations to run without progress (default: 10000)
@@ -126,7 +275,7 @@ function run_demo(;
     block_save_anim::Bool = false,
     update_anim_at_every_step::Bool = false,
     save_anim_interval::Int = 500,
-    deconflict_strategies::Vector{Symbol} = [:Nothing],
+    deconfliction_strategy::Symbol = :Nothing,
     overwrite_results::Bool = false,
     write_results::Bool = true,
     max_num_iters_no_progress::Int = 10000,
@@ -144,17 +293,13 @@ function run_demo(;
 )
     process_animation_tasks =
         save_animation || save_animation_along_the_way || open_animation_at_end
-    # TODO(tashakim): create a helper method to check individual and combined
-    # policies as a DeconflictStrategy subtype.
-    deconfliction_type = ReciprocalVelocityObstacle()
-    # deconfliction_type = if haskey(supported_deconfliction_options, deconflict_strategies)
-    #     supported_deconfliction_options[deconflict_strategies]
-    # else
-    #     Nothing
-    # end
-    if deconfliction_type isa ReciprocalVelocityObstacle && !(deconfliction_type isa PotentialFields)
-        @warn "RVO is enabled but potential fields is disabled. This is not recommended."
+
+    deconfliction_type = if haskey(supported_deconfliction_options, deconfliction_strategy)
+        supported_deconfliction_options[deconfliction_strategy]
+    else
+        NoDeconfliction()
     end
+
     if block_save_anim
         if process_updates_interval != save_anim_interval
             @warn "When block_save_anim is true, it is recommended to set save_anim_interval to the same value as process_updates_interval."
@@ -215,11 +360,8 @@ function run_demo(;
         set_default_milp_optimizer_attributes!(milp_optimizer_attribute_dict)
     end
 
-    # Generate file name and paths based on the specified strategies and modes
-    function generate_prefix(strategy_symbol, positive_prefix, negative_prefix, strategies)
-        return supported_deconfliction_options[strategy_symbol] == strategies ? positive_prefix : negative_prefix
-    end
-
+    # Generate file name and path based on strategies and modes
+    prefix = string(deconfliction_type.name)
     function get_solution_prefix(mode)
         if mode == :milp
             return "milp_"
@@ -235,18 +377,6 @@ function run_demo(;
         return overwrite_results ? base_name :
                string(Dates.format(Dates.now(), "yyyymmdd_HHMMSS"), "_", base_name)
     end
-    prefix = string(
-        generate_prefix(:RVO, "RVO", "no-RVO", deconflict_strategies),
-        "_",
-        generate_prefix(:PotentialFields, "PotentialFields", "no-PotentialFields", deconflict_strategies),
-        "_",
-        generate_prefix(
-            :TangentBugPolicy,
-            "TangentBug",
-            "no-TangentBug",
-            deconflict_strategies,
-        ),
-    )
     soln_str_pre = get_solution_prefix(assignment_mode)
     prefix = string(soln_str_pre, prefix)
     mkpath(joinpath(results_path, prefix))
@@ -635,7 +765,6 @@ function run_demo(;
             cargo_id(entity(n)).id for
             n in get_nodes(tg_sched) if matches_template(TransportUnitGo, n)
         ]),
-        deconflict_strategies = deconflict_strategies,
         deconfliction_type = deconfliction_type,
     )
     update_env_with_deconfliction(deconfliction_type, scene_tree, env)
@@ -688,155 +817,6 @@ function run_demo(;
         end
     end
     return env, stats
-end
-
-sample_projects = Dict(
-    1 => :colored_8x8,                  # 33 x 1, 4 sec
-    2 => :quad_nested,                  # 85 x 21, 26 sec
-    3 => :heavily_nested,               # 1757 x 508, 62 min
-    4 => :tractor,                      # 20 x 8, 2 sec
-    5 => :tie_fighter,                  # 44 x 4, 7 sec
-    6 => :x_wing_mini,                  # 61 x 12, 9 sec
-    7 => :imperial_shuttle,             # 84 x 5, 13 sec
-    8 => :x_wing_tie_mini,              # 105 x 17, 26 sec
-    9 => :at_te_walker,                 # 100 x 22, 23 sec
-    10 => :x_wing,                      # 309 x 28, 3 min
-    11 => :passenger_plane,             # 326 x 28, 4 min
-    12 => :imperial_star_destroyer,     # 418 x 11, 5 min
-    13 => :kings_castle,                # 761 x 70, 21 min
-    14 => :at_at,                       # 1105 x 2, ??
-    15 => :saturn_v,                     # 1845 x 306, 163 min
-)
-project_parameters = Dict(
-    :colored_8x8 => (
-        project_name = "colored_8x8",
-        file_name = "colored_8x8.ldr",
-        model_scale = 0.008,
-        num_robots = 24,
-    ),
-    :quad_nested => (
-        project_name = "quad_nested",
-        file_name = "quad_nested.mpd",
-        model_scale = 0.0015,
-        num_robots = 50,
-    ),
-    :heavily_nested => (
-        project_name = "heavily_nested",
-        file_name = "heavily_nested.mpd",
-        model_scale = 0.0015,
-        num_robots = 50,
-    ),
-    :tractor => (
-        project_name = "tractor",
-        file_name = "tractor.mpd",
-        model_scale = 0.008,
-        num_robots = 10,
-    ),
-    :tie_fighter => (
-        project_name = "tie_fighter",
-        file_name = "8028-1 - TIE Fighter - Mini.mpd",
-        model_scale = 0.008,
-        num_robots = 15,
-    ),
-    :x_wing_mini => (
-        project_name = "x_wing_mini",
-        file_name = "30051-1 - X-wing Fighter - Mini.mpd",
-        model_scale = 0.008,
-        num_robots = 20,
-    ),
-    :imperial_shuttle => (
-        project_name = "imperial_shuttle",
-        file_name = "4494-1 - Imperial Shuttle - Mini.mpd",
-        model_scale = 0.008,
-        num_robots = 20,
-    ),
-    :x_wing_tie_mini => (
-        project_name = "x_wing_tie_mini",
-        file_name = "X-wing--Tie Mini.mpd",
-        model_scale = 0.008,
-        num_robots = 20,
-    ),
-    :at_te_walker => (
-        project_name = "at_te_walker",
-        file_name = "20009-1 - AT-TE Walker - Mini.mpd",
-        model_scale = 0.008,
-        num_robots = 35,
-    ),
-    :x_wing => (
-        project_name = "x_wing",
-        file_name = "7140-1 - X-wing Fighter.mpd",
-        model_scale = 0.004,
-        num_robots = 50,
-    ),
-    :passenger_plane => (
-        project_name = "passenger_plane",
-        file_name = "3181 - Passenger Plane.mpd",
-        model_scale = 0.004,
-        num_robots = 50,
-    ),
-    :imperial_star_destroyer => (
-        project_name = "imperial_star_destroyer",
-        file_name = "8099-1 - Midi-Scale Imperial Star Destroyer.mpd",
-        model_scale = 0.004,
-        num_robots = 75,
-    ),
-    :kings_castle => (
-        project_name = "kings_castle",
-        file_name = "6080 - Kings Castle.mpd",
-        model_scale = 0.004,
-        num_robots = 125,
-    ),
-    :at_at => (
-        project_name = "at_at",
-        file_name = "75054-1 - AT-AT.mpd",
-        model_scale = 0.004,
-        num_robots = 150,
-    ),
-    :saturn_v => (
-        project_name = "saturn_v",
-        file_name = "21309-1 - NASA Apollo Saturn V.mpd",
-        model_scale = 0.0015,
-        num_robots = 200,
-    ),
-)
-
-"""
-    list_projects()
-
-Prints a list of available projects.
-"""
-function list_projects()
-    println("Available sample projects:")
-    for ii in sort(collect(keys(sample_projects)))
-        println("  $ii: $(sample_projects[ii])")
-    end
-end
-
-"""
-    get_project_params(project::Int)
-    get_project_params(project::Symbol)
-
-Returns the parameters for the project with the given number or symbol.
-Returns a Dict with the following fields:
-- `project_name` (String): The name of the project.
-- `file_name` (String): The name of the LDraw file.
-- `model_scale` (Float64): The default scale of the model.
-- `num_robots` (Int): The default number of robots to use.
-"""
-function get_project_params(project::Int)
-    if !(project in keys(sample_projects))
-        list_projects()
-        error("Project $project not found.")
-    end
-    return get_project_params(sample_projects[project])
-end
-
-function get_project_params(project::Symbol)
-    if !(project in keys(project_parameters))
-        list_projects()
-        error("Project $project not found.")
-    end
-    return project_parameters[project]
 end
 
 """

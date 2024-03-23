@@ -92,10 +92,10 @@ Note: In the current build of ConstructionBots, this step is still required even
 This repository comes with demos to demonstrate the functionality of ConstructionBots. To run the demos, run the following in the Julia REPL:
 
 ```julia
-julia> include("scripts/demos.jl")
+julia> include("scripts/demo.jl")
 ```
 
-The default demo is the a Tractor based on LEGO model 10708, Green Creativity Box. The tractor model has a total of 20 individual pieces, which are organized into one final assembly (the tractor) and seven subassemblies. The demo is configured to use 10 robots to assemble the tractor. The collision avoidance algorithms are not used and it should open an interative visualization of the assembly process in your brower. The demo can be configured by changing the parameters in [`demos.jl`](https://github.com/sisl/ConstructionBots.jl/blob/master/scripts/demos.jl). Examples of the simulation are shown below.
+The default demo is the a Tractor based on LEGO model 10708, Green Creativity Box. The tractor model has a total of 20 individual pieces, which are organized into one final assembly (the tractor) and seven subassemblies. The demo is configured to use 10 robots to assemble the tractor. The collision avoidance algorithms are not used and it should open an interative visualization of the assembly process in your brower. The demo can be configured by changing the parameters in [`demo.jl`](https://github.com/sisl/ConstructionBots.jl/blob/master/scripts/demo.jl). Examples of the simulation are shown below.
 You can interact with an example from the tractor simulation [here](https://sisl.github.io/ConstructionBots.jl/stable/tractor_greedy_RVO_PotentialFields_TangentBug_visualization.html).
 The main function for the demo is [`run_demo`](https://github.com/sisl/ConstructionBots.jl/blob/c7dcb3baabc437cfccd12e8ccc777e1561e9bf3b/src/ConstructionBots.jl#L678).
 
