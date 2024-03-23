@@ -9,15 +9,15 @@ ConstructionBots.jl is an open-source multi-robot manufacturing simulator and is
 ConstructionBots ueses LEGO models to evaluate algorithms. LEGO models offer a convenient framework for defining large assemblies that are often composed of smaller assemblies in addition to individual parts. ConstructionBots uses assemblies that are defined using the LDraw file specification, an open-source tool for describing LEGO bricks and models.
 
 ## Hosted Demos to View the Functionality of ConstructionBots
-| Project | Allocation Algorithm | RVO | Dispersion  | Tangent Bug | Visualization |
+| Project | Allocation Algorithm | RVO | PotentialFields  | Tangent Bug | Visualization |
 | --- | :---: | :---: | :---: | :---: | :---: |
-| Tractor | Greedy | Yes | Yes | Yes | [Link](tractor_greedy_RVO_Dispersion_TangentBug_visualization.html) |
-| Tractor | MILP | Yes | Yes | Yes | [Link](tractor_milp_RVO_Dispersion_TangentBug_visualization.html) |
-| AT-TE Walker  | MILP + Greedy | Yes | Yes | Yes | [Link](atte-walker_milp-ws_RVO_Dispersion_TangentBug_visualization.html) |
-| X-Wing  | Greedy | No | No | No | [Link](x-wing_greedy_no-RVO_no-Dispersion_no-TangentBug_visualization.html) |
+| Tractor | Greedy | Yes | Yes | Yes | [Link](tractor_greedy_RVO_PotentialFields_TangentBug_visualization.html) |
+| Tractor | MILP | Yes | Yes | Yes | [Link](tractor_milp_RVO_PotentialFields_TangentBug_visualization.html) |
+| AT-TE Walker  | MILP + Greedy | Yes | Yes | Yes | [Link](atte-walker_milp-ws_RVO_PotentialFields_TangentBug_visualization.html) |
+| X-Wing  | Greedy | No | No | No | [Link](x-wing_greedy_no-RVO_no-PotentialFields_no-TangentBug_visualization.html) |
 | Saturn V  | Greedy | Yes | Yes | Yes | [Link](https://www.youtube.com/watch?v=1hJD7NCfjZU) |
 
-#### Saturn V (RVO + Dispersion + Tangent Bug) Video
+#### Saturn V (RVO + PotentialFields + Tangent Bug) Video
 [![Saturn V demo](https://img.youtube.com/vi/1hJD7NCfjZU/0.jpg)](https://www.youtube.com/watch?v=1hJD7NCfjZU)
 
 ## Manual Outline

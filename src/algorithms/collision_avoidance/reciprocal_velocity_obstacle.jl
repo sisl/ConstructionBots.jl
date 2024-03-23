@@ -2,11 +2,49 @@ using PyCall
 
 @with_kw mutable struct ReciprocalVelocityObstacle <: DeconflictStrategy
     name::String="ReciprocalVelocityObstacle"
-    # TODO(tashakim): store relevant fields
+    dt::Float64=1/40.0
+    max_speed::Float64=DEFAULT_MAX_SPEED
+    max_speed_volume_factor::Float64=DEFAULT_MAX_SPEED_VOLUME_FACTOR
+    min_max_speed::Float64=DEFAULT_MIN_MAX_SPEED
+    default_time_step::Float64=DEFAULT_TIME_STEP
+    neighbor_distance::Float64=DEFAULT_NEIGHBOR_DISTANCE
+    min_neighbor_distance::Float64=DEFAULT_MINIMUM_NEIGHBOR_DISTANCE
+    max_neighbors::Int=5
+    horizon::Float64=2.0
+    horizon_obst::Float64=1.0
+    default_radius::Float64=0.5
+    default_velocity::Tuple{Float64, Float64}=(0.0, 0.0)
+
+    function ReciprocalVelocityObstacle(name, dt, max_speed, 
+        max_speed_volume_factor, min_max_speed, default_time_step,
+        neighbor_distance, min_neighbor_distance, max_neighbors, horizon,
+        horizon_obst, default_radius, default_velocity)
+        @warn "A dispersion policy is not used but recommended when using 
+        ReciprocalVelocityObstacle policy. You can define custom structs that do
+        this using `custom_policy.jl`."
+        return new(name, dt, max_speed, max_speed_volume_factor, min_max_speed,
+        default_time_step, neighbor_distance, min_neighbor_distance,
+        max_neighbors, horizon, horizon_obst, default_radius, default_velocity)
+    end
 end
 
 function perform_twist_deconfliction(ReciprocalVelocityObstacle, params)
-    # TODO(tashakim): implement this method
+    nsure_rvo_python_module_loaded!()
+    sim = rvo_global_sim()
+    # params should contain information about all agents to be updated
+    for (id, agent_params) in params
+        pos = (agent_params.x, agent_params.y)
+        vel = (agent_params.vx, agent_params.vy)
+        idx = rvo_get_agent_idx(id)
+        sim.setAgentPosition(idx, pos)
+        sim.setAgentPrefVelocity(idx, vel)
+    end
+    sim.doStep()  # Update simulation to next time step
+    for (id, _) in params
+        idx = rvo_get_agent_idx(id)
+        new_vel = sim.getAgentVelocity(idx)
+        # Apply new_vel to the agent in simulation environment
+    end
 end
 
 struct IntWrapper idx::Int end
@@ -289,5 +327,34 @@ function set_rvo_priority!(
     else
         alpha = 1.0
     end
-    set_agent_alpha!(env, node, alpha)
+    set_agent_alpha!(env.deconfliction_type, node, alpha)
+end
+
+function set_agent_properties(r::ReciprocalVelocityObstacle)
+    set_rvo_default_neighbor_distance!(16 * default_robot_radius())
+    set_rvo_default_min_neighbor_distance!(10 * default_robot_radius())
+end
+
+function set_agent_priority!(r::ReciprocalVelocityObstacle, env, node)
+    return set_rvo_priority!(env, node)
+end
+
+function get_agent_position(r::ReciprocalVelocityObstacle, agent)
+    return rvo_get_agent_position(agent)
+end
+
+function set_agent_max_speed!(r::ReciprocalVelocityObstacle, node, speed)
+    return rvo_set_agent_max_speed!(node, speed)
+end
+
+function set_agent_pref_velocity!(r::ReciprocalVelocityObstacle, node, desired_velocity)
+    return rvo_set_agent_pref_velocity!(node, desired_velocity)
+end
+
+function get_agent_pref_velocity(r::ReciprocalVelocityObstacle, agent)
+    return rvo_get_agent_pref_velocity(entity(agent))
+end
+
+function set_agent_alpha!(r::ReciprocalVelocityObstacle, node, alpha)
+    return rvo_set_agent_alpha!(node, alpha)
 end

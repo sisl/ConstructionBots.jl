@@ -7,24 +7,7 @@ export PlannerEnv,
     preprocess_env!,
     update_planning_cache!,
     parent_build_step_is_active,
-    update_parent_build_status!,
-    set_use_deconfliction,
-    use_rvo
-
-function set_use_deconfliction(deconflict_strategies)
-    if in(:RVO, deconflict_strategies)
-        global USE_RVO = true
-    else
-        global USE_RVO = false
-    end
-end
-
-# TODO(tashakim): eliminate reliance on this global variable, and replace
-# instances in route planning that depend on this boolean indicator.
-# Figure out why USE_RVO needs to be set `true` as default here. This
-# shouldn't be the case. 
-global USE_RVO = true
-use_rvo() = USE_RVO
+    update_parent_build_status!
 
 global STAGING_BUFFER_RADIUS = 0.0
 staging_buffer_radius() = STAGING_BUFFER_RADIUS
@@ -105,6 +88,7 @@ Contains the Environment state and definition.
     max_robot_go_id::Int64 = Inf
     max_cargo_id::Int64 = Inf
     deconflict_strategies::Vector{Symbol} = [:Nothing]
+    deconfliction_type = ReciprocalVelocityObstacle()
 end
 
 node_is_active(env, node) = get_vtx(env.sched, node_id(node)) in env.cache.active_set
@@ -217,7 +201,7 @@ function step_environment!(env::PlannerEnv, sim = rvo_global_sim())
     # Set velocities to zero for all agents. The pref velocities are only overwritten if
     # agent is "active" in the next time step
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
-        set_agent_pref_velocity!(env, get_node(env.scene_tree, id), (0.0, 0.0))
+        set_agent_pref_velocity!(env.deconfliction_type, get_node(env.scene_tree, id), (0.0, 0.0))
     end
     return env
 end
@@ -393,7 +377,7 @@ function swap_first_paralyzed_transport_unit!(
                 circ = get_cached_geom(transport_unit, HypersphereKey())
                 ctr = get_center(circ)[1:2]
                 rad = get_radius(circ)
-                vel = get_agent_pref_velocity(env, n)
+                vel = get_agent_pref_velocity(env.deconfliction_type, n)
                 pos = global_transform(agent).translation[1:2]
                 agent_radius = get_radius(get_cached_geom(agent, HypersphereKey()))
                 if norm(pos .- ctr) < agent_radius + rad  # within circle
@@ -478,7 +462,7 @@ function swap_carrying_positions!(
         # Swap positions in rvo_sim as well
         # TODO(tashakim): Get position from node instead of directly from 
         # rvo_get_agent_position (and below)
-        if use_rvo()
+        if env.deconfliction_type isa ReciprocalVelocityObstacle
             tmp = rvo_get_agent_position(agent)
             rvo_set_agent_position!(agent, rvo_get_agent_position(other_agent))
             rvo_set_agent_position!(other_agent, tmp)
@@ -722,7 +706,7 @@ function get_twist_cmd(node, env::PlannerEnv)
     else
         twist = compute_twist_from_goal(env, agent, goal, dt)
     end
-    if use_rvo()
+    if env.deconfliction_type isa ReciprocalVelocityObstacle
         ############ Hacky Traffic Thinning #############
         # Set nominal velocity to zero if close to goal (HACK)
         parent_step = get_parent_build_step(sched, node)
@@ -797,7 +781,7 @@ get_cmd(
 function get_cmd(node::Union{TransportUnitGo,RobotGo}, env::PlannerEnv)
     agent = entity(node)
     update_agent_position_in_sim!(env, agent)
-    set_agent_priority!(env, node)
+    set_agent_priority!(env.deconfliction_type, env, node)
     # TODO: Figure out if we want to set the max speed to zero because its at
     # its goal. We may still want agents to be able to move, albeit slower 
     # e.g. 10% of normal max speed
@@ -813,8 +797,8 @@ function get_cmd(node::Union{TransportUnitGo,RobotGo}, env::PlannerEnv)
             max_speed = get_agent_max_speed(agent)
         end
     end
-    set_agent_max_speed!(env, node, max_speed)
-    set_agent_pref_velocity!(env, node, twist.vel[1:2])
+    set_agent_max_speed!(env.deconfliction_type, node, max_speed)
+    set_agent_pref_velocity!(env.deconfliction_type, node, twist.vel[1:2])
     return twist
 end
 
@@ -873,9 +857,9 @@ function apply_cmd!(node::FormTransportUnit, twist::Twist, env::PlannerEnv)
     set_local_transform!(cargo, local_transform(cargo) ∘ tform)
     if is_within_capture_distance(agent, cargo)
         capture_child!(scene_tree, agent, cargo)
-        set_agent_max_speed!(env, agent, get_agent_max_speed(agent))
+        set_agent_max_speed!(env.deconfliction_type, agent, get_agent_max_speed(agent))
     else
-        set_agent_max_speed!(env, agent, 0.0)
+        set_agent_max_speed!(env.deconfliction_type, agent, 0.0)
     end
 end
 
@@ -887,9 +871,9 @@ function apply_cmd!(node::DepositCargo, twist::Twist, env::PlannerEnv)
     set_local_transform!(cargo, local_transform(cargo) ∘ tform)
     if is_goal(node, env)
         disband!(scene_tree, agent)
-        set_agent_max_speed!(env, agent, get_agent_max_speed(agent))
+        set_agent_max_speed!(env.deconfliction_type, agent, get_agent_max_speed(agent))
     else
-        set_agent_max_speed!(env, agent, 0.0)
+        set_agent_max_speed!(env.deconfliction_type, agent, 0.0)
     end
 end
 
@@ -902,9 +886,62 @@ end
 
 function apply_cmd!(node::Union{TransportUnitGo,RobotGo}, twist::Twist, env::PlannerEnv)
     @unpack sched, scene_tree, cache, dt = env
-    if !use_rvo()
+    if !(env.deconfliction_type isa ReciprocalVelocityObstacle)
         agent = entity(node)
         tform = integrate_twist(twist, dt)
         set_local_transform!(agent, local_transform(agent) ∘ tform)
+    end
+end
+
+# Update the simulation environment by specifying new agent properties.
+function update_simulation_environment(env)
+    if env.deconfliction_type isa ReciprocalVelocityObstacle
+        rvo_set_new_sim!()
+    else
+        @debug "No simulation environment update required for deconfliction 
+        strategy: $(join(env.deconflict_strategies, ", "))"
+    end
+end
+
+function update_simulation!(env)
+    if env.deconfliction_type isa ReciprocalVelocityObstacle
+        update_rvo_sim!(env)
+    else
+        @debug "No simulation update required for deconfliction strategy: 
+        $(join(env.deconflict_strategies, ", "))"
+    end
+end
+
+function update_agent_position_in_sim!(env, agent)
+    if env.deconfliction_type isa ReciprocalVelocityObstacle
+        pt = rvo_get_agent_position(agent)
+        @assert has_parent(agent, agent) "agent $(node_id(agent)) should be its own parent"
+        set_local_transform!(
+            agent,
+            CoordinateTransformations.Translation(pt[1], pt[2], 0.0),
+        )
+        if !isapprox(
+            norm(global_transform(agent).translation[1:2] .- pt),
+            0.0;
+            rtol = 1e-6,
+            atol = 1e-6,
+        )
+            @warn "Agent $node_id(agent) should be at $pt but is at 
+            $(global_transform(agent).translation[1:2])"
+        end
+        return global_transform(agent)
+    else
+        @debug "No agent position updated in simulation for deconfliction 
+        strategy: $(join(env.deconflict_strategies, ", "))"
+    end
+end
+
+# Add agents to simulation based on the deconfliction algorithm used.
+function add_agents_to_simulation!(scene_tree, env)
+    if env.deconfliction_type isa ReciprocalVelocityObstacle
+        return rvo_add_agents!(scene_tree)
+    else
+        @debug "No new agents to add for deconfliction strategy: 
+        $(join(env.deconflict_strategies, ", "))"
     end
 end

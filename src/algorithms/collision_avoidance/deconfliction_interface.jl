@@ -7,32 +7,29 @@ include("tangent_bug_policy.jl")
 include("potential_fields.jl")
 include("custom_policy.jl")
 
-# TODO(tashakim): Replace `deconflict_strategies` from an indicator string
-# to a Vector{DeconflictionStrategy} type after redefining deconfliction common
-# methods, e.g. update_env_with_deconfliction
+const supported_deconfliction_options = Dict(
+    :RVO => ReciprocalVelocityObstacle(),
+    :TangentBugPolicy => TangentBugPolicy(),
+    :PotentialFields => PotentialFields(),
+    :Nothing => Nothing,
+)
 
-# TODO(tashakim): Refine method to set default agent properties 
-# that are dependent on the type of deconflict strategies used. 
-# I.e., this method should replace rvo_default_neighbor_distance,
-# rvo_default_min_neighbor_distance etc.
-function set_agent_properties(deconflict_strategies)
-    if in(:RVO, deconflict_strategies)
-        # TODO(tashakim): Consider if these fields should be part of 
-        # DeconflictStrategy type.
-        set_rvo_default_neighbor_distance!(16 * default_robot_radius())
-        set_rvo_default_min_neighbor_distance!(10 * default_robot_radius())
-    else
-        @debug "No agent properties set for deconfliction strategies: 
-        $(join(env.deconflict_strategies, ", "))"
-    end
+# Interface methods
+"""
+"""
+function set_agent_properties(d::DeconflictStrategy)
+    @debug "set_agent_properties not implemented for deconfliction type: 
+    $(join(env.d.name, ", "))"
 end
 
-function update_env_with_deconfliction(env)
+function update_env_with_deconfliction(scene_tree, env)
+    update_simulation_environment(env)
+    add_agents_to_simulation!(scene_tree, env)
     for node in get_nodes(env.sched)
         if matches_template(Union{RobotStart,FormTransportUnit}, node)
             n = entity(node)
             agent_radius = get_radius(get_base_geom(n, HypersphereKey()))
-            vmax = get_vmax(n, env)
+            vmax = get_agent_max_speed(n)
             env.agent_policies[node_id(n)] = ConstructionBots.VelocityController(
                 nominal_policy = in(:TangentBugPolicy, env.deconflict_strategies) ?
                                  TangentBugPolicy(
@@ -40,7 +37,7 @@ function update_env_with_deconfliction(env)
                     vmax = vmax,
                     agent_radius = agent_radius,
                 ) : nothing,
-                dispersion_policy = in(:Dispersion, env.deconflict_strategies) ?
+                dispersion_policy = in(:PotentialFields, env.deconflict_strategies) ?
                                     ConstructionBots.PotentialFieldController(
                     agent = n,
                     node = node,
@@ -56,78 +53,23 @@ function update_env_with_deconfliction(env)
     end
 end
 
-# Update the simulation environment by specifying new agent properties.
-function update_simulation_environment(env)
-    if in(:RVO, env.deconflict_strategies)
-        rvo_set_new_sim!()
-    else
-        @debug "No simulation environment update required for deconfliction 
-        strategy: $(join(env.deconflict_strategies, ", "))"
-    end
+"""
+Adjust the priority of agents to manage their interactions and avoid
+potential gridlocks.
+"""
+function set_agent_priority!(d::DeconflictStrategy, env, node)
+    @debug "set_agent_priority! not implemented for deconfliction type: 
+    $(join(env.d.name, ", "))"
 end
 
-function update_simulation!(env)
-    if in(:RVO, env.deconflict_strategies)
-        update_rvo_sim!(env)
-    else
-        @debug "No simulation update required for deconfliction strategy: 
-        $(join(env.deconflict_strategies, ", "))"
-    end
+function get_agent_position(d::DeconflictStrategy, agent)
+    @debug "get_agent_position not implemented for deconfliction type: 
+    $(join(env.d.name, ", "))"
 end
 
-function update_agent_position_in_sim!(env, agent)
-    if in(:RVO, env.deconflict_strategies)
-        pt = rvo_get_agent_position(agent)
-        @assert has_parent(agent, agent) "agent $(node_id(agent)) should be its own parent"
-        set_local_transform!(
-            agent,
-            CoordinateTransformations.Translation(pt[1], pt[2], 0.0),
-        )
-        if !isapprox(
-            norm(global_transform(agent).translation[1:2] .- pt),
-            0.0;
-            rtol = 1e-6,
-            atol = 1e-6,
-        )
-            @warn "Agent $node_id(agent) should be at $pt but is at 
-            $(global_transform(agent).translation[1:2])"
-        end
-        return global_transform(agent)
-    else
-        @debug "No agent position updated in simulation for deconfliction 
-        strategy: $(join(env.deconflict_strategies, ", "))"
-    end
-end
-
-# Add agents to simulation based on the deconfliction algorithm used.
-function add_agents_to_simulation!(scene_tree, env)
-    if in(:RVO, env.deconflict_strategies)
-        return rvo_add_agents!(scene_tree)
-    else
-        @debug "No new agents to add for deconfliction strategy: 
-        $(join(env.deconflict_strategies, ", "))"
-    end
-end
-
-# Adjust the priority of agents to manage their interactions and avoid
-# potential gridlocks. 
-# TODO(tashakim): assess whether deconflict_strategies can be passed in for 
-# this method.
-function set_agent_priority!(env, node)
-    if in(:RVO, env.deconflict_strategies)
-        return set_rvo_priority!(env, node)
-    else
-        @debug "No agent priority to update for deconfliction strategy: 
-        $(join(env.deconflict_strategies, ", "))"
-    end
-end
-
-function get_agent_position(env, agent)
-    if in(:RVO, env.deconflict_strategies)
-        return rvo_get_agent_position(agent)
-    end
-end
-
+"""
+Calculate the maximum speed of a node based on its type and volume.
+"""
 get_agent_max_speed(::RobotNode) = DEFAULT_MAX_SPEED
 function get_agent_max_speed(node)
     rect = get_base_geom(node, HyperrectangleKey())
@@ -137,52 +79,23 @@ function get_agent_max_speed(node)
     return max(vmax - delta_v, DEFAULT_MIN_MAX_SPEED)
 end
 
-function set_agent_max_speed!(env, node, speed)
-    if in(:RVO, env.deconflict_strategies)
-        return rvo_set_agent_max_speed!(node, speed)
-    else
-        @debug "No agent max speed to update for deconfliction strategy: 
-        $(join(env.deconflict_strategies, ", "))"
+function set_agent_max_speed!(d::DeconflictStrategy, node, speed)
+    @debug "set_agent_max_speed! not implemented for deconfliction type: 
+    $(join(env.d.name, ", "))"
+end
+
+function set_agent_pref_velocity!(d::DeconflictStrategy, node, desired_velocity)
+    if matches_template(Union{RobotGo, TransportUnitGo}, node)
+        node.desired_twist = desired_velocity
     end
 end
 
-function set_agent_pref_velocity!(env, node, desired_velocity)
-    if in(:RVO, env.deconflict_strategies)
-        return rvo_set_agent_pref_velocity!(node, desired_velocity)
-    else
-        if matches_template(Union{RobotGo, TransportUnitGo}, node)
-            node.desired_twist = desired_velocity
-        end
+function get_agent_pref_velocity(d::DeconflictStrategy, agent)
+    if matches_template(Union{RobotGo, TransportUnitGo}, agent)
+        return agent.node.desired_twist
     end
 end
 
-function get_agent_pref_velocity(env, agent)
-    if in(:RVO, env.deconflict_strategies)
-        return rvo_get_agent_pref_velocity(entity(agent))
-    else
-        if matches_template(Union{RobotGo, TransportUnitGo}, agent)
-            return agent.node.desired_twist
-        end
-    end
+function set_agent_alpha!(d::DeconflictStrategy, node, alpha = 0.5)
+    node.alpha = alpha
 end
-
-function set_agent_alpha!(env, node, alpha = 0.5)
-    if in(:RVO, env.deconflict_strategies)
-        return rvo_set_agent_alpha!(node, alpha)
-    else
-        node.alpha = alpha
-    end
-end
-
-# Return the maximum speed of a node based on its type and volume.
-function get_vmax(node, env)
-    # TODO(tashakim): Computing vmax is necessary for simulation to run, but 
-    # currently relies on RVO fields. A new method should be implemented that
-    # enables computing vmax without using any RVO fields so that vmax can be 
-    # computed for any deconfliction strategy.
-    @debug "Maximum speed of node for deconfliction strategy $(deconflict_strategies: vmax)"
-    vmax = get_agent_max_speed(node)
-    return vmax
-end
-
-# TODO(tashakim): Add additional methods for minimal functionality, as appropriate

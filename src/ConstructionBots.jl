@@ -85,7 +85,7 @@ Keyword arguments:
 - `block_save_anim::Bool`: whether to save the animation in blocks instead of incrementally. false = incrementall, true = save in blocks (default: false)
 - `update_anim_at_every_step::Bool`: whether to update the animation at every step (default: false)
 - `save_anim_interval::Int`: the interval of number of updates to save the animation if `save_animation_along_the_way=true` (default: 500)
-- `deconflict_strategies::Vector{Symbol}`: algorithm(s) used for decentralized collision avoidance (:RVO, :TangentBugPolicy, :Dispersion)
+- `deconflict_strategies::Vector{Symbol}`: algorithm(s) used for decentralized collision avoidance (:RVO, :TangentBugPolicy, :PotentialFields)
 - `overwrite_results::Bool`: whether to overwrite the stats.toml file or create a new one with a date-time filename (default: true)
 - `write_results::Bool`: whether to write the results to disk (default: true)
 - `max_num_iters_no_progress::Int`: maximum number of iterations to run without progress (default: 10000)
@@ -147,8 +147,16 @@ function run_demo(;
 )
     process_animation_tasks =
         save_animation || save_animation_along_the_way || open_animation_at_end
-    if in(:RVO, deconflict_strategies) && !in(:Dispersion, deconflict_strategies)
-        @warn "RVO is enabled but dispersion is disabled. This is not recommended."
+    # TODO(tashakim): create a helper method to check individual and combined
+    # policies as a DeconflictStrategy subtype.
+    deconfliction_type = ReciprocalVelocityObstacle()
+    # deconfliction_type = if haskey(supported_deconfliction_options, deconflict_strategies)
+    #     supported_deconfliction_options[deconflict_strategies]
+    # else
+    #     Nothing
+    # end
+    if deconfliction_type isa ReciprocalVelocityObstacle && !(deconfliction_type isa PotentialFields)
+        @warn "RVO is enabled but potential fields is disabled. This is not recommended."
     end
     if block_save_anim
         if process_updates_interval != save_anim_interval
@@ -164,7 +172,7 @@ function run_demo(;
     stats[:modelscale] = model_scale
     stats[:robotscale] = robot_scale
     stats[:assignment_mode] = string(assignment_mode)
-    stats[:deconflict_strategies] = string(deconflict_strategies)
+    stats[:deconfliction_type] = string(deconfliction_type.name)
     stats[:OptimizerTimeLimit] = optimizer_time_limit
     if assignment_mode == :milp
         stats[:Optimizer] = string(milp_optimizer)
@@ -209,10 +217,12 @@ function run_demo(;
         clear_default_milp_optimizer_attributes!()
         set_default_milp_optimizer_attributes!(milp_optimizer_attribute_dict)
     end
+
     # Generate file name and paths based on the specified strategies and modes
     function generate_prefix(strategy_symbol, positive_prefix, negative_prefix, strategies)
-        return in(strategy_symbol, strategies) ? positive_prefix : negative_prefix
+        return supported_deconfliction_options[strategy_symbol] == strategies ? positive_prefix : negative_prefix
     end
+
     function get_solution_prefix(mode)
         if mode == :milp
             return "milp_"
@@ -231,7 +241,7 @@ function run_demo(;
     prefix = string(
         generate_prefix(:RVO, "RVO", "no-RVO", deconflict_strategies),
         "_",
-        generate_prefix(:Dispersion, "Dispersion", "no-Dispersion", deconflict_strategies),
+        generate_prefix(:PotentialFields, "PotentialFields", "no-PotentialFields", deconflict_strategies),
         "_",
         generate_prefix(
             :TangentBugPolicy,
@@ -278,7 +288,7 @@ function run_demo(;
     ConstructionBots.set_default_loading_speed!(50 * default_robot_radius())
     ConstructionBots.set_default_rotational_loading_speed!(50 * default_robot_radius())
     ConstructionBots.set_staging_buffer_radius!(default_robot_radius()) # for tangent_bug policy
-    set_agent_properties(deconflict_strategies)
+    set_agent_properties(deconfliction_type)
     # Set default optimizer for staging layout
     ConstructionBots.set_default_geom_optimizer!(ECOS.Optimizer)
     ConstructionBots.set_default_geom_optimizer_attributes!(MOI.Silent() => true)
@@ -629,14 +639,9 @@ function run_demo(;
             n in get_nodes(tg_sched) if matches_template(TransportUnitGo, n)
         ]),
         deconflict_strategies = deconflict_strategies,
+        deconfliction_type = deconfliction_type,
     )
-    update_simulation_environment(env)
-    add_agents_to_simulation!(scene_tree, env)
-    update_env_with_deconfliction(env)
-    # TODO(tashakim): Update route planning to use DeconflictionStrategy
-
-    # Configure collision avoidance strategies for route planning 
-    set_use_deconfliction(deconflict_strategies)
+    update_env_with_deconfliction(scene_tree, env)
     anim = nothing
     if process_animation_tasks
         print("Animating preprocessing step...")

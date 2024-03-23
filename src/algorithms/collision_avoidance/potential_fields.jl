@@ -1,11 +1,14 @@
 abstract type Potential end
 
-@with_kw mutable struct Dispersion <: DeconflictStrategy
-    name::String="Dispersion"
-    # TODO(tashakim): store relevant fields
+@with_kw mutable struct PotentialFields <: DeconflictStrategy
+    name::String="PotentialFields"
+    interaction_radius::Float64 = 20.0
+    agent_max_speed::Float64 = 1.0
+    static_potentials::Vector{Potential} = []
+    dynamic_potentials::Vector{Potential} = []  # Potentials of moving agents
 end
 
-function perform_twist_deconfliction(Dispersion, params)
+function perform_twist_deconfliction(PotentialFields, params)
     # TODO(tashakim): implement this method
 end
 

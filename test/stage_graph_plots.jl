@@ -22,7 +22,7 @@ save_animation_at_end = false
 anim_active_agents = false
 anim_active_areas = false
 update_anim_at_every_step = false
-deconflict_strategies = [:RVO, :TangentBugPolicy, :Dispersion]
+deconflict_strategy = [:RVO]
 assignment_mode = :greedy
 write_results = false
 overwrite_results = false
@@ -33,7 +33,7 @@ num_robots = project_params[:num_robots]
 assignment_mode = assignment_mode
 milp_optimizer = :gurobi # :gurobi :highs
 optimizer_time_limit = 100
-deconflict_strategies = deconflict_strategies
+deconflict_strategy = deconflict_strategy
 block_save_anim = block_save_anim
 open_animation_at_end = open_animation_at_end
 save_animation = save_animation_at_end
@@ -64,8 +64,8 @@ ignore_rot_matrix_warning = true
 rng::Random.AbstractRNG = Random.MersenneTwister(1)
 process_animation_tasks =
     save_animation || save_animation_along_the_way || open_animation_at_end
-if in(:RVO, deconflict_strategies) && !in(:Dispersion, deconflict_strategies)
-    @warn "RVO is enabled but dispersion is disabled. This is not recommended."
+if in(:RVO, deconflict_strategy) && !in(:PotentialFields, deconflict_strategy)
+    @warn "RVO is enabled but potential fields is disabled. This is not recommended."
 end
 # Record statistics
 stats = Dict()
@@ -73,7 +73,7 @@ stats[:rng] = "$rng"
 stats[:modelscale] = model_scale
 stats[:robotscale] = robot_scale
 stats[:assignment_mode] = string(assignment_mode)
-stats[:deconflict_strategies] = string(deconflict_strategies)
+stats[:deconflict_strategy] = string(deconflict_strategy)
 stats[:OptimizerTimeLimit] = optimizer_time_limit
 if assignment_mode == :milp
     stats[:Optimizer] = string(milp_optimizer)
@@ -120,20 +120,20 @@ if assignment_mode == :milp || assignment_mode == :milp_w_greedy_warm_start
     ConstructionBots.set_default_milp_optimizer_attributes!(milp_optimizer_attribute_dict)
 end
 
-if in(:RVO, deconflict_strategies)
+if in(:RVO, deconflict_strategy)
     prefix = "RVO"
 else
     prefix = "no-RVO"
 end
-if in(:TangentBugPolicy, deconflict_strategies)
+if in(:TangentBugPolicy, deconflict_strategy)
     prefix = string(prefix, "_TangentBug")
 else
     prefix = string(prefix, "_no-TangentBug")
 end
-if in(:Dispersion, deconflict_strategies)
-    prefix = string(prefix, "_Dispersion")
+if in(:PotentialFields, deconflict_strategy)
+    prefix = string(prefix, "_PotentialFields")
 else
-    prefix = string(prefix, "_no-Dispersion")
+    prefix = string(prefix, "_no-PotentialFields")
 end
 soln_str_pre = ""
 if assignment_mode == :milp
