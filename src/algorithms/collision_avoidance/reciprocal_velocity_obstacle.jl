@@ -38,7 +38,7 @@ contains necessary parameters.
 avoids collisions and progresses agent towards its goal.
 """
 function perform_twist_deconfliction(r::ReciprocalVelocityObstacle, env, node)
-    @unpack sched, scene_tree, agent_policies, dt = env
+    @unpack dt = env
     agent = entity(node)
     goal = global_transform(goal_config(node))
     twist = compute_twist_from_goal(env, agent, goal, dt)
@@ -49,7 +49,7 @@ struct IntWrapper
     idx::Int
 end
 
-const RVOAgentMap = NGraph{DiGraph,IntWrapper,AbstractID}
+const RVOAgentMap = NGraph{DiGraph, IntWrapper, AbstractID}
 
 rvo_map_num_agents(m::RVOAgentMap) = nv(m)
 

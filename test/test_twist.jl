@@ -1,11 +1,9 @@
 let
     # Interpolate from one transform to another
     p = SVector(0.0, 1.0, 0.0) # point p starts at origin
-    a =
-        CoordinateTransformations.Translation(0, 2, 0) ∘
+    a = CoordinateTransformations.Translation(0, 2, 0) ∘
         CoordinateTransformations.LinearMap(RotX(0.25 * π))
-    b =
-        CoordinateTransformations.Translation(4, 0, 0) ∘
+    b = CoordinateTransformations.Translation(4, 0, 0) ∘
         CoordinateTransformations.LinearMap(RotZ(0.75 * π))
     t = inv(a) ∘ b
     @test array_isapprox(b(p), a(t(p)); atol = 1e-6, rtol = 1e-6)

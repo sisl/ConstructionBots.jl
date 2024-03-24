@@ -1,6 +1,6 @@
 using Test
 
-# Cone potential
+# Cone potential tests
 let
     p = ConstructionBots.ConePotential(-1.0, 1.0, Point(0.0, 0.0))
     x1 = Point(0.5, 0.5)
@@ -16,19 +16,17 @@ let
 
 end
 
-# Rotational potential
+# Rotational potential tests
 let
     p = ConstructionBots.ConePotential(-1.0, 2.0, Point(0.0, 0.0))
     rp = ConstructionBots.RotationalPotential(p, 1.0, 1.0)
     x = Point(1.0, 1.0)
     ConstructionBots.potential_gradient(p, x)
-
     ConstructionBots.potential_gradient(rp, x)
     ConstructionBots.potential_gradient([rp], x)
-
 end
 
-# Tent potential
+# Tent potential tests
 let
     p = ConstructionBots.TentPotential(-1.0, 1.0, Point(0.0, 0.0), Point(0.0, 2.0))
     x1 = Point(0.5, 0.5)
@@ -40,19 +38,17 @@ let
     x2 = Point(2.0, 2.0)
     dx2 = ConstructionBots.potential_gradient(p, x2)
     @test isapprox(norm(dx2), 0)
-
 end
 
-# Barrier potential
+# Barrier potential tests
 let
     p = ConstructionBots.ConePotential(1.0, 1.0, Point(0.0, 0.0))
     pb = ConstructionBots.BarrierPotential(p, 1.0, 0.1)
     y = ConstructionBots.potential(pb, p.x)
     @test isapprox(y, pb.c / pb.z, atol = 1e-10)
-
 end
 
-# Superposed potentials
+# Superposed potential tests
 let
     p = [
         ConstructionBots.ConePotential(-1.0, 1.0, Point(0.0, 0.0)),

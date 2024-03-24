@@ -6,7 +6,7 @@ let
     save_animation_at_end = true
     anim_active_agents = true
     anim_active_areas = true
-    deconflict_strategy = :RVO
+    deconfliction_strategy = :CombinedRVOPolicy
     assignment_mode = :greedy  # :milp :greedy :milp_w_greedy_warm_start
     write_results = false
     overwrite_results = false
@@ -16,7 +16,7 @@ let
         model_scale = project_params[:model_scale],
         num_robots = project_params[:num_robots],
         assignment_mode = assignment_mode,
-        deconflict_strategy = deconflict_strategy,
+        deconfliction_strategy = deconfliction_strategy,
         open_animation_at_end = open_animation_at_end,
         save_animation = save_animation_at_end,
         save_animation_along_the_way = save_animation_along_the_way,
@@ -35,7 +35,7 @@ let
     save_animation_at_end = false
     anim_active_agents = false
     anim_active_areas = false
-    deconflict_strategy = :Nothing
+    deconfliction_strategy = :Nothing
     assignment_mode = :milp  # :greedy :milp_w_greedy_warm_start
     write_results = true
     overwrite_results = true
@@ -47,7 +47,7 @@ let
         assignment_mode = assignment_mode,
         milp_optimizer = :gurobi, # :gurobi :highs
         optimizer_time_limit = 30,
-        deconflict_strategy = deconflict_strategy,
+        deconfliction_strategy = deconfliction_strategy,
         open_animation_at_end = open_animation_at_end,
         save_animation = save_animation_at_end,
         save_animation_along_the_way = save_animation_along_the_way,
@@ -68,7 +68,7 @@ let
     save_animation_at_end = false
     anim_active_agents = false
     anim_active_areas = false
-    deconflict_strategy = :Nothing
+    deconfliction_strategy = :Nothing
     assignment_mode = :milp_w_greedy_warm_start
     write_results = true
     overwrite_results = true
@@ -80,7 +80,7 @@ let
         assignment_mode = assignment_mode,
         milp_optimizer = :gurobi, # :gurobi :highs
         optimizer_time_limit = 30,
-        deconflict_strategy = deconflict_strategy,
+        deconfliction_strategy = deconfliction_strategy,
         open_animation_at_end = open_animation_at_end,
         save_animation = save_animation_at_end,
         save_animation_along_the_way = save_animation_along_the_way,
@@ -92,8 +92,4 @@ let
         save_milp_solution = false,
         stop_after_task_assignment = false,
     )
-end
-
-let
-    include("stage_graph_plots.jl")
 end

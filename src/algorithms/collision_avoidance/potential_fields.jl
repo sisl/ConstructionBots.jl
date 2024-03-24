@@ -282,7 +282,7 @@ end
 
 function update_buffer_radius!(
     policy::PotentialFields,
-    node::Union{RobotGo,TransportUnitGo},
+    node::Union{RobotGo, TransportUnitGo},
     build_step_active::Bool,
     cargo_ready_for_pickup::Bool,
 )

@@ -511,7 +511,7 @@ function construct_partial_construction_schedule(
     scene_tree,
     id_map = build_id_map(mpd_model, model_spec),
 )
-    sched = NGraph{DiGraph,ConstructionPredicate,AbstractID}()
+    sched = NGraph{DiGraph, ConstructionPredicate, AbstractID}()
     parent_map = backup_descendants(model_spec, n -> matches_template(SubModelPlan, n))
     # Add assemblies first
     for node in node_iterator(model_spec, topological_sort_by_dfs(model_spec))

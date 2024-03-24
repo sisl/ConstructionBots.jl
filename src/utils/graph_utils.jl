@@ -1095,10 +1095,10 @@ Custom graph type with custom edge and node types.
 @with_kw struct CustomNEGraph{G,N,E,ID} <: AbstractCustomNEGraph{G,N,E,ID}
     graph::G = G()
     nodes::Vector{N} = Vector{N}()
-    vtx_map::Dict{ID,Int} = Dict{ID,Int}()
+    vtx_map::Dict{ID,Int} = Dict{ID, Int}()
     vtx_ids::Vector{ID} = Vector{ID}()
-    inedges::Vector{Dict{Int,E}} = Vector{Dict{Int,E}}()
-    outedges::Vector{Dict{Int,E}} = Vector{Dict{Int,E}}()
+    inedges::Vector{Dict{Int,E}} = Vector{Dict{Int, E}}()
+    outedges::Vector{Dict{Int,E}} = Vector{Dict{Int, E}}()
 end
 
 const CustomNEDiGraph{N,E,ID} = CustomNEGraph{N,E,ID}
@@ -1108,10 +1108,10 @@ const CustomNEDiGraph{N,E,ID} = CustomNEGraph{N,E,ID}
 
 An example concrete subtype of `AbstractCustomNTree`.
 """
-@with_kw struct CustomNTree{N,ID} <: AbstractCustomNTree{N,ID}
+@with_kw struct CustomNTree{N, ID} <: AbstractCustomNTree{N, ID}
     graph::DiGraph = DiGraph()
     nodes::Vector{N} = Vector{N}()
-    vtx_map::Dict{ID,Int} = Dict{ID,Int}()
+    vtx_map::Dict{ID, Int} = Dict{ID, Int}()
     vtx_ids::Vector{ID} = Vector{ID}()
 end
 
@@ -1120,13 +1120,13 @@ end
 
 Custom tree type with custom edge and node types.
 """
-@with_kw struct CustomNETree{N,E,ID} <: AbstractCustomNETree{N,E,ID}
+@with_kw struct CustomNETree{N, E, ID} <: AbstractCustomNETree{N, E, ID}
     graph::DiGraph = DiGraph()
     nodes::Vector{N} = Vector{N}()
-    vtx_map::Dict{ID,Int} = Dict{ID,Int}()
+    vtx_map::Dict{ID, Int} = Dict{ID, Int}()
     vtx_ids::Vector{ID} = Vector{ID}()
-    inedges::Vector{Dict{Int,E}} = Vector{Dict{Int,E}}()
-    outedges::Vector{Dict{Int,E}} = Vector{Dict{Int,E}}()
+    inedges::Vector{Dict{Int, E}} = Vector{Dict{Int, E}}()
+    outedges::Vector{Dict{Int, E}} = Vector{Dict{Int, E}}()
 end
 
 """
@@ -1141,13 +1141,13 @@ struct CustomNode{N,ID}
     val::N
 end
 
-CustomNode{N,ID}(id::ID) where {N,ID} = CustomNode{N,ID}(id, N())
+CustomNode{N, ID}(id::ID) where {N, ID} = CustomNode{N, ID}(id, N())
 
 function make_node(
-    g::AbstractCustomNGraph{G,CustomNode{N,ID},ID},
+    g::AbstractCustomNGraph{G, CustomNode{N, ID}, ID},
     val::N,
     id,
-) where {G,N,ID}
+) where {G, N, ID}
     _node_type(g)(id, val)
 end
 
@@ -1158,16 +1158,16 @@ A custom node type. Fields:
 - `id::ID`
 - `val::E`
 """
-struct CustomEdge{E,ID}
+struct CustomEdge{E, ID}
     src::ID
     dst::ID
     val::E
 end
 
-CustomEdge{E,ID}(id1::ID, id2::ID) where {E,ID} = CustomEdge{E,ID}(id1, id2, E())
+CustomEdge{E,ID}(id1::ID, id2::ID) where {E, ID} = CustomEdge{E, ID}(id1, id2, E())
 
 function make_edge(
-    g::AbstractCustomNEGraph{G,N,CustomEdge{E,ID},ID},
+    g::AbstractCustomNEGraph{G, N, CustomEdge{E, ID}, ID},
     u,
     v,
     val::E,
@@ -1175,8 +1175,8 @@ function make_edge(
     _edge_type(g)(get_vtx_id(g, get_vtx(g, u)), get_vtx_id(g, get_vtx(g, v)), val)
 end
 
-const NGraph{G,N,ID} = CustomNGraph{G,CustomNode{N,ID},ID}
-const NEGraph{G,N,E,ID} = CustomNEGraph{G,CustomNode{N,ID},CustomEdge{E,ID},ID}
+const NGraph{G, N, ID} = CustomNGraph{G,CustomNode{N,ID},ID}
+const NEGraph{G, N, E, ID} = CustomNEGraph{G,CustomNode{N,ID},CustomEdge{E,ID},ID}
 const NTree{N,ID} = CustomNTree{CustomNode{N,ID},ID}
 const NETree{N,E,ID} = CustomNETree{CustomNode{N,ID},CustomEdge{E,ID},ID}
 for T in (:CustomNGraph, :CustomNTree)

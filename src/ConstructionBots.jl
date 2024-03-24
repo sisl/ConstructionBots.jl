@@ -902,7 +902,7 @@ create_node_id(g, v::SubModelPlan) =
     has_vertex(g, model_name(v)) ? g.id_generator(model_name(v)) : model_name(v)
 create_node_id(g, v::SubFileRef) = g.id_generator(model_name(v))
 
-function add_node!(g::MPDModelGraph{N,ID}, val::N) where {N,ID}
+function add_node!(g::MPDModelGraph{N, ID}, val::N) where {N,ID}
     id = create_node_id(g, val)
     add_node!(g, val, id)
 end
@@ -944,7 +944,7 @@ function populate_model_subgraph!(model_graph, model::SubModelPlan)
 end
 
 function construct_submodel_dependency_graph(model)
-    g = NGraph{DiGraph,SubModelPlan,String}()
+    g = NGraph{DiGraph, SubModelPlan, String}()
     for (k, m) in model.models
         n = add_node!(g, m, k)
     end

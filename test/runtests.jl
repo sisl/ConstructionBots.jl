@@ -49,8 +49,8 @@ end
     @testset "Twist" begin
         include("test_twist.jl")
     end
-    @testset "RVO interface" begin
-        include("test_rvo_interface.jl")
+    @testset "Deconfliction" begin
+        include("test_deconfliction.jl")
     end
     @testset "Demo" begin
         include("test_demo.jl")
