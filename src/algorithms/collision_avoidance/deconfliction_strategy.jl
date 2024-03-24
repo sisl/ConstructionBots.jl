@@ -3,18 +3,19 @@ abstract type DeconflictStrategy end
 include("reciprocal_velocity_obstacle.jl")
 include("tangent_bug_policy.jl")
 include("potential_fields.jl")
-include("combined_policy.jl")
+include("combined_rvo_policy.jl")
 include("custom_policy.jl")
 
 @with_kw mutable struct NoDeconfliction <: DeconflictStrategy
     name::String = "NoDeconfliction"
 end
 
+# Set deconfliction_strategy parameter using key, e.g. :RVO, :Nothing, etc.
 const supported_deconfliction_options = Dict(
     :RVO => ReciprocalVelocityObstacle(),
     :TangentBugPolicy => TangentBugPolicy(),
     :PotentialFields => PotentialFields(),
-    :CombinedPolicy => CombinedPolicy(),
+    :CombinedRVOPolicy => CombinedRVOPolicy(),
     :Nothing => NoDeconfliction(),
     # Add new deconfliction strategies here
 )
@@ -30,13 +31,6 @@ function perform_twist_deconfliction(d::DeconflictStrategy, env, node)
     agent = entity(node)
     goal = global_transform(goal_config(node))
     return compute_twist_from_goal(env, agent, goal, dt)
-end
-
-"""
-"""
-function set_agent_properties(d::DeconflictStrategy)
-    @debug "set_agent_properties not implemented for deconfliction type: 
-    $(join(env.d.name, ", "))"
 end
 
 function update_env_with_deconfliction(d::DeconflictStrategy, scene_tree, env)
@@ -61,6 +55,25 @@ potential gridlocks.
 function set_agent_priority!(d::DeconflictStrategy, env, agent)
     @debug "set_agent_priority! not implemented for deconfliction type: 
     $(join(env.d.name, ", "))"
+end
+
+"""
+"""
+function set_agent_properties(d::DeconflictStrategy)
+    @debug "set_agent_properties not implemented for deconfliction type: 
+    $(join(env.d.name, ", "))"
+end
+
+"""
+Swap positions of two robots in simulation.
+"""
+function swap_positions!(d::DeconflictStrategy, agent1, agent2)
+    @info "Swapping agent $(summary(node_id(agent1))) with 
+    $(summary(node_id(agent2)))"
+    tmp = global_transform(agent1)
+    set_desired_global_transform!(agent1, global_transform(agent2))
+    set_desired_global_transform!(agent2, tmp)
+    return agent1, agent2
 end
 
 function get_agent_position(d::DeconflictStrategy, agent)
@@ -90,11 +103,6 @@ function set_agent_max_speed!(d::DeconflictStrategy, agent, speed)
     $(join(env.d.name, ", "))"
 end
 
-function get_agent_velocity(d::DeconflictStrategy, agent)
-    @debug "get_agent_velocity! not implemented for deconfliction type: 
-    $(join(env.d.name, ", "))"
-end
-
 function set_agent_pref_velocity!(d::DeconflictStrategy, agent, desired_velocity)
     if matches_template(Union{RobotGo, TransportUnitGo}, agent)
         agent.desired_twist = desired_velocity
@@ -108,8 +116,11 @@ function get_agent_pref_velocity(d::DeconflictStrategy, agent)
 end
 
 function get_agent_alpha(d::DeconflictStrategy, agent)
-    @debug "get_agent_apha! not implemented for deconfliction type: 
+    @debug "get_agent_alpha! not implemented for deconfliction type: 
     $(join(env.d.name, ", "))"
+    if matches_template(Union{RobotGo, TransportUnitGo}, agent)
+        return agent.alpha
+    end
 end
 
 function set_agent_alpha!(d::DeconflictStrategy, agent, alpha = 0.5)

@@ -30,7 +30,7 @@ optimized to achieve goal-oriented movement while avoiding collisions with both
 static and dynamic obstacles.
 """
 function perform_twist_deconfliction(p::PotentialFields, env, node)
-    @unpack sched, scene_tree, agent_policies, cache, dt = env
+    @unpack sched, agent_policies, dt = env
     agent = entity(node)
     goal = global_transform(goal_config(node))
     mode = :not_set
@@ -71,22 +71,19 @@ function perform_twist_deconfliction(p::PotentialFields, env, node)
         va = nominal_twist.vel[1:2]
         target_pos = pos .+ va * dt
         # Blend velocities derived from nominal goal-directed movement and 
-        # avoidance of dynamic obstacles, ensuring smooth navigation around
-        # obstacles while maintaining progress towards the goal.
-        vb = -1.0 * compute_potential_gradient!(policy, env, pos)  # commanded velocity from current position
-        vc = -1.0 * compute_potential_gradient!(policy, env, target_pos)  # commanded velocity from current position
+        # avoidance of dynamic obstacles.
+        vb = -1.0 * compute_potential_gradient!(policy, p, env, pos)  # commanded velocity from current position
+        vc = -1.0 * compute_potential_gradient!(policy, p, env, target_pos)  # commanded velocity from current position
         a = 1.0
         b = 1.0
         c = 0.0
         v = (a * va + b * vb + c * vc)
         vel = clip_velocity(v, policy.vmax)
-        # Computes a new goal position based on blended velocity, which respects
-        # both the agent's original mission and the need for collision avoidance.
+        # Computes a new goal position based on blended velocity.
         goal_pt = pos + vel * dt
         goal = CoordinateTransformations.Translation(goal_pt..., 0.0) ∘ 
             CoordinateTransformations.LinearMap(goal.linear)
-        # Computes final twist based on the recalculated goal, ensuring agent's
-        # movement adheres to speed limitations and navigational constraints.
+        # Computes final twist based on the recalculated goal.
         twist = compute_twist_from_goal(env, agent, goal, dt)  # nominal twist
     else
         !(policy === nothing)
@@ -372,14 +369,14 @@ function pairwise_potential_width(policy::PotentialFieldController, α1, α2)
     end
 end
 
-function compute_potential_gradient!(policy::PotentialFieldController, env::PlannerEnv, pos)
+function compute_potential_gradient!(policy::PotentialFieldController, d::DeconflictStrategy, env::PlannerEnv, pos)
     @unpack scene_tree, sched = env
     agent = policy.agent
     dp = static_potential_gradient(policy, pos)
-    α1 = get_agent_alpha(env.deconfliction_type, agent)
+    α1 = get_agent_alpha(d, agent)
     for other_agent in rvo_active_agents(scene_tree)
         if !(agent === other_agent)
-            α2 = get_agent_alpha(env.deconfliction_type, other_agent)
+            α2 = get_agent_alpha(d, other_agent)
             if α1 <= α2 # can't be pushed by other agent
                 continue
             end
@@ -401,11 +398,6 @@ function compute_potential_gradient!(policy::PotentialFieldController, env::Plan
         end
     end
     return dp
-end
-function compute_velocity_command!(policy::PotentialFieldController, env::PlannerEnv, pos)
-    dp = compute_potential_gradient!(policy::PotentialFieldController, env, pos)
-    vel = clip_velocity(-1.0 * dp, policy.vmax)
-    return vel
 end
 
 @with_kw mutable struct PotentialController

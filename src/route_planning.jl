@@ -29,7 +29,7 @@ end
 Base.zero(::Type{Twist}) = Twist(SVector(0.0, 0.0, 0.0), SVector(0.0, 0.0, 0.0))
 
 """
-    optimal_twist(tf_error,v_max,ω_max)
+    optimal_twist(tf_error, v_max, ω_max)
 
 Given a pose error `tf_error`, compute the maximum magnitude `Twist` that
 satisfies the bounds on linear and angular velocity and does not overshoot the
@@ -173,7 +173,7 @@ end
 Step forward one time step.
 """
 # TODO(tashakim): Refactor sim default param and step RVO, line 282
-function step_environment!(env::PlannerEnv, sim = rvo_global_sim())
+function step_environment!(env::PlannerEnv, sim=rvo_global_sim())
     prev_active_pos_dict = get_active_pos(env)
     for v in env.cache.active_set
         node = get_node(env.sched, v).node
@@ -442,7 +442,7 @@ function find_best_swap_candidate(
 end
 
 """
-    swap_carrying_positions!(node::FormTransportUnit,agent::RobotNode,env)
+    swap_carrying_positions!(node::FormTransportUnit, agent::RobotNode, env)
 
 To be executed if `agent` is within the hypersphere but stuck.
 """
@@ -457,28 +457,9 @@ function swap_carrying_positions!(
         @assert matches_template(RobotID, other_id)
         agent = entity(agent_node)
         other_agent = get_node(scene_tree, other_id)
-        swap_positions!(agent, other_agent)
-        # Swap positions in rvo_sim as well
-        # TODO(tashakim): Get position from node instead of directly from 
-        # rvo_get_agent_position (and below)
-        tmp = get_agent_position(env.deconfliction_type, agent)
-        set_agent_position!(env.deconfliction_type, agent, get_agent_position(env.deconfliction_type, other_agent))
-        set_agent_position!(env.deconfliction_type, other_agent, tmp)
+        swap_positions!(env.deconfliction_type, agent, other_agent)
     end
     return agent_node
-end
-
-"""
-    swap_positions!(agent1,agent2)
-
-Swap positions of two robots in simulation.
-"""
-function swap_positions!(agent1, agent2)
-    @info "Swapping agent $(summary(node_id(agent1))) with $(summary(node_id(agent2)))"
-    tmp = global_transform(agent1)
-    set_desired_global_transform!(agent1, global_transform(agent2))
-    set_desired_global_transform!(agent2, tmp)
-    return agent1, agent2
 end
 
 function query_policy_for_goal! end
@@ -624,7 +605,7 @@ end
 
 @with_kw mutable struct VelocityController
     nominal_policy = nothing  # TangentBugPolicy
-    dispersion_policy = nothing  # Potential field
+    dispersion_policy = nothing  # PotentialFields
     # TODO: Add RVO policy if using VelocityController
 end
 
