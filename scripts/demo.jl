@@ -28,7 +28,7 @@ save_anim_interval = 100
 process_updates_interval = 100
 block_save_anim = false
 deconfliction_strategy = :PotentialFields  # See 
-            # `supported_deconfliction_options` in `deconfliction_strategy.jl`
+# `supported_deconfliction_options` in `deconfliction_strategy.jl`
 assignment_mode = :greedy  # :milp :milp_w_greedy_warm_start
 milp_optimizer = :highs  # :gurobi :highs
 optimizer_time_limit = 60

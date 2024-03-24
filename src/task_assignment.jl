@@ -36,7 +36,7 @@ function duration_lower_bound(node::LiftIntoPlace)
     goal_tform = global_transform(goal_config(node))
     tf_error = relative_transform(start_tform, goal_tform)
     # Translation error
-    dx = tf_error.translation[1:2]  
+    dx = tf_error.translation[1:2]
     trans_dt = 0.0
     if norm(dx) <= 1e-4
         trans_dt = env_dt

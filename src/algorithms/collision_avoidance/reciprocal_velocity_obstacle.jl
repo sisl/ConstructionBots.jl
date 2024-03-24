@@ -4,7 +4,7 @@ using PyCall
 # ReciprocalVelocityObstacle policy.
 @with_kw mutable struct ReciprocalVelocityObstacle <: DeconflictStrategy
     name::String = "ReciprocalVelocityObstacle"
-    dt::Float64 = 1/40.0
+    dt::Float64 = 1 / 40.0
     max_speed::Float64 = DEFAULT_MAX_SPEED
     max_speed_volume_factor::Float64 = DEFAULT_MAX_SPEED_VOLUME_FACTOR
     min_max_speed::Float64 = DEFAULT_MIN_MAX_SPEED
@@ -16,7 +16,7 @@ using PyCall
     horizon::Float64 = 2.0
     horizon_obst::Float64 = 1.0
     default_radius::Float64 = 0.5
-    default_velocity::Tuple{Float64, Float64} = (0.0, 0.0)
+    default_velocity::Tuple{Float64,Float64} = (0.0, 0.0)
 end
 
 """
@@ -45,9 +45,11 @@ function perform_twist_deconfliction(r::ReciprocalVelocityObstacle, env, node)
     return twist
 end
 
-struct IntWrapper idx::Int end
+struct IntWrapper
+    idx::Int
+end
 
-const RVOAgentMap = NGraph{DiGraph, IntWrapper, AbstractID}
+const RVOAgentMap = NGraph{DiGraph,IntWrapper,AbstractID}
 
 rvo_map_num_agents(m::RVOAgentMap) = nv(m)
 
@@ -85,14 +87,14 @@ rvo_active_agents(scene_tree) =
 
 function rvo_new_sim(r)
     rvo_reset_agent_map!()
-    dt=r.dt
-    neighbor_dist=r.neighbor_distance
-    max_neighbors=r.max_neighbors
-    horizon=r.horizon
-    horizon_obst=r.horizon_obst
-    radius=r.default_radius
-    max_speed=r.max_speed
-    default_vel=r.default_velocity
+    dt = r.dt
+    neighbor_dist = r.neighbor_distance
+    max_neighbors = r.max_neighbors
+    horizon = r.horizon
+    horizon_obst = r.horizon_obst
+    radius = r.default_radius
+    max_speed = r.max_speed
+    default_vel = r.default_velocity
     rvo_python_module = pyimport("rvo2")
 
     rvo_python_module.PyRVOSimulator(
@@ -110,7 +112,7 @@ end
 global RVO_SIM_WRAPPER = CachedElement{Any}(nothing, false, time())
 rvo_global_sim_wrapper() = RVO_SIM_WRAPPER
 
-function rvo_set_new_sim!(r, sim=rvo_new_sim(r))
+function rvo_set_new_sim!(r, sim = rvo_new_sim(r))
     set_element!(rvo_global_sim_wrapper(), sim)
 end
 
@@ -127,7 +129,7 @@ function compute_rvo_neighbor_distance(r, node)
     return neighbor_dist
 end
 
-function rvo_add_agent!(r, agent::Union{RobotNode, TransportUnitNode}, sim)
+function rvo_add_agent!(r, agent::Union{RobotNode,TransportUnitNode}, sim)
     rad = get_rvo_radius(agent) * 1.05  # Add a little bit of padding for visualization
     max_speed = get_agent_max_speed(agent)
     neighbor_dist = r.neighbor_distance
@@ -147,7 +149,7 @@ for T in (:RobotStart, :RobotGo, :FormTransportUnit, :TransportUnitGo, :DepositC
 end
 rvo_eligible_node(n) = false
 
-function rvo_add_agents!(r, scene_tree, sim=rvo_global_sim())
+function rvo_add_agents!(r, scene_tree, sim = rvo_global_sim())
     for node in get_nodes(scene_tree)
         if matches_template(RobotNode, node)
             if is_root_node(scene_tree, node)
@@ -216,10 +218,7 @@ end
 function update_agent_position_in_sim!(r::ReciprocalVelocityObstacle, env, agent)
     pt = get_agent_position(env.deconfliction_type, agent)
     @assert has_parent(agent, agent) "agent $(node_id(agent)) should be its own parent"
-    set_local_transform!(
-        agent,
-        CoordinateTransformations.Translation(pt[1], pt[2], 0.0),
-    )
+    set_local_transform!(agent, CoordinateTransformations.Translation(pt[1], pt[2], 0.0))
     if !isapprox(
         norm(global_transform(agent).translation[1:2] .- pt),
         0.0;
@@ -245,9 +244,9 @@ function set_rvo_priority!(env, node) end
 
 function set_rvo_priority!(
     env,
-    node::Union{RobotStart, RobotGo, FormTransportUnit, TransportUnitGo, DepositCargo},
+    node::Union{RobotStart,RobotGo,FormTransportUnit,TransportUnitGo,DepositCargo},
 )
-    if matches_template(Union{FormTransportUnit, DepositCargo}, node)
+    if matches_template(Union{FormTransportUnit,DepositCargo}, node)
         alpha = 0.0
     elseif matches_template(TransportUnitGo, node)
         if parent_build_step_is_active(node, env)
@@ -302,7 +301,11 @@ function set_agent_position!(r::ReciprocalVelocityObstacle, agent, pos)
     return rvo_global_sim().setAgentPosition(idx, (pos[1], pos[2]))
 end
 
-function set_agent_max_speed!(r::ReciprocalVelocityObstacle, agent,  speed=get_agent_max_speed(agent))
+function set_agent_max_speed!(
+    r::ReciprocalVelocityObstacle,
+    agent,
+    speed = get_agent_max_speed(agent),
+)
     idx = rvo_get_agent_idx(agent)
     return rvo_global_sim().setAgentMaxSpeed(idx, speed)
 end
@@ -314,7 +317,10 @@ end
 
 function set_agent_pref_velocity!(r::ReciprocalVelocityObstacle, agent, desired_velocity)
     idx = rvo_get_agent_idx(agent)
-    return rvo_global_sim().setAgentPrefVelocity(idx, (desired_velocity[1], desired_velocity[2]))
+    return rvo_global_sim().setAgentPrefVelocity(
+        idx,
+        (desired_velocity[1], desired_velocity[2]),
+    )
 end
 
 function get_agent_alpha(r::ReciprocalVelocityObstacle, agent)
@@ -322,7 +328,7 @@ function get_agent_alpha(r::ReciprocalVelocityObstacle, agent)
     return rvo_global_sim().getAgentAlpha(idx)
 end
 
-function set_agent_alpha!(r::ReciprocalVelocityObstacle, agent, alpha=0.5)
+function set_agent_alpha!(r::ReciprocalVelocityObstacle, agent, alpha = 0.5)
     idx = rvo_get_agent_idx(agent)
     return rvo_global_sim().setAgentAlpha(idx, alpha)
 end

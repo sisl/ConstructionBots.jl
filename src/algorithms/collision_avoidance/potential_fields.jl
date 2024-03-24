@@ -1,18 +1,18 @@
 abstract type Potential end
 
 @with_kw mutable struct PotentialFields <: DeconflictStrategy
-    name::String="PotentialFields"
-    agent=nothing
-    node=nothing
-    agent_radius=1.0
-    agent_max_speed::Float64=1.0
-    vmax=1.0  # used for modifying potentials
-    dist_to_nearest_active_agent=Inf  # track distance to closest agent
-    max_buffer_radius=2.5 * agent_radius  # maximum buffer to add for potential
-    buffer_radius=max_buffer_radius  # how much buffer to add for potential
-    interaction_radius=20 * ROBOT_RADIUS
-    pairwise_potentials=(x, r, xp, rp) -> repulsion_potential(x, r, xp, rp)  # potentials between all pairs of robots
-    static_potentials=(x, r) -> 0.0  # environment potentials (may depend on other agent's states)
+    name::String = "PotentialFields"
+    agent = nothing
+    node = nothing
+    agent_radius = 1.0
+    agent_max_speed::Float64 = 1.0
+    vmax = 1.0  # used for modifying potentials
+    dist_to_nearest_active_agent = Inf  # track distance to closest agent
+    max_buffer_radius = 2.5 * agent_radius  # maximum buffer to add for potential
+    buffer_radius = max_buffer_radius  # how much buffer to add for potential
+    interaction_radius = 20 * ROBOT_RADIUS
+    pairwise_potentials = (x, r, xp, rp) -> repulsion_potential(x, r, xp, rp)  # potentials between all pairs of robots
+    static_potentials = (x, r) -> 0.0  # environment potentials (may depend on other agent's states)
 end
 
 """
@@ -88,7 +88,8 @@ function perform_twist_deconfliction(p::PotentialFields, env, node)
         vel = clip_velocity(v, policy.vmax)
         # Computes a new goal position based on blended velocity.
         goal_pt = pos + vel * dt
-        goal = CoordinateTransformations.Translation(goal_pt..., 0.0) ∘ 
+        goal =
+            CoordinateTransformations.Translation(goal_pt..., 0.0) ∘
             CoordinateTransformations.LinearMap(goal.linear)
         # Computes final twist based on the recalculated goal.
         twist = compute_twist_from_goal(env, agent, goal, dt)  # nominal twist
@@ -237,13 +238,7 @@ end
 Combines a cone potential and a 1/||x|| barrier potential for pairwise
 repulsion.
 """
-function repulsion_potential(
-    x,
-    r,
-    x2,
-    r2;
-    dr = 2 * default_robot_radius(),
-)
+function repulsion_potential(x, r, x2, r2; dr = 2 * default_robot_radius())
     dx = x .- x2
     R = r + r2
     # Cone
@@ -280,10 +275,7 @@ function dist_to_nearest_active_agent(policy::PotentialFields, env::PlannerEnv)
     return id, shortest_dist
 end
 
-function update_dist_to_nearest_active_agent!(
-    policy::PotentialFields,
-    env::PlannerEnv,
-)
+function update_dist_to_nearest_active_agent!(policy::PotentialFields, env::PlannerEnv)
     id, dist = dist_to_nearest_active_agent(policy, env)
     policy.dist_to_nearest_active_agent = dist
 end
@@ -360,7 +352,12 @@ function pairwise_potential_width(policy::PotentialFields, α1, α2)
     end
 end
 
-function compute_potential_gradient!(policy::PotentialFields, d::DeconflictStrategy, env::PlannerEnv, pos)
+function compute_potential_gradient!(
+    policy::PotentialFields,
+    d::DeconflictStrategy,
+    env::PlannerEnv,
+    pos,
+)
     @unpack scene_tree, sched = env
     agent = policy.agent
     dp = static_potential_gradient(policy, pos)
@@ -460,8 +457,7 @@ function update_env_with_deconfliction(p::PotentialFields, scene_tree, env)
             vmax = get_agent_max_speed(n)
             env.agent_policies[node_id(n)] = ConstructionBots.VelocityController(
                 nominal_policy = nothing,
-                dispersion_policy = 
-                ConstructionBots.PotentialFields(
+                dispersion_policy = ConstructionBots.PotentialFields(
                     agent = n,
                     node = node,
                     agent_radius = agent_radius,

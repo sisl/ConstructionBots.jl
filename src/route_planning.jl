@@ -173,7 +173,7 @@ end
 Step forward one time step.
 """
 # TODO(tashakim): Refactor sim default param and step RVO, line 282
-function step_environment!(env::PlannerEnv, sim=rvo_global_sim())
+function step_environment!(env::PlannerEnv, sim = rvo_global_sim())
     prev_active_pos_dict = get_active_pos(env)
     for v in env.cache.active_set
         node = get_node(env.sched, v).node
@@ -193,14 +193,22 @@ function step_environment!(env::PlannerEnv, sim=rvo_global_sim())
     end
     # TODO(tashakim): Refactor rvo_global_id_map
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
-        tform = update_agent_position_in_sim!(env.deconfliction_type, env, get_node(env.scene_tree, id))
+        tform = update_agent_position_in_sim!(
+            env.deconfliction_type,
+            env,
+            get_node(env.scene_tree, id),
+        )
     end
     # Swap transport unit positions if necessary
     swap_first_paralyzed_transport_unit!(env, prev_active_pos_dict)
     # Set velocities to zero for all agents. The pref velocities are only overwritten if
     # agent is "active" in the next time step
     for id in get_vtx_ids(ConstructionBots.rvo_global_id_map())
-        set_agent_pref_velocity!(env.deconfliction_type, get_node(env.scene_tree, id), (0.0, 0.0))
+        set_agent_pref_velocity!(
+            env.deconfliction_type,
+            get_node(env.scene_tree, id),
+            (0.0, 0.0),
+        )
     end
     return env
 end
@@ -643,11 +651,11 @@ function compute_twist_from_goal(
 end
 
 get_cmd(
-    ::Union{BuildPhasePredicate, EntityConfigPredicate, ProjectComplete},
-     env::PlannerEnv,
+    ::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},
+    env::PlannerEnv,
 ) = nothing
 
-function get_cmd(node::Union{TransportUnitGo, RobotGo}, env::PlannerEnv)
+function get_cmd(node::Union{TransportUnitGo,RobotGo}, env::PlannerEnv)
     agent = entity(node)
     update_agent_position_in_sim!(env.deconfliction_type, env, agent)
     set_agent_priority!(env.deconfliction_type, env, node)
@@ -671,7 +679,7 @@ function get_cmd(node::Union{TransportUnitGo, RobotGo}, env::PlannerEnv)
     return twist
 end
 
-function get_cmd(node::Union{FormTransportUnit, DepositCargo}, env::PlannerEnv)
+function get_cmd(node::Union{FormTransportUnit,DepositCargo}, env::PlannerEnv)
     agent = entity(node)
     cargo = get_node(env.scene_tree, cargo_id(agent))
     # Compute velocity (angular and translational) for cargo
@@ -703,7 +711,7 @@ function get_cmd(node::LiftIntoPlace, env::PlannerEnv)
 end
 
 apply_cmd!(
-    ::Union{BuildPhasePredicate, EntityConfigPredicate, ProjectComplete},
+    ::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},
     cmd,
     env::PlannerEnv,
 ) = nothing
@@ -751,7 +759,7 @@ function apply_cmd!(node::LiftIntoPlace, twist::Twist, env::PlannerEnv)
     set_local_transform!(cargo, local_transform(cargo) ∘ tform)
 end
 
-function apply_cmd!(node::Union{TransportUnitGo, RobotGo}, twist::Twist, env::PlannerEnv)
+function apply_cmd!(node::Union{TransportUnitGo,RobotGo}, twist::Twist, env::PlannerEnv)
     @unpack sched, scene_tree, cache, dt = env
     if !(env.deconfliction_type isa ReciprocalVelocityObstacle)
         agent = entity(node)

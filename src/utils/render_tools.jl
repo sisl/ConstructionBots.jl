@@ -666,11 +666,7 @@ function animate_update_visualizer!(args...; anim = nothing, step = 1)
     end
 end
 
-function visualizer_update_function!(
-    factory_vis,
-    env,
-    newly_updated = Set{Int}();
-)
+function visualizer_update_function!(factory_vis, env, newly_updated = Set{Int}();)
     @unpack vis, vis_nodes, staging_nodes = factory_vis
 
     closed_steps_nodes = []
@@ -854,7 +850,7 @@ _subtitle_string(n::AssemblyNode) = "a$(get_id(node_id(n)))"
 _subtitle_string(n::TransportUnitNode) =
     cargo_type(n) == AssemblyNode ? "a$(get_id(node_id(n)))" : "o$(get_id(node_id(n)))"
 
-    SPACE_GRAY = RGB(0.2, 0.2, 0.2)
+SPACE_GRAY = RGB(0.2, 0.2, 0.2)
 BRIGHT_RED = RGB(0.6, 0.0, 0.2)
 LIGHT_BROWN = RGB(0.6, 0.3, 0.2)
 LIME_GREEN = RGB(0.2, 0.6, 0.2)

@@ -104,13 +104,13 @@ function set_agent_max_speed!(d::DeconflictStrategy, agent, speed)
 end
 
 function set_agent_pref_velocity!(d::DeconflictStrategy, agent, desired_velocity)
-    if matches_template(Union{RobotGo, TransportUnitGo}, agent)
+    if matches_template(Union{RobotGo,TransportUnitGo}, agent)
         agent.desired_twist = desired_velocity
     end
 end
 
 function get_agent_pref_velocity(d::DeconflictStrategy, agent)
-    if matches_template(Union{RobotGo, TransportUnitGo}, agent)
+    if matches_template(Union{RobotGo,TransportUnitGo}, agent)
         return agent.node.desired_twist
     end
 end
@@ -118,7 +118,7 @@ end
 function get_agent_alpha(d::DeconflictStrategy, agent)
     @debug "get_agent_alpha! not implemented for deconfliction type: 
     $(join(env.d.name, ", "))"
-    if matches_template(Union{RobotGo, TransportUnitGo}, agent)
+    if matches_template(Union{RobotGo,TransportUnitGo}, agent)
         return agent.alpha
     end
 end

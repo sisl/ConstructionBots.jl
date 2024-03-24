@@ -1,6 +1,6 @@
 @with_kw mutable struct CombinedRVOPolicy <: DeconflictStrategy
-    name::String="RVO-TangentBug-PotentialFields"
-    dt::Float64 = 1/40.0
+    name::String = "RVO-TangentBug-PotentialFields"
+    dt::Float64 = 1 / 40.0
     neighbor_distance::Float64 = DEFAULT_NEIGHBOR_DISTANCE
     min_neighbor_distance::Float64 = DEFAULT_MINIMUM_NEIGHBOR_DISTANCE
     neighborhood_velocity_scale_factor = DEFAULT_NEIGHBORHOOD_VELOCITY_SCALE_FACTOR
@@ -9,7 +9,7 @@
     horizon_obst::Float64 = 1.0
     default_radius::Float64 = 0.5
     max_speed::Float64 = DEFAULT_MAX_SPEED
-    default_velocity::Tuple{Float64, Float64} = (0.0, 0.0)
+    default_velocity::Tuple{Float64,Float64} = (0.0, 0.0)
 end
 
 """
@@ -66,10 +66,16 @@ function perform_twist_deconfliction(c::CombinedRVOPolicy, env, node)
         pos = project_to_2d(global_transform(agent).translation)
         va = nominal_twist.vel[1:2]
         target_pos = pos .+ va * dt
-        vb = -1.0 * compute_potential_gradient!(
-            policy, ReciprocalVelocityObstacle(), env, pos)  # commanded velocity from current position
-        vc = -1.0 * compute_potential_gradient!(
-            policy, ReciprocalVelocityObstacle(), env, target_pos)  # commanded velocity from current position
+        vb =
+            -1.0 *
+            compute_potential_gradient!(policy, ReciprocalVelocityObstacle(), env, pos)  # commanded velocity from current position
+        vc =
+            -1.0 * compute_potential_gradient!(
+                policy,
+                ReciprocalVelocityObstacle(),
+                env,
+                target_pos,
+            )  # commanded velocity from current position
         # Blend the three velocities
         a = 1.0
         b = 1.0
@@ -125,10 +131,7 @@ end
 function update_agent_position_in_sim!(c::CombinedRVOPolicy, env, agent)
     pt = get_agent_position(c, agent)
     @assert has_parent(agent, agent) "agent $(node_id(agent)) should be its own parent"
-    set_local_transform!(
-        agent,
-        CoordinateTransformations.Translation(pt[1], pt[2], 0.0),
-    )
+    set_local_transform!(agent, CoordinateTransformations.Translation(pt[1], pt[2], 0.0))
     if !isapprox(
         norm(global_transform(agent).translation[1:2] .- pt),
         0.0;
@@ -160,7 +163,11 @@ function set_agent_position!(c::CombinedRVOPolicy, agent, pos)
     return rvo_global_sim().setAgentPosition(idx, (pos[1], pos[2]))
 end
 
-function set_agent_max_speed!(c::CombinedRVOPolicy, agent, speed=get_agent_max_speed(agent))
+function set_agent_max_speed!(
+    c::CombinedRVOPolicy,
+    agent,
+    speed = get_agent_max_speed(agent),
+)
     idx = rvo_get_agent_idx(agent)
     return rvo_global_sim().setAgentMaxSpeed(idx, speed)
 end
@@ -172,7 +179,10 @@ end
 
 function set_agent_pref_velocity!(c::CombinedRVOPolicy, agent, desired_velocity)
     idx = rvo_get_agent_idx(agent)
-    return rvo_global_sim().setAgentPrefVelocity(idx, (desired_velocity[1], desired_velocity[2]))
+    return rvo_global_sim().setAgentPrefVelocity(
+        idx,
+        (desired_velocity[1], desired_velocity[2]),
+    )
 end
 
 function get_agent_alpha(c::CombinedRVOPolicy, agent)
@@ -180,7 +190,7 @@ function get_agent_alpha(c::CombinedRVOPolicy, agent)
     return rvo_global_sim().getAgentAlpha(idx)
 end
 
-function set_agent_alpha!(c::CombinedRVOPolicy, agent, alpha=0.5)
+function set_agent_alpha!(c::CombinedRVOPolicy, agent, alpha = 0.5)
     idx = rvo_get_agent_idx(agent)
     return rvo_global_sim().setAgentAlpha(idx, alpha)
 end
