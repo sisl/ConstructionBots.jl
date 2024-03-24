@@ -19,7 +19,10 @@ end
 export Twist, optimal_twist, integrate_twist
 
 """
-    Twist
+    struct Twist
+
+Represents a twist in 3D space, encapsulating both linear velocity (`vel`) and 
+angular velocity (`ω`), each represented as a 3D static vector.
 """
 struct Twist
     vel::SVector{3,Float64}
@@ -168,9 +171,16 @@ function get_active_pos(env::PlannerEnv)
 end
 
 """
-    step_environment!(env::PlannerEnv, sim=rvo_global_sim())
+step_environment!(env::PlannerEnv, sim=rvo_global_sim()) -> PlannerEnv
 
-Step forward one time step.
+Advances the simulation environment by one time step. It integrates the current
+twists of all agents, updates the planning cache, and potentially modifies agent
+positions based on the chosen deconfliction strategy.
+
+- `env`: The planning environment to be stepped.
+- `sim`: (Optional) The simulation object, typically an RVO simulator.
+
+Returns the updated `PlannerEnv`.
 """
 # TODO(tashakim): Refactor sim default param and step RVO, line 282
 function step_environment!(env::PlannerEnv, sim = rvo_global_sim())
@@ -213,6 +223,18 @@ function step_environment!(env::PlannerEnv, sim = rvo_global_sim())
     return env
 end
 
+"""
+update_planning_cache!(env::PlannerEnv, time_stamp::Float64) -> Set{Int}
+
+Updates the planning cache of the environment `env` based on the current 
+operational state and the given `time_stamp`. It marks nodes as active or closed 
+as appropriate and triggers any necessary state transitions.
+
+- `env`: The planning environment whose cache is to be updated.
+- `time_stamp`: The current time stamp, used for time-dependent operations.
+
+Returns a set of node IDs that were newly updated during this operation.
+"""
 function update_planning_cache!(env::PlannerEnv, time_stamp::Float64)
     @unpack sched, cache = env
     # Skip over nodes that are already planned or just don't need planning
@@ -245,9 +267,14 @@ function update_planning_cache!(env::PlannerEnv, time_stamp::Float64)
 end
 
 """
-    close_node!(node,env)
+    close_node!(node, env)
 
-Ensure that a node is completed
+Marks a node as completed within the planning environment `env`. Depending on 
+the node type, this might involve updating the active build steps, adjusting 
+the scene tree, or other cleanup operations.
+
+- `node`: The node to be marked as completed.
+- `env`: The planning environment.
 """
 close_node!(node::ScheduleNode, env::PlannerEnv) = close_node!(node.node, env)
 close_node!(::ConstructionPredicate, env::PlannerEnv) = nothing  # close_node!(n,env)
@@ -260,7 +287,10 @@ function close_node!(node::CloseBuildStep, env::PlannerEnv)
     for (id, tform) in assembly_components(node)
         if !has_edge(scene_tree, assembly, id)
             if !capture_child!(scene_tree, assembly, id)
-                @warn "Assembly $(string(node_id(assembly))) is unable to capture child $(string(id)). Current relative transform is $(relative_transform(assembly,get_node(scene_tree,id))), but should be $(child_transform(assembly,id))" assembly id
+                @warn "Assembly $(string(node_id(assembly))) is unable to 
+                capture child $(string(id)). Current relative transform is 
+                $(relative_transform(assembly,get_node(scene_tree,id))), 
+                but should be $(child_transform(assembly,id))" assembly id
             end
         end
         @assert has_edge(scene_tree, assembly, id)
@@ -268,8 +298,7 @@ function close_node!(node::CloseBuildStep, env::PlannerEnv)
 end
 
 """
-ensure that all transport units (if active) are formed or (conversely)
-disbanded
+Ensure all transport units (if active) are formed or (conversely) disbanded.
 """
 function preprocess_env!(env::PlannerEnv)
     @unpack sched, scene_tree, cache = env
@@ -361,6 +390,21 @@ function is_goal(node::LiftIntoPlace, env::PlannerEnv)
     return is_within_capture_distance(state, goal)
 end
 
+"""
+swap_first_paralyzed_transport_unit!(env::PlannerEnv, pos_before_step::Dict{Int, 
+Vector{Float64}})
+
+Attempts to swap the position of the first paralyzed transport unit with another
+unit within the planning environment `env`. A transport unit is considered 
+paralyzed if it has not moved significantly from its position before the 
+current simulation step, as determined by comparing `pos_before_step` with the 
+current position. This function is intended to help resolve deadlock situations
+by swapping the positions of units.
+
+- `env`: The planning environment containing the transport units and states.
+- `pos_before_step`: A dictionary mapping transport unit IDs to their positions
+ before the current simulation step.
+"""
 function swap_first_paralyzed_transport_unit!(
     env::PlannerEnv,
     pos_before_step::Dict{Int,Vector{Float64}},
@@ -408,9 +452,17 @@ function swap_first_paralyzed_transport_unit!(
 end
 
 """
-    find_best_swap_candidate(node::FormTransportUnit,agent_node::RobotGo,env)
+    find_best_swap_candidate(node::FormTransportUnit, agent_node::RobotGo, 
+    env::PlannerEnv) -> Union{Nothing, Int}
 
-For agent
+Identifies the best swap candidate for a given robot associated with a 
+transport unit, aiming to resolve situations where the robot is stuck or unable 
+to progress towards its goal.
+
+- `node`: Transport unit node in question.
+- `agent_node`: Robot node that might need to be swapped, due to being stuck or 
+paralyzed.
+- `env`: The planning environment.
 """
 function find_best_swap_candidate(
     node::FormTransportUnit,
@@ -569,6 +621,17 @@ end
 inflate_circle(circ::LazySets.Ball2, r::Float64) =
     LazySets.Ball2(get_center(circ), get_radius(circ) + r)
 
+"""
+    active_staging_circles(env, exclude_ids=Set()) -> Dict
+
+Generates a dictionary of active staging circles within the planning 
+environment, optionally excluding specified IDs. Each staging circle is
+represented by a circle object with a center position and radius, adjusted by 
+dynamic buffers where applicable.
+
+- `env`: The planning environment, containing all relevant state information.
+- `exclude_ids`: (Optional) A set of IDs to exclude from the returned dictionary.
+"""
 function active_staging_circles(env, exclude_ids = Set())
     buffer = env.staging_buffers # to increase radius of staging circles when necessary
     node_iter = (
@@ -582,6 +645,24 @@ function active_staging_circles(env, exclude_ids = Set())
     )
 end
 
+"""
+    inflate_staging_circle_buffers!(env, policy, agent, circle_ids; 
+    threshold=0.2, delta=0.1 * default_robot_radius(), 
+    delta_max=4 * default_robot_radius())
+
+Adjusts the radius of staging circles based on agent movement to prevent 
+deadlock situations. If an agent moves less than a specified threshold, the 
+function increases the buffer radius of associated staging circles to provide 
+more space for maneuvering.
+
+- `env`: The planning environment.
+- `policy`: The current policy dictating agent movement.
+- `agent`: The agent for which the staging circles are considered.
+- `circle_ids`: IDs of the circles to potentially adjust.
+- `threshold`: Movement threshold below which buffers are increased.
+- `delta`: The amount by which to increase the staging circle buffer.
+- `delta_max`: The maximum allowable buffer size.
+"""
 function inflate_staging_circle_buffers!(
     env,
     policy,
@@ -605,7 +686,8 @@ function inflate_staging_circle_buffers!(
             if buffer < delta_max - delta
                 buffer = min(buffer, delta_max)
                 staging_buffers[id] = buffer
-                @info "increasing radius buffer of $(summary(id)) to $(buffer) because $(summary(node_id(agent))) is stuck"
+                @info "increasing radius buffer of $(summary(id)) to $(buffer) 
+                because $(summary(node_id(agent))) is stuck"
             end
         end
     end
@@ -638,6 +720,23 @@ function active_build_step_countdown(step, env::PlannerEnv)
     return k
 end
 
+"""
+    compute_twist_from_goal(env, agent, goal, dt; 
+    v_max=get_agent_max_speed(agent), 
+    ω_max=default_rotational_loading_speed()) -> Twist
+
+Computes the twist required for an agent to progress towards a goal 
+configuration from its current state within the specified time step `dt`, 
+subject to maximum linear and angular velocity constraints `v_max` and `ω_max`.
+
+- `env`: The planning environment.
+- `agent`: The agent for which the twist is being computed.
+- `goal`: The target configuration towards which the agent is trying to move.
+- `dt`: The time step over which the twist should be applied. This parameter
+    influences how aggressively the agent tries to reach its goal.
+- `v_max` (optional): The maximum linear velocity that agent can achieve.
+- `ω_max` (optional): The maximum angular velocity that agent can achieve.
+"""
 function compute_twist_from_goal(
     env,
     agent,
@@ -650,6 +749,16 @@ function compute_twist_from_goal(
     return optimal_twist(tf_error, v_max, ω_max, dt)
 end
 
+"""
+    get_cmd(node, env::PlannerEnv) -> Twist
+
+Retrieves the next command (as a `Twist`) for a given node based on the current
+state of the planning environment. The command is determined by considering the 
+node's goal, any relevant deconfliction strategies and environmental constraints.
+
+- `node`: The node (e.g., agent, robot) for which to retrieve the command.
+- `env`: The planning environment.
+"""
 get_cmd(
     ::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},
     env::PlannerEnv,
@@ -710,6 +819,18 @@ function get_cmd(node::LiftIntoPlace, env::PlannerEnv)
     return twist
 end
 
+"""
+    apply_cmd!(node, cmd::Twist, env::PlannerEnv)
+
+Applies a given command to a node, updating its state within the planning 
+environment. This function integrates the provided `Twist` (linear and angular 
+velocities) over the environment's time step, adjusting the node's position or 
+other relevant attributes.
+
+- `node`: The node (e.g., agent, robot) to which the command is applied.
+- `cmd`: The command to apply, encapsulated as a `Twist`.
+- `env`: The planning environment.
+"""
 apply_cmd!(
     ::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},
     cmd,
