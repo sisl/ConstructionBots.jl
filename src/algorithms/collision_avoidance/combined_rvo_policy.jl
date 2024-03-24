@@ -103,7 +103,7 @@ function update_env_with_deconfliction(c::CombinedRVOPolicy, scene_tree, env)
                     vmax = vmax,
                     agent_radius = agent_radius,
                 ),
-                dispersion_policy = ConstructionBots.PotentialFieldController(
+                dispersion_policy = ConstructionBots.PotentialFields(
                     agent = n,
                     node = node,
                     agent_radius = agent_radius,
