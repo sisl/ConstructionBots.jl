@@ -18,22 +18,46 @@ using PyCall
     default_velocity::Tuple{Float64, Float64} = (0.0, 0.0)
 end
 
-function perform_twist_deconfliction(r::ReciprocalVelocityObstacle, params)
-    sim = rvo_global_sim()
-    # params should contain information about all agents to be updated
-    for (id, agent_params) in params
-        pos = (agent_params.x, agent_params.y)
-        vel = (agent_params.vx, agent_params.vy)
-        idx = rvo_get_agent_idx(id)
-        sim.setAgentPosition(idx, pos)
-        sim.setAgentPrefVelocity(idx, vel)
+"""
+    perform_twist_deconfliction(r::ReciprocalVelocityObstacle, env, node)
+
+Calculates the optimal twist (linear and angular velocity) to avoid collisions 
+for a given agent using the Reciprocal Velocity Obstacle method. The method 
+adjusts the agent's path to avoid potential collisions with other agents and 
+obstacles while trying to reach its goal.
+
+# Arguments
+- `r`: The ReciprocalVelocityObstacle deconfliction strategy instance that
+contains necessary parameters.
+- `env`: The simulation environment with current state of agents and obstacles.
+- `node`: The agent for which the twist is being calculated.
+
+# Returns
+- `Twist`: The desired twist (comprising linear and angular velocity) that
+avoids collisions and progresses agent towards its goal.
+"""
+function perform_twist_deconfliction(r::ReciprocalVelocityObstacle, env, node)
+    @unpack sched, scene_tree, agent_policies, dt = env
+    agent = entity(node)
+    goal = global_transform(goal_config(node))
+    mode = :not_set
+    twist = compute_twist_from_goal(env, agent, goal, dt)
+    # Set nominal velocity to zero if close to goal (Note: this is a hack)
+    parent_step = get_parent_build_step(sched, node)
+    if !(parent_step === nothing)
+        countdown = active_build_step_countdown(parent_step.node, env)
+        dist_to_goal = norm(goal.translation .- global_transform(agent).translation)
+        unit_radius = get_base_geom(entity(node), HypersphereKey()).radius
+        if (mode != :EXIT_CIRCLE) && (dist_to_goal < 15 * unit_radius)
+            # Done so the agent doesn't crowd its destination
+            if matches_template(TransportUnitGo, node) && countdown >= 1
+                twist = Twist(0.0 * twist.vel, twist.ω)
+            elseif matches_template(RobotGo, node) && countdown >= 3
+                twist = Twist(0.0 * twist.vel, twist.ω)
+            end
+        end
     end
-    sim.doStep()  # Update simulation to next time step
-    for (id, _) in params
-        idx = rvo_get_agent_idx(id)
-        new_vel = sim.getAgentVelocity(idx)
-        # Apply new_vel to the agent in simulation environment
-    end
+    return twist
 end
 
 struct IntWrapper idx::Int end

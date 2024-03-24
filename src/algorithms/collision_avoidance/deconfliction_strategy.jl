@@ -19,7 +19,19 @@ const supported_deconfliction_options = Dict(
     # Add new deconfliction strategies here
 )
 
-# Interface methods
+# Interface methods (called by default when deconfliction_strategy is
+# unrecognized, unsupported, or :Nothing)
+"""
+Computes twist for an agent given its goal position, with no deconfliction
+strategy (robots will be seen going through each other). 
+"""
+function perform_twist_deconfliction(d::DeconflictStrategy, env, node)
+    @unpack dt = env
+    agent = entity(node)
+    goal = global_transform(goal_config(node))
+    return compute_twist_from_goal(env, agent, goal, dt)
+end
+
 """
 """
 function set_agent_properties(d::DeconflictStrategy)

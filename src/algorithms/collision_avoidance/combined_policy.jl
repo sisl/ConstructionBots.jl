@@ -16,22 +16,113 @@
     default_velocity::Tuple{Float64, Float64} = (0.0, 0.0)
 end
 
-function perform_twist_deconfliction(c::CombinedPolicy, params)
-    sim = rvo_global_sim()
-    # params should contain information about all agents to be updated
-    for (id, agent_params) in params
-        pos = (agent_params.x, agent_params.y)
-        vel = (agent_params.vx, agent_params.vy)
-        idx = rvo_get_agent_idx(id)
-        sim.setAgentPosition(idx, pos)
-        sim.setAgentPrefVelocity(idx, vel)
+"""
+perform_twist_deconfliction(c::CombinedPolicy, env, node) -> Twist
+
+Computes a deconflicted twist for an agent using the Reciprocal Velocity
+Obstacle, Tangent Bug Policy, and Potential Fields algorithms (in that order).
+
+# Arguments
+- `c::CombinedPolicy`: A deconfliction strategy instance that contains necessary
+parameters.
+- `env`: Simulation environment with current state of agents and obstacles.
+- `node`: The agent for which the twist is being calculated.
+
+# Returns
+- `Twist`: The computed twist that combines linear and angular velocities, 
+optimized to achieve goal-oriented movement while avoiding collisions with both
+static and dynamic obstacles.
+"""
+function perform_twist_deconfliction(c::CombinedPolicy, env, node)
+    @unpack sched, scene_tree, agent_policies, cache, dt = env
+    agent = entity(node)
+    goal = global_transform(goal_config(node))
+    mode = :not_set
+    # Apply tangent bug policy
+    policy = agent_policies[node_id(agent)].nominal_policy
+    pos = project_to_2d(global_transform(agent).translation)
+    excluded_ids = Set{AbstractID}()
+    # TODO: Check if we can use the cached version here
+    if parent_build_step_is_active(node, env) && cargo_ready_for_pickup(node, env)
+        parent_build_step = get_parent_build_step(sched, node)
+        push!(excluded_ids, node_id(parent_build_step))
     end
-    sim.doStep()  # Update simulation to next time step
-    for (id, _) in params
-        idx = rvo_get_agent_idx(id)
-        new_vel = sim.getAgentVelocity(idx)
-        # Apply new_vel to the agent in simulation environment
+    # Get circle obstacles, potentially inflated
+    circles = active_staging_circles(env, excluded_ids)
+    policy.config = global_transform(agent)
+    # TangentBug Policy
+    parent_step_is_active = parent_build_step_is_active(node, env)
+    goal_pt = query_policy_for_goal!(
+        policy,
+        circles,
+        pos,
+        project_to_2d(goal.translation),
+        parent_step_is_active,
+    )
+    new_goal =
+        CoordinateTransformations.Translation(goal_pt..., 0.0) ∘
+        CoordinateTransformations.LinearMap(goal.linear)
+    _, circ, _ = get_closest_interfering_circle(
+        policy,
+        circles,
+        pos,
+        project_to_2d(goal.translation);
+        return_w_no_buffer = true,
+    )
+    mode = set_policy_mode!(
+        policy,
+        circ,
+        pos,
+        project_to_2d(goal.translation),
+        parent_step_is_active,
+    )
+    twist = compute_twist_from_goal(env, agent, new_goal, dt) # nominal twist
+    # Apply traffic thinning
+    # Set nominal velocity to zero if close to goal (Note: this is a hack)
+    parent_step = get_parent_build_step(sched, node)
+    if !(parent_step === nothing)
+        countdown = active_build_step_countdown(parent_step.node, env)
+        dist_to_goal = norm(goal.translation .- global_transform(agent).translation)
+        unit_radius = get_base_geom(entity(node), HypersphereKey()).radius
+        if (mode != :EXIT_CIRCLE) && (dist_to_goal < 15 * unit_radius)
+            # Ensure the agent doesn't crowd its destination
+            if matches_template(TransportUnitGo, node) && countdown >= 1
+                twist = Twist(0.0 * twist.vel, twist.ω)
+            elseif matches_template(RobotGo, node) && countdown >= 3
+                twist = Twist(0.0 * twist.vel, twist.ω)
+            end
+        end
     end
+    # Apply potential fields
+    policy = agent_policies[node_id(agent)].dispersion_policy
+    # For RobotGo node, ensure that parent assembly is "pickup-able"
+    ready_for_pickup = cargo_ready_for_pickup(node, env)
+    # TODO: Check if we can use the cached version here
+    build_step_active = parent_build_step_is_active(node, env)
+    update_dist_to_nearest_active_agent!(policy, env)
+    update_buffer_radius!(policy, node, build_step_active, ready_for_pickup)
+    if !(build_step_active && ready_for_pickup)
+        policy.node = node  # update policy
+        nominal_twist = twist  # compute target position
+        pos = project_to_2d(global_transform(agent).translation)
+        va = nominal_twist.vel[1:2]
+        target_pos = pos .+ va * dt
+        vb = -1.0 * compute_potential_gradient!(policy, env, pos)  # commanded velocity from current position
+        vc = -1.0 * compute_potential_gradient!(policy, env, target_pos)  # commanded velocity from current position
+        # Blend the three velocities
+        a = 1.0
+        b = 1.0
+        c = 0.0
+        v = (a * va + b * vb + c * vc)
+        vel = clip_velocity(v, policy.vmax)
+        # Compute goal position
+        goal_pt = pos + vel * dt
+        goal =
+            CoordinateTransformations.Translation(goal_pt..., 0.0) ∘
+            CoordinateTransformations.LinearMap(goal.linear)
+        twist = compute_twist_from_goal(env, agent, goal, dt)  # nominal twist
+    end
+    return twist
 end
 
 function update_env_with_deconfliction(c::CombinedPolicy, scene_tree, env)

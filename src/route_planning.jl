@@ -649,115 +649,6 @@ function active_build_step_countdown(step, env::PlannerEnv)
     return k
 end
 
-"""
-    get_twist_cmd(node,env)
-
-Query the agent's policy to get the desired twist
-"""
-function get_twist_cmd(node, env::PlannerEnv)
-    @unpack sched, scene_tree, agent_policies, cache, dt = env
-    agent = entity(node)
-    goal = global_transform(goal_config(node))
-    mode = :not_set
-    ############ TangentBugPolicy #############
-    policy = agent_policies[node_id(agent)].nominal_policy
-    if !(policy === nothing)
-        pos = project_to_2d(global_transform(agent).translation)
-        excluded_ids = Set{AbstractID}()
-        # TODO: Check if we can use the cached version here
-        if parent_build_step_is_active(node, env) && cargo_ready_for_pickup(node, env)
-            parent_build_step = get_parent_build_step(sched, node)
-            push!(excluded_ids, node_id(parent_build_step))
-        end
-        # Get circle obstacles, potentially inflated
-        circles = active_staging_circles(env, excluded_ids)
-        # Update policy and get goal
-        policy.config = global_transform(agent)
-        # TangentBug Policy
-        parent_step_is_active = parent_build_step_is_active(node, env)
-        goal_pt = query_policy_for_goal!(
-            policy,
-            circles,
-            pos,
-            project_to_2d(goal.translation),
-            parent_step_is_active,
-        )
-        new_goal =
-            CoordinateTransformations.Translation(goal_pt..., 0.0) ∘
-            CoordinateTransformations.LinearMap(goal.linear)
-        _, circ, _ = get_closest_interfering_circle(
-            policy,
-            circles,
-            pos,
-            project_to_2d(goal.translation);
-            return_w_no_buffer = true,
-        )
-        mode = set_policy_mode!(
-            policy,
-            circ,
-            pos,
-            project_to_2d(goal.translation),
-            parent_step_is_active,
-        )
-        twist = compute_twist_from_goal(env, agent, new_goal, dt) # nominal twist
-    else
-        twist = compute_twist_from_goal(env, agent, goal, dt)
-    end
-    if env.deconfliction_type isa ReciprocalVelocityObstacle
-        ############ Hacky Traffic Thinning #############
-        # Set nominal velocity to zero if close to goal (HACK)
-        parent_step = get_parent_build_step(sched, node)
-        if !(parent_step === nothing)
-            countdown = active_build_step_countdown(parent_step.node, env)
-            dist_to_goal = norm(goal.translation .- global_transform(agent).translation)
-            unit_radius = get_base_geom(entity(node), HypersphereKey()).radius
-            if (mode != :EXIT_CIRCLE) && (dist_to_goal < 15 * unit_radius)
-                # Done so the agent doesn't crowd its destination
-                if matches_template(TransportUnitGo, node) && countdown >= 1
-                    twist = Twist(0.0 * twist.vel, twist.ω)
-                elseif matches_template(RobotGo, node) && countdown >= 3
-                    twist = Twist(0.0 * twist.vel, twist.ω)
-                end
-            end
-        end
-        ############ Potential Field Policy #############
-        policy = agent_policies[node_id(agent)].dispersion_policy
-        # For RobotGo node, ensure that parent assembly is "pickup-able"
-        ready_for_pickup = cargo_ready_for_pickup(node, env)
-        # TODO: Check if we can use the cached version here
-        build_step_active = parent_build_step_is_active(node, env)
-        if !(policy === nothing)
-            update_dist_to_nearest_active_agent!(policy, env)
-            update_buffer_radius!(policy, node, build_step_active, ready_for_pickup)
-            if !(build_step_active && ready_for_pickup)
-                policy.node = node  # update policy
-                nominal_twist = twist  # compute target position
-                pos = project_to_2d(global_transform(agent).translation)
-                va = nominal_twist.vel[1:2]
-                target_pos = pos .+ va * dt
-                vb = -1.0 * compute_potential_gradient!(policy, env, pos)  # commanded velocity from current position
-                vc = -1.0 * compute_potential_gradient!(policy, env, target_pos)  # commanded velocity from current position
-                # Blend the three velocities
-                a = 1.0
-                b = 1.0
-                c = 0.0
-                v = (a * va + b * vb + c * vc)
-                vel = clip_velocity(v, policy.vmax)
-                # Compute goal position
-                goal_pt = pos + vel * dt
-                goal =
-                    CoordinateTransformations.Translation(goal_pt..., 0.0) ∘
-                    CoordinateTransformations.LinearMap(goal.linear)
-                twist = compute_twist_from_goal(env, agent, goal, dt)  # nominal twist
-            else
-                !(policy === nothing)
-                policy.dist_to_nearest_active_agent = 0.0
-            end
-        end
-    end
-    return twist
-end
-
 function compute_twist_from_goal(
     env,
     agent,
@@ -771,11 +662,11 @@ function compute_twist_from_goal(
 end
 
 get_cmd(
-    ::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},
-    env::PlannerEnv,
+    ::Union{BuildPhasePredicate, EntityConfigPredicate, ProjectComplete},
+     env::PlannerEnv,
 ) = nothing
 
-function get_cmd(node::Union{TransportUnitGo,RobotGo}, env::PlannerEnv)
+function get_cmd(node::Union{TransportUnitGo, RobotGo}, env::PlannerEnv)
     agent = entity(node)
     update_agent_position_in_sim!(env.deconfliction_type, env, agent)
     set_agent_priority!(env.deconfliction_type, env, node)
@@ -786,7 +677,7 @@ function get_cmd(node::Union{TransportUnitGo,RobotGo}, env::PlannerEnv)
         twist = zero(Twist) # desired velocity it to stay still #? Could change this?
         max_speed = 0.1 * get_agent_max_speed(agent)
     else
-        twist = get_twist_cmd(node, env)
+        twist = perform_twist_deconfliction(env.deconfliction_type, env, node)
         twist_vel = norm(twist.vel[1:2])
         if twist_vel > 0.0
             max_speed = min(get_agent_max_speed(agent), twist_vel)
@@ -799,7 +690,7 @@ function get_cmd(node::Union{TransportUnitGo,RobotGo}, env::PlannerEnv)
     return twist
 end
 
-function get_cmd(node::Union{FormTransportUnit,DepositCargo}, env::PlannerEnv)
+function get_cmd(node::Union{FormTransportUnit, DepositCargo}, env::PlannerEnv)
     agent = entity(node)
     cargo = get_node(env.scene_tree, cargo_id(agent))
     # Compute velocity (angular and translational) for cargo
@@ -831,13 +722,11 @@ function get_cmd(node::LiftIntoPlace, env::PlannerEnv)
 end
 
 apply_cmd!(
-    ::Union{BuildPhasePredicate,EntityConfigPredicate,ProjectComplete},
+    ::Union{BuildPhasePredicate, EntityConfigPredicate, ProjectComplete},
     cmd,
     env::PlannerEnv,
 ) = nothing
-
 apply_cmd!(node::CloseBuildStep, cmd::Nothing, env::PlannerEnv) = close_node!(node, env)
-
 apply_cmd!(node::OpenBuildStep, cmd::Nothing, env::PlannerEnv) = close_node!(node, env)
 
 function apply_cmd!(node::FormTransportUnit, twist::Twist, env::PlannerEnv)
@@ -881,7 +770,7 @@ function apply_cmd!(node::LiftIntoPlace, twist::Twist, env::PlannerEnv)
     set_local_transform!(cargo, local_transform(cargo) ∘ tform)
 end
 
-function apply_cmd!(node::Union{TransportUnitGo,RobotGo}, twist::Twist, env::PlannerEnv)
+function apply_cmd!(node::Union{TransportUnitGo, RobotGo}, twist::Twist, env::PlannerEnv)
     @unpack sched, scene_tree, cache, dt = env
     if !(env.deconfliction_type isa ReciprocalVelocityObstacle)
         agent = entity(node)

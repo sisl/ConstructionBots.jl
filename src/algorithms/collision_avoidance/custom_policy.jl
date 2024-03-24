@@ -7,7 +7,7 @@ export CustomPolicy
     # Step 1: Add your fields here
 end
 
-function update_twists_with_deconfliction(policy::CustomPolicy, params_to_update)
+function perform_twist_deconfliction(policy::CustomPolicy, env, node)
     # Step 2: Implement your method updating an agent's velocity at a single timestep
 end
 

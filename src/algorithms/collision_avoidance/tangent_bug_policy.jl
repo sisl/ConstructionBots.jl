@@ -14,8 +14,70 @@ export TangentBugPolicy
     cmd::Twist=Twist(SVector(0.0, 0.0, 0.0), SVector(0.0, 0.0, 0.0))
 end
 
-function perform_twist_deconfliction(TangentBugPolicy, params)
-    # TODO(tashakim): implement this method
+"""
+    perform_twist_deconfliction(t::TangentBugPolicy, env, node)
+
+Performs twist deconfliction for an agent `node` within environment `env` using
+the Tangent Bug algorithm.
+
+# Arguments
+- `t::TangentBugPolicy`: The Tangent Bug policy deconfliction strategy instance, 
+which contains parameters like maximum velocity `vmax`, and planning radius.
+- `env`: Simulation environment with current state of agents and obstacles.
+- `node`: The agent for which the twist is being calculated.
+
+# Returns
+- `Twist`: The computed twist (velocity and angular velocity) for the agent to
+follow in order to avoid obstacles and move towards its goal.
+"""
+function perform_twist_deconfliction(t::TangentBugPolicy, env, node)
+    @unpack sched, agent_policies, dt = env
+    agent = entity(node)
+    goal = global_transform(goal_config(node))
+    mode = :not_set
+    policy = agent_policies[node_id(agent)].nominal_policy
+    pos = project_to_2d(global_transform(agent).translation)
+    excluded_ids = Set{AbstractID}()
+    if parent_build_step_is_active(node, env) && cargo_ready_for_pickup(node, env)
+        parent_build_step = get_parent_build_step(sched, node)
+        push!(excluded_ids, node_id(parent_build_step))
+    end
+    # Determine any circles obstacles, potentially inflated, that might
+    # interfere with the direct 
+    # path to the goal.
+    circles = active_staging_circles(env, excluded_ids)
+    # Update policy and get goal
+    policy.config = global_transform(agent)
+    # Apply the Tangent Bug algorithm to compute an alternative goal point that 
+    # avoids the obstacles while still progressing towards the original goal.
+    parent_step_is_active = parent_build_step_is_active(node, env)
+    goal_pt = query_policy_for_goal!(
+        policy,
+        circles,
+        pos,
+        project_to_2d(goal.translation),
+        parent_step_is_active,
+    )
+    new_goal =
+        CoordinateTransformations.Translation(goal_pt..., 0.0) ∘
+        CoordinateTransformations.LinearMap(goal.linear)
+    _, circ, _ = get_closest_interfering_circle(
+        policy,
+        circles,
+        pos,
+        project_to_2d(goal.translation);
+        return_w_no_buffer = true,
+    )
+    mode = set_policy_mode!(
+        policy,
+        circ,
+        pos,
+        project_to_2d(goal.translation),
+        parent_step_is_active,
+    )
+    # Compute the desired twist that moves agent towards this new goal point 
+    # without colliding with the obstacles.
+    return compute_twist_from_goal(env, agent, new_goal, dt)
 end
 
 """
