@@ -84,6 +84,7 @@ build_step_buffer_factor::Float64 = 0.5
 base_results_path::String = joinpath(dirname(pathof(ConstructionBots)), "..", "results")
 results_path::String = joinpath(base_results_path, project_name)
 process_updates_interval::Int = 25
+block_save_anim::Bool = false
 save_anim_interval::Int = 500
 max_num_iters_no_progress::Int = 10000
 sim_batch_size::Int = 50
@@ -210,6 +211,7 @@ sim_params = ConstructionBots.SimParameters(
     process_animation_tasks,
     save_anim_interval,
     process_updates_interval,
+    block_save_anim,
     update_anim_at_every_step,
     anim_active_agents,
     anim_active_areas,
@@ -312,7 +314,7 @@ for n in scene_tree.nodes
         c_id = ConstructionBots.cargo_id(n)
         plt = ConstructionBots.render_transport_unit_2d(scene_tree, n)
         # display(plt)
-        push!(cargo_ids, c_id)
+        # push!(cargo_ids, c_id)
     end
 end
 

@@ -2,7 +2,7 @@ struct AnimationWrapper
     anim::MeshCat.Animation
     step::Counter
 end
-AnimationWrapper(step::Int) = AnimationWrapper(MeshCat.Animation(), Counter(step))
+AnimationWrapper(step::Int) = AnimationWrapper(MeshCat.Animation(MeshCat.Visualizer()), Counter(step))
 current_frame(a::AnimationWrapper) = get_counter_status(a.step)
 current_frame(::Nothing) = 0
 step_animation!(::Nothing, step=1) = nothing
@@ -955,7 +955,7 @@ function staging_plan_bbox(staging_circs)
     ylo = minimum(c.center[2] - c.radius for (k, c) in staging_circs)
     xhi = maximum(c.center[1] + c.radius for (k, c) in staging_circs)
     yhi = maximum(c.center[2] + c.radius for (k, c) in staging_circs)
-    GeometryBasics.Rect2D(xlo, ylo, xhi - xlo, yhi - ylo)
+    GeometryBasics.Rect2d(xlo, ylo, xhi - xlo, yhi - ylo)
 end
 staging_plan_bbox(sched::AbstractGraph) = staging_plan_bbox(extract_build_step_staging_circles(sched))
 

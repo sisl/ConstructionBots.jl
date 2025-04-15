@@ -600,7 +600,7 @@ end
 
 function GeometryBasics.decompose(
     ::Type{TriangleFace{Int}},
-    n::GeometryBasics.Ngon{3,Float64,N,Point{3,Float64}}) where {N}
+    n::GeometryBasics.Ngon{3,Float64,N}) where {N}
     return SVector{N - 1,TriangleFace{Int}}(
         TriangleFace{Int}(1, i, i + 1) for i in 1:N-1
     )
@@ -610,19 +610,19 @@ function GeometryBasics.decompose(
     n::GeometryBasics.Ngon)
     return n.points
 end
-GeometryBasics.faces(n::GeometryBasics.Ngon{3,Float64,4,Point{3,Float64}}) = [
+GeometryBasics.faces(n::GeometryBasics.Ngon{3,Float64,4}) = [
     TriangleFace{Int}(1, 2, 3), TriangleFace{Int}(1, 3, 4)
 ]
-GeometryBasics.faces(n::GeometryBasics.Ngon{3,Float64,3,Point{3,Float64}}) = [
+GeometryBasics.faces(n::GeometryBasics.Ngon{3,Float64,3}) = [
     TriangleFace{Int}(1, 2, 3)
 ]
 
 GeometryBasics.coordinates(v::AbstractVector) = collect(Base.Iterators.flatten(map(coordinates, v)))
 
-function GeometryBasics.coordinates(v::AbstractVector{G}) where {N,G<:GeometryBasics.Ngon{3,Float64,N,Point{3,Float64}}}
+function GeometryBasics.coordinates(v::AbstractVector{G}) where {N,G<:GeometryBasics.Ngon{3,Float64,N}}
     vcat(map(coordinates, v)...)
 end
-function GeometryBasics.faces(v::AbstractVector{G}) where {N,G<:GeometryBasics.Ngon{3,Float64,N,Point{3,Float64}}}
+function GeometryBasics.faces(v::AbstractVector{G}) where {N,G<:GeometryBasics.Ngon{3,Float64,N}}
     vcat(map(i -> map(f -> f .+ ((i - 1) * N), faces(v[i])), 1:length(v))...)
 end
 function GeometryBasics.faces(v::AbstractVector{G}) where {G<:GeometryBasics.Ngon}
