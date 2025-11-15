@@ -5,7 +5,8 @@
 
 ![ConstructionBots.jl Overivew](media/constructionbots_overviw.png)
 
-[arXiv paper](https://arxiv.org/abs/2311.00192)
+[arXiv](https://arxiv.org/abs/2311.00192)
+[RAS](https://www.sciencedirect.com/science/article/abs/pii/S0921889025002763)
 
 ConstructionBots.jl is an open-source multi-robot manufacturing simulator and is designed to test algorithms for multi-robot assembly planning. This system approaches multi-robot assembly planning from a higher level of abstraction and addresses task planning and transit planning but abstracts away the kino-dynamic details of piecing together assemblies. Problems addressed and simulated:
 - **Trasport Team configuration:** How many robots are needed and how should robots be positioned when transporting a particular payload?
@@ -95,14 +96,15 @@ If the demo setting `update_anim_at_every_step` is not set to `true`, then the a
 ![Tractor Project d](media/tractor_demo_d.png)
 
 ## Citation
-Under review
-
-[arXiv paper](https://arxiv.org/abs/2311.00192)
 
 ```
-@article{Brown2023Assembly},
-title = {Large-Scale Multi-Robot Assembly Planning for Autonomous Manufacturing},
-author = {Kyle Brown and Dylan M. Asmar and Mac Schwager and Mykel J. Kochenderfer},
-journal = {arXiv preprint arXiv:2311.00192},
-year = {2023}
+@article{Brown2023Assembly,
+  title = {Large-Scale Multi-Robot Assembly Planning for Autonomous Manufacturing},
+  author = {Kyle Brown and Dylan M. Asmar and Mac Schwager and Mykel J. Kochenderfer},
+  journal = {Robotics and Autonomous Systems},
+  volume = {194},
+  pages = {105179},
+  year = {2025},
+  doi = {https://doi.org/10.1016/j.robot.2025.105179}
+}
 ```
